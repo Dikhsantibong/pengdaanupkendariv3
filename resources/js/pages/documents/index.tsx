@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Archive, Download, Eye, Search } from 'lucide-react';
+import { Archive, Download, Eye, Pencil, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
@@ -205,6 +205,27 @@ export default function DocumentArchive({
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-2">
+                                                <Button
+                                                    asChild
+                                                    size="sm"
+                                                    variant="ghost"
+                                                >
+                                                    <Link
+                                                        href={
+                                                            procurements.documents.edit(
+                                                                {
+                                                                    procurement:
+                                                                        row.procurement_id,
+                                                                    document:
+                                                                        row.id,
+                                                                },
+                                                            ).url
+                                                        }
+                                                    >
+                                                        <Pencil className="size-3.5" />
+                                                        Edit
+                                                    </Link>
+                                                </Button>
                                                 <Button
                                                     asChild
                                                     size="sm"

@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -15,11 +15,14 @@ use Illuminate\Support\Carbon;
  * @property string $title
  * @property string $file_name
  * @property int $template_version
+ * @property int $revision
  * @property string $rendered_body
  * @property int|null $generated_by
- * @property Carbon $generated_at
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property int|null $edited_by
+ * @property CarbonImmutable $generated_at
+ * @property CarbonImmutable|null $edited_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  * @property-read DocumentType $documentType
  */
 #[Fillable([
@@ -28,9 +31,12 @@ use Illuminate\Support\Carbon;
     'title',
     'file_name',
     'template_version',
+    'revision',
     'rendered_body',
     'generated_by',
+    'edited_by',
     'generated_at',
+    'edited_at',
 ])]
 class ProcurementDocument extends Model
 {
@@ -75,6 +81,24 @@ class ProcurementDocument extends Model
     }
 
     /**
+     * The user who last corrected this document by hand.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function editedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'edited_by');
+    }
+
+    /**
+     * Whether the document has been corrected since it was generated.
+     */
+    public function isEdited(): bool
+    {
+        return $this->revision > 0;
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -83,6 +107,7 @@ class ProcurementDocument extends Model
     {
         return [
             'generated_at' => 'datetime',
+            'edited_at' => 'datetime',
         ];
     }
 }

@@ -42,6 +42,7 @@ class DocumentPdfRenderer
         $pdf = $this->render($document);
 
         $disk->put($path, $pdf);
+        $this->pruneOtherRevisions($document, $path);
 
         return $pdf;
     }
@@ -96,10 +97,31 @@ class DocumentPdfRenderer
 
     /**
      * The cache path of a document's PDF.
+     *
+     * The body is fingerprinted into the name so a corrected document never
+     * serves the PDF of the version before the correction: a changed body is
+     * simply a different, still immutable, cache entry.
      */
     protected function path(ProcurementDocument $document): string
     {
-        return self::DIRECTORY.'/'.$document->getKey().'.pdf';
+        $fingerprint = substr(sha1($document->rendered_body), 0, 12);
+
+        return self::DIRECTORY.'/'.$document->getKey().'-'.$fingerprint.'.pdf';
+    }
+
+    /**
+     * Drop the cached PDFs built from earlier versions of this document.
+     */
+    protected function pruneOtherRevisions(ProcurementDocument $document, string $keep): void
+    {
+        $disk = $this->disk();
+        $prefix = self::DIRECTORY.'/'.$document->getKey().'-';
+
+        foreach ($disk->files(self::DIRECTORY) as $file) {
+            if ($file !== $keep && str_starts_with($file, $prefix)) {
+                $disk->delete($file);
+            }
+        }
     }
 
     /**

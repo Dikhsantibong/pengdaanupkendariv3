@@ -37,12 +37,12 @@ const statusDot: Record<StatusCategory, string> = {
 const flow = [
     {
         title: 'Form Input Awal Pengadaan',
-        actor: 'Team Leader Pengadaan',
+        actor: 'TL Perencanaan',
         detail: 'Nama pekerjaan, direksi pekerjaan, unit tujuan, nomor PR/RO dan PRK, nilai HPE.',
     },
     {
         title: 'Penunjukan PIC Perencana',
-        actor: 'Team Leader Pengadaan',
+        actor: 'TL Perencanaan',
         detail: 'Satu PIC bertanggung jawab menyusun seluruh dokumen perencanaan.',
     },
     {
@@ -52,12 +52,12 @@ const flow = [
     },
     {
         title: 'Persetujuan Dokumen',
-        actor: 'Team Leader Pengadaan',
+        actor: 'TL Perencanaan',
         detail: 'Dokumen perencanaan disetujui atau dikembalikan dengan catatan.',
     },
     {
         title: 'Penunjukan PIC Pelaksana',
-        actor: 'Team Leader Pengadaan',
+        actor: 'TL Perencanaan',
         detail: 'Pelaksanaan dibuka setelah dokumen perencanaan disetujui.',
     },
     {
@@ -67,7 +67,7 @@ const flow = [
     },
     {
         title: 'Pengadaan Selesai',
-        actor: 'Team Leader Pengadaan',
+        actor: 'TL Perencanaan',
         detail: 'Kontrak dan masa pemeliharaan selesai, arsip dokumen lengkap.',
     },
 ];

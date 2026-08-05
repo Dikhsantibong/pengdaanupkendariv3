@@ -106,7 +106,7 @@ export default function Dashboard({
                         icon={CircleDashed}
                         hint={
                             summary.awaitingApproval > 0
-                                ? 'Perlu tindakan Team Leader'
+                                ? 'Perlu tindakan TL Perencanaan'
                                 : 'Tidak ada antrean'
                         }
                     />

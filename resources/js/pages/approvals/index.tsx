@@ -31,7 +31,7 @@ export default function ApprovalIndex({
                 <PageHeader
                     eyebrow="Persetujuan"
                     title="Antrean Approval Perencanaan"
-                    description="Dokumen perencanaan yang telah diajukan PIC Perencana dan menunggu keputusan Team Leader."
+                    description="Dokumen perencanaan yang telah diajukan PIC Perencana dan menunggu keputusan TL Perencanaan."
                 />
 
                 <ProcurementTable

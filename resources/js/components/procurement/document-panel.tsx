@@ -1,5 +1,5 @@
-import { useForm } from '@inertiajs/react';
-import { Download, Eye, FileText } from 'lucide-react';
+import { Link, useForm } from '@inertiajs/react';
+import { Download, Eye, FileText, Pencil } from 'lucide-react';
 import { EmptyState } from '@/components/empty-state';
 import { Button } from '@/components/ui/button';
 import {
@@ -133,15 +133,52 @@ export function DocumentPanel({
                                 <TableCell>{document.type}</TableCell>
                                 <TableCell className="tabular">
                                     v{document.template_version}
+                                    {document.revision > 0 && (
+                                        <span className="ml-1.5 rounded-sm bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                                            rev {document.revision}
+                                        </span>
+                                    )}
                                 </TableCell>
                                 <TableCell className="tabular text-xs text-muted-foreground">
                                     {formatDateTime(document.generated_at)}
                                     {document.generated_by
                                         ? ` · ${document.generated_by}`
                                         : ''}
+                                    {document.edited_at && (
+                                        <div>
+                                            Diedit{' '}
+                                            {formatDateTime(document.edited_at)}
+                                            {document.edited_by
+                                                ? ` · ${document.edited_by}`
+                                                : ''}
+                                        </div>
+                                    )}
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <div className="flex justify-end gap-2">
+                                        {canGenerate && (
+                                            <Button
+                                                asChild
+                                                size="sm"
+                                                variant="ghost"
+                                            >
+                                                <Link
+                                                    href={
+                                                        procurements.documents.edit(
+                                                            {
+                                                                procurement:
+                                                                    procurementId,
+                                                                document:
+                                                                    document.id,
+                                                            },
+                                                        ).url
+                                                    }
+                                                >
+                                                    <Pencil className="size-3.5" />
+                                                    Edit
+                                                </Link>
+                                            </Button>
+                                        )}
                                         <Button
                                             asChild
                                             size="sm"

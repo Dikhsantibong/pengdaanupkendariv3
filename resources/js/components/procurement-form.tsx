@@ -25,6 +25,7 @@ export type ProcurementFormOptions = {
     prRoNumbers: Option[];
     progressStatuses: StatusOption[];
     defaultProgressStatusId: number | null;
+    planners: Option[];
 };
 
 export type ProcurementFormValues = {
@@ -39,6 +40,7 @@ export type ProcurementFormValues = {
     progress_status_id: number | null;
     target_completion_date: string;
     notes: string;
+    planner_id?: number | null;
 };
 
 export function ProcurementForm({
@@ -47,14 +49,23 @@ export function ProcurementForm({
     submitLabel,
     onSubmit,
     onCancel,
+    withPlanner = false,
 }: {
     options: ProcurementFormOptions;
     initialValues?: Partial<ProcurementFormValues>;
     submitLabel: string;
     onSubmit: (form: ReturnType<typeof useForm<ProcurementFormValues>>) => void;
     onCancel?: () => void;
+    /**
+     * Offer the planning PIC on this form. Only the create screen does: later
+     * changes belong on the appointment screen, which notifies the handover.
+     */
+    withPlanner?: boolean;
 }) {
     const form = useForm<ProcurementFormValues>({
+        ...(withPlanner
+            ? { planner_id: initialValues?.planner_id ?? null }
+            : {}),
         name: initialValues?.name ?? '',
         work_director_id: initialValues?.work_director_id ?? null,
         target_unit_id: initialValues?.target_unit_id ?? null,
@@ -345,6 +356,59 @@ export function ProcurementForm({
                     </div>
                 </div>
             </section>
+
+            {withPlanner && (
+                <section className="space-y-4 rounded-md border border-border bg-card p-5">
+                    <p className="section-label">Penunjukan PIC Perencana</p>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-2">
+                            <Label htmlFor="planner_id">PIC Perencana</Label>
+                            <Select
+                                value={
+                                    data.planner_id === null ||
+                                    data.planner_id === undefined
+                                        ? NONE
+                                        : String(data.planner_id)
+                                }
+                                onValueChange={(value) =>
+                                    setData(
+                                        'planner_id',
+                                        value === NONE ? null : Number(value),
+                                    )
+                                }
+                            >
+                                <SelectTrigger
+                                    id="planner_id"
+                                    className="w-full"
+                                >
+                                    <SelectValue placeholder="Tunjuk nanti" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={NONE}>
+                                        Tunjuk nanti
+                                    </SelectItem>
+                                    {options.planners.map((option) => (
+                                        <SelectItem
+                                            key={option.value}
+                                            value={String(option.value)}
+                                        >
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                                PIC yang ditunjuk langsung menerima notifikasi
+                                dan hanya dapat melihat pengadaan yang
+                                ditugaskan kepadanya. Dapat dikosongkan dan
+                                ditunjuk kemudian dari menu Penunjukan PIC.
+                            </p>
+                            <InputError message={errors.planner_id} />
+                        </div>
+                    </div>
+                </section>
+            )}
 
             <section className="space-y-4 rounded-md border border-border bg-card p-5">
                 <p className="section-label">Informasi Tambahan</p>

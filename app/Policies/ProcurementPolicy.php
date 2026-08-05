@@ -127,4 +127,15 @@ class ProcurementPolicy
     {
         return $user->isSupervisor() || $procurement->isAssignedTo($user);
     }
+
+    /**
+     * Determine whether the user may correct a generated document.
+     *
+     * A generated document is a draft until someone has checked its wording
+     * and the data pulled into it, so whoever may generate it may correct it.
+     */
+    public function editDocument(User $user, Procurement $procurement): bool
+    {
+        return $this->generateDocument($user, $procurement);
+    }
 }

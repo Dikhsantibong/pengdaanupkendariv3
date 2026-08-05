@@ -28,6 +28,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('completion', [CompletionController::class, 'store'])->name('completion.store');
         Route::post('documents', [DocumentController::class, 'store'])->name('documents.store');
         Route::get('documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
+        Route::get('documents/{document}/edit', [DocumentController::class, 'edit'])->name('documents.edit');
+        Route::put('documents/{document}', [DocumentController::class, 'update'])->name('documents.update');
+        Route::post('documents/{document}/regenerate', [DocumentController::class, 'regenerate'])
+            ->name('documents.regenerate');
     });
 
     Route::get('penunjukan-pic', [PicAssignmentController::class, 'index'])->name('pic-assignments.index');

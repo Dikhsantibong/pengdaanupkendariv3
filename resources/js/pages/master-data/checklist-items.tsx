@@ -11,15 +11,21 @@ type ChecklistItem = MasterRecord & {
     description: string | null;
     is_optional: boolean;
     sort_order: number;
+    excluded_procurement_method_ids: number[];
 };
 
 export default function ChecklistItems({
     records,
     stages,
+    procurementMethods,
 }: {
     records: ChecklistItem[];
     stages: EnumOption[];
+    procurementMethods: EnumOption[];
 }) {
+    const methodLabel = (id: number) =>
+        procurementMethods.find((method) => Number(method.value) === id)?.label;
+
     return (
         <MasterDataPage<ChecklistItem>
             title="Item Checklist"
@@ -36,6 +42,17 @@ export default function ChecklistItems({
                     label: 'Sifat',
                     render: (record) =>
                         record.is_optional ? 'Opsional' : 'Wajib',
+                },
+                {
+                    key: 'excluded_procurement_method_ids',
+                    label: 'Dilewati Metode',
+                    render: (record) =>
+                        record.excluded_procurement_method_ids.length === 0
+                            ? '—'
+                            : record.excluded_procurement_method_ids
+                                  .map(methodLabel)
+                                  .filter(Boolean)
+                                  .join(', '),
                 },
                 { key: 'sort_order', label: 'Urutan', className: 'tabular' },
             ]}
@@ -66,6 +83,13 @@ export default function ChecklistItems({
                     type: 'switch',
                     hint: 'Item opsional tidak wajib dicentang sebelum pengajuan persetujuan.',
                 },
+                {
+                    name: 'excluded_procurement_method_ids',
+                    label: 'Dilewati oleh Metode Pengadaan',
+                    type: 'multiselect',
+                    options: procurementMethods,
+                    hint: 'Centang metode yang tidak melalui tahapan ini. Metode yang tidak dicentang tetap memakai item ini.',
+                },
                 { name: 'sort_order', label: 'Urutan Tampil', type: 'number' },
                 { name: 'is_active', label: 'Aktif', type: 'switch' },
             ]}
@@ -74,6 +98,7 @@ export default function ChecklistItems({
                 name: '',
                 description: '',
                 is_optional: false,
+                excluded_procurement_method_ids: [],
                 sort_order: 0,
                 is_active: true,
             }}

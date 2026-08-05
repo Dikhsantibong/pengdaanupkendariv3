@@ -47,7 +47,15 @@ class DocumentPdfTest extends TestCase
 
         $first = $renderer->bytes($document);
 
-        Storage::disk('local')->assertExists('documents/pdf/'.$document->id.'.pdf');
+        // Cache entries are keyed by document id plus a body fingerprint, so a
+        // corrected document never resolves to an entry built before the edit.
+        $cached = Storage::disk('local')->files('documents/pdf');
+
+        $this->assertCount(1, $cached);
+        $this->assertMatchesRegularExpression(
+            '#^documents/pdf/'.$document->id.'-[0-9a-f]{12}\.pdf$#',
+            $cached[0],
+        );
         $this->assertSame($first, $renderer->bytes($document));
     }
 

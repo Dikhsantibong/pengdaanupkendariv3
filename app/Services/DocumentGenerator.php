@@ -147,6 +147,80 @@ class DocumentGenerator
     }
 
     /**
+     * Save a hand corrected body onto an archived document.
+     *
+     * The body is the document: whatever an authorised user leaves here is
+     * what gets printed, so the template is not consulted again.
+     */
+    public function saveEdit(
+        ProcurementDocument $document,
+        User $editor,
+        string $title,
+        string $body,
+    ): ProcurementDocument {
+        $document->title = $title;
+        $document->rendered_body = $body;
+        $document->revision = $document->revision + 1;
+        $document->edited_by = $editor->id;
+        $document->edited_at = now();
+        $document->save();
+
+        $this->procurements->recordActivity(
+            $document->procurement,
+            $editor,
+            ActivityType::DokumenDiedit,
+            "Dokumen {$document->title} diperbaiki (revisi {$document->revision}).",
+            ['document_id' => $document->id, 'revision' => $document->revision],
+        );
+
+        return $document;
+    }
+
+    /**
+     * Rebuild a document from its template using the current procurement data.
+     *
+     * The escape hatch for the other half of the problem: when the wording was
+     * fine but the data pulled into the document was wrong, fix the
+     * procurement and pull the values through again. Manual corrections made
+     * since the last generate are discarded, which is the point.
+     */
+    public function regenerate(ProcurementDocument $document, User $editor): ProcurementDocument
+    {
+        $document->loadMissing(['procurement', 'documentType']);
+
+        $template = DocumentTemplate::resolveFor(
+            $document->document_type_id,
+            $document->procurement->procurement_method_id,
+        );
+
+        if ($template === null) {
+            throw new RuntimeException(
+                "Template aktif untuk dokumen {$document->documentType->name} belum tersedia."
+            );
+        }
+
+        $document->document_template_id = $template->id;
+        $document->template_version = $template->version;
+        $document->rendered_body = $this->render($template, $document->procurement);
+        $document->revision = 0;
+        $document->edited_by = null;
+        $document->edited_at = null;
+        $document->generated_by = $editor->id;
+        $document->generated_at = now();
+        $document->save();
+
+        $this->procurements->recordActivity(
+            $document->procurement,
+            $editor,
+            ActivityType::DokumenDigenerate,
+            "Dokumen {$document->title} dimuat ulang dari template.",
+            ['document_id' => $document->id, 'template_version' => $template->version],
+        );
+
+        return $document;
+    }
+
+    /**
      * Wrap a rendered document body in a printable HTML shell.
      *
      * The PDF renderer paginates with its own page box, so the on-screen page

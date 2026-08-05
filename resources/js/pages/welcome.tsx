@@ -17,7 +17,7 @@ const capabilities = [
         icon: Layers,
         title: 'Perencanaan Terstruktur',
         description:
-            'Checklist dokumen perencanaan, penunjukan PIC, dan persetujuan Team Leader dalam satu alur.',
+            'Checklist dokumen perencanaan, penunjukan PIC, dan persetujuan TL Perencanaan dalam satu alur.',
     },
     {
         icon: GaugeCircle,

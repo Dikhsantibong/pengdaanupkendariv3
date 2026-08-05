@@ -36,7 +36,7 @@ export default function NotificationIndex({
                 <PageHeader
                     eyebrow="Pemberitahuan"
                     title="Notifikasi"
-                    description="Pemberitahuan penugasan PIC, pengajuan persetujuan, dan keputusan Team Leader."
+                    description="Pemberitahuan penugasan PIC, pengajuan persetujuan, dan keputusan TL Perencanaan."
                     actions={
                         hasUnread && (
                             <Button

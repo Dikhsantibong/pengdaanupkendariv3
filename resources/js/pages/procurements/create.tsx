@@ -15,12 +15,12 @@ export default function CreateProcurement({
 }) {
     return (
         <>
-            <Head title="Buat Pengadaan" />
+            <Head title="Buat Perencanaan Pengadaan" />
 
             <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 md:p-6">
                 <PageHeader
                     eyebrow="Form Input Awal"
-                    title="Buat Pengadaan Baru"
+                    title="Buat Perencanaan Pengadaan"
                     description="Data pada form ini menjadi identitas utama pengadaan dan tampil pada dashboard, monitoring, serta laporan."
                     actions={
                         <Button
@@ -45,6 +45,7 @@ export default function CreateProcurement({
 
                 <ProcurementForm
                     options={options}
+                    withPlanner
                     submitLabel="Simpan Pengadaan"
                     onSubmit={(form) => form.post(procurements.store().url)}
                     onCancel={() => router.visit(procurements.index().url)}
@@ -58,6 +59,6 @@ CreateProcurement.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
         { title: 'Pengadaan', href: procurements.index() },
-        { title: 'Buat Pengadaan', href: procurements.create() },
+        { title: 'Buat Perencanaan Pengadaan', href: procurements.create() },
     ],
 };

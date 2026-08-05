@@ -6,6 +6,7 @@ import { EmptyState } from '@/components/empty-state';
 import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -41,14 +42,14 @@ export type MasterRecord = {
     [key: string]: unknown;
 };
 
-export type MasterFormValue = string | number | boolean | null;
+export type MasterFormValue = string | number | boolean | null | number[];
 
 export type MasterFormValues = Record<string, MasterFormValue>;
 
 export type MasterField = {
     name: string;
     label: string;
-    type: 'text' | 'number' | 'select' | 'switch';
+    type: 'text' | 'number' | 'select' | 'switch' | 'multiselect';
     options?: EnumOption[];
     placeholder?: string;
     hint?: string;
@@ -349,6 +350,54 @@ function FieldControl({
                     checked={Boolean(value)}
                     onCheckedChange={(checked) => onChange(checked)}
                 />
+            </div>
+        );
+    }
+
+    if (field.type === 'multiselect') {
+        const selected = Array.isArray(value) ? value : [];
+
+        return (
+            <div className="grid gap-2">
+                <Label>{field.label}</Label>
+                <div className="grid gap-1.5 rounded-md border border-border px-3 py-2.5">
+                    {(field.options ?? []).map((option) => {
+                        const id = Number(option.value);
+                        const checked = selected.includes(id);
+
+                        return (
+                            <label
+                                key={option.value}
+                                className="flex cursor-pointer items-center gap-2.5 text-sm"
+                            >
+                                <Checkbox
+                                    checked={checked}
+                                    onCheckedChange={(next) =>
+                                        onChange(
+                                            next === true
+                                                ? [...selected, id]
+                                                : selected.filter(
+                                                      (item) => item !== id,
+                                                  ),
+                                        )
+                                    }
+                                />
+                                {option.label}
+                            </label>
+                        );
+                    })}
+                    {(field.options ?? []).length === 0 && (
+                        <p className="text-xs text-muted-foreground">
+                            Belum ada pilihan tersedia.
+                        </p>
+                    )}
+                </div>
+                {field.hint && (
+                    <p className="text-xs text-muted-foreground">
+                        {field.hint}
+                    </p>
+                )}
+                <InputError message={error} />
             </div>
         );
     }

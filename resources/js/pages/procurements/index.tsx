@@ -43,7 +43,7 @@ export default function ProcurementIndex({
                             <Button asChild>
                                 <Link href={procurements.create()}>
                                     <Plus className="size-4" />
-                                    Buat Pengadaan
+                                    Buat Perencanaan Pengadaan
                                 </Link>
                             </Button>
                         )

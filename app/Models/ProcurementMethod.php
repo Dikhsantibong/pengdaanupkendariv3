@@ -7,6 +7,7 @@ use Database\Factories\ProcurementMethodFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
@@ -37,6 +38,19 @@ class ProcurementMethod extends Model
     public function procurements(): HasMany
     {
         return $this->hasMany(Procurement::class);
+    }
+
+    /**
+     * The checklist steps a procurement using this method skips.
+     *
+     * @return BelongsToMany<ChecklistItem, $this>
+     */
+    public function excludedChecklistItems(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            ChecklistItem::class,
+            'checklist_item_method_exclusions',
+        )->withTimestamps();
     }
 
     /**

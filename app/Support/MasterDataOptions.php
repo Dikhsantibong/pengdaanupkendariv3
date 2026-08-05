@@ -40,6 +40,7 @@ class MasterDataOptions
                 ])->all(),
             'progressStatuses' => self::statuses(),
             'defaultProgressStatusId' => ProgressStatus::defaultStatus()?->id,
+            'planners' => self::users(UserRole::PicPerencana),
         ];
     }
 

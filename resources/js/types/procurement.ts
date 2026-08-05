@@ -67,8 +67,11 @@ export type ProcurementDocumentRow = {
     title: string;
     type: string;
     template_version: number;
+    revision: number;
     generated_by: string | null;
     generated_at: string;
+    edited_by: string | null;
+    edited_at: string | null;
 };
 
 export type ActivityRow = {

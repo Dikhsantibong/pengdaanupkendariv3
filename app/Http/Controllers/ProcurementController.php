@@ -100,6 +100,7 @@ class ProcurementController extends Controller
             'checklists.completedBy',
             'documents.documentType',
             'documents.generatedBy',
+            'documents.editedBy',
             'activities.user',
         ]);
 
@@ -125,8 +126,11 @@ class ProcurementController extends Controller
                     'title' => $document->title,
                     'type' => $document->documentType->name,
                     'template_version' => $document->template_version,
+                    'revision' => $document->revision,
                     'generated_by' => $document->generatedBy?->name,
                     'generated_at' => $document->generated_at->toDateTimeString(),
+                    'edited_by' => $document->editedBy?->name,
+                    'edited_at' => $document->edited_at?->toDateTimeString(),
                 ]),
             'activities' => $procurement->activities
                 ->sortByDesc('created_at')
@@ -189,6 +193,10 @@ class ProcurementController extends Controller
         $this->authorize('update', $procurement);
 
         $procurement->update($request->validated());
+
+        // The method decides which checklist steps apply, so a change to it has
+        // to be reflected on the checklist straight away.
+        $this->procurements->syncChecklists($procurement);
 
         $this->procurements->recordActivity(
             $procurement,

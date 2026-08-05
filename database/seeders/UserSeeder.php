@@ -7,41 +7,97 @@ use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class UserSeeder extends Seeder
 {
     use WithoutModelEvents;
 
     /**
-     * Seed the administrator, team leader and PIC accounts listed in the spec.
+     * Seed the administrator, TL Perencanaan and PIC accounts listed in the spec.
+     *
+     * The login address is stated rather than derived from the name, so that
+     * renaming an account never orphans the credentials behind it.
+     *
+     * @var array<int, array{email: string, name: string, role: UserRole, position: string}>
+     */
+    protected const ACCOUNTS = [
+        [
+            'email' => 'administrator.sistem@upkendari.test',
+            'name' => 'Administrator Sistem',
+            'role' => UserRole::Administrator,
+            'position' => 'Administrator',
+        ],
+        [
+            'email' => 'team.leader.pengadaan@upkendari.test',
+            'name' => 'TL Perencanaan',
+            'role' => UserRole::TeamLeader,
+            'position' => 'TL Perencanaan',
+        ],
+        [
+            'email' => 'himatullah@upkendari.test',
+            'name' => 'Himatullah',
+            'role' => UserRole::PicPerencana,
+            'position' => 'PIC Perencana',
+        ],
+        [
+            'email' => 'bastial@upkendari.test',
+            'name' => 'Bastial',
+            'role' => UserRole::PicPerencana,
+            'position' => 'PIC Perencana',
+        ],
+        [
+            'email' => 'iklan.nano@upkendari.test',
+            'name' => 'Iklan Nano',
+            'role' => UserRole::PicPerencana,
+            'position' => 'PIC Perencana',
+        ],
+        [
+            'email' => 'putu.wisna@upkendari.test',
+            'name' => 'Putu Wisna',
+            'role' => UserRole::PicPerencana,
+            'position' => 'PIC Perencana',
+        ],
+        [
+            'email' => 'sabrin@upkendari.test',
+            'name' => 'Sabrin',
+            'role' => UserRole::PicPelaksana,
+            'position' => 'PIC Pelaksana',
+        ],
+        [
+            'email' => 'ahmad.bukhari@upkendari.test',
+            'name' => 'Ahmad Bukhari',
+            'role' => UserRole::PicPelaksana,
+            'position' => 'PIC Pelaksana',
+        ],
+        [
+            'email' => 'supriadi@upkendari.test',
+            'name' => 'Supriadi',
+            'role' => UserRole::PicPelaksana,
+            'position' => 'PIC Pelaksana',
+        ],
+    ];
+
+    /**
+     * Seed the accounts, keeping the password of an existing account intact.
      */
     public function run(): void
     {
-        $accounts = [
-            ['Administrator Sistem', UserRole::Administrator, 'Administrator'],
-            ['Team Leader Pengadaan', UserRole::TeamLeader, 'Team Leader Pengadaan'],
-            ['Himatullah', UserRole::PicPerencana, 'PIC Perencana'],
-            ['Bastial', UserRole::PicPerencana, 'PIC Perencana'],
-            ['Iklan Nano', UserRole::PicPerencana, 'PIC Perencana'],
-            ['Putu Wisna', UserRole::PicPerencana, 'PIC Perencana'],
-            ['Sabrin', UserRole::PicPelaksana, 'PIC Pelaksana'],
-            ['Ahmad Bukhari', UserRole::PicPelaksana, 'PIC Pelaksana'],
-            ['Supriadi', UserRole::PicPelaksana, 'PIC Pelaksana'],
-        ];
+        foreach (self::ACCOUNTS as $account) {
+            $user = User::query()->firstOrNew(['email' => $account['email']]);
 
-        foreach ($accounts as [$name, $role, $position]) {
-            User::query()->updateOrCreate(
-                ['email' => Str::slug($name, '.').'@upkendari.test'],
-                [
-                    'name' => $name,
-                    'role' => $role,
-                    'position' => $position,
-                    'is_active' => true,
-                    'password' => Hash::make('password'),
-                    'email_verified_at' => now(),
-                ],
-            );
+            $user->fill([
+                'name' => $account['name'],
+                'role' => $account['role'],
+                'position' => $account['position'],
+                'is_active' => true,
+            ]);
+
+            if (! $user->exists) {
+                $user->password = Hash::make('password');
+                $user->email_verified_at = now();
+            }
+
+            $user->save();
         }
     }
 }

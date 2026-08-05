@@ -170,6 +170,8 @@ class MasterDataSeeder extends Seeder
      */
     protected function seedChecklistItems(): void
     {
+        $this->renameLegacyChecklistItems();
+
         $planning = [
             ['Checklist Perencanaan', false],
             ['Nota Dinas Usulan', false],
@@ -181,14 +183,14 @@ class MasterDataSeeder extends Seeder
             ['HPE (Harga Perkiraan Engineer)', false],
             ['UPB', false],
             ['RKS (Rencana Kerja dan Syarat)', false],
-            ['Smart SCM', false],
+            ['Inisiasi SMART SCM', false],
             ['PR / RO', true],
         ];
 
         $execution = [
             ['Evaluasi Dokumen', false],
             ['Penyusunan HPS', false],
-            ['Progress Pengadaan', false],
+            ['Proses SMART SCM', false],
             ['Berita Acara', false],
             ['Penyusunan Kontrak', false],
             ['Purchase Order (PO)', false],
@@ -211,6 +213,71 @@ class MasterDataSeeder extends Seeder
                 ['stage' => ProcurementStage::Pelaksanaan->value, 'name' => $name],
                 ['is_optional' => $isOptional, 'sort_order' => $index + 1, 'is_active' => true],
             );
+        }
+
+        $this->seedChecklistExclusions();
+    }
+
+    /**
+     * Carry checklist items that were renamed over to their current wording.
+     *
+     * The items below are matched on stage and name, so without this an
+     * existing installation would gain a second item under the new wording and
+     * leave the old one behind, orphaning every tick already recorded against
+     * it. Renaming in place keeps the history attached.
+     */
+    protected function renameLegacyChecklistItems(): void
+    {
+        /** @var array<int, array{stage: ProcurementStage, from: string, to: string}> $renames */
+        $renames = [
+            ['stage' => ProcurementStage::Perencanaan, 'from' => 'Smart SCM', 'to' => 'Inisiasi SMART SCM'],
+            ['stage' => ProcurementStage::Pelaksanaan, 'from' => 'Progress Pengadaan', 'to' => 'Proses SMART SCM'],
+        ];
+
+        foreach ($renames as $rename) {
+            $existing = ChecklistItem::withTrashed()
+                ->forStage($rename['stage'])
+                ->where('name', $rename['to'])
+                ->exists();
+
+            if ($existing) {
+                continue;
+            }
+
+            ChecklistItem::withTrashed()
+                ->forStage($rename['stage'])
+                ->where('name', $rename['from'])
+                ->update(['name' => $rename['to']]);
+        }
+    }
+
+    /**
+     * Switch off the planning steps that a Surat Pesanan does not go through.
+     *
+     * A Surat Pesanan is the lightest method: it skips the tender paperwork
+     * and the SMART SCM/PR pipeline entirely.
+     */
+    protected function seedChecklistExclusions(): void
+    {
+        $suratPesanan = ProcurementMethod::query()->where('code', 'surat-pesanan')->first();
+
+        if ($suratPesanan === null) {
+            return;
+        }
+
+        $excluded = ChecklistItem::query()
+            ->forStage(ProcurementStage::Perencanaan)
+            ->whereIn('name', [
+                'RKS (Rencana Kerja dan Syarat)',
+                'Inisiasi SMART SCM',
+                'PR / RO',
+                'UPB',
+                'HPE (Harga Perkiraan Engineer)',
+            ])
+            ->pluck('id');
+
+        foreach ($excluded as $checklistItemId) {
+            $suratPesanan->excludedChecklistItems()->syncWithoutDetaching([$checklistItemId]);
         }
     }
 

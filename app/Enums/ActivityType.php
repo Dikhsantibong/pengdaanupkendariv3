@@ -13,6 +13,7 @@ enum ActivityType: string
     case PerencanaanDisetujui = 'perencanaan_disetujui';
     case PerencanaanDitolak = 'perencanaan_ditolak';
     case DokumenDigenerate = 'dokumen_digenerate';
+    case DokumenDiedit = 'dokumen_diedit';
     case PengadaanSelesai = 'pengadaan_selesai';
 
     /**
@@ -30,6 +31,7 @@ enum ActivityType: string
             self::PerencanaanDisetujui => 'Perencanaan Disetujui',
             self::PerencanaanDitolak => 'Perencanaan Ditolak',
             self::DokumenDigenerate => 'Dokumen Digenerate',
+            self::DokumenDiedit => 'Dokumen Diedit',
             self::PengadaanSelesai => 'Pengadaan Selesai',
         };
     }

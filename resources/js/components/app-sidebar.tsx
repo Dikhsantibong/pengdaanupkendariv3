@@ -68,7 +68,7 @@ export function AppSidebar() {
                 ...(permissions.createProcurement
                     ? [
                           {
-                              title: 'Buat Pengadaan',
+                              title: 'Buat Perencanaan Pengadaan',
                               href: procurements.create(),
                               icon: FileSignature,
                           },

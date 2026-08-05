@@ -26,6 +26,12 @@ class ProcurementService
     public function create(array $attributes, User $author): Procurement
     {
         return DB::transaction(function () use ($attributes, $author): Procurement {
+            // The planning PIC may be appointed on the create form, but the
+            // appointment itself goes through assignPic() so the notification
+            // and the history entry are identical either way.
+            $plannerId = $attributes['planner_id'] ?? null;
+            unset($attributes['planner_id']);
+
             $procurement = new Procurement($attributes);
             $procurement->number = $this->nextNumber();
             $procurement->created_by = $author->id;
@@ -39,6 +45,10 @@ class ProcurementService
                 ActivityType::Dibuat,
                 "Pengadaan {$procurement->number} dibuat.",
             );
+
+            if ($plannerId !== null) {
+                $this->assignPic($procurement, $author, (int) $plannerId, $procurement->executor_id);
+            }
 
             return $procurement;
         });
@@ -62,25 +72,37 @@ class ProcurementService
     }
 
     /**
-     * Make sure the procurement has a checklist row for every active master item.
+     * Make sure the procurement has a checklist row for every applicable item.
+     *
+     * Applicable means active and not excluded from the procurement's method,
+     * so switching method adds the steps the new method needs and drops the
+     * ones it does not. Rows that are already completed are always kept: they
+     * are history, not configuration.
      */
     public function syncChecklists(Procurement $procurement): void
     {
-        $existing = $procurement->checklists()->pluck('checklist_item_id')->all();
-
-        $missing = ChecklistItem::query()
+        $applicable = ChecklistItem::query()
             ->active()
-            ->whereNotIn('id', $existing)
+            ->forProcurementMethod($procurement->procurement_method_id)
             ->ordered()
             ->get();
 
-        foreach ($missing as $item) {
+        $existing = $procurement->checklists()->pluck('checklist_item_id')->all();
+
+        foreach ($applicable->whereNotIn('id', $existing) as $item) {
             $procurement->checklists()->create([
                 'checklist_item_id' => $item->id,
                 'stage' => $item->stage,
                 'is_completed' => false,
             ]);
         }
+
+        $procurement->checklists()
+            ->where('is_completed', false)
+            ->whereNotIn('checklist_item_id', $applicable->pluck('id'))
+            ->delete();
+
+        $procurement->unsetRelation('checklists');
     }
 
     /**

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
@@ -43,6 +44,19 @@ class ChecklistItem extends Model
     }
 
     /**
+     * The procurement methods this item is deliberately switched off for.
+     *
+     * @return BelongsToMany<ProcurementMethod, $this>
+     */
+    public function excludedProcurementMethods(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            ProcurementMethod::class,
+            'checklist_item_method_exclusions',
+        )->withTimestamps();
+    }
+
+    /**
      * Limit the query to a single procurement stage.
      *
      * @param  Builder<static>  $query
@@ -51,6 +65,27 @@ class ChecklistItem extends Model
     public function scopeForStage(Builder $query, ProcurementStage $stage): Builder
     {
         return $query->where('stage', $stage->value);
+    }
+
+    /**
+     * Limit the query to the items that apply to a procurement method.
+     *
+     * An item applies to every method unless it has been excluded from that
+     * one, so a procurement without a method keeps the full checklist.
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeForProcurementMethod(Builder $query, ?int $procurementMethodId): Builder
+    {
+        if ($procurementMethodId === null) {
+            return $query;
+        }
+
+        return $query->whereDoesntHave(
+            'excludedProcurementMethods',
+            fn (Builder $methods): Builder => $methods->whereKey($procurementMethodId),
+        );
     }
 
     /**

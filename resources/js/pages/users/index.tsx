@@ -328,7 +328,7 @@ export default function UserIndex({
                         </DialogTitle>
                         <DialogDescription>
                             PIC hanya dapat melihat pengadaan yang ditugaskan
-                            kepadanya. Team Leader dan Administrator melihat
+                            kepadanya. TL Perencanaan dan Administrator melihat
                             seluruh data.
                         </DialogDescription>
                     </DialogHeader>
