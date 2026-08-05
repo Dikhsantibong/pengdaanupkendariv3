@@ -76,7 +76,10 @@ class ProfileUpdateTest extends TestCase
             ->assertRedirect(route('home'));
 
         $this->assertGuest();
-        $this->assertNull($user->fresh());
+
+        // Accounts are soft deleted so the PIC attribution on past procurements stays intact.
+        $this->assertSoftDeleted($user);
+        $this->assertNull(User::query()->find($user->id));
     }
 
     public function test_correct_password_must_be_provided_to_delete_account()

@@ -1,7 +1,14 @@
+export type UserRole =
+    'administrator' | 'team_leader' | 'pic_perencana' | 'pic_pelaksana';
+
 export type User = {
     id: number;
     name: string;
     email: string;
+    role: UserRole;
+    role_label: string;
+    position: string | null;
+    is_active: boolean;
     avatar?: string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
@@ -10,8 +17,16 @@ export type User = {
     [key: string]: unknown;
 };
 
+export type AuthPermissions = {
+    manageMasterData: boolean;
+    manageUsers: boolean;
+    viewAllProcurements: boolean;
+    createProcurement: boolean;
+};
+
 export type Auth = {
     user: User;
+    permissions: AuthPermissions;
 };
 
 /* @chisel-passkeys */

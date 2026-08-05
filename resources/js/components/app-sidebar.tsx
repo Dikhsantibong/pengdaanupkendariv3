@@ -1,7 +1,27 @@
-import { Link } from '@inertiajs/react';
-import { BookOpen, FolderGit2, LayoutGrid } from 'lucide-react';
+import { Link, usePage } from '@inertiajs/react';
+import {
+    Archive,
+    BadgeCheck,
+    Building2,
+    CalendarClock,
+    ClipboardList,
+    FileSignature,
+    FileStack,
+    FileText,
+    Gauge,
+    Hash,
+    LayoutDashboard,
+    ListChecks,
+    MonitorPlay,
+    Play,
+    Settings2,
+    ShieldCheck,
+    UserCog,
+    UserSquare2,
+    Wallet,
+    Workflow,
+} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
-import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -14,30 +34,172 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
-import type { NavItem } from '@/types';
-
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-];
-
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
-    },
-];
+import approvals from '@/routes/approvals';
+import documents from '@/routes/documents';
+import execution from '@/routes/execution';
+import masterData from '@/routes/master-data';
+import monitoring from '@/routes/monitoring';
+import picAssignments from '@/routes/pic-assignments';
+import planning from '@/routes/planning';
+import procurements from '@/routes/procurements';
+import publicMonitoring from '@/routes/public-monitoring';
+import reports from '@/routes/reports';
+import users from '@/routes/users';
+import type { Auth, NavGroup } from '@/types';
 
 export function AppSidebar() {
+    const { auth } = usePage<{ auth: Auth }>().props;
+    const { permissions } = auth;
+
+    const groups: NavGroup[] = [
+        {
+            title: '',
+            items: [
+                {
+                    title: 'Dashboard',
+                    href: dashboard(),
+                    icon: LayoutDashboard,
+                },
+            ],
+        },
+        {
+            title: 'Pengadaan',
+            items: [
+                ...(permissions.createProcurement
+                    ? [
+                          {
+                              title: 'Buat Pengadaan',
+                              href: procurements.create(),
+                              icon: FileSignature,
+                          },
+                      ]
+                    : []),
+                {
+                    title: 'Daftar Pengadaan',
+                    href: procurements.index(),
+                    icon: ClipboardList,
+                    matchNested: true,
+                },
+                ...(permissions.createProcurement
+                    ? [
+                          {
+                              title: 'Penunjukan PIC',
+                              href: picAssignments.index(),
+                              icon: UserSquare2,
+                          },
+                      ]
+                    : []),
+                {
+                    title: 'Perencanaan',
+                    href: planning.index(),
+                    icon: CalendarClock,
+                },
+                {
+                    title: 'Pelaksanaan',
+                    href: execution.index(),
+                    icon: Play,
+                },
+                {
+                    title: 'Approval',
+                    href: approvals.index(),
+                    icon: BadgeCheck,
+                },
+                {
+                    title: 'Arsip Dokumen',
+                    href: documents.index(),
+                    icon: Archive,
+                },
+            ],
+        },
+        {
+            title: 'Pengawasan',
+            items: [
+                {
+                    title: 'Monitoring',
+                    href: monitoring.index(),
+                    icon: Gauge,
+                },
+                {
+                    title: 'Laporan',
+                    href: reports.index(),
+                    icon: FileText,
+                },
+                {
+                    title: 'Monitoring Publik',
+                    href: publicMonitoring.planning(),
+                    icon: MonitorPlay,
+                },
+            ],
+        },
+        ...(permissions.manageUsers || permissions.manageMasterData
+            ? [
+                  {
+                      title: 'Administrasi',
+                      items: [
+                          ...(permissions.manageUsers
+                              ? [
+                                    {
+                                        title: 'Pengguna',
+                                        href: users.index(),
+                                        icon: UserCog,
+                                    },
+                                ]
+                              : []),
+                          ...(permissions.manageMasterData
+                              ? [
+                                    {
+                                        title: 'Direksi Pekerjaan',
+                                        href: masterData.workDirectors.index(),
+                                        icon: ShieldCheck,
+                                    },
+                                    {
+                                        title: 'Unit Tujuan',
+                                        href: masterData.targetUnits.index(),
+                                        icon: Building2,
+                                    },
+                                    {
+                                        title: 'Metode Pengadaan',
+                                        href: masterData.procurementMethods.index(),
+                                        icon: Workflow,
+                                    },
+                                    {
+                                        title: 'Sumber Anggaran',
+                                        href: masterData.budgetSources.index(),
+                                        icon: Wallet,
+                                    },
+                                    {
+                                        title: 'Status Progres',
+                                        href: masterData.progressStatuses.index(),
+                                        icon: Settings2,
+                                    },
+                                    {
+                                        title: 'Nomor PR/RO',
+                                        href: masterData.prRoNumbers.index(),
+                                        icon: Hash,
+                                    },
+                                    {
+                                        title: 'Item Checklist',
+                                        href: masterData.checklistItems.index(),
+                                        icon: ListChecks,
+                                    },
+                                    {
+                                        title: 'Jenis Dokumen',
+                                        href: masterData.documentTypes.index(),
+                                        icon: FileStack,
+                                    },
+                                    {
+                                        title: 'Template Dokumen',
+                                        href: masterData.documentTemplates.index(),
+                                        icon: FileText,
+                                    },
+                                ]
+                              : []),
+                      ],
+                  },
+              ]
+            : []),
+    ];
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -52,12 +214,11 @@ export function AppSidebar() {
                 </SidebarMenu>
             </SidebarHeader>
 
-            <SidebarContent>
-                <NavMain items={mainNavItems} />
+            <SidebarContent className="gap-4">
+                <NavMain groups={groups} />
             </SidebarContent>
 
             <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

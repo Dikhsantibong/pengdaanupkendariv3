@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -27,6 +28,9 @@ class UserFactory extends Factory
         return [
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
+            'role' => UserRole::PicPerencana,
+            'position' => null,
+            'is_active' => true,
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
@@ -44,6 +48,48 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
         ]);
+    }
+
+    /**
+     * Indicate that the user holds the given role.
+     */
+    public function role(UserRole $role): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => $role,
+        ]);
+    }
+
+    /**
+     * Indicate that the user manages the system configuration.
+     */
+    public function administrator(): static
+    {
+        return $this->role(UserRole::Administrator);
+    }
+
+    /**
+     * Indicate that the user leads the procurement team.
+     */
+    public function teamLeader(): static
+    {
+        return $this->role(UserRole::TeamLeader);
+    }
+
+    /**
+     * Indicate that the user is a planning PIC.
+     */
+    public function planner(): static
+    {
+        return $this->role(UserRole::PicPerencana);
+    }
+
+    /**
+     * Indicate that the user is an execution PIC.
+     */
+    public function executor(): static
+    {
+        return $this->role(UserRole::PicPelaksana);
     }
 
     /**
