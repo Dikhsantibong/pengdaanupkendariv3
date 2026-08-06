@@ -12,16 +12,20 @@ type ChecklistItem = MasterRecord & {
     is_optional: boolean;
     sort_order: number;
     excluded_procurement_method_ids: number[];
+    document_type_ids: number[];
+    document_types: string[];
 };
 
 export default function ChecklistItems({
     records,
     stages,
     procurementMethods,
+    documentTypes,
 }: {
     records: ChecklistItem[];
     stages: EnumOption[];
     procurementMethods: EnumOption[];
+    documentTypes: EnumOption[];
 }) {
     const methodLabel = (id: number) =>
         procurementMethods.find((method) => Number(method.value) === id)?.label;
@@ -42,6 +46,14 @@ export default function ChecklistItems({
                     label: 'Sifat',
                     render: (record) =>
                         record.is_optional ? 'Opsional' : 'Wajib',
+                },
+                {
+                    key: 'document_types',
+                    label: 'Dokumen Wajib',
+                    render: (record) =>
+                        record.document_types.length === 0
+                            ? '—'
+                            : record.document_types.join(', '),
                 },
                 {
                     key: 'excluded_procurement_method_ids',
@@ -84,6 +96,13 @@ export default function ChecklistItems({
                     hint: 'Item opsional tidak wajib dicentang sebelum pengajuan persetujuan.',
                 },
                 {
+                    name: 'document_type_ids',
+                    label: 'Dokumen yang Dihasilkan',
+                    type: 'multiselect',
+                    options: documentTypes,
+                    hint: 'Setiap dokumen yang dicentang wajib diunggah bertanda tangan sebelum tahapan ini dapat ditandai selesai. Kosongkan bila tahapan ini hanya centang biasa.',
+                },
+                {
                     name: 'excluded_procurement_method_ids',
                     label: 'Dilewati oleh Metode Pengadaan',
                     type: 'multiselect',
@@ -98,6 +117,7 @@ export default function ChecklistItems({
                 name: '',
                 description: '',
                 is_optional: false,
+                document_type_ids: [],
                 excluded_procurement_method_ids: [],
                 sort_order: 0,
                 is_active: true,

@@ -51,6 +51,26 @@ export type ProcurementRow = {
     created_at: string | null;
 };
 
+/** One signed scan filed against a generated document. */
+export type SignedUpload = {
+    id: number;
+    file_name: string;
+    size: number | null;
+    uploaded_by: string | null;
+    uploaded_at: string | null;
+};
+
+/** A document a checklist step produces. */
+export type ChecklistDocument = {
+    type_id: number;
+    type_name: string | null;
+    id: number | null;
+    title: string | null;
+    is_signed: boolean;
+    uploads: SignedUpload[];
+    has_template: boolean;
+};
+
 export type ChecklistRow = {
     id: number;
     name: string;
@@ -60,6 +80,7 @@ export type ChecklistRow = {
     notes: string | null;
     completed_by: string | null;
     completed_at: string | null;
+    documents: ChecklistDocument[];
 };
 
 export type ProcurementDocumentRow = {
@@ -72,6 +93,7 @@ export type ProcurementDocumentRow = {
     generated_at: string;
     edited_by: string | null;
     edited_at: string | null;
+    uploads: SignedUpload[];
 };
 
 export type ActivityRow = {

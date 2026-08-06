@@ -29,8 +29,9 @@ class MasterDataSeeder extends Seeder
         $this->seedProcurementMethods();
         $this->seedBudgetSources();
         $this->seedProgressStatuses();
-        $this->seedChecklistItems();
+        // Document types first: the checklist steps link to them.
         $this->seedDocumentTypes();
+        $this->seedChecklistItems();
     }
 
     /**
@@ -216,6 +217,85 @@ class MasterDataSeeder extends Seeder
         }
 
         $this->seedChecklistExclusions();
+        $this->linkChecklistDocuments();
+    }
+
+    /**
+     * Attach the document each checklist step produces.
+     *
+     * A step listed here gains generate, edit and upload actions, and cannot
+     * be ticked until the signed copy is filed. Steps left out of the map are
+     * plain ticks with no paperwork; their link is cleared so that removing a
+     * step from this list actually takes the document actions away again.
+     */
+    protected function linkChecklistDocuments(): void
+    {
+        /** @var array<string, array<string, array<int, string>>> $map */
+        $map = [
+            ProcurementStage::Perencanaan->value => [
+                'Nota Dinas Usulan' => ['nota-dinas-usulan'],
+                'TOR (Term of Reference)' => ['tor'],
+                'RAB (Rencana Anggaran Biaya)' => ['rab'],
+                'Penawaran' => ['penawaran'],
+                'CSMS' => ['csms'],
+                'Nota Dinas Perintah Pekerjaan' => ['nota-dinas-perintah-pekerjaan'],
+                'HPE (Harga Perkiraan Engineer)' => ['hpe'],
+                'UPB' => ['upb'],
+                'RKS (Rencana Kerja dan Syarat)' => ['rks'],
+            ],
+            ProcurementStage::Pelaksanaan->value => [
+                'Penyusunan HPS' => ['penyusunan-hps'],
+                'Proses SMART SCM' => ['proses-smart-scm'],
+                // One step, six berita acara, all of which have to be signed
+                // and filed before the step counts as finished.
+                'Berita Acara' => [
+                    'ba-aanwijzing',
+                    'lampiran-bapp',
+                    'ba-evaluasi-teknis',
+                    'ba-evaluasi-harga',
+                    'ba-hasil-evaluasi',
+                    'ba-klarifikasi',
+                ],
+                'Penyusunan Kontrak' => ['penyusunan-kontrak'],
+                'Jaminan Bank' => ['jaminan-bank'],
+                'Kontrak' => ['spk', 'lampiran-spk', 'ba-negosiasi'],
+                'Amandemen' => ['amandemen'],
+                'Masa Pemeliharaan' => ['masa-pemeliharaan'],
+            ],
+        ];
+
+        $typeIds = DocumentType::query()->pluck('id', 'code');
+
+        foreach ($map as $stage => $steps) {
+            foreach ($steps as $name => $codes) {
+                $item = ChecklistItem::query()
+                    ->where('stage', $stage)
+                    ->where('name', $name)
+                    ->first();
+
+                if ($item === null) {
+                    continue;
+                }
+
+                $links = [];
+
+                foreach (array_values($codes) as $index => $code) {
+                    if (isset($typeIds[$code])) {
+                        $links[$typeIds[$code]] = ['sort_order' => $index + 1];
+                    }
+                }
+
+                $item->documentTypes()->sync($links);
+            }
+
+            // Steps left out of the map are plain ticks; clearing them means
+            // removing a step from the list actually takes its documents away.
+            ChecklistItem::query()
+                ->where('stage', $stage)
+                ->whereNotIn('name', array_keys($steps))
+                ->get()
+                ->each(fn (ChecklistItem $item) => $item->documentTypes()->detach());
+        }
     }
 
     /**
@@ -290,10 +370,30 @@ class MasterDataSeeder extends Seeder
             ['nota-dinas-usulan', 'Nota Dinas Usulan', ProcurementStage::Perencanaan],
             ['tor', 'TOR (Term of Reference)', ProcurementStage::Perencanaan],
             ['rab', 'RAB (Rencana Anggaran Biaya)', ProcurementStage::Perencanaan],
+            ['penawaran', 'Penawaran', ProcurementStage::Perencanaan],
+            ['csms', 'CSMS', ProcurementStage::Perencanaan],
+            ['nota-dinas-perintah-pekerjaan', 'Nota Dinas Perintah Pekerjaan', ProcurementStage::Perencanaan],
             ['hpe', 'HPE (Harga Perkiraan Engineer)', ProcurementStage::Perencanaan],
             ['upb', 'UPB', ProcurementStage::Perencanaan],
             ['rks', 'RKS (Rencana Kerja dan Syarat)', ProcurementStage::Perencanaan],
+            ['inisiasi-smart-scm', 'Inisiasi SMART SCM', ProcurementStage::Perencanaan],
+            ['pr-ro', 'PR / RO', ProcurementStage::Perencanaan],
+            ['penyusunan-hps', 'Penyusunan HPS', ProcurementStage::Pelaksanaan],
+            ['proses-smart-scm', 'Proses SMART SCM', ProcurementStage::Pelaksanaan],
             ['berita-acara', 'Berita Acara', ProcurementStage::Pelaksanaan],
+            ['penyusunan-kontrak', 'Penyusunan Kontrak', ProcurementStage::Pelaksanaan],
+            ['jaminan-bank', 'Jaminan Bank', ProcurementStage::Pelaksanaan],
+            ['amandemen', 'Amandemen', ProcurementStage::Pelaksanaan],
+            ['masa-pemeliharaan', 'Masa Pemeliharaan', ProcurementStage::Pelaksanaan],
+            ['ba-evaluasi-teknis', 'Berita Acara Evaluasi Teknis', ProcurementStage::Pelaksanaan],
+            ['spk', 'SPK (Surat Perintah Kerja)', ProcurementStage::Pelaksanaan],
+            ['lampiran-spk', 'Lampiran Surat Perintah Kerja', ProcurementStage::Pelaksanaan],
+            ['ba-negosiasi', 'Berita Acara Negosiasi dan Lampiran', ProcurementStage::Pelaksanaan],
+            ['ba-aanwijzing', 'Berita Acara Aanwijzing', ProcurementStage::Pelaksanaan],
+            ['lampiran-bapp', 'Lampiran BAPP', ProcurementStage::Pelaksanaan],
+            ['ba-evaluasi-harga', 'Berita Acara Evaluasi Harga', ProcurementStage::Pelaksanaan],
+            ['ba-hasil-evaluasi', 'Berita Acara Hasil Evaluasi', ProcurementStage::Pelaksanaan],
+            ['ba-klarifikasi', 'Berita Acara Klarifikasi', ProcurementStage::Pelaksanaan],
             ['kontrak', 'Kontrak', ProcurementStage::Pelaksanaan],
         ];
 
@@ -303,5 +403,12 @@ class MasterDataSeeder extends Seeder
                 ['name' => $name, 'stage' => $stage, 'sort_order' => $index + 1, 'is_active' => true],
             );
         }
+
+        // Steps that turned out to be plain ticks: the type is switched off so
+        // it stops being offered, but stays on record in case it is wanted
+        // back later. Any document already generated from it is untouched.
+        DocumentType::query()
+            ->whereIn('code', ['pr-ro', 'inisiasi-smart-scm', 'purchase-order', 'rentang-waktu'])
+            ->update(['is_active' => false]);
     }
 }

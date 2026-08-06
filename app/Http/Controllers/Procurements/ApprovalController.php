@@ -49,7 +49,30 @@ class ApprovalController extends Controller
 
         Inertia::flash('toast', [
             'type' => $approved ? 'success' : 'warning',
-            'message' => $approved ? 'Dokumen perencanaan disetujui.' : 'Dokumen perencanaan ditolak.',
+            'message' => $approved
+                ? 'Dokumen perencanaan disetujui.'
+                : 'Dokumen perencanaan dikembalikan ke PIC Perencana untuk revisi.',
+        ]);
+
+        return back();
+    }
+
+    /**
+     * Withdraw a rejection so the submission can be decided again.
+     */
+    public function destroy(Request $request, Procurement $procurement): RedirectResponse
+    {
+        $this->authorize('revertPlanningRejection', $procurement);
+
+        $this->procurements->revertPlanningRejection(
+            $procurement,
+            $request->user(),
+            $request->string('reason')->trim()->value() ?: null,
+        );
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Penolakan dibatalkan. Perencanaan kembali menunggu persetujuan.',
         ]);
 
         return back();

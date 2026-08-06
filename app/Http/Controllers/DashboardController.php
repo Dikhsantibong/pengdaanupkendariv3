@@ -40,6 +40,11 @@ class DashboardController extends Controller
                 'awaitingApproval' => $base()
                     ->where('planning_approval_state', PlanningApprovalState::MenungguPersetujuan->value)
                     ->count(),
+                // A rejected planning stage is work waiting on its PIC, so it
+                // needs to be as visible as work waiting on an approver.
+                'needsRevision' => $base()
+                    ->where('planning_approval_state', PlanningApprovalState::Ditolak->value)
+                    ->count(),
                 'totalHpe' => (float) $base()->sum('hpe_value'),
             ],
             'byStatus' => $this->groupedCounts($base(), 'progress_statuses', 'progress_status_id', 'name'),

@@ -44,6 +44,27 @@ class ChecklistItem extends Model
     }
 
     /**
+     * The documents this step produces, in the order they are worked through.
+     *
+     * @return BelongsToMany<DocumentType, $this>
+     */
+    public function documentTypes(): BelongsToMany
+    {
+        return $this->belongsToMany(DocumentType::class)
+            ->withPivot('sort_order')
+            ->withTimestamps()
+            ->orderByPivot('sort_order');
+    }
+
+    /**
+     * Whether this step has to be evidenced by signed documents.
+     */
+    public function requiresDocument(): bool
+    {
+        return $this->documentTypes->isNotEmpty();
+    }
+
+    /**
      * The procurement methods this item is deliberately switched off for.
      *
      * @return BelongsToMany<ProcurementMethod, $this>

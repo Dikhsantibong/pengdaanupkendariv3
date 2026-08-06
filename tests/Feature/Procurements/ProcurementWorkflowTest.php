@@ -104,6 +104,8 @@ class ProcurementWorkflowTest extends TestCase
         $executor = User::factory()->executor()->create();
         $procurement = $this->procurementWithChecklists($planner, $executor);
 
+        $this->completeRequiredPlanning($procurement);
+
         $this->actingAs($planner)
             ->post(route('procurements.approval.store', $procurement))
             ->assertRedirect();
@@ -219,5 +221,20 @@ class ProcurementWorkflowTest extends TestCase
         app(ProcurementService::class)->syncChecklists($procurement);
 
         return $procurement->refresh();
+    }
+
+    /**
+     * Tick every mandatory planning step so the stage can be submitted.
+     */
+    private function completeRequiredPlanning(Procurement $procurement): void
+    {
+        $procurement->checklists()
+            ->where('stage', ProcurementStage::Perencanaan->value)
+            ->whereIn('checklist_item_id', ChecklistItem::query()
+                ->where('is_optional', false)
+                ->select('id'))
+            ->update(['is_completed' => true, 'completed_at' => now()]);
+
+        $procurement->unsetRelation('checklists');
     }
 }

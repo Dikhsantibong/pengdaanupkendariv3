@@ -31,6 +31,10 @@ type ShowProps = {
         planning_reviewed_at: string | null;
         planning_reviewer: string | null;
         created_by: string | null;
+        pending_required_planning: string[];
+        is_planner: boolean;
+        planner_name: string | null;
+        planning_revision: number;
     };
     checklists: {
         perencanaan: ChecklistRow[];
@@ -52,6 +56,7 @@ type ShowProps = {
         updateExecutionChecklist: boolean;
         submitPlanning: boolean;
         reviewPlanning: boolean;
+        revertPlanningRejection: boolean;
         complete: boolean;
         generateDocument: boolean;
     };
@@ -193,6 +198,7 @@ export default function ShowProcurement({
                                     description="Dokumen yang harus dilengkapi PIC Perencana sebelum diajukan ke TL Perencanaan."
                                     rows={checklists.perencanaan}
                                     editable={can.updatePlanningChecklist}
+                                    canManageDocuments={can.generateDocument}
                                     lockedReason={
                                         procurement.planning_approval_state ===
                                         'disetujui'
@@ -209,6 +215,7 @@ export default function ShowProcurement({
                                     description="Tahapan pelaksanaan pengadaan hingga masa pemeliharaan selesai."
                                     rows={checklists.pelaksanaan}
                                     editable={can.updateExecutionChecklist}
+                                    canManageDocuments={can.generateDocument}
                                     lockedReason={
                                         procurement.planning_approval_state !==
                                         'disetujui'
@@ -250,7 +257,12 @@ export default function ShowProcurement({
                             reviewer={detail.planning_reviewer}
                             reviewNote={detail.planning_review_note}
                             canSubmit={can.submitPlanning}
+                            isPlanner={detail.is_planner}
+                            plannerName={detail.planner_name}
+                            revision={detail.planning_revision}
+                            pendingRequired={detail.pending_required_planning}
                             canReview={can.reviewPlanning}
+                            canRevert={can.revertPlanningRejection}
                             canComplete={can.complete}
                             completedAt={procurement.completed_at}
                         />

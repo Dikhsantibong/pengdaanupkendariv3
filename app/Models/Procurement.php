@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Collection;
 
 /**
  * @property int $id
@@ -34,6 +35,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property CarbonImmutable|null $planning_reviewed_at
  * @property int|null $planning_reviewed_by
  * @property string|null $planning_review_note
+ * @property int $planning_revision
  * @property CarbonImmutable|null $completed_at
  * @property CarbonImmutable|null $target_completion_date
  * @property string|null $notes
@@ -224,6 +226,62 @@ class Procurement extends Model
     public function isPlanningApproved(): bool
     {
         return $this->planning_approval_state === PlanningApprovalState::Disetujui;
+    }
+
+    /**
+     * The signed document filed for a document type on this procurement.
+     */
+    public function signedDocumentFor(int $documentTypeId): ?ProcurementDocument
+    {
+        return $this->documents
+            ->where('document_type_id', $documentTypeId)
+            ->first(fn (ProcurementDocument $document): bool => $document->isSigned());
+    }
+
+    /**
+     * The latest document generated for a document type on this procurement.
+     */
+    public function documentFor(int $documentTypeId): ?ProcurementDocument
+    {
+        return $this->documents
+            ->where('document_type_id', $documentTypeId)
+            ->sortByDesc('generated_at')
+            ->first();
+    }
+
+    /**
+     * Determine whether the planning stage was sent back for revision.
+     */
+    public function needsPlanningRevision(): bool
+    {
+        return $this->planning_approval_state === PlanningApprovalState::Ditolak;
+    }
+
+    /**
+     * The mandatory planning steps that are still outstanding.
+     *
+     * Steps flagged optional in the master data are excluded: they are there
+     * for the procurements that happen to need them, so they must never hold
+     * up a submission.
+     *
+     * @return Collection<int, ProcurementChecklist>
+     */
+    public function pendingRequiredPlanningChecklists(): Collection
+    {
+        return $this->checklists
+            ->where('stage', ProcurementStage::Perencanaan)
+            ->where('is_completed', false)
+            ->filter(fn (ProcurementChecklist $checklist): bool => ! $checklist->checklistItem->is_optional)
+            ->sortBy(fn (ProcurementChecklist $checklist): int => $checklist->checklistItem->sort_order)
+            ->values();
+    }
+
+    /**
+     * Determine whether every mandatory planning step has been ticked.
+     */
+    public function isPlanningChecklistComplete(): bool
+    {
+        return $this->pendingRequiredPlanningChecklists()->isEmpty();
     }
 
     /**

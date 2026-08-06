@@ -25,6 +25,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('checklists/{checklist}', [ChecklistController::class, 'update'])->name('checklists.update');
         Route::post('approval', [ApprovalController::class, 'store'])->name('approval.store');
         Route::put('approval', [ApprovalController::class, 'update'])->name('approval.update');
+        Route::delete('approval', [ApprovalController::class, 'destroy'])->name('approval.destroy');
         Route::post('completion', [CompletionController::class, 'store'])->name('completion.store');
         Route::post('documents', [DocumentController::class, 'store'])->name('documents.store');
         Route::get('documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
@@ -32,6 +33,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('documents/{document}', [DocumentController::class, 'update'])->name('documents.update');
         Route::post('documents/{document}/regenerate', [DocumentController::class, 'regenerate'])
             ->name('documents.regenerate');
+        Route::post('documents/{document}/signed', [DocumentController::class, 'storeSigned'])
+            ->name('documents.signed.store');
+        Route::delete('documents/{document}/signed', [DocumentController::class, 'destroyAllSigned'])
+            ->name('documents.signed.destroy-all');
+        Route::get('documents/{document}/signed/{upload}', [DocumentController::class, 'showSigned'])
+            ->name('documents.signed.show');
+        Route::delete('documents/{document}/signed/{upload}', [DocumentController::class, 'destroySigned'])
+            ->name('documents.signed.destroy');
     });
 
     Route::get('penunjukan-pic', [PicAssignmentController::class, 'index'])->name('pic-assignments.index');

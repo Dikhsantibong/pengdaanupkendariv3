@@ -6,6 +6,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
@@ -91,11 +92,29 @@ class ProcurementDocument extends Model
     }
 
     /**
+     * The signed scans filed against this document.
+     *
+     * @return HasMany<ProcurementDocumentUpload, $this>
+     */
+    public function signedUploads(): HasMany
+    {
+        return $this->hasMany(ProcurementDocumentUpload::class)->oldest('id');
+    }
+
+    /**
      * Whether the document has been corrected since it was generated.
      */
     public function isEdited(): bool
     {
         return $this->revision > 0;
+    }
+
+    /**
+     * Whether a signed scan has been uploaded for this document.
+     */
+    public function isSigned(): bool
+    {
+        return $this->signedUploads->isNotEmpty();
     }
 
     /**

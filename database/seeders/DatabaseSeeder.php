@@ -19,6 +19,9 @@ class DatabaseSeeder extends Seeder
             DocumentTemplateSeeder::class,
             RksSpkTemplateSeeder::class,
             RksTenderTemplateSeeder::class,
+            BeritaAcaraTemplateSeeder::class,
+            KontrakTemplateSeeder::class,
+            StandardDocumentTemplateSeeder::class,
             UserSeeder::class,
         ]);
     }

@@ -5,23 +5,29 @@ namespace App\Http\Controllers\Procurements;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Procurements\GenerateDocumentRequest;
 use App\Http\Requests\Procurements\UpdateDocumentRequest;
+use App\Http\Requests\Procurements\UploadSignedDocumentRequest;
 use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementDocument;
+use App\Models\ProcurementDocumentUpload;
 use App\Services\DocumentGenerator;
 use App\Services\DocumentPdfRenderer;
+use App\Services\SignedDocumentStore;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Http\UploadedFile;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DocumentController extends Controller
 {
     public function __construct(
         protected DocumentGenerator $generator,
         protected DocumentPdfRenderer $pdf,
+        protected SignedDocumentStore $signed,
     ) {}
 
     /**
@@ -168,6 +174,98 @@ class DocumentController extends Controller
         Inertia::flash('toast', [
             'type' => 'success',
             'message' => 'Dokumen dimuat ulang dari template dengan data terbaru.',
+        ]);
+
+        return back();
+    }
+
+    /**
+     * Attach the signed scans that came back from the printer.
+     */
+    public function storeSigned(
+        UploadSignedDocumentRequest $request,
+        Procurement $procurement,
+        ProcurementDocument $document,
+    ): RedirectResponse {
+        $this->authorize('editDocument', $procurement);
+
+        $this->assertBelongsTo($procurement, $document);
+
+        /** @var array<int, UploadedFile> $files */
+        $files = $request->file('files');
+
+        $stored = $this->signed->store($document, $files, $request->user());
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $stored->count().' dokumen bertanda tangan untuk '
+                .$document->title.' tersimpan.',
+        ]);
+
+        return back();
+    }
+
+    /**
+     * Download one signed scan of a document.
+     */
+    public function showSigned(
+        Procurement $procurement,
+        ProcurementDocument $document,
+        ProcurementDocumentUpload $upload,
+    ): StreamedResponse {
+        $this->authorize('view', $procurement);
+
+        $this->assertBelongsTo($procurement, $document);
+
+        abort_unless($upload->procurement_document_id === $document->id, 404);
+
+        return $this->signed->disk()->download($upload->path, $upload->file_name);
+    }
+
+    /**
+     * Remove one signed scan so a corrected one can be uploaded.
+     */
+    public function destroySigned(
+        Request $request,
+        Procurement $procurement,
+        ProcurementDocument $document,
+        ProcurementDocumentUpload $upload,
+    ): RedirectResponse {
+        $this->authorize('editDocument', $procurement);
+
+        $this->assertBelongsTo($procurement, $document);
+
+        abort_unless($upload->procurement_document_id === $document->id, 404);
+
+        $this->signed->remove($upload, $request->user());
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Dokumen bertanda tangan dihapus.',
+        ]);
+
+        return back();
+    }
+
+    /**
+     * Remove every signed scan of a document at once.
+     */
+    public function destroyAllSigned(
+        Request $request,
+        Procurement $procurement,
+        ProcurementDocument $document,
+    ): RedirectResponse {
+        $this->authorize('editDocument', $procurement);
+
+        $this->assertBelongsTo($procurement, $document);
+
+        abort_unless($document->signedUploads()->exists(), 404);
+
+        $this->signed->removeAll($document, $request->user());
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Seluruh dokumen bertanda tangan dihapus.',
         ]);
 
         return back();

@@ -8,6 +8,7 @@ use Database\Factories\DocumentTypeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -54,6 +55,16 @@ class DocumentType extends Model
         return $this->hasOne(DocumentTemplate::class)
             ->where('is_active', true)
             ->latestOfMany('version');
+    }
+
+    /**
+     * The checklist steps that produce this document.
+     *
+     * @return BelongsToMany<ChecklistItem, $this>
+     */
+    public function checklistItems(): BelongsToMany
+    {
+        return $this->belongsToMany(ChecklistItem::class)->withTimestamps();
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\MasterData;
 
 use App\Enums\ProcurementStage;
 use App\Models\ChecklistItem;
+use App\Models\DocumentType;
 use App\Models\ProcurementMethod;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
@@ -20,7 +21,7 @@ class ChecklistItemController extends MasterDataController
         $response = parent::store($request);
 
         $item = ChecklistItem::query()->latest('id')->firstOrFail();
-        $this->syncExclusions($request, $item);
+        $this->syncRelations($request, $item);
 
         return $response;
     }
@@ -32,7 +33,7 @@ class ChecklistItemController extends MasterDataController
     {
         $response = $this->updateRecord($request, $checklistItem);
 
-        $this->syncExclusions($request, $checklistItem);
+        $this->syncRelations($request, $checklistItem);
 
         return $response;
     }
@@ -69,7 +70,7 @@ class ChecklistItemController extends MasterDataController
     protected function records(): array
     {
         return ChecklistItem::query()
-            ->with('excludedProcurementMethods:id')
+            ->with(['excludedProcurementMethods:id', 'documentTypes:id,name'])
             ->withCount('procurementChecklists')
             ->orderBy('stage')
             ->ordered()
@@ -87,6 +88,8 @@ class ChecklistItemController extends MasterDataController
                 'excluded_procurement_method_ids' => $record->excludedProcurementMethods
                     ->pluck('id')
                     ->all(),
+                'document_type_ids' => $record->documentTypes->pluck('id')->all(),
+                'document_types' => $record->documentTypes->pluck('name')->all(),
             ])
             ->all();
     }
@@ -99,24 +102,38 @@ class ChecklistItemController extends MasterDataController
      */
     protected function prepare(array $validated, ?Model $record = null): array
     {
-        unset($validated['excluded_procurement_method_ids']);
+        unset($validated['excluded_procurement_method_ids'], $validated['document_type_ids']);
 
         return $validated;
     }
 
     /**
-     * Persist the procurement methods that skip this checklist item.
+     * Persist the relations the form carries alongside the attributes.
      */
-    protected function syncExclusions(Request $request, ChecklistItem $item): void
+    protected function syncRelations(Request $request, ChecklistItem $item): void
     {
-        if (! $request->has('excluded_procurement_method_ids')) {
+        if ($request->has('excluded_procurement_method_ids')) {
+            /** @var array<int, int> $methodIds */
+            $methodIds = $request->input('excluded_procurement_method_ids', []);
+
+            $item->excludedProcurementMethods()->sync($methodIds);
+        }
+
+        if (! $request->has('document_type_ids')) {
             return;
         }
 
-        /** @var array<int, int> $ids */
-        $ids = $request->input('excluded_procurement_method_ids', []);
+        /** @var array<int, int> $typeIds */
+        $typeIds = $request->input('document_type_ids', []);
 
-        $item->excludedProcurementMethods()->sync($ids);
+        // An empty selection makes the step a plain tick again.
+        $links = [];
+
+        foreach (array_values($typeIds) as $index => $id) {
+            $links[(int) $id] = ['sort_order' => $index + 1];
+        }
+
+        $item->documentTypes()->sync($links);
     }
 
     /**
@@ -141,6 +158,11 @@ class ChecklistItemController extends MasterDataController
                     'value' => $method->id,
                     'label' => $method->name,
                 ])->all(),
+            'documentTypes' => DocumentType::query()->active()->orderBy('stage')->ordered()->get()
+                ->map(fn (DocumentType $type): array => [
+                    'value' => $type->id,
+                    'label' => $type->stage->label().' — '.$type->name,
+                ])->all(),
         ];
     }
 
@@ -160,6 +182,9 @@ class ChecklistItemController extends MasterDataController
             'is_active' => ['required', 'boolean'],
             'excluded_procurement_method_ids' => ['sometimes', 'array'],
             'excluded_procurement_method_ids.*' => ['integer', Rule::exists('procurement_methods', 'id')],
+            // An empty list means the step is a plain tick with no paperwork.
+            'document_type_ids' => ['sometimes', 'array'],
+            'document_type_ids.*' => ['integer', Rule::exists('document_types', 'id')->whereNull('deleted_at')],
         ];
     }
 }

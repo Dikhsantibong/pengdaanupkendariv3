@@ -389,3 +389,54 @@
     font-size: 10pt;
     font-style: italic;
 }
+
+/*
+ * Editing affordances, only while the document is editable.
+ *
+ * The printed page has no visible cell padding hints or blank markers, but an
+ * author needs to see where the structure is, so the editor tints them. None
+ * of this reaches the PDF: the rules hang off [contenteditable].
+ */
+.document-preview[contenteditable] {
+    cursor: text;
+}
+
+.document-preview[contenteditable] td,
+.document-preview[contenteditable] th {
+    min-width: 3rem;
+}
+
+.document-preview[contenteditable] .fill {
+    border-radius: 2px;
+    background: rgb(251 191 36 / 0.18);
+    padding: 0 2px;
+}
+
+/* Page breaks are invisible on screen, so label the divider. */
+.document-preview[contenteditable] .bab,
+.document-preview[contenteditable] .lampiran,
+.document-preview[contenteditable] .cover {
+    position: relative;
+}
+
+.document-preview[contenteditable] .bab::before,
+.document-preview[contenteditable] .lampiran::before,
+.document-preview[contenteditable] .cover::before {
+    position: absolute;
+    top: -9pt;
+    right: 0;
+    border-radius: 2px;
+    background: #cbd5e1;
+    padding: 0 4px;
+    content: 'halaman baru';
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-size: 8pt;
+    font-style: normal;
+    letter-spacing: 0.04em;
+    color: #1e293b;
+}
+
+.document-preview[contenteditable] .signature {
+    outline: 1px dashed #cbd5e1;
+    outline-offset: 4px;
+}

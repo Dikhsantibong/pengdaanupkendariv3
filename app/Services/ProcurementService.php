@@ -172,22 +172,32 @@ class ProcurementService
     }
 
     /**
-     * Submit the planning stage for team leader approval.
+     * Submit the planning stage for approval, first time or after a revision.
      */
     public function submitPlanning(Procurement $procurement, User $actor): Procurement
     {
+        $isRevision = $procurement->planning_approval_state === PlanningApprovalState::Ditolak;
+
+        if ($isRevision) {
+            $procurement->planning_revision = $procurement->planning_revision + 1;
+        }
+
         $procurement->planning_approval_state = PlanningApprovalState::MenungguPersetujuan;
         $procurement->planning_submitted_at = now();
+        // The reviewer of the previous round is cleared, but their note is not:
+        // it is the instruction being answered, so both the PIC and whoever
+        // reviews this round need to keep seeing it.
         $procurement->planning_reviewed_at = null;
         $procurement->planning_reviewed_by = null;
-        $procurement->planning_review_note = null;
         $procurement->save();
 
         $this->recordActivity(
             $procurement,
             $actor,
             ActivityType::PerencanaanDiajukan,
-            'Dokumen perencanaan diajukan untuk persetujuan.',
+            $isRevision
+                ? "Dokumen perencanaan diajukan ulang (revisi ke-{$procurement->planning_revision})."
+                : 'Dokumen perencanaan diajukan untuk persetujuan.',
         );
 
         $this->notifySupervisors(new PlanningSubmitted($procurement));
@@ -214,11 +224,41 @@ class ProcurementService
             $approved ? ActivityType::PerencanaanDisetujui : ActivityType::PerencanaanDitolak,
             $approved
                 ? 'Dokumen perencanaan disetujui.'
-                : 'Dokumen perencanaan ditolak.'.($note !== null ? " Catatan: {$note}" : ''),
+                : 'Dokumen perencanaan dikembalikan untuk revisi.'.($note !== null ? " Catatan: {$note}" : ''),
         );
 
         if ($procurement->planner_id !== null) {
             $procurement->planner->notify(new PlanningReviewed($procurement, $approved, $note));
+        }
+
+        return $procurement;
+    }
+
+    /**
+     * Withdraw a rejection and put the submission back in the approval queue.
+     *
+     * Nothing is submitted here: the PIC's original submission is simply put
+     * back up for decision, which is what is needed when a rejection was
+     * issued in error or when the PIC cannot act on it.
+     */
+    public function revertPlanningRejection(Procurement $procurement, User $actor, ?string $reason = null): Procurement
+    {
+        $procurement->planning_approval_state = PlanningApprovalState::MenungguPersetujuan;
+        $procurement->planning_reviewed_at = null;
+        $procurement->planning_reviewed_by = null;
+        $procurement->planning_review_note = null;
+        $procurement->save();
+
+        $this->recordActivity(
+            $procurement,
+            $actor,
+            ActivityType::PerencanaanDiajukan,
+            'Penolakan dibatalkan, perencanaan kembali menunggu persetujuan.'
+                .($reason !== null ? " Alasan: {$reason}" : ''),
+        );
+
+        if ($procurement->planner_id !== null) {
+            $procurement->planner->notify(new PlanningSubmitted($procurement));
         }
 
         return $procurement;

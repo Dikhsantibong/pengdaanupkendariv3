@@ -18,7 +18,10 @@ class BudgetSourceFactory extends Factory
      */
     public function definition(): array
     {
-        $name = Str::upper(fake()->unique()->lexify('??'));
+        // Two letters would collide with the seeded AO/AI codes whenever a test
+        // seeds the master data and then makes a budget source of its own, so
+        // the generated code carries a run-unique suffix.
+        $name = Str::upper(fake()->unique()->lexify('??').fake()->unique()->numerify('###'));
 
         return [
             'code' => $name,

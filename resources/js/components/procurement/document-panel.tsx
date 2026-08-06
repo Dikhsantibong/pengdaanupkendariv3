@@ -1,6 +1,7 @@
 import { Link, useForm } from '@inertiajs/react';
 import { Download, Eye, FileText, Pencil } from 'lucide-react';
 import { EmptyState } from '@/components/empty-state';
+import { SignedUploadList } from '@/components/procurement/signed-upload-list';
 import { Button } from '@/components/ui/button';
 import {
     Select,
@@ -121,6 +122,7 @@ export function DocumentPanel({
                             <TableHead>Jenis</TableHead>
                             <TableHead>Versi Template</TableHead>
                             <TableHead>Digenerate</TableHead>
+                            <TableHead>Hasil Tanda Tangan</TableHead>
                             <TableHead className="text-right">Aksi</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -153,6 +155,14 @@ export function DocumentPanel({
                                                 : ''}
                                         </div>
                                     )}
+                                </TableCell>
+                                <TableCell className="min-w-56">
+                                    <SignedUploadList
+                                        procurementId={procurementId}
+                                        documentId={document.id}
+                                        uploads={document.uploads}
+                                        canManage={canGenerate}
+                                    />
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <div className="flex justify-end gap-2">

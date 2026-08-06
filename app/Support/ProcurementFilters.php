@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\PlanningApprovalState;
 use App\Models\Procurement;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -33,7 +34,11 @@ class ProcurementFilters
             ->when($request->integer('procurement_method_id'), fn (Builder $builder, int $id) => $builder->where('procurement_method_id', $id))
             ->when($request->integer('budget_source_id'), fn (Builder $builder, int $id) => $builder->where('budget_source_id', $id))
             ->when($request->integer('planner_id'), fn (Builder $builder, int $id) => $builder->where('planner_id', $id))
-            ->when($request->integer('executor_id'), fn (Builder $builder, int $id) => $builder->where('executor_id', $id));
+            ->when($request->integer('executor_id'), fn (Builder $builder, int $id) => $builder->where('executor_id', $id))
+            ->when(
+                PlanningApprovalState::tryFrom($request->string('approval_state')->value() ?: ''),
+                fn (Builder $builder, PlanningApprovalState $state) => $builder->where('planning_approval_state', $state->value),
+            );
     }
 
     /**
@@ -52,6 +57,9 @@ class ProcurementFilters
             'budget_source_id' => $request->integer('budget_source_id') ?: null,
             'planner_id' => $request->integer('planner_id') ?: null,
             'executor_id' => $request->integer('executor_id') ?: null,
+            'approval_state' => PlanningApprovalState::tryFrom(
+                $request->string('approval_state')->value() ?: ''
+            )?->value,
         ];
     }
 }

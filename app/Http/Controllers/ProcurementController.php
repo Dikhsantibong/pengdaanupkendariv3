@@ -7,7 +7,10 @@ use App\Enums\ProcurementStage;
 use App\Http\Requests\Procurements\StoreProcurementRequest;
 use App\Http\Requests\Procurements\UpdateProcurementRequest;
 use App\Http\Resources\ProcurementResource;
+use App\Models\DocumentTemplate;
+use App\Models\DocumentType;
 use App\Models\Procurement;
+use App\Models\ProcurementDocument;
 use App\Models\User;
 use App\Services\ProcurementService;
 use App\Support\MasterDataOptions;
@@ -96,11 +99,12 @@ class ProcurementController extends Controller
             'executor',
             'planningReviewer',
             'creator',
-            'checklists.checklistItem',
+            'checklists.checklistItem.documentTypes',
             'checklists.completedBy',
             'documents.documentType',
             'documents.generatedBy',
             'documents.editedBy',
+            'documents.signedUploads.uploadedBy',
             'activities.user',
         ]);
 
@@ -113,6 +117,14 @@ class ProcurementController extends Controller
                 'planning_reviewed_at' => $procurement->planning_reviewed_at?->toDateTimeString(),
                 'planning_reviewer' => $procurement->planningReviewer?->name,
                 'created_by' => $procurement->creator?->name,
+                // Named so the planning PIC can see exactly what is holding the
+                // submission back instead of just finding the button missing.
+                'pending_required_planning' => $procurement->pendingRequiredPlanningChecklists()
+                    ->map(fn ($checklist): string => $checklist->checklistItem->name)
+                    ->all(),
+                'is_planner' => $procurement->planner_id === $user->id,
+                'planner_name' => $procurement->planner?->name,
+                'planning_revision' => $procurement->planning_revision,
             ],
             'checklists' => [
                 'perencanaan' => $this->checklistPayload($procurement, ProcurementStage::Perencanaan),
@@ -131,6 +143,7 @@ class ProcurementController extends Controller
                     'generated_at' => $document->generated_at->toDateTimeString(),
                     'edited_by' => $document->editedBy?->name,
                     'edited_at' => $document->edited_at?->toDateTimeString(),
+                    'uploads' => self::uploadPayload($document),
                 ]),
             'activities' => $procurement->activities
                 ->sortByDesc('created_at')
@@ -152,6 +165,7 @@ class ProcurementController extends Controller
                 'updateExecutionChecklist' => $user->can('updateExecutionChecklist', $procurement),
                 'submitPlanning' => $user->can('submitPlanning', $procurement),
                 'reviewPlanning' => $user->can('reviewPlanning', $procurement),
+                'revertPlanningRejection' => $user->can('revertPlanningRejection', $procurement),
                 'complete' => $user->can('complete', $procurement),
                 'generateDocument' => $user->can('generateDocument', $procurement),
             ],
@@ -231,20 +245,80 @@ class ProcurementController extends Controller
      */
     protected function checklistPayload(Procurement $procurement, ProcurementStage $stage): array
     {
+        $resolvable = DocumentTemplate::documentTypeIdsResolvableFor(
+            $procurement->procurement_method_id,
+        );
+
         return $procurement->checklists
             ->where('stage', $stage)
             ->sortBy(fn ($checklist): int => $checklist->checklistItem->sort_order)
             ->values()
-            ->map(fn ($checklist): array => [
-                'id' => $checklist->id,
-                'name' => $checklist->checklistItem->name,
-                'description' => $checklist->checklistItem->description,
-                'is_optional' => $checklist->checklistItem->is_optional,
-                'is_completed' => $checklist->is_completed,
-                'notes' => $checklist->notes,
-                'completed_by' => $checklist->completedBy?->name,
-                'completed_at' => $checklist->completed_at?->toDateTimeString(),
+            ->map(function ($checklist) use ($procurement, $resolvable): array {
+                $item = $checklist->checklistItem;
+
+                // Empty for steps that are plain ticks, which is what tells the
+                // panel whether to offer the document actions at all.
+                $documents = [];
+
+                foreach ($item->documentTypes as $type) {
+                    $documents[] = $this->checklistDocumentPayload($procurement, $type, $resolvable);
+                }
+
+                return [
+                    'id' => $checklist->id,
+                    'name' => $item->name,
+                    'description' => $item->description,
+                    'is_optional' => $item->is_optional,
+                    'is_completed' => $checklist->is_completed,
+                    'notes' => $checklist->notes,
+                    'completed_by' => $checklist->completedBy?->name,
+                    'completed_at' => $checklist->completed_at?->toDateTimeString(),
+                    'documents' => $documents,
+                ];
+            })
+            ->all();
+    }
+
+    /**
+     * The state of one document a checklist step produces.
+     *
+     * @param  array<int, int>  $resolvable  Document type ids with a template.
+     * @return array<string, mixed>
+     */
+    protected function checklistDocumentPayload(
+        Procurement $procurement,
+        DocumentType $type,
+        array $resolvable,
+    ): array {
+        $document = $procurement->documentFor($type->id);
+
+        return [
+            'type_id' => $type->id,
+            'type_name' => $type->name,
+            'id' => $document?->id,
+            'title' => $document?->title,
+            'is_signed' => $document?->isSigned() ?? false,
+            'uploads' => $document === null ? [] : self::uploadPayload($document),
+            'has_template' => in_array($type->id, $resolvable, true),
+        ];
+    }
+
+    /**
+     * The signed scans filed against a document.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected static function uploadPayload(ProcurementDocument $document): array
+    {
+        return $document->signedUploads
+            ->map(fn ($upload): array => [
+                'id' => $upload->id,
+                'file_name' => $upload->file_name,
+                'size' => $upload->size,
+                'uploaded_by' => $upload->uploadedBy?->name,
+                'uploaded_at' => $upload->created_at?->toDateTimeString(),
             ])
+            ->values()
             ->all();
     }
 }

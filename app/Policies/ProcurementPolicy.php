@@ -78,6 +78,12 @@ class ProcurementPolicy
 
     /**
      * Determine whether the user may submit the planning stage for approval.
+     *
+     * Submitting and approving are deliberately kept apart. Only the appointed
+     * planning PIC submits: a supervisor may approve, so letting them submit
+     * too would let the same person do both halves of the review. It is also
+     * refused until every mandatory planning step is ticked, so nothing
+     * unfinished reaches the approval queue. Optional steps do not count.
      */
     public function submitPlanning(User $user, Procurement $procurement): bool
     {
@@ -88,16 +94,36 @@ class ProcurementPolicy
             return false;
         }
 
-        return $user->isSupervisor() || $procurement->planner_id === $user->id;
+        if ($procurement->planner_id !== $user->id) {
+            return false;
+        }
+
+        return $procurement->isPlanningChecklistComplete();
     }
 
     /**
      * Determine whether the user may approve or reject the planning stage.
+     *
+     * A supervisor never reviews their own submission, because they cannot be
+     * the submitter in the first place.
      */
     public function reviewPlanning(User $user, Procurement $procurement): bool
     {
         return $user->isSupervisor()
             && $procurement->planning_approval_state === PlanningApprovalState::MenungguPersetujuan;
+    }
+
+    /**
+     * Determine whether the user may withdraw a rejection they issued.
+     *
+     * The escape hatch for a rejection made in error, or one whose PIC cannot
+     * act. It puts the submission back in the approval queue rather than
+     * submitting anything, so a supervisor still never submits their own work.
+     */
+    public function revertPlanningRejection(User $user, Procurement $procurement): bool
+    {
+        return $user->isSupervisor()
+            && $procurement->planning_approval_state === PlanningApprovalState::Ditolak;
     }
 
     /**

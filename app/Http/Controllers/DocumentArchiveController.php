@@ -23,7 +23,7 @@ class DocumentArchiveController extends Controller
                 'procurement_id',
                 Procurement::query()->visibleTo($request->user())->select('id'),
             )
-            ->with(['procurement', 'documentType', 'generatedBy', 'editedBy'])
+            ->with(['procurement', 'documentType', 'generatedBy', 'editedBy', 'signedUploads'])
             ->when($request->integer('document_type_id'), fn ($query, int $id) => $query->where('document_type_id', $id))
             ->when($request->string('search')->trim()->value(), function ($query, string $search): void {
                 $query->where(function ($inner) use ($search): void {
@@ -47,6 +47,7 @@ class DocumentArchiveController extends Controller
                 'generated_at' => $document->generated_at->toDateTimeString(),
                 'edited_by' => $document->editedBy?->name,
                 'edited_at' => $document->edited_at?->toDateTimeString(),
+                'signed_count' => $document->signedUploads->count(),
             ]);
 
         return Inertia::render('documents/index', [

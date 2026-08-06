@@ -6,6 +6,7 @@ import {
     CircleDashed,
     CircleDot,
     FolderKanban,
+    RotateCcw,
     Wallet,
 } from 'lucide-react';
 import { EmptyState } from '@/components/empty-state';
@@ -27,6 +28,7 @@ import {
 } from '@/lib/format';
 import { dashboard } from '@/routes';
 import approvals from '@/routes/approvals';
+import planning from '@/routes/planning';
 import procurements from '@/routes/procurements';
 import type { Auth, ProcurementRow } from '@/types';
 
@@ -40,6 +42,7 @@ type DashboardProps = {
         pending: number;
         cancelled: number;
         awaitingApproval: number;
+        needsRevision: number;
         totalHpe: number;
     };
     byStatus: Breakdown[];
@@ -111,6 +114,29 @@ export default function Dashboard({
                         }
                     />
                 </div>
+
+                {summary.needsRevision > 0 && (
+                    <Link
+                        href={
+                            planning.index({
+                                query: { approval_state: 'ditolak' },
+                            }).url
+                        }
+                        className="flex items-start gap-3 rounded-md border border-destructive/40 bg-destructive/5 p-4 transition-colors hover:bg-destructive/10"
+                    >
+                        <RotateCcw className="mt-0.5 size-4 shrink-0 text-destructive" />
+                        <div className="space-y-0.5">
+                            <p className="text-sm font-semibold text-destructive">
+                                {summary.needsRevision} perencanaan dikembalikan
+                                untuk revisi
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                Perbaiki sesuai catatan reviewer, lalu ajukan
+                                ulang untuk ditinjau kembali.
+                            </p>
+                        </div>
+                    </Link>
+                )}
 
                 <div className="grid gap-3 sm:grid-cols-2">
                     <StatCard
