@@ -1,7 +1,10 @@
 <?php
 
+use App\Http\Controllers\MasterData\AssessmentAspectController;
+use App\Http\Controllers\MasterData\AssessmentFormController;
 use App\Http\Controllers\MasterData\BudgetSourceController;
 use App\Http\Controllers\MasterData\ChecklistItemController;
+use App\Http\Controllers\MasterData\ContractTypeController;
 use App\Http\Controllers\MasterData\DocumentTemplateController;
 use App\Http\Controllers\MasterData\DocumentTypeController;
 use App\Http\Controllers\MasterData\ProcurementMethodController;
@@ -20,11 +23,14 @@ Route::middleware(['auth', 'verified', 'can:manage-master-data'])
         Route::resource('target-units', TargetUnitController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('procurement-methods', ProcurementMethodController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('budget-sources', BudgetSourceController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::resource('contract-types', ContractTypeController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('progress-statuses', ProgressStatusController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('pr-ro-numbers', PrRoNumberController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('checklist-items', ChecklistItemController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('document-types', DocumentTypeController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('document-templates', DocumentTemplateController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::resource('assessment-aspects', AssessmentAspectController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::resource('assessment-forms', AssessmentFormController::class)->only(['index', 'store', 'update', 'destroy']);
     });
 
 Route::middleware(['auth', 'verified', 'can:manage-users'])->group(function () {

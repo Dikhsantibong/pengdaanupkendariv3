@@ -65,6 +65,23 @@ class ProcurementPolicy
     }
 
     /**
+     * Determine whether the user may fill in the planning identity fields.
+     *
+     * These are the parts of the identity the appointed planning PIC supplies
+     * once the work is theirs — the kind of contract and the manager's memo
+     * number. Supervisors keep the ability to correct them. Editing closes
+     * with the planning stage, because the RKS and SPK are drawn up on them.
+     */
+    public function updatePlanningIdentity(User $user, Procurement $procurement): bool
+    {
+        if ($procurement->isPlanningApproved()) {
+            return $user->isSupervisor();
+        }
+
+        return $user->isSupervisor() || $procurement->planner_id === $user->id;
+    }
+
+    /**
      * Determine whether the user may tick the planning checklist.
      */
     public function updatePlanningChecklist(User $user, Procurement $procurement): bool

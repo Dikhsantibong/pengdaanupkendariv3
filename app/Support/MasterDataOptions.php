@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Enums\ProcurementStage;
 use App\Enums\UserRole;
 use App\Models\BudgetSource;
+use App\Models\ContractType;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
 use App\Models\Procurement;
@@ -78,6 +79,7 @@ class MasterDataOptions
             'progressStatuses' => self::statuses(),
             'planners' => self::users(UserRole::PicPerencana),
             'executors' => self::users(UserRole::PicPelaksana),
+            'contractTypes' => self::contractTypes(),
             'documentTypes' => DocumentType::query()->active()->ordered()->get()
                 ->map(fn (DocumentType $type): array => [
                     'value' => $type->id,
@@ -166,6 +168,21 @@ class MasterDataOptions
             ->ordered()
             ->get()
             ->map(fn (ProcurementMethod $record): array => [
+                'value' => $record->id,
+                'label' => $record->name,
+                'description' => $record->description,
+            ])->all();
+    }
+
+    /**
+     * Get the selectable jenis kontrak.
+     *
+     * @return array<int, array{value: int, label: string, description: string|null}>
+     */
+    public static function contractTypes(): array
+    {
+        return ContractType::query()->active()->ordered()->get()
+            ->map(fn (ContractType $record): array => [
                 'value' => $record->id,
                 'label' => $record->name,
                 'description' => $record->description,

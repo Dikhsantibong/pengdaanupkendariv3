@@ -4,6 +4,7 @@ import {
     BadgeCheck,
     Building2,
     CalendarClock,
+    ClipboardCheck,
     ClipboardList,
     FileSignature,
     FileStack,
@@ -45,6 +46,7 @@ import procurements from '@/routes/procurements';
 import publicMonitoring from '@/routes/public-monitoring';
 import reports from '@/routes/reports';
 import users from '@/routes/users';
+import vendorAssessments from '@/routes/vendor-assessments';
 import type { Auth, NavGroup } from '@/types';
 
 export function AppSidebar() {
@@ -109,6 +111,15 @@ export function AppSidebar() {
                     href: documents.index(),
                     icon: Archive,
                 },
+                ...(permissions.manageMasterData
+                    ? [
+                          {
+                              title: 'Penilaian Penyedia',
+                              href: vendorAssessments.index(),
+                              icon: ClipboardCheck,
+                          },
+                      ]
+                    : []),
             ],
         },
         {
@@ -168,6 +179,11 @@ export function AppSidebar() {
                                         icon: Wallet,
                                     },
                                     {
+                                        title: 'Jenis Kontrak',
+                                        href: masterData.contractTypes.index(),
+                                        icon: FileSignature,
+                                    },
+                                    {
                                         title: 'Status Progres',
                                         href: masterData.progressStatuses.index(),
                                         icon: Settings2,
@@ -191,6 +207,16 @@ export function AppSidebar() {
                                         title: 'Template Dokumen',
                                         href: masterData.documentTemplates.index(),
                                         icon: FileText,
+                                    },
+                                    {
+                                        title: 'Aspek Penilaian',
+                                        href: masterData.assessmentAspects.index(),
+                                        icon: ClipboardList,
+                                    },
+                                    {
+                                        title: 'Lembar Penilai',
+                                        href: masterData.assessmentForms.index(),
+                                        icon: ClipboardCheck,
                                     },
                                 ]
                               : []),

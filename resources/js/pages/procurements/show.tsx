@@ -6,6 +6,10 @@ import { ApprovalCard } from '@/components/procurement/approval-card';
 import { ChecklistPanel } from '@/components/procurement/checklist-panel';
 import { DocumentPanel } from '@/components/procurement/document-panel';
 import { PicAssignmentCard } from '@/components/procurement/pic-assignment-card';
+import {
+    ContractTypePicker,
+    ManagerMemoNumberField,
+} from '@/components/procurement/planning-identity-fields';
 import { StatusCard } from '@/components/procurement/status-card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -46,12 +50,14 @@ type ShowProps = {
         progressStatuses: StatusOption[];
         planners: Option[];
         executors: Option[];
+        contractTypes: Option[];
         documentTypes: DocumentTypeOption[];
     };
     can: {
         update: boolean;
         assignPic: boolean;
         updateStatus: boolean;
+        updatePlanningIdentity: boolean;
         updatePlanningChecklist: boolean;
         updateExecutionChecklist: boolean;
         submitPlanning: boolean;
@@ -71,7 +77,11 @@ export default function ShowProcurement({
     options,
     can,
 }: ShowProps) {
-    const summary: Array<{ label: string; value: string }> = [
+    const summary: Array<{
+        label: string;
+        value: string;
+        field?: 'contract_type' | 'manager_memo_number';
+    }> = [
         { label: 'Direksi Pekerjaan', value: procurement.work_director },
         { label: 'Unit Tujuan', value: procurement.target_unit },
         {
@@ -81,6 +91,16 @@ export default function ShowProcurement({
         {
             label: 'Sumber Anggaran',
             value: procurement.budget_source ?? '—',
+        },
+        {
+            label: 'Jenis Kontrak',
+            value: procurement.contract_type ?? '—',
+            field: 'contract_type' as const,
+        },
+        {
+            label: 'Nomor Nota Dinas Manager',
+            value: procurement.manager_memo_number ?? '—',
+            field: 'manager_memo_number' as const,
         },
         { label: 'Nomor PR/RO', value: procurement.pr_ro_number ?? '—' },
         { label: 'Nomor PRK', value: procurement.prk_number ?? '—' },
@@ -159,7 +179,33 @@ export default function ShowProcurement({
                                             {item.label}
                                         </dt>
                                         <dd className="tabular text-right text-sm font-medium text-foreground">
-                                            {item.value}
+                                            {can.updatePlanningIdentity &&
+                                            item.field === 'contract_type' ? (
+                                                <ContractTypePicker
+                                                    procurementId={
+                                                        procurement.id
+                                                    }
+                                                    value={
+                                                        procurement.contract_type_id
+                                                    }
+                                                    options={
+                                                        options.contractTypes
+                                                    }
+                                                />
+                                            ) : can.updatePlanningIdentity &&
+                                              item.field ===
+                                                  'manager_memo_number' ? (
+                                                <ManagerMemoNumberField
+                                                    procurementId={
+                                                        procurement.id
+                                                    }
+                                                    value={
+                                                        procurement.manager_memo_number
+                                                    }
+                                                />
+                                            ) : (
+                                                item.value
+                                            )}
                                         </dd>
                                     </div>
                                 ))}

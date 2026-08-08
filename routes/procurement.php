@@ -12,6 +12,7 @@ use App\Http\Controllers\Procurements\ChecklistController;
 use App\Http\Controllers\Procurements\CompletionController;
 use App\Http\Controllers\Procurements\DocumentController;
 use App\Http\Controllers\Procurements\PicAssignmentController;
+use App\Http\Controllers\Procurements\PlanningIdentityController;
 use App\Http\Controllers\Procurements\StatusController;
 use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
@@ -22,6 +23,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('procurements/{procurement}')->name('procurements.')->group(function () {
         Route::put('pic', [PicAssignmentController::class, 'update'])->name('pic.update');
         Route::put('status', [StatusController::class, 'update'])->name('status.update');
+        Route::put('planning-identity', [PlanningIdentityController::class, 'update'])->name('planning-identity.update');
         Route::put('checklists/{checklist}', [ChecklistController::class, 'update'])->name('checklists.update');
         Route::post('approval', [ApprovalController::class, 'store'])->name('approval.store');
         Route::put('approval', [ApprovalController::class, 'update'])->name('approval.update');

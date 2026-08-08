@@ -20,4 +20,5 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 require __DIR__.'/procurement.php';
 require __DIR__.'/master-data.php';
+require __DIR__.'/vendor-assessment.php';
 require __DIR__.'/settings.php';

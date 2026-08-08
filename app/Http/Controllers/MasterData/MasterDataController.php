@@ -123,6 +123,32 @@ abstract class MasterDataController extends Controller
     }
 
     /**
+     * Drop the blank rows out of a repeatable list field before validation.
+     *
+     * A row left empty in the editor is somebody changing their mind, not an
+     * error. Pruning after validation would be too late: the per-row required
+     * rule would already have rejected the whole form with a message naming an
+     * index the author cannot see.
+     */
+    protected function pruneList(Request $request, string $key): void
+    {
+        if (! $request->has($key)) {
+            return;
+        }
+
+        $rows = $request->input($key);
+
+        if (! is_array($rows)) {
+            return;
+        }
+
+        $request->merge([$key => array_values(array_filter(
+            array_map(static fn (mixed $row): string => is_string($row) ? trim($row) : '', $rows),
+            static fn (string $row): bool => $row !== '',
+        ))]);
+    }
+
+    /**
      * Fail validation with a message tied to a specific field.
      *
      * @throws ValidationException

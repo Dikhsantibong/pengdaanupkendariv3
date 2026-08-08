@@ -6,6 +6,7 @@ use App\Enums\ProcurementStage;
 use App\Enums\StatusCategory;
 use App\Models\BudgetSource;
 use App\Models\ChecklistItem;
+use App\Models\ContractType;
 use App\Models\DocumentType;
 use App\Models\ProcurementMethod;
 use App\Models\ProgressStatus;
@@ -28,6 +29,7 @@ class MasterDataSeeder extends Seeder
         $this->seedTargetUnits();
         $this->seedProcurementMethods();
         $this->seedBudgetSources();
+        $this->seedContractTypes();
         $this->seedProgressStatuses();
         // Document types first: the checklist steps link to them.
         $this->seedDocumentTypes();
@@ -125,6 +127,29 @@ class MasterDataSeeder extends Seeder
 
         foreach ($sources as $index => [$code, $name, $description]) {
             BudgetSource::query()->updateOrCreate(
+                ['code' => $code],
+                [
+                    'name' => $name,
+                    'description' => $description,
+                    'sort_order' => $index + 1,
+                    'is_active' => true,
+                ],
+            );
+        }
+    }
+
+    /**
+     * Seed the jenis kontrak reference data.
+     */
+    protected function seedContractTypes(): void
+    {
+        $types = [
+            ['khs', 'KHS', 'Kontrak Harga Satuan.'],
+            ['lumsum', 'Lumsum', 'Kontrak lumsum (harga borongan tetap).'],
+        ];
+
+        foreach ($types as $index => [$code, $name, $description]) {
+            ContractType::query()->updateOrCreate(
                 ['code' => $code],
                 [
                     'name' => $name,

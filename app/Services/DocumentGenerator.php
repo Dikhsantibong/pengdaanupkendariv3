@@ -32,6 +32,8 @@ class DocumentGenerator
             'metode_pengadaan' => 'Metode pengadaan',
             'sumber_anggaran' => 'Sumber anggaran (kode, mis. AO)',
             'sumber_anggaran_keterangan' => 'Kepanjangan sumber anggaran, mis. Anggaran Operasi',
+            'jenis_kontrak' => 'Jenis kontrak, mis. KHS atau Lumsum',
+            'nomor_nota_dinas_manager' => 'Nomor nota dinas manager ke pengadaan',
             'nomor_pr_ro' => 'Nomor PR/RO',
             'nomor_prk' => 'Nomor PRK (nota dinas usulan)',
             'nilai_hpe' => 'Nilai HPE/anggaran (format Rupiah)',
@@ -60,6 +62,7 @@ class DocumentGenerator
             'targetUnit',
             'procurementMethod',
             'budgetSource',
+            'contractType',
             'prRoNumber',
             'progressStatus',
             'planner',
@@ -81,6 +84,10 @@ class DocumentGenerator
             'sumber_anggaran_keterangan' => $procurement->budget_source_id === null
                 ? '-'
                 : rtrim($procurement->budgetSource->description ?? $procurement->budgetSource->name, '.'),
+            'jenis_kontrak' => $procurement->contract_type_id === null
+                ? '-'
+                : $procurement->contractType->name,
+            'nomor_nota_dinas_manager' => $procurement->manager_memo_number ?? '-',
             'nomor_pr_ro' => $procurement->pr_ro_number_id === null ? '-' : $procurement->prRoNumber->number,
             'nomor_prk' => $procurement->prk_number ?? '-',
             'nilai_hpe' => 'Rp '.number_format((float) $procurement->hpe_value, 2, ',', '.'),

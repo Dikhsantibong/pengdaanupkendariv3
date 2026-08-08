@@ -31,6 +31,11 @@ class ProcurementResource extends JsonResource
             'budget_source' => $this->budget_source_id === null
                 ? null
                 : $this->budgetSource->name,
+            'contract_type' => $this->contract_type_id === null
+                ? null
+                : $this->contractType->name,
+            'contract_type_id' => $this->contract_type_id,
+            'manager_memo_number' => $this->manager_memo_number,
             'pr_ro_number' => $this->prRoNumber?->number,
             'prk_number' => $this->prk_number,
             'hpe_value' => (float) $this->hpe_value,

@@ -1,5 +1,13 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { Database, Pencil, Plus, Power } from 'lucide-react';
+import {
+    ChevronDown,
+    ChevronUp,
+    Database,
+    Pencil,
+    Plus,
+    Power,
+    X,
+} from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { EmptyState } from '@/components/empty-state';
@@ -33,6 +41,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
 import type { EnumOption } from '@/types';
 
 export type MasterRecord = {
@@ -42,18 +51,28 @@ export type MasterRecord = {
     [key: string]: unknown;
 };
 
-export type MasterFormValue = string | number | boolean | null | number[];
+export type MasterFormValue =
+    string | number | boolean | null | number[] | string[];
 
 export type MasterFormValues = Record<string, MasterFormValue>;
 
 export type MasterField = {
     name: string;
     label: string;
-    type: 'text' | 'number' | 'select' | 'switch' | 'multiselect';
+    type:
+        | 'text'
+        | 'textarea'
+        | 'number'
+        | 'select'
+        | 'switch'
+        | 'multiselect'
+        | 'list';
     options?: EnumOption[];
     placeholder?: string;
     hint?: string;
     required?: boolean;
+    /** The label of the button that adds a row to a `list` field. */
+    addLabel?: string;
 };
 
 export type MasterColumn<T extends MasterRecord> = {
@@ -323,6 +342,126 @@ export function MasterDataPage<T extends MasterRecord>({
     );
 }
 
+/**
+ * A field holding an ordered list of short lines.
+ *
+ * The indicators of an aspect print as a, b, c on the official form, so the
+ * order matters and is edited here rather than typed as one blob of text.
+ */
+function ListControl({
+    field,
+    value,
+    error,
+    onChange,
+}: {
+    field: MasterField;
+    value: MasterFormValue;
+    error?: string;
+    onChange: (value: MasterFormValue) => void;
+}) {
+    const lines = (Array.isArray(value) ? value : []).map(String);
+    const letters = 'abcdefghijklmnopqrstuvwxyz';
+
+    const replace = (index: number, line: string) =>
+        onChange(lines.map((item, at) => (at === index ? line : item)));
+
+    const remove = (index: number) =>
+        onChange(lines.filter((_, at) => at !== index));
+
+    const move = (index: number, by: number) => {
+        const target = index + by;
+
+        if (target < 0 || target >= lines.length) {
+            return;
+        }
+
+        const next = [...lines];
+        [next[index], next[target]] = [next[target], next[index]];
+        onChange(next);
+    };
+
+    return (
+        <div className="grid gap-2">
+            <Label>{field.label}</Label>
+
+            <div className="grid gap-2">
+                {lines.map((line, index) => (
+                    <div key={index} className="flex items-start gap-1.5">
+                        <span className="mt-2.5 w-4 shrink-0 text-xs text-muted-foreground">
+                            {letters[index] ?? '-'}.
+                        </span>
+                        <Textarea
+                            rows={2}
+                            value={line}
+                            placeholder={field.placeholder}
+                            onChange={(event) =>
+                                replace(index, event.target.value)
+                            }
+                            className="min-h-0 flex-1"
+                        />
+                        <div className="flex shrink-0 flex-col">
+                            <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="size-7"
+                                disabled={index === 0}
+                                aria-label="Naikkan"
+                                onClick={() => move(index, -1)}
+                            >
+                                <ChevronUp className="size-3.5" />
+                            </Button>
+                            <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="size-7"
+                                disabled={index === lines.length - 1}
+                                aria-label="Turunkan"
+                                onClick={() => move(index, 1)}
+                            >
+                                <ChevronDown className="size-3.5" />
+                            </Button>
+                        </div>
+                        <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="mt-0.5 size-7 shrink-0 text-destructive hover:text-destructive"
+                            aria-label="Hapus baris"
+                            onClick={() => remove(index)}
+                        >
+                            <X className="size-3.5" />
+                        </Button>
+                    </div>
+                ))}
+
+                {lines.length === 0 && (
+                    <p className="rounded-md border border-dashed border-border px-3 py-2.5 text-xs text-muted-foreground">
+                        Belum ada baris.
+                    </p>
+                )}
+            </div>
+
+            <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="justify-self-start"
+                onClick={() => onChange([...lines, ''])}
+            >
+                <Plus className="size-3.5" />
+                {field.addLabel ?? 'Tambah Baris'}
+            </Button>
+
+            {field.hint && (
+                <p className="text-xs text-muted-foreground">{field.hint}</p>
+            )}
+            <InputError message={error} />
+        </div>
+    );
+}
+
 function FieldControl({
     field,
     value,
@@ -354,8 +493,19 @@ function FieldControl({
         );
     }
 
+    if (field.type === 'list') {
+        return (
+            <ListControl
+                field={field}
+                value={value}
+                error={error}
+                onChange={onChange}
+            />
+        );
+    }
+
     if (field.type === 'multiselect') {
-        const selected = Array.isArray(value) ? value : [];
+        const selected = (Array.isArray(value) ? value : []).map(Number);
 
         return (
             <div className="grid gap-2">
@@ -421,6 +571,32 @@ function FieldControl({
                         ))}
                     </SelectContent>
                 </Select>
+                {field.hint && (
+                    <p className="text-xs text-muted-foreground">
+                        {field.hint}
+                    </p>
+                )}
+                <InputError message={error} />
+            </div>
+        );
+    }
+
+    if (field.type === 'textarea') {
+        return (
+            <div className="grid gap-2">
+                <Label htmlFor={field.name}>{field.label}</Label>
+                <Textarea
+                    id={field.name}
+                    rows={3}
+                    value={
+                        value === null || value === undefined
+                            ? ''
+                            : String(value)
+                    }
+                    placeholder={field.placeholder}
+                    required={field.required}
+                    onChange={(event) => onChange(event.target.value)}
+                />
                 {field.hint && (
                     <p className="text-xs text-muted-foreground">
                         {field.hint}

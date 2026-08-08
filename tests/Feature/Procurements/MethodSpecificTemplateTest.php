@@ -308,9 +308,10 @@ class MethodSpecificTemplateTest extends TestCase
         $this->assertCount(6, $documentTypes);
         $this->assertTrue(collect($documentTypes)->every(fn (array $type): bool => $type['hasTemplate']));
 
-        // Statuses, planners, executors, the resolvable ids and the types
-        // themselves: a fixed number of queries, never one per document type.
-        $this->assertLessThanOrEqual(5, $queries);
+        // Statuses, planners, executors, contract types, the resolvable ids and
+        // the document types themselves: a fixed number of queries that does
+        // not grow with the number of document types, which is the point.
+        $this->assertLessThanOrEqual(6, $queries);
     }
 
     public function test_the_document_can_be_previewed_as_printable_html(): void

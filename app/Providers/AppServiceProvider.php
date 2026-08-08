@@ -38,6 +38,9 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('manage-users', fn (User $user): bool => $user->isAdministrator());
 
+        // The vendor performance form is an administrator responsibility.
+        Gate::define('manage-vendor-assessments', fn (User $user): bool => $user->isAdministrator());
+
         Gate::define('view-all-procurements', fn (User $user): bool => $user->isSupervisor());
     }
 

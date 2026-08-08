@@ -24,6 +24,8 @@ use Illuminate\Support\Collection;
  * @property int $target_unit_id
  * @property int|null $procurement_method_id
  * @property int|null $budget_source_id
+ * @property int|null $contract_type_id
+ * @property string|null $manager_memo_number
  * @property int|null $pr_ro_number_id
  * @property string|null $prk_number
  * @property string $hpe_value
@@ -53,6 +55,8 @@ use Illuminate\Support\Collection;
     'target_unit_id',
     'procurement_method_id',
     'budget_source_id',
+    'contract_type_id',
+    'manager_memo_number',
     'pr_ro_number_id',
     'prk_number',
     'hpe_value',
@@ -103,6 +107,16 @@ class Procurement extends Model
     public function budgetSource(): BelongsTo
     {
         return $this->belongsTo(BudgetSource::class)->withTrashed();
+    }
+
+    /**
+     * The kind of contract this procurement will be awarded under.
+     *
+     * @return BelongsTo<ContractType, $this>
+     */
+    public function contractType(): BelongsTo
+    {
+        return $this->belongsTo(ContractType::class)->withTrashed();
     }
 
     /**

@@ -13,8 +13,11 @@ createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
     layout: (name) => {
         switch (true) {
+            // Pages seen without an account, including the assessment signing
+            // pages reached from a WhatsApp link: no signed-in shell.
             case name === 'welcome':
             case name.startsWith('public-monitoring/'):
+            case name.startsWith('assessment-signing/'):
                 return null;
             case name === 'auth/login':
                 return AuthShowcaseLayout;

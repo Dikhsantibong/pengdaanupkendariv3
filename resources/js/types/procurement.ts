@@ -36,6 +36,9 @@ export type ProcurementRow = {
     target_unit: string;
     procurement_method: string | null;
     budget_source: string | null;
+    contract_type: string | null;
+    contract_type_id: number | null;
+    manager_memo_number: string | null;
     pr_ro_number: string | null;
     prk_number: string | null;
     hpe_value: number;
