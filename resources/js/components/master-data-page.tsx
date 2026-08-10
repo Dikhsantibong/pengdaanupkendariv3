@@ -284,7 +284,7 @@ export function MasterDataPage<T extends MasterRecord>({
             </div>
 
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>
                             {editing === null ? addLabel : `Ubah ${title}`}
@@ -301,22 +301,32 @@ export function MasterDataPage<T extends MasterRecord>({
                             event.preventDefault();
                             submit();
                         }}
-                        className="space-y-4"
+                        className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start"
                     >
                         {fields.map((field) => (
-                            <FieldControl
+                            <div
                                 key={field.name}
-                                field={field}
-                                value={form.data[field.name]}
-                                error={
-                                    form.errors[
-                                        field.name as keyof typeof form.errors
-                                    ] as string | undefined
+                                className={
+                                    field.type === 'list' ||
+                                    field.type === 'multiselect' ||
+                                    field.type === 'textarea'
+                                        ? 'md:col-span-2'
+                                        : ''
                                 }
-                                onChange={(value) =>
-                                    form.setData(field.name, value)
-                                }
-                            />
+                            >
+                                <FieldControl
+                                    field={field}
+                                    value={form.data[field.name]}
+                                    error={
+                                        form.errors[
+                                            field.name as keyof typeof form.errors
+                                        ] as string | undefined
+                                    }
+                                    onChange={(value) =>
+                                        form.setData(field.name, value)
+                                    }
+                                />
+                            </div>
                         ))}
                     </form>
 
@@ -384,50 +394,48 @@ function ListControl({
         <div className="grid gap-2">
             <Label>{field.label}</Label>
 
-            <div className="grid gap-2">
+            <div className="grid gap-1.5">
                 {lines.map((line, index) => (
-                    <div key={index} className="flex items-start gap-1.5">
-                        <span className="mt-2.5 w-4 shrink-0 text-xs text-muted-foreground">
+                    <div key={index} className="flex items-center gap-1.5">
+                        <span className="w-4 shrink-0 text-xs text-muted-foreground">
                             {letters[index] ?? '-'}.
                         </span>
-                        <Textarea
-                            rows={2}
+                        <Input
                             value={line}
                             placeholder={field.placeholder}
                             onChange={(event) =>
                                 replace(index, event.target.value)
                             }
-                            className="min-h-0 flex-1"
+                            className="h-8 flex-1"
+                            autoComplete="off"
                         />
-                        <div className="flex shrink-0 flex-col">
-                            <Button
-                                type="button"
-                                size="icon"
-                                variant="ghost"
-                                className="size-7"
-                                disabled={index === 0}
-                                aria-label="Naikkan"
-                                onClick={() => move(index, -1)}
-                            >
-                                <ChevronUp className="size-3.5" />
-                            </Button>
-                            <Button
-                                type="button"
-                                size="icon"
-                                variant="ghost"
-                                className="size-7"
-                                disabled={index === lines.length - 1}
-                                aria-label="Turunkan"
-                                onClick={() => move(index, 1)}
-                            >
-                                <ChevronDown className="size-3.5" />
-                            </Button>
-                        </div>
                         <Button
                             type="button"
                             size="icon"
                             variant="ghost"
-                            className="mt-0.5 size-7 shrink-0 text-destructive hover:text-destructive"
+                            className="size-7 shrink-0"
+                            disabled={index === 0}
+                            aria-label="Naikkan"
+                            onClick={() => move(index, -1)}
+                        >
+                            <ChevronUp className="size-3.5" />
+                        </Button>
+                        <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="size-7 shrink-0"
+                            disabled={index === lines.length - 1}
+                            aria-label="Turunkan"
+                            onClick={() => move(index, 1)}
+                        >
+                            <ChevronDown className="size-3.5" />
+                        </Button>
+                        <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="size-7 shrink-0 text-destructive hover:text-destructive"
                             aria-label="Hapus baris"
                             onClick={() => remove(index)}
                         >

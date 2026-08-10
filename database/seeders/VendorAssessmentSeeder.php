@@ -24,11 +24,15 @@ class VendorAssessmentSeeder extends Seeder
      * @var array<int, string>
      */
     protected const DIREKSI_ASSESSORS = [
-        'MUSRIYADI',
-        'SADRI',
-        'EKO YULI WIDIYATMOKO',
-        'AGUS SALIM',
-        'ROBY FIRMANSYAH',
+        'TAUHID ALI (081943643752)',
+        'WINANDO PANDIANGAN (082194498674)',
+        'TANWIR (081242150778)',
+        'MUSRIYADI (081342934948)',
+        'SADRI (6281241130696)',
+        'EKO YULI WIDIYATMOKO (081341107387)',
+        'AGUS SALIM (081341107387)',
+        'ROBY FIRMANSYAH (081296036066)',
+        'RUDI HENDAR RAHADIAN (081341644999)',
     ];
 
     /**
@@ -193,7 +197,7 @@ class VendorAssessmentSeeder extends Seeder
                 'Pengadaan',
                 'PENGADAAN',
                 null,
-                null,
+                ['FIRMAN (082292352111)', 'AMRULLAH (085242147125)'],
                 'Dinilai oleh fungsi pengadaan.',
             ],
             [
@@ -201,7 +205,7 @@ class VendorAssessmentSeeder extends Seeder
                 'ICC & Gudang',
                 'TL INVENTORY CONTROL & GUDANG',
                 'BASTIAL',
-                null,
+                ['BASTIAL (085342202003)'],
                 'Dinilai oleh Inventory Control dan Gudang.',
             ],
             [
@@ -217,7 +221,7 @@ class VendorAssessmentSeeder extends Seeder
                 'Lingkungan',
                 'TL LINGKUNGAN',
                 'SADRI',
-                null,
+                ['SADRI (6281241130696)'],
                 'Dinilai oleh fungsi lingkungan.',
             ],
             [
@@ -225,7 +229,7 @@ class VendorAssessmentSeeder extends Seeder
                 'K3 & Keamanan',
                 'TL K3 DAN KEAMANAN',
                 'MUSRIYADI',
-                null,
+                ['MUSRIYADI (081342934948)'],
                 'Dinilai oleh fungsi K3 dan keamanan.',
             ],
         ];

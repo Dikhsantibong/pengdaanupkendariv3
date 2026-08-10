@@ -12,7 +12,7 @@ import {
     Save,
     Trash2,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -223,14 +223,7 @@ export default function ShowVendorAssessment({
                                   }`
                         }
                     />
-                    <Field
-                        label="Tgl BASTP"
-                        value={
-                            assessment.bastp_date
-                                ? formatDate(assessment.bastp_date)
-                                : '—'
-                        }
-                    />
+
                     <Field
                         label="Nilai Akhir"
                         value={`${level(recap.overall_average)} (${recap.scored}/${recap.total} aspek dinilai)`}
@@ -258,7 +251,7 @@ export default function ShowVendorAssessment({
                             className="mt-4"
                         >
                             <SheetPanel
-                                assessmentId={assessment.id}
+                                assessment={assessment}
                                 sheet={sheet}
                                 printUrl={printUrl(sheet.id)}
                             />
@@ -287,40 +280,60 @@ function Field({ label, value }: { label: string; value: string }) {
  * from their own account.
  */
 function SigningLinkPanel({
-    assessmentId,
+    assessment,
     sheet,
+    selectedAssessorName,
 }: {
-    assessmentId: number;
+    assessment: Assessment;
     sheet: FormSheet;
+    selectedAssessorName?: string;
 }) {
     const invitation = sheet.invitation;
 
-    const PRESET_ASSESSORS: Record<string, { name: string; phone: string }[]> = {
-        'pengadaan': [{ name: 'Amrullah', phone: '085242147125' }],
-        'icc-gudang': [{ name: 'Bastial', phone: '085342202003' }],
-        'direksi-pekerjaan': [
-            { name: 'Musriyadi', phone: '081342934948' },
-            { name: 'Sadri', phone: '6281241130696' },
-            { name: 'Eko Yuli Widiyatmoko', phone: '081341107387' },
-            { name: 'Agus Salim', phone: '081341107387' },
-            { name: 'Roby Firmansyah', phone: '081296036066' },
-            { name: 'Rudi Hendar Rahadian', phone: '081341644999' },
-        ],
-        'lingkungan': [{ name: 'Sadri', phone: '6281241130696' }],
-        'k3-keamanan': [{ name: 'Musriyadi', phone: '081342934948' }],
-    };
-
-    const defaultPresets = PRESET_ASSESSORS[sheet.code] || [];
+    // Parse assessor_options from format "NAME (PHONE)" into { name, phone }
+    const defaultPresets = (sheet.assessor_options ?? []).map((option) => {
+        const match = option.match(/^(.+?)\s*\(([^)]+)\)$/);
+        if (match) {
+            return { name: match[1].trim(), phone: match[2].trim() };
+        }
+        return { name: option, phone: '' };
+    });
     const defaultPreset = defaultPresets[0];
 
     const [name, setName] = useState(invitation?.recipient_name ?? defaultPreset?.name ?? '');
     const [phone, setPhone] = useState(invitation?.recipient_phone ?? defaultPreset?.phone ?? '');
     const [copied, setCopied] = useState(false);
+    const [hasPenalty, setHasPenalty] = useState(false);
+
+    const isFirstRender = useRef(true);
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
+        if (selectedAssessorName && selectedAssessorName !== '___unscored___') {
+            // Try to parse the selected value directly (it may be "NAME (PHONE)" format)
+            const selectedMatch = selectedAssessorName.match(/^(.+?)\s*\(([^)]+)\)$/);
+            if (selectedMatch) {
+                setName(selectedMatch[1].trim());
+                setPhone(selectedMatch[2].trim());
+            } else {
+                // Fallback: try matching against parsed presets by name
+                const preset = defaultPresets.find(p => p.name.toLowerCase() === selectedAssessorName.toLowerCase());
+                if (preset) {
+                    setName(preset.name);
+                    setPhone(preset.phone);
+                } else {
+                    setName(selectedAssessorName);
+                }
+            }
+        }
+    }, [selectedAssessorName]);
 
     const issue = () =>
         router.post(
             vendorAssessments.links.store({
-                assessment: assessmentId,
+                assessment: assessment.id,
                 form: sheet.id,
             }).url,
             { recipient_name: name || null, recipient_phone: phone || null },
@@ -330,7 +343,7 @@ function SigningLinkPanel({
     const revoke = () =>
         router.delete(
             vendorAssessments.links.destroy({
-                assessment: assessmentId,
+                assessment: assessment.id,
                 form: sheet.id,
             }).url,
             { preserveScroll: true },
@@ -371,34 +384,32 @@ function SigningLinkPanel({
         return `Terkirim, belum dibuka · berlaku sampai ${formatDateTime(invitation.expires_at)}`;
     })();
 
+    let whatsappUrl = null;
+    if (invitation !== null && invitation.recipient_phone !== null) {
+        const lines = [
+            `Yth. ${invitation.recipient_name ?? 'Bapak/Ibu'},`,
+            '',
+            'Mohon kesediaannya mengisi Formulir Penilaian Kinerja Penyedia Barang dan Jasa:',
+            `Pekerjaan: ${assessment.project}`,
+            `Penyedia: ${assessment.vendor_name}`,
+            `Tanggal BASTP: ${assessment.bastp_date ? formatDate(assessment.bastp_date) : '-'}`,
+            `Denda: ${hasPenalty ? 'Ada' : 'Tidak Ada'}`,
+            `Lembar: ${sheet.name}`,
+            '',
+            'Silakan buka tautan berikut untuk mengisi nilai dan tanda tangan:',
+            invitation.url,
+            '',
+            'Terima kasih.',
+            'PT PLN Nusantara Power UP Kendari',
+        ];
+        const rawPhone = invitation.recipient_phone.replace(/\D+/g, '');
+        whatsappUrl = `https://wa.me/${rawPhone}?text=${encodeURIComponent(lines.join('\n'))}`;
+    }
+
     return (
         <div className="border-b border-border bg-muted/30 p-4">
             <div className="flex flex-wrap items-end gap-2">
-                {defaultPresets.length > 1 && (
-                    <div className="grid gap-1.5 w-full basis-full mb-2">
-                        <Label className="text-xs text-muted-foreground">Isi Cepat Data Penilai (Otomatis)</Label>
-                        <Select
-                            onValueChange={(value) => {
-                                const preset = defaultPresets.find(p => p.name === value);
-                                if (preset) {
-                                    setName(preset.name);
-                                    setPhone(preset.phone);
-                                }
-                            }}
-                        >
-                            <SelectTrigger className="h-9 w-64 bg-background">
-                                <SelectValue placeholder="Pilih dari daftar tim..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {defaultPresets.map((preset) => (
-                                    <SelectItem key={preset.name} value={preset.name}>
-                                        {preset.name} ({preset.phone})
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                )}
+
                 <div className="grid gap-1.5">
                     <Label
                         htmlFor={`recipient-name-${sheet.id}`}
@@ -449,17 +460,31 @@ function SigningLinkPanel({
                             {copied ? 'Tersalin' : 'Salin Tautan'}
                         </Button>
 
-                        {invitation.whatsapp_url !== null && (
-                            <Button asChild>
-                                <a
-                                    href={invitation.whatsapp_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    <MessageCircle className="size-4" />
-                                    Kirim via WhatsApp
-                                </a>
-                            </Button>
+                        {whatsappUrl !== null && (
+                            <>
+                                <div className="grid gap-1.5 ml-2">
+                                    <Label className="text-xs">Denda</Label>
+                                    <Select value={hasPenalty ? 'ada' : 'tidak'} onValueChange={v => setHasPenalty(v === 'ada')}>
+                                        <SelectTrigger className="h-9 w-24 bg-background">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="ada">Ada</SelectItem>
+                                            <SelectItem value="tidak">Tidak Ada</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <Button asChild>
+                                    <a
+                                        href={whatsappUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        <MessageCircle className="size-4" />
+                                        Kirim via WhatsApp
+                                    </a>
+                                </Button>
+                            </>
                         )}
 
                         {invitation.is_open && (
@@ -496,11 +521,11 @@ function SigningLinkPanel({
  * One assessor sheet: the aspects it scores, and the level given to each.
  */
 function SheetPanel({
-    assessmentId,
+    assessment,
     sheet,
     printUrl,
 }: {
-    assessmentId: number;
+    assessment: Assessment;
     sheet: FormSheet;
     printUrl: string;
 }) {
@@ -516,7 +541,7 @@ function SheetPanel({
     const submit = () => {
         router.put(
             vendorAssessments.scores.update({
-                assessment: assessmentId,
+                assessment: assessment.id,
                 form: sheet.id,
             }).url,
             {
@@ -608,7 +633,7 @@ function SheetPanel({
                 </div>
             </header>
 
-            <SigningLinkPanel assessmentId={assessmentId} sheet={sheet} />
+            <SigningLinkPanel assessment={assessment} sheet={sheet} selectedAssessorName={assessorName} />
 
             <Table>
                 <TableHeader className="bg-muted/60">
