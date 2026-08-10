@@ -152,7 +152,9 @@ class VendorAssessmentRenderer
     protected function signature(VendorAssessment $assessment, ?AssessmentForm $form): string
     {
         $place = e($assessment->place);
-        $date = $assessment->form_date?->translatedFormat('d F Y') ?? '..........................';
+        $date = $assessment->bastp_date?->translatedFormat('d F Y')
+            ?? $assessment->form_date?->translatedFormat('d F Y')
+            ?? '..........................';
 
         $title = $form === null
             ? 'Mengetahui,<br>Manager UP Kendari'
@@ -228,6 +230,7 @@ class VendorAssessmentRenderer
         $project = e($assessment->project);
         $poNumber = e((string) ($assessment->po_number ?? ''));
         $poDate = $assessment->po_date?->translatedFormat('d F Y') ?? '';
+        $bastpDate = $assessment->bastp_date?->translatedFormat('d F Y') ?? '';
         $vendor = e($assessment->vendor_name);
         $formNumber = e($assessment->form_number);
         $revision = e($assessment->revision_number);
@@ -265,7 +268,7 @@ class VendorAssessmentRenderer
             .aspect { display: block; font-weight: bold; font-style: italic; }
             .pre { margin-top: 1pt; text-align: justify; }
             .ind { margin-left: 8pt; }
-            .sign { margin-top: 16pt; width: 100%; }
+            .sign { margin-top: 16pt; width: auto; float: right; min-width: 200pt; }
             .sign td { text-align: center; padding: 0; }
             .sign .role { font-weight: bold; padding-top: 4pt; line-height: 1.35; }
             .sign .space { height: 52pt; vertical-align: middle; }
@@ -292,6 +295,7 @@ class VendorAssessmentRenderer
                 <tr><td class="label">PROJECT / PEKERJAAN</td><td class="colon">:</td><td class="value">{$project}</td></tr>
                 <tr><td class="label">NO KONTRAK</td><td class="colon">:</td><td class="value">{$poNumber}</td></tr>
                 <tr><td class="label">TANGGAL KONTRAK</td><td class="colon">:</td><td class="value">{$poDate}</td></tr>
+                <tr><td class="label">TANGGAL BASTP</td><td class="colon">:</td><td class="value">{$bastpDate}</td></tr>
                 <tr><td class="label">PENYEDIA BARANG/JASA</td><td class="colon">:</td><td class="value">{$vendor}</td></tr>
                 <tr><td class="label">LEMBAR PENILAIAN</td><td class="colon">:</td><td class="value">{$sheet}</td></tr>
             </table>

@@ -23,6 +23,7 @@ class VendorAssessmentFactory extends Factory
             'project' => rtrim(fake()->sentence(4), '.'),
             'po_number' => fake()->numerify('####/PO/UPKD/####'),
             'po_date' => fake()->dateTimeBetween('-6 months', 'now'),
+            'bastp_date' => fake()->dateTimeBetween('-3 months', 'now'),
             'vendor_name' => 'PT '.rtrim(fake()->company(), '.'),
             'form_number' => 'SMT-FM-DAN-02.02',
             'revision_number' => '03',

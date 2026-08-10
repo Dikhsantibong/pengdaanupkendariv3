@@ -90,6 +90,7 @@ class VendorAssessmentService
             'project' => $procurement === null ? '' : $procurement->name,
             'po_number' => null,
             'po_date' => null,
+            'bastp_date' => null,
             'vendor_name' => '',
             'form_number' => 'SMT-FM-DAN-02.02',
             'revision_number' => '03',

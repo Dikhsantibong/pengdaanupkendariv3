@@ -20,6 +20,7 @@ use Illuminate\Support\Collection;
  * @property string $project
  * @property string|null $po_number
  * @property CarbonImmutable|null $po_date
+ * @property CarbonImmutable|null $bastp_date
  * @property string $vendor_name
  * @property string $form_number
  * @property string $revision_number
@@ -36,6 +37,7 @@ use Illuminate\Support\Collection;
     'project',
     'po_number',
     'po_date',
+    'bastp_date',
     'vendor_name',
     'form_number',
     'revision_number',
@@ -141,6 +143,7 @@ class VendorAssessment extends Model
     {
         return [
             'po_date' => 'date',
+            'bastp_date' => 'date',
             'form_date' => 'date',
         ];
     }

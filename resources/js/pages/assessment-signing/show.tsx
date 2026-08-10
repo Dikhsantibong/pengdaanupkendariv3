@@ -47,6 +47,7 @@ export default function SignAssessment({
         vendor_name: string;
         po_number: string | null;
         po_date: string | null;
+        bastp_date: string | null;
         form_number: string;
         revision_number: string;
         place: string;
@@ -113,6 +114,14 @@ export default function SignAssessment({
                                               ? ` · ${formatDate(assessment.po_date)}`
                                               : ''
                                       }`
+                            }
+                        />
+                        <Field
+                            label="Tgl BASTP"
+                            value={
+                                assessment.bastp_date
+                                    ? formatDate(assessment.bastp_date)
+                                    : '—'
                             }
                         />
                         <Field

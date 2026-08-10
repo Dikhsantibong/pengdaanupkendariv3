@@ -314,6 +314,7 @@ class VendorAssessmentController extends Controller
             'project' => $assessment->project,
             'po_number' => $assessment->po_number,
             'po_date' => $assessment->po_date?->toDateString(),
+            'bastp_date' => $assessment->bastp_date?->toDateString(),
             'vendor_name' => $assessment->vendor_name,
             'form_number' => $assessment->form_number,
             'revision_number' => $assessment->revision_number,

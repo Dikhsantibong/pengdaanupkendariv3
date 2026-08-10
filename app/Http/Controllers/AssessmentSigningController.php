@@ -59,6 +59,7 @@ class AssessmentSigningController extends Controller
                 'vendor_name' => $invitation->assessment->vendor_name,
                 'po_number' => $invitation->assessment->po_number,
                 'po_date' => $invitation->assessment->po_date?->toDateString(),
+                'bastp_date' => $invitation->assessment->bastp_date?->toDateString(),
                 'form_number' => $invitation->assessment->form_number,
                 'revision_number' => $invitation->assessment->revision_number,
                 'place' => $invitation->assessment->place,

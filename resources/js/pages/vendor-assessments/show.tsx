@@ -93,6 +93,7 @@ type Assessment = {
     project: string;
     po_number: string | null;
     po_date: string | null;
+    bastp_date: string | null;
     vendor_name: string;
     form_number: string;
     revision_number: string;
@@ -209,6 +210,14 @@ export default function ShowVendorAssessment({
                                           ? ` · ${formatDate(assessment.po_date)}`
                                           : ''
                                   }`
+                        }
+                    />
+                    <Field
+                        label="Tgl BASTP"
+                        value={
+                            assessment.bastp_date
+                                ? formatDate(assessment.bastp_date)
+                                : '—'
                         }
                     />
                     <Field

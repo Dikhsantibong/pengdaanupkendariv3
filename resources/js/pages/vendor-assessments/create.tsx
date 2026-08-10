@@ -24,6 +24,7 @@ type Defaults = {
     project: string;
     po_number: string | null;
     po_date: string | null;
+    bastp_date: string | null;
     vendor_name: string;
     form_number: string;
     revision_number: string;
@@ -43,6 +44,7 @@ export default function CreateVendorAssessment({
         project: defaults.project,
         po_number: defaults.po_number ?? '',
         po_date: defaults.po_date ?? '',
+        bastp_date: defaults.bastp_date ?? '',
         vendor_name: defaults.vendor_name,
         form_number: defaults.form_number,
         revision_number: defaults.revision_number,
@@ -204,6 +206,23 @@ export default function CreateVendorAssessment({
                                 />
                                 <InputError message={form.errors.po_date} />
                             </div>
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="bastp_date">Tanggal BASTP</Label>
+                            <Input
+                                id="bastp_date"
+                                type="date"
+                                value={form.data.bastp_date}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'bastp_date',
+                                        event.target.value,
+                                    )
+                                }
+                                className="tabular"
+                            />
+                            <InputError message={form.errors.bastp_date} />
                         </div>
                     </section>
 
