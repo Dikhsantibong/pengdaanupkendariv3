@@ -758,7 +758,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-tZF5jWEB.css",
+    "file": "assets/app-BUyOABuF.css",
     "name": "app",
     "names": [
       "app.css"
@@ -767,7 +767,7 @@
     "isEntry": true
   },
   "resources/js/app.tsx": {
-    "file": "assets/app-CCNqKN7c.js",
+    "file": "assets/app-Li9Y_2Go.js",
     "name": "app",
     "src": "resources/js/app.tsx",
     "isEntry": true,
@@ -1643,7 +1643,7 @@
     ]
   },
   "resources/js/pages/vendor-assessments/show.tsx": {
-    "file": "assets/show-BFti1U7D.js",
+    "file": "assets/show-BS0zgE3k.js",
     "name": "show",
     "src": "resources/js/pages/vendor-assessments/show.tsx",
     "isDynamicEntry": true,

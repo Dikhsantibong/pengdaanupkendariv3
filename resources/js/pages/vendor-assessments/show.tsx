@@ -294,8 +294,27 @@ function SigningLinkPanel({
     sheet: FormSheet;
 }) {
     const invitation = sheet.invitation;
-    const [name, setName] = useState(invitation?.recipient_name ?? '');
-    const [phone, setPhone] = useState(invitation?.recipient_phone ?? '');
+
+    const PRESET_ASSESSORS: Record<string, { name: string; phone: string }[]> = {
+        'pengadaan': [{ name: 'Amrullah', phone: '085242147125' }],
+        'icc-gudang': [{ name: 'Bastial', phone: '085342202003' }],
+        'direksi-pekerjaan': [
+            { name: 'Musriyadi', phone: '081342934948' },
+            { name: 'Sadri', phone: '6281241130696' },
+            { name: 'Eko Yuli Widiyatmoko', phone: '081341107387' },
+            { name: 'Agus Salim', phone: '081341107387' },
+            { name: 'Roby Firmansyah', phone: '081296036066' },
+            { name: 'Rudi Hendar Rahadian', phone: '081341644999' },
+        ],
+        'lingkungan': [{ name: 'Sadri', phone: '6281241130696' }],
+        'k3-keamanan': [{ name: 'Musriyadi', phone: '081342934948' }],
+    };
+
+    const defaultPresets = PRESET_ASSESSORS[sheet.code] || [];
+    const defaultPreset = defaultPresets[0];
+
+    const [name, setName] = useState(invitation?.recipient_name ?? defaultPreset?.name ?? '');
+    const [phone, setPhone] = useState(invitation?.recipient_phone ?? defaultPreset?.phone ?? '');
     const [copied, setCopied] = useState(false);
 
     const issue = () =>
@@ -355,6 +374,31 @@ function SigningLinkPanel({
     return (
         <div className="border-b border-border bg-muted/30 p-4">
             <div className="flex flex-wrap items-end gap-2">
+                {defaultPresets.length > 1 && (
+                    <div className="grid gap-1.5 w-full basis-full mb-2">
+                        <Label className="text-xs text-muted-foreground">Isi Cepat Data Penilai (Otomatis)</Label>
+                        <Select
+                            onValueChange={(value) => {
+                                const preset = defaultPresets.find(p => p.name === value);
+                                if (preset) {
+                                    setName(preset.name);
+                                    setPhone(preset.phone);
+                                }
+                            }}
+                        >
+                            <SelectTrigger className="h-9 w-64 bg-background">
+                                <SelectValue placeholder="Pilih dari daftar tim..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {defaultPresets.map((preset) => (
+                                    <SelectItem key={preset.name} value={preset.name}>
+                                        {preset.name} ({preset.phone})
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                )}
                 <div className="grid gap-1.5">
                     <Label
                         htmlFor={`recipient-name-${sheet.id}`}
