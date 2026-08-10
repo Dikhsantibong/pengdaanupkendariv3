@@ -440,7 +440,7 @@ function SigningLinkPanel({
             invitation.url,
             '',
             'Terima kasih.',
-            `Tim ${sheet.name}`,
+            'Tim Pengadaan',
             'PT PLN Nusantara Power UP Kendari',
         ];
         const rawPhone = invitation.recipient_phone.replace(/\D+/g, '');
