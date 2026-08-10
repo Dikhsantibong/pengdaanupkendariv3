@@ -529,7 +529,9 @@ function SheetPanel({
     sheet: FormSheet;
     printUrl: string;
 }) {
-    const [assessorName, setAssessorName] = useState(sheet.assessor_name ?? '');
+    const [assessorName, setAssessorName] = useState(
+        sheet.assessor_name ?? (sheet.assessor_options.length === 1 ? sheet.assessor_options[0] : '')
+    );
     const [levels, setLevels] = useState<Record<number, number | null>>(
         Object.fromEntries(
             sheet.aspects.map((aspect) => [aspect.aspect_id, aspect.level]),
@@ -577,7 +579,7 @@ function SheetPanel({
                         >
                             Nama Penilai
                         </Label>
-                        {sheet.assessor_options.length > 0 ? (
+                        {sheet.assessor_options.length > 1 ? (
                             <Select
                                 value={
                                     assessorName === ''
@@ -607,6 +609,10 @@ function SheetPanel({
                                     ))}
                                 </SelectContent>
                             </Select>
+                        ) : sheet.assessor_options.length === 1 ? (
+                            <div className="flex h-9 w-56 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
+                                {assessorName}
+                            </div>
                         ) : (
                             <Input
                                 id={`assessor-${sheet.id}`}

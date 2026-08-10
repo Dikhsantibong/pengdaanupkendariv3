@@ -128,45 +128,15 @@ export default function SignAssessment({
                             label="Kedudukan Penilai"
                             value={form.assessor_title}
                         />
+                        <Field
+                            label="Nama Penilai"
+                            value={
+                                data.assessor_name
+                                    ? data.assessor_name.replace(/\s*\(.*\)/, '')
+                                    : '—'
+                            }
+                        />
                     </dl>
-
-                    <div className="mt-4 grid gap-1.5 sm:max-w-sm">
-                        <Label htmlFor="assessor_name">Nama Penilai</Label>
-                        {form.assessor_options.length > 0 ? (
-                            <Select
-                                value={data.assessor_name}
-                                onValueChange={(value) =>
-                                    setData('assessor_name', value)
-                                }
-                            >
-                                <SelectTrigger id="assessor_name">
-                                    <SelectValue placeholder="Pilih nama Anda" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {form.assessor_options.map((name) => (
-                                        <SelectItem key={name} value={name}>
-                                            {name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        ) : (
-                            <Input
-                                id="assessor_name"
-                                value={data.assessor_name}
-                                onChange={(event) =>
-                                    setData('assessor_name', event.target.value)
-                                }
-                                placeholder="Nama lengkap"
-                                autoComplete="name"
-                            />
-                        )}
-                        {errors.assessor_name && (
-                            <p className="text-xs text-destructive">
-                                {errors.assessor_name}
-                            </p>
-                        )}
-                    </div>
                 </section>
 
                 <section className="space-y-3">
