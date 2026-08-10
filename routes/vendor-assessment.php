@@ -18,6 +18,8 @@ Route::middleware(['auth', 'verified', 'can:manage-vendor-assessments'])
         Route::delete('{assessment}', [VendorAssessmentController::class, 'destroy'])->name('destroy');
         Route::get('{assessment}/cetak/{form?}', [VendorAssessmentController::class, 'print'])
             ->name('print');
+        Route::get('{assessment}/cetak-semua', [VendorAssessmentController::class, 'printAll'])
+            ->name('print-all');
         Route::get('{assessment}/unduh-semua', [VendorAssessmentController::class, 'downloadAll'])
             ->name('download-all');
         Route::post('{assessment}/forms/{form}/tautan', [VendorAssessmentController::class, 'issueLink'])

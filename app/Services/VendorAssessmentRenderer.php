@@ -366,6 +366,48 @@ class VendorAssessmentRenderer
     }
 
     /**
+     * Render the combined PDF of all forms including recap (akumulasi).
+     */
+    public function allPdf(VendorAssessment $assessment): string
+    {
+        $assessment->loadMissing(['scores.form', 'scores.aspect', 'invitations']);
+        $forms = AssessmentForm::query()->active()->ordered()->get();
+        
+        $bodies = [];
+        
+        // 1. Recap (Akumulasi)
+        $title = 'AKUMULASI HASIL PENILAIAN';
+        $rows = $this->recapRows($assessment);
+        $signature = $this->signature($assessment, null);
+        $bodies[] = '<div class="page-break">' . $this->bodyContent($assessment, $title, $rows, $signature) . '</div>';
+        
+        // 2. All Sheets
+        foreach ($forms as $form) {
+            $title = $form->name;
+            $rows = $this->formRows($assessment, $form);
+            $signature = $this->signature($assessment, $form);
+            
+            $bodies[] = '<div class="page-break">' . $this->bodyContent($assessment, $title, $rows, $signature) . '</div>';
+        }
+        
+        $html = $this->htmlShell(implode("\n", $bodies));
+        
+        $options = new Options;
+        $options->set('defaultFont', 'DejaVu Sans');
+        $options->set('isRemoteEnabled', false);
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isPhpEnabled', false);
+        $options->set('chroot', public_path());
+
+        $dompdf = new Dompdf($options);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->loadHtml($html, 'UTF-8');
+        $dompdf->render();
+
+        return (string) $dompdf->output();
+    }
+
+    /**
      * The unit logo, embedded so the PDF needs no network access.
      */
     protected function logo(): string

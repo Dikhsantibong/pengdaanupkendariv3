@@ -131,6 +131,7 @@ export default function ShowVendorAssessment({
     recap,
     panitiaUrl,
     akumulasiUrl,
+    printAllUrl,
 }: {
     assessment: Assessment;
     forms: FormSheet[];
@@ -142,6 +143,7 @@ export default function ShowVendorAssessment({
     };
     panitiaUrl: string;
     akumulasiUrl: string;
+    printAllUrl: string;
 }) {
     const printUrl = (formId?: number) =>
         vendorAssessments.print(
@@ -196,10 +198,10 @@ export default function ShowVendorAssessment({
                                 Kembali
                             </Button>
                             <EditHeaderDialog assessment={assessment} />
-                            <Button asChild variant="outline">
-                                <a href={printUrl()} target="_blank">
+                            <Button asChild className="bg-green-600 hover:bg-green-700 text-white">
+                                <a href={printAllUrl} target="_blank">
                                     <Printer className="size-4" />
-                                    Cetak Akumulasi
+                                    Cetak Semua
                                 </a>
                             </Button>
                             <Button asChild>

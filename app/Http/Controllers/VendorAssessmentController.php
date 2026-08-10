@@ -127,6 +127,9 @@ class VendorAssessmentController extends Controller
             'akumulasiUrl' => URL::signedRoute('vendor-assessments.download-akumulasi', [
                 'assessment' => $assessment->id,
             ]),
+            'printAllUrl' => route('vendor-assessments.print-all', [
+                'assessment' => $assessment->id,
+            ]),
         ]);
     }
 
@@ -213,6 +216,19 @@ class VendorAssessmentController extends Controller
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="'
                 .$this->renderer->fileName($assessment, $form).'"',
+        ]);
+    }
+
+    /**
+     * View/print all sheets combined including recap as a single PDF.
+     */
+    public function printAll(Request $request, VendorAssessment $assessment): HttpResponse
+    {
+        $fileName = 'semua-penilaian-kinerja-'.$assessment->id.'-'.\Illuminate\Support\Str::slug($assessment->vendor_name).'.pdf';
+
+        return response($this->renderer->allPdf($assessment), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$fileName.'"',
         ]);
     }
 
