@@ -820,7 +820,7 @@ function RecapPanel({
         'PT PLN Nusantara Power UP Kendari',
     ].join('\n');
 
-    const akumulasiWhatsappUrl = `https://wa.me/?text=${encodeURIComponent(akumulasiMessage)}`;
+    const akumulasiWhatsappUrl = `https://wa.me/628114091582?text=${encodeURIComponent(akumulasiMessage)}`;
 
     return (
         <section className="rounded-md border border-border bg-card">
