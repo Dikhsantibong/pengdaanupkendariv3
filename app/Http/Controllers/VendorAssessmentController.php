@@ -124,6 +124,9 @@ class VendorAssessmentController extends Controller
             'panitiaUrl' => URL::signedRoute('vendor-assessments.download-panitia', [
                 'assessment' => $assessment->id,
             ]),
+            'akumulasiUrl' => URL::signedRoute('vendor-assessments.download-akumulasi', [
+                'assessment' => $assessment->id,
+            ]),
         ]);
     }
 
@@ -300,6 +303,19 @@ class VendorAssessmentController extends Controller
         $fileName = 'penilaian-kinerja-'.$assessment->id.'-'.Str::slug($assessment->vendor_name).'.pdf';
 
         return response($this->renderer->panitiaPdf($assessment), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$fileName.'"',
+        ]);
+    }
+
+    /**
+     * Download just the recap (akumulasi) PDF via signed URL.
+     */
+    public function downloadAkumulasi(VendorAssessment $assessment): HttpResponse
+    {
+        $fileName = 'akumulasi-penilaian-kinerja-'.$assessment->id.'-'.Str::slug($assessment->vendor_name).'.pdf';
+
+        return response($this->renderer->pdf($assessment), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="'.$fileName.'"',
         ]);

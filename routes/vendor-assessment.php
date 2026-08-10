@@ -31,6 +31,11 @@ Route::middleware('signed')
     ->get('penilaian-penyedia/{assessment}/unduh-panitia', [VendorAssessmentController::class, 'downloadPanitia'])
     ->name('vendor-assessments.download-panitia');
 
+// Public signed URL: pengadaan downloads the akumulasi PDF without logging in.
+Route::middleware('signed')
+    ->get('penilaian-penyedia/{assessment}/unduh-akumulasi', [VendorAssessmentController::class, 'downloadAkumulasi'])
+    ->name('vendor-assessments.download-akumulasi');
+
 // The assessor has no account: the token in the address is the whole of the
 // authorisation, so the route is throttled against guessing and exposes nothing
 // beyond the single sheet that token names.

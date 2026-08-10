@@ -130,6 +130,7 @@ export default function ShowVendorAssessment({
     forms,
     recap,
     panitiaUrl,
+    akumulasiUrl,
 }: {
     assessment: Assessment;
     forms: FormSheet[];
@@ -140,6 +141,7 @@ export default function ShowVendorAssessment({
         total: number;
     };
     panitiaUrl: string;
+    akumulasiUrl: string;
 }) {
     const printUrl = (formId?: number) =>
         vendorAssessments.print(
@@ -170,7 +172,7 @@ export default function ShowVendorAssessment({
         'PT PLN Nusantara Power UP Kendari',
     ].join('\n');
 
-    const panitiaWhatsappUrl = `https://wa.me/?text=${encodeURIComponent(panitiaMessage)}`;
+    const panitiaWhatsappUrl = `https://wa.me/6285242687765?text=${encodeURIComponent(panitiaMessage)}`;
 
     return (
         <>
@@ -276,7 +278,12 @@ export default function ShowVendorAssessment({
                     </TabsList>
 
                     <TabsContent value="rekap" className="mt-4">
-                        <RecapPanel recap={recap} printUrl={printUrl()} />
+                        <RecapPanel 
+                            assessment={assessment}
+                            recap={recap} 
+                            printUrl={printUrl()} 
+                            akumulasiUrl={akumulasiUrl}
+                        />
                     </TabsContent>
 
                     {forms.map((sheet) => (
@@ -771,9 +778,12 @@ function SheetPanel({
  * The master sheet: every aspect averaged across the assessors who scored it.
  */
 function RecapPanel({
+    assessment,
     recap,
     printUrl,
+    akumulasiUrl,
 }: {
+    assessment: Assessment;
     recap: {
         aspects: RecapAspect[];
         overall_average: number | null;
@@ -781,7 +791,32 @@ function RecapPanel({
         total: number;
     };
     printUrl: string;
+    akumulasiUrl: string;
 }) {
+    const bastpFormatted = assessment.bastp_date
+        ? formatDate(assessment.bastp_date)
+        : '-';
+
+    const akumulasiMessage = [
+        'Yth Bapak/Ibu.',
+        '',
+        'Berikut Formulir Penilaian Kinerja Penyedia Barang dan Jasa:',
+        `Pekerjaan: ${assessment.project}`,
+        `Penyedia: ${assessment.vendor_name}`,
+        `Tanggal BASTP: ${bastpFormatted}`,
+        'Denda: Tidak Ada',
+        'Lembar : Akumulasi',
+        '',
+        'Silahkan buka tautan berikut untuk mendownload hasil penilaian :',
+        akumulasiUrl,
+        '',
+        'Terima kasih.',
+        'Tim Pengadaan',
+        'PT PLN Nusantara Power UP Kendari',
+    ].join('\n');
+
+    const akumulasiWhatsappUrl = `https://wa.me/?text=${encodeURIComponent(akumulasiMessage)}`;
+
     return (
         <section className="rounded-md border border-border bg-card">
             <header className="flex flex-col gap-3 border-b border-border p-4 lg:flex-row lg:items-center lg:justify-between">
@@ -795,12 +830,20 @@ function RecapPanel({
                         dihitung.
                     </p>
                 </div>
-                <Button asChild variant="outline">
-                    <a href={printUrl}>
-                        <Printer className="size-4" />
-                        Cetak Akumulasi
-                    </a>
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button asChild variant="outline">
+                        <a href={printUrl} target="_blank">
+                            <Printer className="size-4" />
+                            Cetak Akumulasi
+                        </a>
+                    </Button>
+                    <Button asChild className="bg-green-600 hover:bg-green-700 text-white">
+                        <a href={akumulasiWhatsappUrl} target="_blank">
+                            <MessageCircle className="size-4" />
+                            Kirim ke Pengadaan
+                        </a>
+                    </Button>
+                </div>
             </header>
 
             <Table>
