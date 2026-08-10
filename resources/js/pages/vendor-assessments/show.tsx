@@ -155,7 +155,8 @@ export default function ShowVendorAssessment({
         : '-';
 
     const panitiaMessage = [
-        'Yth. PANITIA PENERIMA',
+        'Yth Bapak/Ibu.',
+        'PANITIA PENERIMA',
         '',
         'Berikut Formulir Penilaian Kinerja Penyedia Barang dan Jasa:',
         `Pekerjaan: ${assessment.project}`,
@@ -434,7 +435,8 @@ function SigningLinkPanel({
     let whatsappUrl = null;
     if (invitation !== null && invitation.recipient_phone !== null) {
         const lines = [
-            `Yth. ${invitation.recipient_name ?? 'Bapak/Ibu'},`,
+            'Yth Bapak/Ibu.',
+            invitation.recipient_name ? invitation.recipient_name : 'Tim Penilai',
             '',
             'Mohon kesediaannya mengisi Formulir Penilaian Kinerja Penyedia Barang dan Jasa:',
             `Pekerjaan: ${assessment.project}`,
@@ -799,6 +801,7 @@ function RecapPanel({
 
     const akumulasiMessage = [
         'Yth Bapak/Ibu.',
+        'TIM PENGADAAN',
         '',
         'Berikut Formulir Penilaian Kinerja Penyedia Barang dan Jasa:',
         `Pekerjaan: ${assessment.project}`,

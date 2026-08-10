@@ -767,7 +767,7 @@
     "isEntry": true
   },
   "resources/js/app.tsx": {
-    "file": "assets/app-IZu331Iv.js",
+    "file": "assets/app-CEu1vkiT.js",
     "name": "app",
     "src": "resources/js/app.tsx",
     "isEntry": true,
@@ -1640,7 +1640,7 @@
     ]
   },
   "resources/js/pages/vendor-assessments/show.tsx": {
-    "file": "assets/show-j-huaHlu.js",
+    "file": "assets/show-CTB6_Whl.js",
     "name": "show",
     "src": "resources/js/pages/vendor-assessments/show.tsx",
     "isDynamicEntry": true,
