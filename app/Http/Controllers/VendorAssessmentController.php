@@ -16,6 +16,7 @@ use App\Services\VendorAssessmentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -120,6 +121,9 @@ class VendorAssessmentController extends Controller
             'assessment' => $this->headerPayload($assessment),
             'forms' => $this->formsPayload($assessment),
             'recap' => $this->recapPayload($assessment),
+            'panitiaUrl' => URL::signedRoute('vendor-assessments.download-panitia', [
+                'assessment' => $assessment->id,
+            ]),
         ]);
     }
 
@@ -204,7 +208,7 @@ class VendorAssessmentController extends Controller
 
         return response($this->renderer->pdf($assessment, $form), 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="'
+            'Content-Disposition' => 'inline; filename="'
                 .$this->renderer->fileName($assessment, $form).'"',
         ]);
     }
@@ -266,7 +270,7 @@ class VendorAssessmentController extends Controller
         $zip->open($archive, ZipArchive::OVERWRITE | ZipArchive::CREATE);
 
         $zip->addFromString(
-            '00-rekapitulasi.pdf',
+            '00-akumulasi.pdf',
             $this->renderer->pdf($assessment),
         );
 
@@ -286,6 +290,19 @@ class VendorAssessmentController extends Controller
         return response()->download($archive, $name, [
             'Content-Type' => 'application/zip',
         ])->deleteFileAfterSend();
+    }
+
+    /**
+     * Download the merged PDF of all assessor sheets (without recap) via signed URL.
+     */
+    public function downloadPanitia(VendorAssessment $assessment): HttpResponse
+    {
+        $fileName = 'penilaian-kinerja-'.$assessment->id.'-'.Str::slug($assessment->vendor_name).'.pdf';
+
+        return response($this->renderer->panitiaPdf($assessment), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$fileName.'"',
+        ]);
     }
 
     /**

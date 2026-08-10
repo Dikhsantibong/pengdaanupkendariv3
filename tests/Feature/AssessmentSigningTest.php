@@ -299,7 +299,7 @@ class AssessmentSigningTest extends TestCase
         $zip->close();
         unlink((string) $archive);
 
-        $this->assertContains('00-rekapitulasi.pdf', $names);
+        $this->assertContains('00-akumulasi.pdf', $names);
         $this->assertContains('03-direksi-pekerjaan.pdf', $names);
         $this->assertCount(1 + AssessmentForm::query()->active()->count(), $names);
     }

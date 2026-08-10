@@ -27,7 +27,7 @@ class VendorAssessmentRenderer
         $assessment->loadMissing(['scores.form', 'scores.aspect', 'invitations']);
 
         $title = $form === null
-            ? 'REKAPITULASI HASIL PENILAIAN'
+            ? 'AKUMULASI HASIL PENILAIAN'
             : $form->name;
 
         $rows = $form === null
@@ -36,7 +36,9 @@ class VendorAssessmentRenderer
 
         $signature = $this->signature($assessment, $form);
 
-        return $this->shell($assessment, $title, $rows, $signature);
+        $body = $this->bodyContent($assessment, $title, $rows, $signature);
+
+        return $this->htmlShell($body);
     }
 
     /**
@@ -65,7 +67,7 @@ class VendorAssessmentRenderer
      */
     public function fileName(VendorAssessment $assessment, ?AssessmentForm $form = null): string
     {
-        $suffix = $form === null ? 'rekapitulasi' : $form->code;
+        $suffix = $form === null ? 'akumulasi' : $form->code;
 
         return 'penilaian-kinerja-'.$assessment->id.'-'.$suffix.'.pdf';
     }
@@ -218,9 +220,9 @@ class VendorAssessmentRenderer
     }
 
     /**
-     * The letterhead, header fields and table the sheet is printed in.
+     * Generate the inner HTML body content for a single sheet.
      */
-    protected function shell(
+    protected function bodyContent(
         VendorAssessment $assessment,
         string $title,
         string $rows,
@@ -237,6 +239,47 @@ class VendorAssessmentRenderer
         $formDate = $assessment->form_date?->translatedFormat('d F Y') ?? '';
         $sheet = e($title);
 
+        return <<<HTML
+            <table class="head">
+                <tr>
+                    <td class="logo">{$logo}</td>
+                    <td class="title">FORMULIR<br>PENILAIAN KINERJA<br>PENYEDIA BARANG DAN JASA</td>
+                    <td class="meta">
+                        <span>No. Formulir</span>: {$formNumber}<br>
+                        <span>No. Revisi</span>: {$revision}<br>
+                        <span>Tanggal</span>: {$formDate}<br>
+                        <span>Halaman</span>: 1 dari 1
+                    </td>
+                </tr>
+            </table>
+
+            <table class="fields">
+                <tr><td class="label">PROJECT / PEKERJAAN</td><td class="colon">:</td><td class="value">{$project}</td></tr>
+                <tr><td class="label">NO KONTRAK</td><td class="colon">:</td><td class="value">{$poNumber}</td></tr>
+                <tr><td class="label">TANGGAL KONTRAK</td><td class="colon">:</td><td class="value">{$poDate}</td></tr>
+                <tr><td class="label">TANGGAL BASTP</td><td class="colon">:</td><td class="value">{$bastpDate}</td></tr>
+                <tr><td class="label">PENYEDIA BARANG/JASA</td><td class="colon">:</td><td class="value">{$vendor}</td></tr>
+                <tr><td class="label">LEMBAR PENILAIAN</td><td class="colon">:</td><td class="value">{$sheet}</td></tr>
+            </table>
+
+            <table class="grid">
+                <tr>
+                    <th class="no">No.</th>
+                    <th>INDIKATOR PENILAIAN</th>
+                    <th class="level">LEVEL<br>(NILAI 1-5)</th>
+                </tr>
+                {$rows}
+            </table>
+
+            {$signature}
+        HTML;
+    }
+
+    /**
+     * The HTML document shell including styles.
+     */
+    protected function htmlShell(string $content): string
+    {
         return <<<HTML
         <!doctype html>
         <html lang="id">
@@ -275,44 +318,51 @@ class VendorAssessmentRenderer
             .sign .space img { height: 48pt; }
             .sign .name { font-weight: bold; text-decoration: underline; }
             .recap-note { margin-top: 8pt; font-size: 7.5pt; font-style: italic; }
+            
+            .page-break { page-break-after: always; }
+            .page-break:last-child { page-break-after: auto; }
         </style>
         </head>
         <body>
-            <table class="head">
-                <tr>
-                    <td class="logo">{$logo}</td>
-                    <td class="title">FORMULIR<br>PENILAIAN KINERJA<br>PENYEDIA BARANG DAN JASA</td>
-                    <td class="meta">
-                        <span>No. Formulir</span>: {$formNumber}<br>
-                        <span>No. Revisi</span>: {$revision}<br>
-                        <span>Tanggal</span>: {$formDate}<br>
-                        <span>Halaman</span>: 1 dari 1
-                    </td>
-                </tr>
-            </table>
-
-            <table class="fields">
-                <tr><td class="label">PROJECT / PEKERJAAN</td><td class="colon">:</td><td class="value">{$project}</td></tr>
-                <tr><td class="label">NO KONTRAK</td><td class="colon">:</td><td class="value">{$poNumber}</td></tr>
-                <tr><td class="label">TANGGAL KONTRAK</td><td class="colon">:</td><td class="value">{$poDate}</td></tr>
-                <tr><td class="label">TANGGAL BASTP</td><td class="colon">:</td><td class="value">{$bastpDate}</td></tr>
-                <tr><td class="label">PENYEDIA BARANG/JASA</td><td class="colon">:</td><td class="value">{$vendor}</td></tr>
-                <tr><td class="label">LEMBAR PENILAIAN</td><td class="colon">:</td><td class="value">{$sheet}</td></tr>
-            </table>
-
-            <table class="grid">
-                <tr>
-                    <th class="no">No.</th>
-                    <th>INDIKATOR PENILAIAN</th>
-                    <th class="level">LEVEL<br>(NILAI 1-5)</th>
-                </tr>
-                {$rows}
-            </table>
-
-            {$signature}
+            {$content}
         </body>
         </html>
         HTML;
+    }
+
+    /**
+     * Render the combined PDF of all forms for Panitia (without recap).
+     */
+    public function panitiaPdf(VendorAssessment $assessment): string
+    {
+        $assessment->loadMissing(['scores.form', 'scores.aspect', 'invitations']);
+        $forms = AssessmentForm::query()->active()->ordered()->get();
+
+        $bodies = [];
+
+        foreach ($forms as $form) {
+            $title = $form->name;
+            $rows = $this->formRows($assessment, $form);
+            $signature = $this->signature($assessment, $form);
+
+            $bodies[] = '<div class="page-break">'.$this->bodyContent($assessment, $title, $rows, $signature).'</div>';
+        }
+
+        $html = $this->htmlShell(implode("\n", $bodies));
+
+        $options = new Options;
+        $options->set('defaultFont', 'DejaVu Sans');
+        $options->set('isRemoteEnabled', false);
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isPhpEnabled', false);
+        $options->set('chroot', public_path());
+
+        $dompdf = new Dompdf($options);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->loadHtml($html, 'UTF-8');
+        $dompdf->render();
+
+        return (string) $dompdf->output();
     }
 
     /**

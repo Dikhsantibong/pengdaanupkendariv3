@@ -129,6 +129,7 @@ export default function ShowVendorAssessment({
     assessment,
     forms,
     recap,
+    panitiaUrl,
 }: {
     assessment: Assessment;
     forms: FormSheet[];
@@ -138,6 +139,7 @@ export default function ShowVendorAssessment({
         scored: number;
         total: number;
     };
+    panitiaUrl: string;
 }) {
     const printUrl = (formId?: number) =>
         vendorAssessments.print(
@@ -145,6 +147,30 @@ export default function ShowVendorAssessment({
                 ? { assessment: assessment.id }
                 : { assessment: assessment.id, form: formId },
         ).url;
+
+    const bastpFormatted = assessment.bastp_date
+        ? formatDate(assessment.bastp_date)
+        : '-';
+
+    const panitiaMessage = [
+        'Yth. PANITIA PENERIMA',
+        '',
+        'Berikut Formulir Penilaian Kinerja Penyedia Barang dan Jasa:',
+        `Pekerjaan: ${assessment.project}`,
+        `Penyedia: ${assessment.vendor_name}`,
+        `Tanggal BASTP: ${bastpFormatted}`,
+        'Denda: Tidak Ada',
+        'Lembar: Rekapitulasi',
+        '',
+        'Silahkan buka tautan berikut untuk mendownload hasil penilaian :',
+        panitiaUrl,
+        '',
+        'Terima kasih.',
+        'Tim Pengadaan',
+        'PT PLN Nusantara Power UP Kendari',
+    ].join('\n');
+
+    const panitiaWhatsappUrl = `https://wa.me/?text=${encodeURIComponent(panitiaMessage)}`;
 
     return (
         <>
@@ -168,9 +194,9 @@ export default function ShowVendorAssessment({
                             </Button>
                             <EditHeaderDialog assessment={assessment} />
                             <Button asChild variant="outline">
-                                <a href={printUrl()}>
+                                <a href={printUrl()} target="_blank">
                                     <Printer className="size-4" />
-                                    Unduh Rekapitulasi
+                                    Cetak Akumulasi
                                 </a>
                             </Button>
                             <Button asChild>
@@ -183,6 +209,15 @@ export default function ShowVendorAssessment({
                                 >
                                     <Download className="size-4" />
                                     Unduh Semua Dokumen
+                                </a>
+                            </Button>
+                            <Button asChild className="bg-green-600 hover:bg-green-700 text-white">
+                                <a
+                                    href={panitiaWhatsappUrl}
+                                    target="_blank"
+                                >
+                                    <MessageCircle className="size-4" />
+                                    Kirim ke Panitia
                                 </a>
                             </Button>
                             <Button
@@ -232,7 +267,7 @@ export default function ShowVendorAssessment({
 
                 <Tabs defaultValue="rekap">
                     <TabsList className="flex-wrap">
-                        <TabsTrigger value="rekap">Rekapitulasi</TabsTrigger>
+                        <TabsTrigger value="rekap">Akumulasi</TabsTrigger>
                         {forms.map((sheet) => (
                             <TabsTrigger key={sheet.id} value={sheet.code}>
                                 {sheet.name}
@@ -384,6 +419,11 @@ function SigningLinkPanel({
         return `Terkirim, belum dibuka · berlaku sampai ${formatDateTime(invitation.expires_at)}`;
     })();
 
+    const isDirty = invitation !== null && (
+        name !== (invitation.recipient_name ?? '') ||
+        phone !== (invitation.recipient_phone ?? '')
+    );
+
     let whatsappUrl = null;
     if (invitation !== null && invitation.recipient_phone !== null) {
         const lines = [
@@ -400,6 +440,7 @@ function SigningLinkPanel({
             invitation.url,
             '',
             'Terima kasih.',
+            `Tim ${sheet.name}`,
             'PT PLN Nusantara Power UP Kendari',
         ];
         const rawPhone = invitation.recipient_phone.replace(/\D+/g, '');
@@ -444,7 +485,7 @@ function SigningLinkPanel({
                     />
                 </div>
 
-                <Button variant="outline" onClick={issue}>
+                <Button variant={isDirty ? "default" : "outline"} onClick={issue}>
                     <Link2 className="size-4" />
                     {invitation === null ? 'Buat Tautan' : 'Buat Tautan Baru'}
                 </Button>
@@ -474,16 +515,22 @@ function SigningLinkPanel({
                                         </SelectContent>
                                     </Select>
                                 </div>
-                                <Button asChild>
-                                    <a
-                                        href={whatsappUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >
-                                        <MessageCircle className="size-4" />
-                                        Kirim via WhatsApp
-                                    </a>
-                                </Button>
+                                {isDirty ? (
+                                    <span className="text-xs text-amber-600 font-medium ml-2">
+                                        Data penerima berubah, silakan klik Buat Tautan Baru
+                                    </span>
+                                ) : (
+                                    <Button asChild>
+                                        <a
+                                            href={whatsappUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            <MessageCircle className="size-4" />
+                                            Kirim via WhatsApp
+                                        </a>
+                                    </Button>
+                                )}
                             </>
                         )}
 
@@ -627,7 +674,7 @@ function SheetPanel({
                         )}
                     </div>
                     <Button asChild variant="outline">
-                        <a href={printUrl}>
+                        <a href={printUrl} target="_blank">
                             <Printer className="size-4" />
                             Cetak Lembar
                         </a>
@@ -740,7 +787,7 @@ function RecapPanel({
             <header className="flex flex-col gap-3 border-b border-border p-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="space-y-1">
                     <h2 className="text-sm font-semibold">
-                        Rekapitulasi Hasil Penilaian
+                        Akumulasi Hasil Penilaian
                     </h2>
                     <p className="text-xs text-muted-foreground">
                         Nilai tiap aspek adalah rata-rata dari seluruh penilai
@@ -751,7 +798,7 @@ function RecapPanel({
                 <Button asChild variant="outline">
                     <a href={printUrl}>
                         <Printer className="size-4" />
-                        Cetak Rekapitulasi
+                        Cetak Akumulasi
                     </a>
                 </Button>
             </header>

@@ -26,6 +26,11 @@ Route::middleware(['auth', 'verified', 'can:manage-vendor-assessments'])
             ->name('links.destroy');
     });
 
+// Public signed URL: panitia downloads the merged PDF without logging in.
+Route::middleware('signed')
+    ->get('penilaian-penyedia/{assessment}/unduh-panitia', [VendorAssessmentController::class, 'downloadPanitia'])
+    ->name('vendor-assessments.download-panitia');
+
 // The assessor has no account: the token in the address is the whole of the
 // authorisation, so the route is throttled against guessing and exposes nothing
 // beyond the single sheet that token names.
