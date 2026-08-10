@@ -26,13 +26,6 @@ class SubmitSignedAssessmentRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                function (string $attribute, mixed $value, Closure $fail): void {
-                    $options = $this->invitation()?->form->assessor_options;
-
-                    if ($options !== null && $options !== [] && ! in_array($value, $options, true)) {
-                        $fail('Nama penilai harus dipilih dari daftar yang tersedia.');
-                    }
-                },
             ],
             'scores' => ['required', 'array', 'min:1', 'max:50'],
             'scores.*.aspect_id' => ['required', 'integer'],
