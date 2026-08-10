@@ -105,7 +105,7 @@ export default function VendorAssessmentIndex({
                                 <TableRow className="hover:bg-transparent">
                                     <TableHead>Pekerjaan</TableHead>
                                     <TableHead>Penyedia</TableHead>
-                                    <TableHead>No PO</TableHead>
+                                    <TableHead>No Kontrak</TableHead>
                                     <TableHead>Kelengkapan</TableHead>
                                     <TableHead>Nilai Akhir</TableHead>
                                     <TableHead className="text-right">

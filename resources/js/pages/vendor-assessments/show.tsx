@@ -200,7 +200,7 @@ export default function ShowVendorAssessment({
                     <Field label="Pekerjaan" value={assessment.project} />
                     <Field label="Penyedia" value={assessment.vendor_name} />
                     <Field
-                        label="No PO"
+                        label="No Kontrak"
                         value={
                             assessment.po_number === null
                                 ? '—'

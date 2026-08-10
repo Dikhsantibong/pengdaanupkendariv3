@@ -173,7 +173,7 @@ export default function CreateVendorAssessment({
 
                         <div className="grid gap-4 md:grid-cols-2">
                             <div className="grid gap-2">
-                                <Label htmlFor="po_number">Nomor PO</Label>
+                                <Label htmlFor="po_number">No Kontrak</Label>
                                 <Input
                                     id="po_number"
                                     value={form.data.po_number}
@@ -189,7 +189,7 @@ export default function CreateVendorAssessment({
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="po_date">Tanggal PO</Label>
+                                <Label htmlFor="po_date">Tanggal Kontrak</Label>
                                 <Input
                                     id="po_date"
                                     type="date"

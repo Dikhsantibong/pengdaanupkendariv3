@@ -39,8 +39,8 @@ class StoreVendorAssessmentRequest extends FormRequest
         return [
             'procurement_id' => 'pengadaan',
             'project' => 'project/pekerjaan',
-            'po_number' => 'nomor PO',
-            'po_date' => 'tanggal PO',
+            'po_number' => 'no kontrak',
+            'po_date' => 'tanggal kontrak',
             'vendor_name' => 'penyedia barang/jasa',
             'form_number' => 'nomor formulir',
             'revision_number' => 'nomor revisi',

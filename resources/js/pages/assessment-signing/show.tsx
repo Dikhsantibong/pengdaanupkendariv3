@@ -104,7 +104,7 @@ export default function SignAssessment({
                             value={assessment.vendor_name}
                         />
                         <Field
-                            label="No PO"
+                            label="No Kontrak"
                             value={
                                 assessment.po_number === null
                                     ? '—'

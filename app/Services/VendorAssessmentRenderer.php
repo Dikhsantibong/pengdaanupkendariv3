@@ -290,8 +290,8 @@ class VendorAssessmentRenderer
 
             <table class="fields">
                 <tr><td class="label">PROJECT / PEKERJAAN</td><td class="colon">:</td><td class="value">{$project}</td></tr>
-                <tr><td class="label">NO PO</td><td class="colon">:</td><td class="value">{$poNumber}</td></tr>
-                <tr><td class="label">TANGGAL PO</td><td class="colon">:</td><td class="value">{$poDate}</td></tr>
+                <tr><td class="label">NO KONTRAK</td><td class="colon">:</td><td class="value">{$poNumber}</td></tr>
+                <tr><td class="label">TANGGAL KONTRAK</td><td class="colon">:</td><td class="value">{$poDate}</td></tr>
                 <tr><td class="label">PENYEDIA BARANG/JASA</td><td class="colon">:</td><td class="value">{$vendor}</td></tr>
                 <tr><td class="label">LEMBAR PENILAIAN</td><td class="colon">:</td><td class="value">{$sheet}</td></tr>
             </table>
