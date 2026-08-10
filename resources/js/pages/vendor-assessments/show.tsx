@@ -5,6 +5,7 @@ import {
     Check,
     Copy,
     Download,
+    Edit,
     Link2,
     MessageCircle,
     Printer,
@@ -12,8 +13,16 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
+import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -89,6 +98,7 @@ type RecapAspect = {
 
 type Assessment = {
     id: number;
+    procurement_id: number | null;
     procurement_number: string | null;
     project: string;
     po_number: string | null;
@@ -156,6 +166,7 @@ export default function ShowVendorAssessment({
                                 <ArrowLeft className="size-4" />
                                 Kembali
                             </Button>
+                            <EditHeaderDialog assessment={assessment} />
                             <Button asChild variant="outline">
                                 <a href={printUrl()}>
                                     <Printer className="size-4" />
@@ -732,3 +743,87 @@ ShowVendorAssessment.layout = {
         { title: 'Penilaian Penyedia', href: vendorAssessments.index() },
     ],
 };
+
+function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
+    const [open, setOpen] = useState(false);
+    const form = useForm({
+        procurement_id: assessment.procurement_id,
+        project: assessment.project,
+        po_number: assessment.po_number ?? '',
+        po_date: assessment.po_date ?? '',
+        bastp_date: assessment.bastp_date ?? '',
+        vendor_name: assessment.vendor_name,
+        form_number: assessment.form_number,
+        revision_number: assessment.revision_number,
+        form_date: assessment.form_date ?? '',
+        place: assessment.place,
+        notes: assessment.notes ?? '',
+    });
+
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        form.put(vendorAssessments.update(assessment.id).url, {
+            preserveScroll: true,
+            onSuccess: () => setOpen(false),
+        });
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                <Button variant="outline">
+                    <Edit className="mr-2 size-4" />
+                    Edit Data
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>Edit Data Penilaian</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={submit} className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="project">Pekerjaan</Label>
+                        <Input
+                            id="project"
+                            value={form.data.project}
+                            onChange={(e) => form.setData('project', e.target.value)}
+                        />
+                        <InputError message={form.errors.project} />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="vendor_name">Penyedia</Label>
+                        <Input
+                            id="vendor_name"
+                            value={form.data.vendor_name}
+                            onChange={(e) => form.setData('vendor_name', e.target.value)}
+                        />
+                        <InputError message={form.errors.vendor_name} />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="po_number">No Kontrak</Label>
+                        <Input
+                            id="po_number"
+                            value={form.data.po_number}
+                            onChange={(e) => form.setData('po_number', e.target.value)}
+                        />
+                        <InputError message={form.errors.po_number} />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="bastp_date">Tgl BASTP</Label>
+                        <Input
+                            id="bastp_date"
+                            type="date"
+                            value={form.data.bastp_date}
+                            onChange={(e) => form.setData('bastp_date', e.target.value)}
+                            className="tabular"
+                        />
+                        <InputError message={form.errors.bastp_date} />
+                    </div>
+                    <div className="flex justify-end pt-4">
+                        <Button type="submit" disabled={form.processing}>Simpan</Button>
+                    </div>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}
