@@ -266,7 +266,7 @@ export default function ShowVendorAssessment({
                 </dl>
 
                 <Tabs defaultValue="rekap">
-                    <TabsList className="flex-wrap">
+                    <TabsList className="flex-wrap h-auto">
                         <TabsTrigger value="rekap">Akumulasi</TabsTrigger>
                         {forms.map((sheet) => (
                             <TabsTrigger key={sheet.id} value={sheet.code}>
