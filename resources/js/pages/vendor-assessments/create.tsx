@@ -48,7 +48,7 @@ export default function CreateVendorAssessment({
         vendor_name: defaults.vendor_name,
         form_number: defaults.form_number,
         revision_number: defaults.revision_number,
-        form_date: defaults.form_date ?? '',
+        form_date: '2026-06-10',
         place: defaults.place,
         notes: '',
     });

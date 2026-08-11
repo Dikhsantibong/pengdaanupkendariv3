@@ -216,15 +216,26 @@ export default function ShowVendorAssessment({
                                     Unduh Semua Dokumen
                                 </a>
                             </Button>
-                            <Button asChild className="bg-green-600 hover:bg-green-700 text-white">
-                                <a
-                                    href={panitiaWhatsappUrl}
-                                    target="_blank"
+                            {forms.every(sheet => sheet.aspects.every(a => a.level !== null)) ? (
+                                <Button asChild className="bg-green-600 hover:bg-green-700 text-white">
+                                    <a
+                                        href={panitiaWhatsappUrl}
+                                        target="_blank"
+                                    >
+                                        <MessageCircle className="size-4" />
+                                        Kirim ke Panitia
+                                    </a>
+                                </Button>
+                            ) : (
+                                <Button
+                                    disabled
+                                    className="bg-green-600/50 text-white cursor-not-allowed"
+                                    title="Semua lembar penilaian harus terisi sebelum mengirim ke panitia"
                                 >
                                     <MessageCircle className="size-4" />
                                     Kirim ke Panitia
-                                </a>
-                            </Button>
+                                </Button>
+                            )}
                             <Button
                                 variant="destructive"
                                 onClick={() => {
@@ -803,7 +814,6 @@ function RecapPanel({
 
     const akumulasiMessage = [
         'Yth Bapak/Ibu.',
-        'TIM PENGADAAN',
         '',
         'Berikut Formulir Penilaian Kinerja Penyedia Barang dan Jasa:',
         `Pekerjaan: ${assessment.project}`,
