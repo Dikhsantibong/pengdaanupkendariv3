@@ -163,6 +163,7 @@ export default function ShowVendorAssessment({
         'Berikut Formulir Penilaian Kinerja Penyedia Barang dan Jasa:',
         `Pekerjaan: ${assessment.project}`,
         `Penyedia: ${assessment.vendor_name}`,
+        `Tanggal Kontrak: ${assessment.po_date ? formatDate(assessment.po_date) : '-'}`,
         `Tanggal BASTP: ${bastpFormatted}`,
         'Denda: Tidak Ada',
         'Lembar: Rekapitulasi',
@@ -279,6 +280,18 @@ export default function ShowVendorAssessment({
                         label="Nilai Akhir"
                         value={`${level(recap.overall_average)} (${recap.scored}/${recap.total} aspek dinilai)`}
                     />
+                    <Field
+                        label="Tgl BASTP"
+                        value={assessment.bastp_date ? formatDate(assessment.bastp_date) : '—'}
+                    />
+                    <Field label="No Formulir" value={assessment.form_number} />
+                    <Field label="No Revisi" value={assessment.revision_number} />
+                    <Field
+                        label="Tgl Formulir"
+                        value={assessment.form_date ? formatDate(assessment.form_date) : '—'}
+                    />
+                    <Field label="Tempat" value={assessment.place} />
+                    <Field label="Catatan" value={assessment.notes || '—'} />
                 </dl>
 
                 <Tabs defaultValue="rekap">
@@ -454,6 +467,7 @@ function SigningLinkPanel({
             'Mohon kesediaannya mengisi Formulir Penilaian Kinerja Penyedia Barang dan Jasa:',
             `Pekerjaan: ${assessment.project}`,
             `Penyedia: ${assessment.vendor_name}`,
+            `Tanggal Kontrak: ${assessment.po_date ? formatDate(assessment.po_date) : '-'}`,
             `Tanggal BASTP: ${assessment.bastp_date ? formatDate(assessment.bastp_date) : '-'}`,
             `Denda: ${hasPenalty ? 'Ada' : 'Tidak Ada'}`,
             `Lembar: ${sheet.name}`,
@@ -818,6 +832,7 @@ function RecapPanel({
         'Berikut Formulir Penilaian Kinerja Penyedia Barang dan Jasa:',
         `Pekerjaan: ${assessment.project}`,
         `Penyedia: ${assessment.vendor_name}`,
+        `Tanggal Kontrak: ${assessment.po_date ? formatDate(assessment.po_date) : '-'}`,
         `Tanggal BASTP: ${bastpFormatted}`,
         'Denda: Tidak Ada',
         'Lembar : Akumulasi',
@@ -998,6 +1013,70 @@ function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
                             className="tabular"
                         />
                         <InputError message={form.errors.bastp_date} />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="po_date">Tanggal Kontrak</Label>
+                        <Input
+                            id="po_date"
+                            type="date"
+                            value={form.data.po_date}
+                            onChange={(e) => form.setData('po_date', e.target.value)}
+                            className="tabular"
+                        />
+                        <InputError message={form.errors.po_date} />
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-2">
+                            <Label htmlFor="form_number">Nomor Formulir</Label>
+                            <Input
+                                id="form_number"
+                                value={form.data.form_number}
+                                onChange={(e) => form.setData('form_number', e.target.value)}
+                                className="tabular"
+                            />
+                            <InputError message={form.errors.form_number} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="revision_number">Nomor Revisi</Label>
+                            <Input
+                                id="revision_number"
+                                value={form.data.revision_number}
+                                onChange={(e) => form.setData('revision_number', e.target.value)}
+                                className="tabular"
+                            />
+                            <InputError message={form.errors.revision_number} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="form_date">Tanggal Formulir</Label>
+                            <Input
+                                id="form_date"
+                                type="date"
+                                value={form.data.form_date}
+                                onChange={(e) => form.setData('form_date', e.target.value)}
+                                className="tabular"
+                            />
+                            <InputError message={form.errors.form_date} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="place">Tempat Penandatanganan</Label>
+                            <Input
+                                id="place"
+                                value={form.data.place}
+                                onChange={(e) => form.setData('place', e.target.value)}
+                            />
+                            <InputError message={form.errors.place} />
+                        </div>
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="notes">Catatan</Label>
+                        <textarea
+                            id="notes"
+                            rows={3}
+                            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            value={form.data.notes}
+                            onChange={(e) => form.setData('notes', e.target.value)}
+                        />
+                        <InputError message={form.errors.notes} />
                     </div>
                     <div className="flex justify-end pt-4">
                         <Button type="submit" disabled={form.processing}>Simpan</Button>
