@@ -62,7 +62,7 @@ export default function SignAssessment({
     aspects: Aspect[];
 }) {
     const { data, setData, post, processing, errors } = useForm<SigningForm>({
-        assessor_name: assessorName ?? '',
+        assessor_name: assessorName ? assessorName.replace(/\s*\(.*\)/, '') : '',
         scores: aspects.map((aspect) => ({
             aspect_id: aspect.aspect_id,
             level: aspect.level,

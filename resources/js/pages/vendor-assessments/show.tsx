@@ -453,9 +453,17 @@ function SigningLinkPanel({
         return `Terkirim, belum dibuka · berlaku sampai ${formatDateTime(invitation.expires_at)}`;
     })();
 
+    const normalizePhone = (p: string) => {
+        if (!p) return '';
+        const digits = p.replace(/\D+/g, '');
+        if (digits.startsWith('0')) return '62' + digits.slice(1);
+        if (!digits.startsWith('62')) return '62' + digits;
+        return digits;
+    };
+
     const isDirty = invitation !== null && (
-        name !== (invitation.recipient_name ?? '') ||
-        phone !== (invitation.recipient_phone ?? '')
+        name.trim() !== (invitation.recipient_name ?? '') ||
+        normalizePhone(phone) !== (invitation.recipient_phone ?? '')
     );
 
     let whatsappUrl = null;

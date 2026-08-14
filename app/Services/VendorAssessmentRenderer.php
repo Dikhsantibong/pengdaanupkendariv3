@@ -172,6 +172,8 @@ class VendorAssessmentRenderer
             $name = e($invitation === null
                 ? (string) $form->assessor_name
                 : (string) ($invitation->assessor_name ?? $form->assessor_name));
+
+            $name = preg_replace('/\s*\([^)]*\)/', '', $name);
         }
 
         // A signature drawn through the WhatsApp link fills the blank space
@@ -307,7 +309,7 @@ class VendorAssessmentRenderer
             .grid th, .grid td { border: 1px solid #1f3864; padding: 4pt 5pt; vertical-align: top; }
             .grid th { text-align: center; font-size: 8.5pt; line-height: 1.3; }
             .grid .no { width: 26pt; text-align: center; font-weight: bold; font-style: italic; }
-            .grid .level { width: 92pt; text-align: center; vertical-align: bottom; font-weight: bold; }
+            .grid .level { width: 92pt; text-align: center; vertical-align: middle; font-weight: bold; }
             .aspect { display: block; font-weight: bold; font-style: italic; }
             .pre { margin-top: 1pt; text-align: justify; }
             .ind { margin-left: 8pt; }
