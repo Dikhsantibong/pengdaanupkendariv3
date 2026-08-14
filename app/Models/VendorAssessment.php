@@ -22,6 +22,7 @@ use Illuminate\Support\Collection;
  * @property CarbonImmutable|null $po_date
  * @property CarbonImmutable|null $bastp_date
  * @property string $vendor_name
+ * @property bool $has_penalty
  * @property string $form_number
  * @property string $revision_number
  * @property CarbonImmutable|null $form_date
@@ -39,6 +40,7 @@ use Illuminate\Support\Collection;
     'po_date',
     'bastp_date',
     'vendor_name',
+    'has_penalty',
     'form_number',
     'revision_number',
     'form_date',
@@ -142,6 +144,7 @@ class VendorAssessment extends Model
     protected function casts(): array
     {
         return [
+            'has_penalty' => 'boolean',
             'po_date' => 'date',
             'bastp_date' => 'date',
             'form_date' => 'date',

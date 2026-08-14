@@ -105,6 +105,7 @@ type Assessment = {
     po_date: string | null;
     bastp_date: string | null;
     vendor_name: string;
+    has_penalty: boolean;
     form_number: string;
     revision_number: string;
     form_date: string | null;
@@ -165,7 +166,7 @@ export default function ShowVendorAssessment({
         `Penyedia: ${assessment.vendor_name}`,
         `Tanggal Kontrak: ${assessment.po_date ? formatDate(assessment.po_date) : '-'}`,
         `Tanggal BASTP: ${bastpFormatted}`,
-        'Denda: Tidak Ada',
+        `Denda: ${assessment.has_penalty ? 'Ada' : 'Tidak Ada'}`,
         'Lembar: Rekapitulasi',
         '',
         'Silahkan buka tautan berikut untuk mendownload hasil penilaian :',
@@ -372,7 +373,6 @@ function SigningLinkPanel({
     const [name, setName] = useState(invitation?.recipient_name ?? defaultPreset?.name ?? '');
     const [phone, setPhone] = useState(invitation?.recipient_phone ?? defaultPreset?.phone ?? '');
     const [copied, setCopied] = useState(false);
-    const [hasPenalty, setHasPenalty] = useState(false);
 
     const isFirstRender = useRef(true);
     useEffect(() => {
@@ -477,7 +477,7 @@ function SigningLinkPanel({
             `Penyedia: ${assessment.vendor_name}`,
             `Tanggal Kontrak: ${assessment.po_date ? formatDate(assessment.po_date) : '-'}`,
             `Tanggal BASTP: ${assessment.bastp_date ? formatDate(assessment.bastp_date) : '-'}`,
-            `Denda: ${hasPenalty ? 'Ada' : 'Tidak Ada'}`,
+            `Denda: ${assessment.has_penalty ? 'Ada' : 'Tidak Ada'}`,
             `Lembar: ${sheet.name}`,
             '',
             'Silakan buka tautan berikut untuk mengisi nilai dan tanda tangan:',
@@ -546,19 +546,7 @@ function SigningLinkPanel({
                         </Button>
 
                         {whatsappUrl !== null && (
-                            <>
-                                <div className="grid gap-1.5 ml-2">
-                                    <Label className="text-xs">Denda</Label>
-                                    <Select value={hasPenalty ? 'ada' : 'tidak'} onValueChange={v => setHasPenalty(v === 'ada')}>
-                                        <SelectTrigger className="h-9 w-24 bg-background">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="ada">Ada</SelectItem>
-                                            <SelectItem value="tidak">Tidak Ada</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                <>
                                 {isDirty ? (
                                     <span className="text-xs text-amber-600 font-medium ml-2">
                                         Data penerima berubah, silakan klik Buat Tautan Baru
@@ -842,7 +830,7 @@ function RecapPanel({
         `Penyedia: ${assessment.vendor_name}`,
         `Tanggal Kontrak: ${assessment.po_date ? formatDate(assessment.po_date) : '-'}`,
         `Tanggal BASTP: ${bastpFormatted}`,
-        'Denda: Tidak Ada',
+        `Denda: ${assessment.has_penalty ? 'Ada' : 'Tidak Ada'}`,
         'Lembar : Akumulasi',
         '',
         'Silahkan buka tautan berikut untuk mendownload hasil penilaian :',
@@ -956,6 +944,7 @@ function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
         po_date: assessment.po_date ?? '',
         bastp_date: assessment.bastp_date ?? '',
         vendor_name: assessment.vendor_name,
+        has_penalty: assessment.has_penalty,
         form_number: assessment.form_number,
         revision_number: assessment.revision_number,
         form_date: assessment.form_date ?? '',
@@ -1001,6 +990,22 @@ function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
                             onChange={(e) => form.setData('vendor_name', e.target.value)}
                         />
                         <InputError message={form.errors.vendor_name} />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="has_penalty_edit">Denda</Label>
+                        <Select
+                            value={form.data.has_penalty ? 'ada' : 'tidak'}
+                            onValueChange={(v) => form.setData('has_penalty', v === 'ada')}
+                        >
+                            <SelectTrigger id="has_penalty_edit">
+                                <SelectValue placeholder="Pilih denda" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ada">Ada Denda</SelectItem>
+                                <SelectItem value="tidak">Tidak Ada Denda</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <InputError message={form.errors.has_penalty} />
                     </div>
                     <div className="grid gap-2">
                         <Label htmlFor="po_number">No Kontrak</Label>

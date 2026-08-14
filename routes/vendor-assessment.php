@@ -9,6 +9,7 @@ Route::middleware(['auth', 'verified', 'can:manage-vendor-assessments'])
     ->name('vendor-assessments.')
     ->group(function () {
         Route::get('/', [VendorAssessmentController::class, 'index'])->name('index');
+        Route::get('ekspor', [VendorAssessmentController::class, 'export'])->name('export');
         Route::get('buat', [VendorAssessmentController::class, 'create'])->name('create');
         Route::post('/', [VendorAssessmentController::class, 'store'])->name('store');
         Route::get('{assessment}', [VendorAssessmentController::class, 'show'])->name('show');

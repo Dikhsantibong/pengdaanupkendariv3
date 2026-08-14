@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ClipboardCheck, Plus, Search } from 'lucide-react';
+import { ClipboardCheck, Plus, Search, FileSpreadsheet } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
@@ -80,14 +80,22 @@ export default function VendorAssessmentIndex({
                     }
                 />
 
-                <div className="relative max-w-sm">
-                    <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                        value={search}
-                        onChange={(event) => setSearch(event.target.value)}
-                        placeholder="Cari pekerjaan, penyedia atau nomor PO"
-                        className="pl-9"
-                    />
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="relative max-w-sm w-full">
+                        <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            value={search}
+                            onChange={(event) => setSearch(event.target.value)}
+                            placeholder="Cari pekerjaan, penyedia atau nomor PO"
+                            className="pl-9"
+                        />
+                    </div>
+                    <Button asChild variant="outline" className="w-full sm:w-auto border-green-600 text-green-600 hover:bg-green-600 hover:text-white dark:border-green-500 dark:text-green-500 dark:hover:bg-green-600 dark:hover:text-white">
+                        <a href={vendorAssessments.export().url} target="_blank">
+                            <FileSpreadsheet className="mr-2 size-4" />
+                            Ekspor Excel
+                        </a>
+                    </Button>
                 </div>
 
                 {assessments.data.length === 0 ? (

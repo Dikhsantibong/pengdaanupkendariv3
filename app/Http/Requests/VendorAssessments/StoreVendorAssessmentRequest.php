@@ -22,6 +22,7 @@ class StoreVendorAssessmentRequest extends FormRequest
             'po_date' => ['nullable', 'date'],
             'bastp_date' => ['nullable', 'date'],
             'vendor_name' => ['required', 'string', 'max:255'],
+            'has_penalty' => ['required', 'boolean'],
             'form_number' => ['required', 'string', 'max:100'],
             'revision_number' => ['required', 'string', 'max:20'],
             'form_date' => ['nullable', 'date'],

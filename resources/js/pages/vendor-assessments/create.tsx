@@ -35,9 +35,11 @@ type Defaults = {
 export default function CreateVendorAssessment({
     defaults,
     procurements,
+    vendors,
 }: {
     defaults: Defaults;
     procurements: Option[];
+    vendors: string[];
 }) {
     const form = useForm({
         procurement_id: defaults.procurement_id,
@@ -46,6 +48,7 @@ export default function CreateVendorAssessment({
         po_date: defaults.po_date ?? '',
         bastp_date: defaults.bastp_date ?? '',
         vendor_name: defaults.vendor_name,
+        has_penalty: false,
         form_number: defaults.form_number,
         revision_number: defaults.revision_number,
         form_date: '2024-06-10',
@@ -169,8 +172,31 @@ export default function CreateVendorAssessment({
                                 placeholder="Contoh: PT. Surveyor Indonesia"
                                 required
                                 autoComplete="off"
+                                list="vendors-list"
                             />
+                            <datalist id="vendors-list">
+                                {vendors.map((vendor) => (
+                                    <option key={vendor} value={vendor} />
+                                ))}
+                            </datalist>
                             <InputError message={form.errors.vendor_name} />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="has_penalty">Denda</Label>
+                            <Select
+                                value={form.data.has_penalty ? 'ada' : 'tidak'}
+                                onValueChange={(v) => form.setData('has_penalty', v === 'ada')}
+                            >
+                                <SelectTrigger id="has_penalty" className="w-full">
+                                    <SelectValue placeholder="Pilih denda" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="ada">Ada Denda</SelectItem>
+                                    <SelectItem value="tidak">Tidak Ada Denda</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <InputError message={form.errors.has_penalty} />
                         </div>
 
                         <div className="grid gap-4 md:grid-cols-2">

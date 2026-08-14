@@ -3,7 +3,6 @@
 namespace App\Http\Requests\VendorAssessments;
 
 use App\Models\VendorAssessmentInvitation;
-use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 

@@ -20,6 +20,12 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Common\Entity\Style\CellAlignment;
+use OpenSpout\Common\Entity\Style\CellVerticalAlignment;
+use OpenSpout\Common\Entity\Style\Style;
+use OpenSpout\Writer\XLSX\Options;
+use OpenSpout\Writer\XLSX\Writer;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use ZipArchive;
 
@@ -71,6 +77,88 @@ class VendorAssessmentController extends Controller
     }
 
     /**
+     * Export all vendor assessments to Excel.
+     */
+    public function export(): BinaryFileResponse
+    {
+        $fileName = 'rekap-penilaian-kinerja-penyedia-'.date('Ymd_His').'.xlsx';
+        $filePath = sys_get_temp_dir().'/'.$fileName;
+
+        $options = new Options;
+        $options->setColumnWidth(5.0, 1);
+        $options->setColumnWidth(35.0, 2);
+        $options->setColumnWidth(30.0, 3);
+        $options->setColumnWidth(20.0, 4);
+        $options->setColumnWidth(15.0, 5, 6, 7, 8, 9);
+        $options->mergeCells(0, 1, 8, 1); // Merge A1 to I1
+
+        $writer = new Writer($options);
+        $writer->openToFile($filePath);
+
+        $titleStyle = new Style(
+            fontBold: true,
+            fontSize: 14,
+            cellAlignment: CellAlignment::CENTER
+        );
+        $titleRow = Row::fromValuesWithStyle([
+            'REKAPITULASI PENILAIAN KINERJA PENYEDIA BARANG / JASA', null, null, null, null, null, null, null, null,
+        ], $titleStyle);
+        $writer->addRow($titleRow);
+
+        // Blank row
+        $writer->addRow(Row::fromValues([null]));
+
+        $boldStyle = new Style(
+            fontBold: true,
+            backgroundColor: 'D9D9D9',
+            cellVerticalAlignment: CellVerticalAlignment::CENTER
+        );
+
+        $headerRow = Row::fromValuesWithStyle([
+            'No',
+            'Pekerjaan',
+            'Penyedia',
+            'No Kontrak',
+            'Tgl Kontrak',
+            'Tgl BASTP',
+            'Rata-rata Nilai',
+            'Progress Pengisian',
+            'Denda',
+        ], $boldStyle);
+        $writer->addRow($headerRow);
+
+        $assessments = VendorAssessment::with(['scores'])->latest('created_at')->get();
+
+        $wrapStyle = new Style(
+            shouldWrapText: true,
+            cellVerticalAlignment: CellVerticalAlignment::TOP
+        );
+
+        $no = 1;
+        foreach ($assessments as $assessment) {
+            $average = $assessment->overallAverage();
+            $scored = $assessment->scores->whereNotNull('level')->count();
+            $total = $assessment->scores->count();
+
+            $writer->addRow(Row::fromValuesWithStyle([
+                $no++,
+                $assessment->project,
+                $assessment->vendor_name,
+                $assessment->po_number ?? '-',
+                $assessment->po_date ? $assessment->po_date->format('d/m/Y') : '-',
+                $assessment->bastp_date ? $assessment->bastp_date->format('d/m/Y') : '-',
+                $average !== null ? number_format($average, 2, ',', '.') : '-',
+                "$scored / $total",
+                $assessment->has_penalty ? 'Ada' : 'Tidak Ada',
+            ], $wrapStyle));
+        }
+
+        $writer->close();
+
+        return response()->download($filePath)->deleteFileAfterSend(true);
+    }
+
+    /**
      * Show the form for opening a new assessment.
      */
     public function create(Request $request): Response
@@ -89,6 +177,14 @@ class VendorAssessmentController extends Controller
                     'value' => $row->id,
                     'label' => "{$row->number} — {$row->name}",
                 ])->all(),
+            'vendors' => cache()->remember('unique_vendor_names', 3600, function () {
+                return VendorAssessment::query()
+                    ->select('vendor_name')
+                    ->distinct()
+                    ->orderBy('vendor_name')
+                    ->pluck('vendor_name')
+                    ->all();
+            }),
         ]);
     }
 
@@ -224,7 +320,7 @@ class VendorAssessmentController extends Controller
      */
     public function printAll(Request $request, VendorAssessment $assessment): HttpResponse
     {
-        $fileName = 'semua-penilaian-kinerja-'.$assessment->id.'-'.\Illuminate\Support\Str::slug($assessment->vendor_name).'.pdf';
+        $fileName = 'semua-penilaian-kinerja-'.$assessment->id.'-'.Str::slug($assessment->vendor_name).'.pdf';
 
         return response($this->renderer->allPdf($assessment), 200, [
             'Content-Type' => 'application/pdf',
@@ -365,6 +461,7 @@ class VendorAssessmentController extends Controller
             'po_date' => $assessment->po_date?->toDateString(),
             'bastp_date' => $assessment->bastp_date?->toDateString(),
             'vendor_name' => $assessment->vendor_name,
+            'has_penalty' => $assessment->has_penalty,
             'form_number' => $assessment->form_number,
             'revision_number' => $assessment->revision_number,
             'form_date' => $assessment->form_date?->toDateString(),

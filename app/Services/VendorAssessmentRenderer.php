@@ -374,26 +374,26 @@ class VendorAssessmentRenderer
     {
         $assessment->loadMissing(['scores.form', 'scores.aspect', 'invitations']);
         $forms = AssessmentForm::query()->active()->ordered()->get();
-        
+
         $bodies = [];
-        
+
         // 1. Recap (Akumulasi)
         $title = 'AKUMULASI HASIL PENILAIAN';
         $rows = $this->recapRows($assessment);
         $signature = $this->signature($assessment, null);
-        $bodies[] = '<div class="page-break">' . $this->bodyContent($assessment, $title, $rows, $signature) . '</div>';
-        
+        $bodies[] = '<div class="page-break">'.$this->bodyContent($assessment, $title, $rows, $signature).'</div>';
+
         // 2. All Sheets
         foreach ($forms as $form) {
             $title = $form->name;
             $rows = $this->formRows($assessment, $form);
             $signature = $this->signature($assessment, $form);
-            
-            $bodies[] = '<div class="page-break">' . $this->bodyContent($assessment, $title, $rows, $signature) . '</div>';
+
+            $bodies[] = '<div class="page-break">'.$this->bodyContent($assessment, $title, $rows, $signature).'</div>';
         }
-        
+
         $html = $this->htmlShell(implode("\n", $bodies));
-        
+
         $options = new Options;
         $options->set('defaultFont', 'DejaVu Sans');
         $options->set('isRemoteEnabled', false);
