@@ -57,7 +57,9 @@ class ProcurementController extends Controller
 
         return Inertia::render('procurements/create', [
             'options' => MasterDataOptions::forProcurementForm(),
-            'nextNumber' => $this->procurements->nextNumber(),
+            // One suggestion per format, so switching between SPK and PJ fills
+            // in the right running number without another round trip.
+            'nextNumbers' => $this->procurements->nextNumbersByFormat(),
         ]);
     }
 
@@ -185,6 +187,7 @@ class ProcurementController extends Controller
             'procurement' => [
                 'id' => $procurement->id,
                 'number' => $procurement->number,
+                'contract_number_format_id' => $procurement->contract_number_format_id,
                 'name' => $procurement->name,
                 'work_director_id' => $procurement->work_director_id,
                 'target_unit_id' => $procurement->target_unit_id,
@@ -198,6 +201,7 @@ class ProcurementController extends Controller
                 'notes' => $procurement->notes,
             ],
             'options' => MasterDataOptions::forProcurementForm(),
+            'nextNumbers' => $this->procurements->nextNumbersByFormat(),
         ]);
     }
 
@@ -208,7 +212,17 @@ class ProcurementController extends Controller
     {
         $this->authorize('update', $procurement);
 
-        $procurement->update($request->validated());
+        $procurement->fill($request->safe()->except('number'));
+
+        // The number is not mass assignable, so a correction is applied here
+        // rather than through fill(). A blank field leaves the number alone.
+        $corrected = $request->string('number')->trim()->value();
+
+        if ($corrected !== '') {
+            $procurement->number = $corrected;
+        }
+
+        $procurement->save();
 
         // The method decides which checklist steps apply, so a change to it has
         // to be reflected on the checklist straight away.

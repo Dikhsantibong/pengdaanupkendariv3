@@ -184,6 +184,11 @@ export function AppSidebar() {
                                         icon: FileSignature,
                                     },
                                     {
+                                        title: 'Format No Kontrak',
+                                        href: masterData.contractNumberFormats.index(),
+                                        icon: Hash,
+                                    },
+                                    {
                                         title: 'Status Progres',
                                         href: masterData.progressStatuses.index(),
                                         icon: Settings2,

@@ -17,9 +17,11 @@ type EditableProcurement = ProcurementFormValues & {
 export default function EditProcurement({
     procurement,
     options,
+    nextNumbers,
 }: {
     procurement: EditableProcurement;
     options: ProcurementFormOptions;
+    nextNumbers: Record<number, string>;
 }) {
     return (
         <>
@@ -47,6 +49,7 @@ export default function EditProcurement({
                 <ProcurementForm
                     options={options}
                     initialValues={procurement}
+                    nextNumbers={nextNumbers}
                     submitLabel="Simpan Perubahan"
                     onSubmit={(form) =>
                         form.put(procurements.update(procurement.id).url)

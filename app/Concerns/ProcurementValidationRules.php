@@ -15,9 +15,20 @@ trait ProcurementValidationRules
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
-    protected function procurementRules(): array
+    protected function procurementRules(?int $ignoreId = null): array
     {
         return [
+            // Both stay optional so a procurement can still be registered from
+            // a caller that does not number it; the service then falls back to
+            // the internal number it always used.
+            'contract_number_format_id' => [
+                'nullable',
+                Rule::exists('contract_number_formats', 'id')->whereNull('deleted_at'),
+            ],
+            'number' => [
+                'nullable', 'string', 'max:100',
+                Rule::unique('procurements', 'number')->ignore($ignoreId)->whereNull('deleted_at'),
+            ],
             'name' => ['required', 'string', 'max:255'],
             'work_director_id' => ['required', Rule::exists('work_directors', 'id')->whereNull('deleted_at')],
             'target_unit_id' => ['required', Rule::exists('target_units', 'id')->whereNull('deleted_at')],
@@ -40,6 +51,8 @@ trait ProcurementValidationRules
     protected function procurementAttributes(): array
     {
         return [
+            'contract_number_format_id' => 'jenis no kontrak',
+            'number' => 'no kontrak',
             'name' => 'nama pengadaan',
             'work_director_id' => 'direksi pekerjaan',
             'target_unit_id' => 'unit tujuan',

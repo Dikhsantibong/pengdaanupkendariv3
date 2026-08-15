@@ -8,10 +8,10 @@ import procurements from '@/routes/procurements';
 
 export default function CreateProcurement({
     options,
-    nextNumber,
+    nextNumbers,
 }: {
     options: ProcurementFormOptions;
-    nextNumber: string;
+    nextNumbers: Record<number, string>;
 }) {
     return (
         <>
@@ -34,18 +34,10 @@ export default function CreateProcurement({
                     }
                 />
 
-                <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-4 py-3">
-                    <span className="section-label">
-                        Nomor pengadaan otomatis
-                    </span>
-                    <span className="tabular text-sm font-semibold text-foreground">
-                        {nextNumber}
-                    </span>
-                </div>
-
                 <ProcurementForm
                     options={options}
                     withPlanner
+                    nextNumbers={nextNumbers}
                     submitLabel="Simpan Pengadaan"
                     onSubmit={(form) => form.post(procurements.store().url)}
                     onCancel={() => router.visit(procurements.index().url)}

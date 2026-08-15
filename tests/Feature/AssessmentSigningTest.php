@@ -96,7 +96,7 @@ class AssessmentSigningTest extends TestCase
         $invitation = $this->issue($assessment, $administrator, $form);
 
         $this->post(route('assessment-signing.store', $invitation->token), [
-            'assessor_name' => 'SADRI',
+            'assessor_name' => $this->rosterName($form),
             'scores' => $this->everyAspect($form, 4),
             'signature' => self::SIGNATURE,
         ])->assertRedirect(route('assessment-signing.show', $invitation->token));
@@ -104,7 +104,7 @@ class AssessmentSigningTest extends TestCase
         $invitation->refresh();
 
         $this->assertNotNull($invitation->submitted_at);
-        $this->assertSame('SADRI', $invitation->assessor_name);
+        $this->assertSame($this->rosterName($form), $invitation->assessor_name);
         $this->assertNotNull($invitation->signature_path);
         Storage::disk('local')->assertExists($invitation->signature_path);
 
@@ -116,7 +116,7 @@ class AssessmentSigningTest extends TestCase
                 ->where('level', 4)
                 ->count(),
         );
-        $this->assertSame('SADRI', $form->fresh()?->assessor_name);
+        $this->assertSame($this->rosterName($form), $form->fresh()?->assessor_name);
     }
 
     public function test_a_partly_filled_sheet_is_rejected(): void
@@ -129,7 +129,7 @@ class AssessmentSigningTest extends TestCase
         $scores[0]['level'] = null;
 
         $this->post(route('assessment-signing.store', $invitation->token), [
-            'assessor_name' => 'SADRI',
+            'assessor_name' => $this->rosterName($form),
             'scores' => $scores,
             'signature' => self::SIGNATURE,
         ])->assertSessionHasErrors('scores.0.level');
@@ -144,7 +144,7 @@ class AssessmentSigningTest extends TestCase
         $invitation = $this->issue($assessment, $administrator, $form);
 
         $this->post(route('assessment-signing.store', $invitation->token), [
-            'assessor_name' => 'SADRI',
+            'assessor_name' => $this->rosterName($form),
             'scores' => $this->everyAspect($form, 3),
         ])->assertSessionHasErrors('signature');
 
@@ -173,7 +173,7 @@ class AssessmentSigningTest extends TestCase
         $invitation = $this->issue($assessment, $administrator, $form);
 
         $this->post(route('assessment-signing.store', $invitation->token), [
-            'assessor_name' => 'SADRI',
+            'assessor_name' => $this->rosterName($form),
             'scores' => $this->everyAspect($form, 5),
             'signature' => self::SIGNATURE,
         ])->assertRedirect();
@@ -183,10 +183,10 @@ class AssessmentSigningTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('assessment-signing/closed')
                 ->where('state', 'submitted')
-                ->where('assessorName', 'SADRI'));
+                ->where('assessorName', $this->rosterName($form)));
 
         $this->post(route('assessment-signing.store', $invitation->token), [
-            'assessor_name' => 'SADRI',
+            'assessor_name' => $this->rosterName($form),
             'scores' => $this->everyAspect($form, 1),
             'signature' => self::SIGNATURE,
         ])->assertStatus(410);
@@ -218,7 +218,7 @@ class AssessmentSigningTest extends TestCase
                 ->where('state', 'revoked'));
 
         $this->post(route('assessment-signing.store', $invitation->token), [
-            'assessor_name' => 'SADRI',
+            'assessor_name' => $this->rosterName($form),
             'scores' => $this->everyAspect($form, 3),
             'signature' => self::SIGNATURE,
         ])->assertStatus(410);
@@ -261,7 +261,7 @@ class AssessmentSigningTest extends TestCase
         $this->assertStringContainsString('<td class="space"></td>', $before);
 
         $this->post(route('assessment-signing.store', $invitation->token), [
-            'assessor_name' => 'AGUS SALIM',
+            'assessor_name' => $this->rosterName($form),
             'scores' => $this->everyAspect($form, 4),
             'signature' => self::SIGNATURE,
         ])->assertRedirect();
@@ -272,7 +272,12 @@ class AssessmentSigningTest extends TestCase
         );
 
         $this->assertStringContainsString('class="space"><img src="data:image/png;base64,', $after);
-        $this->assertStringContainsString('AGUS SALIM', $after);
+        // The roster carries a phone number for the WhatsApp handoff; the
+        // contract prints the name alone.
+        $this->assertStringContainsString(
+            trim((string) preg_replace('/\s*\([^)]*\)/', '', $this->rosterName($form))),
+            $after,
+        );
     }
 
     public function test_the_administrator_downloads_every_document_as_one_archive(): void
@@ -352,6 +357,17 @@ class AssessmentSigningTest extends TestCase
             ->where('assessment_form_id', $form->id)
             ->latest('id')
             ->firstOrFail();
+    }
+
+    /**
+     * A name from the sheet's own roster.
+     *
+     * Taken from the data rather than written out here, so editing the list of
+     * Asman does not break these tests.
+     */
+    protected function rosterName(AssessmentForm $form, int $index = 0): string
+    {
+        return ($form->assessor_options ?? [])[$index] ?? '';
     }
 
     /**

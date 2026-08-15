@@ -18,6 +18,7 @@ import type { Option, StatusOption } from '@/types';
 const NONE = 'none';
 
 export type ProcurementFormOptions = {
+    contractNumberFormats: Option[];
     workDirectors: Option[];
     targetUnits: Option[];
     procurementMethods: Option[];
@@ -29,6 +30,8 @@ export type ProcurementFormOptions = {
 };
 
 export type ProcurementFormValues = {
+    contract_number_format_id: number | null;
+    number: string;
     name: string;
     work_director_id: number | null;
     target_unit_id: number | null;
@@ -50,6 +53,7 @@ export function ProcurementForm({
     onSubmit,
     onCancel,
     withPlanner = false,
+    nextNumbers = {},
 }: {
     options: ProcurementFormOptions;
     initialValues?: Partial<ProcurementFormValues>;
@@ -61,11 +65,24 @@ export function ProcurementForm({
      * changes belong on the appointment screen, which notifies the handover.
      */
     withPlanner?: boolean;
+    /** The next free number of each format, keyed by format id. */
+    nextNumbers?: Record<number, string>;
 }) {
+    const firstFormatId = options.contractNumberFormats[0]?.value ?? null;
+
+    const startingFormatId =
+        initialValues?.contract_number_format_id ?? firstFormatId;
+
     const form = useForm<ProcurementFormValues>({
         ...(withPlanner
             ? { planner_id: initialValues?.planner_id ?? null }
             : {}),
+        contract_number_format_id: startingFormatId,
+        number:
+            initialValues?.number ??
+            (startingFormatId === null
+                ? ''
+                : (nextNumbers[startingFormatId] ?? '')),
         name: initialValues?.name ?? '',
         work_director_id: initialValues?.work_director_id ?? null,
         target_unit_id: initialValues?.target_unit_id ?? null,
@@ -84,6 +101,34 @@ export function ProcurementForm({
 
     const { data, setData, errors, processing } = form;
 
+    const suggestion =
+        data.contract_number_format_id === null
+            ? null
+            : (nextNumbers[data.contract_number_format_id] ?? null);
+
+    /**
+     * Switch the kind of contract number.
+     *
+     * The number follows along only while it is still an untouched suggestion.
+     * Once it has been corrected by hand — or belongs to a procurement that is
+     * already numbered — it is left alone, and the author can pull the running
+     * number in deliberately with the link beside the field.
+     */
+    const chooseFormat = (formatId: number | null) => {
+        const untouched = Object.values(nextNumbers).includes(data.number);
+
+        setData((current) => ({
+            ...current,
+            contract_number_format_id: formatId,
+            number:
+                untouched || current.number === ''
+                    ? formatId === null
+                        ? ''
+                        : (nextNumbers[formatId] ?? '')
+                    : current.number,
+        }));
+    };
+
     const submit = (event: FormEvent) => {
         event.preventDefault();
         onSubmit(form);
@@ -93,6 +138,77 @@ export function ProcurementForm({
         <form onSubmit={submit} className="space-y-6">
             <section className="space-y-4 rounded-md border border-border bg-card p-5">
                 <p className="section-label">Identitas Pengadaan</p>
+
+                <div className="grid gap-4 sm:grid-cols-[9rem_1fr]">
+                    <div className="grid gap-2">
+                        <Label htmlFor="contract_number_format_id">
+                            Jenis No Kontrak
+                        </Label>
+                        <Select
+                            value={
+                                data.contract_number_format_id === null
+                                    ? NONE
+                                    : String(data.contract_number_format_id)
+                            }
+                            onValueChange={(value) =>
+                                chooseFormat(
+                                    value === NONE ? null : Number(value),
+                                )
+                            }
+                        >
+                            <SelectTrigger id="contract_number_format_id">
+                                <SelectValue placeholder="Pilih" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {options.contractNumberFormats.map((option) => (
+                                    <SelectItem
+                                        key={option.value}
+                                        value={String(option.value)}
+                                    >
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <InputError
+                            message={errors.contract_number_format_id}
+                        />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <div className="flex items-center justify-between gap-2">
+                            <Label htmlFor="number">No Kontrak</Label>
+                            {suggestion !== null &&
+                                suggestion !== data.number && (
+                                    <button
+                                        type="button"
+                                        className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                                        onClick={() =>
+                                            setData('number', suggestion)
+                                        }
+                                    >
+                                        Pakai nomor otomatis
+                                    </button>
+                                )}
+                        </div>
+                        <Input
+                            id="number"
+                            className="tabular"
+                            value={data.number}
+                            onChange={(event) =>
+                                setData('number', event.target.value)
+                            }
+                            placeholder="KDD001.SPK/612/UPKD/2026"
+                            autoComplete="off"
+                            required
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Terisi otomatis mengikuti urutan berjalan jenis yang
+                            dipilih, dan masih bisa diubah bila perlu.
+                        </p>
+                        <InputError message={errors.number} />
+                    </div>
+                </div>
 
                 <div className="grid gap-2">
                     <Label htmlFor="name">Nama Pengadaan</Label>

@@ -48,6 +48,16 @@ abstract class MasterDataController extends Controller
     abstract protected function rules(?Model $record = null): array;
 
     /**
+     * Validation messages that replace the generated ones.
+     *
+     * @return array<string, string>
+     */
+    protected function messages(): array
+    {
+        return [];
+    }
+
+    /**
      * Extra props sent to the Inertia page.
      *
      * @return array<string, mixed>
@@ -73,7 +83,7 @@ abstract class MasterDataController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        $validated = $request->validate($this->rules());
+        $validated = $request->validate($this->rules(), $this->messages());
 
         $this->newRecord()->fill($this->prepare($validated))->save();
 
@@ -87,7 +97,7 @@ abstract class MasterDataController extends Controller
      */
     protected function updateRecord(Request $request, Model $record): RedirectResponse
     {
-        $validated = $request->validate($this->rules($record));
+        $validated = $request->validate($this->rules($record), $this->messages());
 
         $record->fill($this->prepare($validated, $record))->save();
 

@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Enums\ProcurementStage;
 use App\Enums\UserRole;
 use App\Models\BudgetSource;
+use App\Models\ContractNumberFormat;
 use App\Models\ContractType;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
@@ -29,6 +30,12 @@ class MasterDataOptions
     public static function forProcurementForm(): array
     {
         return [
+            'contractNumberFormats' => ContractNumberFormat::query()->active()->ordered()->get()
+                ->map(fn (ContractNumberFormat $format): array => [
+                    'value' => $format->id,
+                    'label' => $format->code,
+                    'description' => $format->name,
+                ])->all(),
             'workDirectors' => self::workDirectors(true),
             'targetUnits' => self::targetUnits(true),
             'procurementMethods' => self::procurementMethods(true),

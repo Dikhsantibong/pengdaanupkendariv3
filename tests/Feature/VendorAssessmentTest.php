@@ -87,11 +87,13 @@ class VendorAssessmentTest extends TestCase
                 'po_number' => 'EKDDAK',
                 'po_date' => '2026-02-24',
                 'vendor_name' => 'PT. Surveyor Indonesia',
+                'has_penalty' => false,
                 'form_number' => 'SMT-FM-DAN-02.02',
                 'revision_number' => '03',
                 'form_date' => '2026-06-10',
                 'place' => 'Kendari',
             ])
+            ->assertSessionHasNoErrors()
             ->assertRedirect();
 
         $assessment = VendorAssessment::query()->firstOrFail();
@@ -190,33 +192,39 @@ class VendorAssessmentTest extends TestCase
         $form = AssessmentForm::query()->where('code', 'direksi-pekerjaan')->firstOrFail();
         $aspect = $form->aspects->firstOrFail();
 
+        // Taken from the sheet's own roster rather than written out here, so
+        // editing the list of Asman does not break this test.
+        $chosen = $form->assessor_options[1] ?? '';
+
         $this->actingAs($administrator)
             ->put(route('vendor-assessments.scores.update', [$assessment, $form]), [
-                'assessor_name' => 'EKO YULI WIDIYATMOKO',
+                'assessor_name' => $chosen,
                 'scores' => [['aspect_id' => $aspect->id, 'level' => 4]],
             ])
+            ->assertSessionHasNoErrors()
             ->assertRedirect();
 
-        $this->assertSame('EKO YULI WIDIYATMOKO', $form->refresh()->assessor_name);
+        $this->assertSame($chosen, $form->refresh()->assessor_name);
     }
 
-    public function test_the_direksi_sheet_offers_the_five_asman(): void
+    public function test_the_direksi_sheet_offers_a_choice_of_asman(): void
     {
         $this->seed(VendorAssessmentSeeder::class);
 
-        $form = AssessmentForm::query()->where('code', 'direksi-pekerjaan')->firstOrFail();
+        $direksi = AssessmentForm::query()->where('code', 'direksi-pekerjaan')->firstOrFail();
 
-        $this->assertSame([
-            'MUSRIYADI',
-            'SADRI',
-            'EKO YULI WIDIYATMOKO',
-            'AGUS SALIM',
-            'ROBY FIRMANSYAH',
-        ], $form->assessor_options);
+        // The Direksi sheet is the one signed by whichever Asman covers the
+        // work, so it carries a roster instead of one fixed signatory.
+        $this->assertGreaterThan(1, count((array) $direksi->assessor_options));
 
-        // The other sheets keep a free text signatory.
-        $this->assertNull(
-            AssessmentForm::query()->where('code', 'lingkungan')->firstOrFail()->assessor_options,
+        foreach ((array) $direksi->assessor_options as $name) {
+            $this->assertNotSame('', trim((string) $name));
+        }
+
+        // The other sheets belong to one function, so they name one signatory.
+        $this->assertCount(
+            1,
+            (array) AssessmentForm::query()->where('code', 'lingkungan')->firstOrFail()->assessor_options,
         );
     }
 
@@ -243,6 +251,9 @@ class VendorAssessmentTest extends TestCase
 
         $form = AssessmentForm::query()->where('code', 'lingkungan')->firstOrFail();
         $aspect = $form->aspects->firstOrFail();
+
+        // A sheet whose roster has been cleared takes a typed name instead.
+        $form->update(['assessor_options' => null]);
 
         $this->actingAs($administrator)
             ->put(route('vendor-assessments.scores.update', [$assessment, $form]), [

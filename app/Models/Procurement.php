@@ -19,6 +19,7 @@ use Illuminate\Support\Collection;
 /**
  * @property int $id
  * @property string $number
+ * @property int|null $contract_number_format_id
  * @property string $name
  * @property int $work_director_id
  * @property int $target_unit_id
@@ -56,6 +57,7 @@ use Illuminate\Support\Collection;
     'procurement_method_id',
     'budget_source_id',
     'contract_type_id',
+    'contract_number_format_id',
     'manager_memo_number',
     'pr_ro_number_id',
     'prk_number',
@@ -107,6 +109,16 @@ class Procurement extends Model
     public function budgetSource(): BelongsTo
     {
         return $this->belongsTo(BudgetSource::class)->withTrashed();
+    }
+
+    /**
+     * The format the contract number of this procurement was drawn from.
+     *
+     * @return BelongsTo<ContractNumberFormat, $this>
+     */
+    public function contractNumberFormat(): BelongsTo
+    {
+        return $this->belongsTo(ContractNumberFormat::class)->withTrashed();
     }
 
     /**

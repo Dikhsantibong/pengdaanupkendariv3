@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Procurements;
 
 use App\Concerns\ProcurementValidationRules;
+use App\Models\Procurement;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -17,7 +18,11 @@ class UpdateProcurementRequest extends FormRequest
      */
     public function rules(): array
     {
-        return $this->procurementRules();
+        $procurement = $this->route('procurement');
+
+        return $this->procurementRules(
+            $procurement instanceof Procurement ? $procurement->getKey() : null,
+        );
     }
 
     /**

@@ -329,6 +329,7 @@ Mengelola data master (termasuk Direksi Pekerjaan, Unit Tujuan, Status Progres),
 - Laporan
 - Manajemen Pengguna
 - Manajemen Data Master (Direksi Pekerjaan, Unit Tujuan, Status Progres)
+- Penilaian Kinerja Penyedia (Vendor Assessment) dengan riwayat penyedia otomatis, integrasi denda, dan Export Excel (OpenSpout).
 - Notifikasi
 
 ---
@@ -406,6 +407,11 @@ Pengadaan
 Monitoring
 
 Laporan
+
+Penilaian Penyedia
+├── Buat Formulir Penilaian
+├── Daftar Penilaian
+└── Ekspor Excel Rekapitulasi Penilaian
 
 Pengguna
 

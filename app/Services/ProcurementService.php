@@ -7,6 +7,7 @@ use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Enums\UserRole;
 use App\Models\ChecklistItem;
+use App\Models\ContractNumberFormat;
 use App\Models\Procurement;
 use App\Models\ProcurementActivity;
 use App\Models\ProgressStatus;
@@ -33,7 +34,13 @@ class ProcurementService
             unset($attributes['planner_id']);
 
             $procurement = new Procurement($attributes);
-            $procurement->number = $this->nextNumber();
+
+            // The form offers the next free number and lets it be corrected, so
+            // only fall back to generating one when nothing was submitted.
+            $procurement->number = trim((string) ($attributes['number'] ?? '')) !== ''
+                ? (string) $attributes['number']
+                : $this->nextNumber($procurement->contractNumberFormat);
+
             $procurement->created_by = $author->id;
             $procurement->save();
 
@@ -55,9 +62,68 @@ class ProcurementService
     }
 
     /**
-     * Generate the next internal procurement number.
+     * Generate the next free contract number for one format.
+     *
+     * SPK and PJ each keep their own running count within a year, so the
+     * sequence is read from the numbers already issued under that format
+     * rather than from a shared counter. Numbers corrected by hand into a
+     * different shape are skipped rather than guessed at.
+     *
+     * The count never drops below the format's starting sequence, because the
+     * unit is already partway through the year: SPK resumes at 075 and PJ at
+     * 020 rather than beginning again at 001.
+     *
+     * Falls back to the old internal PGD number when no format is given, which
+     * keeps procurements registrable before the formats are seeded.
      */
-    public function nextNumber(): string
+    public function nextNumber(?ContractNumberFormat $format = null): string
+    {
+        if ($format === null) {
+            return $this->nextInternalNumber();
+        }
+
+        $year = (int) now()->format('Y');
+
+        $highest = 0;
+
+        Procurement::withTrashed()
+            ->where('contract_number_format_id', $format->getKey())
+            ->pluck('number')
+            ->each(function (string $number) use ($format, $year, &$highest): void {
+                $sequence = $format->sequenceIn($number, $year);
+
+                if ($sequence !== null && $sequence > $highest) {
+                    $highest = $sequence;
+                }
+            });
+
+        return $format->compose(
+            max($highest + 1, $format->starting_sequence),
+            $year,
+        );
+    }
+
+    /**
+     * The next free number for every format an author may choose from.
+     *
+     * @return array<int, string>
+     */
+    public function nextNumbersByFormat(): array
+    {
+        return ContractNumberFormat::query()
+            ->active()
+            ->ordered()
+            ->get()
+            ->mapWithKeys(fn (ContractNumberFormat $format): array => [
+                $format->getKey() => $this->nextNumber($format),
+            ])
+            ->all();
+    }
+
+    /**
+     * Generate the internal procurement number used before contract numbering.
+     */
+    protected function nextInternalNumber(): string
     {
         $prefix = 'PGD/'.now()->format('Y/m').'/';
 

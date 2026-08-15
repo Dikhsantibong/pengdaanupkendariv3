@@ -6,6 +6,7 @@ use App\Enums\ProcurementStage;
 use App\Enums\StatusCategory;
 use App\Models\BudgetSource;
 use App\Models\ChecklistItem;
+use App\Models\ContractNumberFormat;
 use App\Models\ContractType;
 use App\Models\DocumentType;
 use App\Models\ProcurementMethod;
@@ -30,6 +31,7 @@ class MasterDataSeeder extends Seeder
         $this->seedProcurementMethods();
         $this->seedBudgetSources();
         $this->seedContractTypes();
+        $this->seedContractNumberFormats();
         $this->seedProgressStatuses();
         // Document types first: the checklist steps link to them.
         $this->seedDocumentTypes();
@@ -154,6 +156,38 @@ class MasterDataSeeder extends Seeder
                 [
                     'name' => $name,
                     'description' => $description,
+                    'sort_order' => $index + 1,
+                    'is_active' => true,
+                ],
+            );
+        }
+    }
+
+    /**
+     * Seed the contract number formats.
+     *
+     * SPK and PJ are the two kinds UP Kendari issues, each keeping its own
+     * running count within a year: KDD075.SPK/612/UPKD/2026. The starting
+     * sequences are where the unit stands today, so the first number the
+     * system hands out carries on from the last one issued on paper.
+     */
+    protected function seedContractNumberFormats(): void
+    {
+        $formats = [
+            ['SPK', 'Surat Perintah Kerja', 75],
+            ['PJ', 'Perjanjian', 20],
+        ];
+
+        foreach ($formats as $index => [$code, $name, $startsAt]) {
+            ContractNumberFormat::query()->updateOrCreate(
+                ['code' => $code],
+                [
+                    'name' => $name,
+                    'prefix' => 'KDD',
+                    'unit_segment' => '612/UPKD',
+                    'sequence_length' => 3,
+                    'starting_sequence' => $startsAt,
+                    'description' => null,
                     'sort_order' => $index + 1,
                     'is_active' => true,
                 ],
