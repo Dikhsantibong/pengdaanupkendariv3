@@ -51,6 +51,8 @@ function useSidebar() {
   return context
 }
 
+const SIDEBAR_COMPACT_BREAKPOINT = 1024
+
 function SidebarProvider({
   defaultOpen = true,
   open: openProp,
@@ -71,6 +73,12 @@ function SidebarProvider({
   // We use openProp and setOpenProp for control from outside the component.
   const [_open, _setOpen] = React.useState(defaultOpen)
   const open = openProp ?? _open
+
+  // Track whether the sidebar was auto-collapsed due to narrow viewport
+  const autoCollapsedRef = React.useRef(false)
+  // Track the user's preferred state so we can restore it when viewport widens
+  const userPreferredOpenRef = React.useRef(defaultOpen)
+
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
       const openState = typeof value === "function" ? value(open) : value
@@ -80,11 +88,43 @@ function SidebarProvider({
         _setOpen(openState)
       }
 
+      // When user manually toggles, clear auto-collapsed flag and save preference
+      autoCollapsedRef.current = false
+      userPreferredOpenRef.current = openState
+
       // This sets the cookie to keep the sidebar state.
       document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
     },
     [setOpenProp, open]
   )
+
+  // Auto-collapse sidebar when viewport is narrow (split-screen / compact mode)
+  React.useEffect(() => {
+    if (isMobile) return
+
+    const compactMql = window.matchMedia(`(max-width: ${SIDEBAR_COMPACT_BREAKPOINT - 1}px)`)
+
+    const handleCompactChange = () => {
+      const isCompact = compactMql.matches
+      if (isCompact) {
+        // Only auto-collapse if sidebar is currently open
+        if (userPreferredOpenRef.current) {
+          autoCollapsedRef.current = true
+          _setOpen(false)
+        }
+      } else if (autoCollapsedRef.current) {
+        // Restore the user's preferred state when viewport widens
+        autoCollapsedRef.current = false
+        _setOpen(userPreferredOpenRef.current)
+      }
+    }
+
+    // Check initial state
+    handleCompactChange()
+
+    compactMql.addEventListener("change", handleCompactChange)
+    return () => compactMql.removeEventListener("change", handleCompactChange)
+  }, [isMobile])
 
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
