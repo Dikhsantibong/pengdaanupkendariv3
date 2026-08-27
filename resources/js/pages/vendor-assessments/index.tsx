@@ -25,6 +25,7 @@ type AssessmentRow = {
     vendor_name: string;
     po_number: string | null;
     po_date: string | null;
+    amendment_number: string | null;
     procurement_number: string | null;
     overall_average: number | null;
     scored: number;
@@ -138,6 +139,11 @@ export default function VendorAssessmentIndex({
                                             {row.po_date && (
                                                 <div className="text-muted-foreground">
                                                     {formatDate(row.po_date)}
+                                                </div>
+                                            )}
+                                            {row.amendment_number && (
+                                                <div className="text-muted-foreground mt-1">
+                                                    Amd: {row.amendment_number}
                                                 </div>
                                             )}
                                         </TableCell>

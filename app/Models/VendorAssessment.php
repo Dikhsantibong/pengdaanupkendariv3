@@ -20,6 +20,7 @@ use Illuminate\Support\Collection;
  * @property string $project
  * @property string|null $po_number
  * @property CarbonImmutable|null $po_date
+ * @property string|null $amendment_number
  * @property CarbonImmutable|null $bastp_date
  * @property string $vendor_name
  * @property bool $has_penalty
@@ -38,6 +39,7 @@ use Illuminate\Support\Collection;
     'project',
     'po_number',
     'po_date',
+    'amendment_number',
     'bastp_date',
     'vendor_name',
     'has_penalty',

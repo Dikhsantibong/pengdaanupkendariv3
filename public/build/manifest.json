@@ -767,7 +767,7 @@
     "isEntry": true
   },
   "resources/js/app.tsx": {
-    "file": "assets/app-BhGtJKdT.js",
+    "file": "assets/app-BqqcMRGL.js",
     "name": "app",
     "src": "resources/js/app.tsx",
     "isEntry": true,
@@ -1610,7 +1610,7 @@
     ]
   },
   "resources/js/pages/vendor-assessments/index.tsx": {
-    "file": "assets/vendor-assessments-BL_SPWBf.js",
+    "file": "assets/vendor-assessments-50GON7FJ.js",
     "name": "vendor-assessments",
     "src": "resources/js/pages/vendor-assessments/index.tsx",
     "isDynamicEntry": true,
@@ -1633,7 +1633,7 @@
     ]
   },
   "resources/js/pages/vendor-assessments/show.tsx": {
-    "file": "assets/show-CY38Q2Sx.js",
+    "file": "assets/show-DF6aYUa2.js",
     "name": "show",
     "src": "resources/js/pages/vendor-assessments/show.tsx",
     "isDynamicEntry": true,

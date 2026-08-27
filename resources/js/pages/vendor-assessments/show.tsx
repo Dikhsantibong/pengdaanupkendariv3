@@ -103,6 +103,7 @@ type Assessment = {
     project: string;
     po_number: string | null;
     po_date: string | null;
+    amendment_number: string | null;
     bastp_date: string | null;
     vendor_name: string;
     has_penalty: boolean;
@@ -165,6 +166,7 @@ export default function ShowVendorAssessment({
         `Pekerjaan: ${assessment.project}`,
         `Penyedia: ${assessment.vendor_name}`,
         `Tanggal Kontrak: ${assessment.po_date ? formatDate(assessment.po_date) : '-'}`,
+        assessment.amendment_number ? `Amandemen: ${assessment.amendment_number}` : null,
         `Tanggal BASTP: ${bastpFormatted}`,
         `Denda: ${assessment.has_penalty ? 'Ada' : 'Tidak Ada'}`,
         'Lembar: Rekapitulasi',
@@ -175,7 +177,7 @@ export default function ShowVendorAssessment({
         'Terima kasih.',
         'Tim Pengadaan',
         'PT PLN Nusantara Power UP Kendari',
-    ].join('\n');
+    ].filter(Boolean).join('\n');
 
     const panitiaWhatsappUrl = `https://wa.me/6285242687765?text=${encodeURIComponent(panitiaMessage)}`;
 
@@ -276,6 +278,9 @@ export default function ShowVendorAssessment({
                                   }`
                         }
                     />
+                    {assessment.amendment_number && (
+                        <Field label="Amandemen" value={assessment.amendment_number} />
+                    )}
 
                     <Field
                         label="Nilai Akhir"
@@ -476,6 +481,7 @@ function SigningLinkPanel({
             `Pekerjaan: ${assessment.project}`,
             `Penyedia: ${assessment.vendor_name}`,
             `Tanggal Kontrak: ${assessment.po_date ? formatDate(assessment.po_date) : '-'}`,
+            assessment.amendment_number ? `Amandemen: ${assessment.amendment_number}` : null,
             `Tanggal BASTP: ${assessment.bastp_date ? formatDate(assessment.bastp_date) : '-'}`,
             `Denda: ${assessment.has_penalty ? 'Ada' : 'Tidak Ada'}`,
             `Lembar: ${sheet.name}`,
@@ -486,7 +492,7 @@ function SigningLinkPanel({
             'Terima kasih.',
             'Tim Pengadaan',
             'PT PLN Nusantara Power UP Kendari',
-        ];
+        ].filter(Boolean);
         const rawPhone = invitation.recipient_phone.replace(/\D+/g, '');
         whatsappUrl = `https://wa.me/${rawPhone}?text=${encodeURIComponent(lines.join('\n'))}`;
     }
@@ -829,6 +835,7 @@ function RecapPanel({
         `Pekerjaan: ${assessment.project}`,
         `Penyedia: ${assessment.vendor_name}`,
         `Tanggal Kontrak: ${assessment.po_date ? formatDate(assessment.po_date) : '-'}`,
+        assessment.amendment_number ? `Amandemen: ${assessment.amendment_number}` : null,
         `Tanggal BASTP: ${bastpFormatted}`,
         `Denda: ${assessment.has_penalty ? 'Ada' : 'Tidak Ada'}`,
         'Lembar : Akumulasi',
@@ -839,7 +846,7 @@ function RecapPanel({
         'Terima kasih.',
         'Tim Pengadaan',
         'PT PLN Nusantara Power UP Kendari',
-    ].join('\n');
+    ].filter(Boolean).join('\n');
 
     const akumulasiWhatsappUrl = `https://wa.me/628114091582?text=${encodeURIComponent(akumulasiMessage)}`;
 
@@ -942,6 +949,7 @@ function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
         project: assessment.project,
         po_number: assessment.po_number ?? '',
         po_date: assessment.po_date ?? '',
+        amendment_number: assessment.amendment_number ?? '',
         bastp_date: assessment.bastp_date ?? '',
         vendor_name: assessment.vendor_name,
         has_penalty: assessment.has_penalty,
@@ -1037,6 +1045,16 @@ function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
                             className="tabular"
                         />
                         <InputError message={form.errors.po_date} />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="amendment_number">Nomor Amandemen</Label>
+                        <Input
+                            id="amendment_number"
+                            value={form.data.amendment_number}
+                            onChange={(e) => form.setData('amendment_number', e.target.value)}
+                            placeholder="Contoh: AMD-01, dll (opsional)"
+                        />
+                        <InputError message={form.errors.amendment_number} />
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
                         <div className="grid gap-2">
