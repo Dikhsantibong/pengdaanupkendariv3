@@ -15,7 +15,8 @@ Aplikasi ini digunakan oleh manajemen dan staf PLN Nusantara Power di lingkungan
 ### Prinsip Utama
 
 - **Serius, bukan playful.** Hindari ilustrasi kartun, emoji sebagai ikon fungsional, warna-warni cerah tanpa makna, atau animasi berlebihan.
-- **Identitas korporat kuat.** Gunakan warna dasar netral (putih/abu-abu terang) dipadukan satu warna aksen korporat yang tegas (mis. biru navy tua atau merah maroon — selaras nuansa PLN), digunakan konsisten untuk elemen penting (tombol utama, status aktif, highlight data).
+- **Identitas korporat kuat.** Palet ditetapkan **biru muda dan putih** selaras logo PLN: putih sebagai warna dasar, satu aksen biru PLN yang konsisten untuk elemen penting (tombol utama, status aktif, highlight data, navigasi). **Kuning pisang** (kuning logo PLN) dipakai sangat terbatas — hanya sebagai penanda status "berjalan" — bukan sebagai warna dominan.
+- **Tema tunggal, tidak dapat diubah.** Aplikasi dikunci pada satu tema terang biru-putih di seluruh halaman. Fitur pengaturan tampilan (appearance) dan mode gelap dinonaktifkan agar tampilan seragam di semua perangkat.
 - **Hierarki visual jelas.** Data penting (nilai HPE, status progres, deadline) ditonjolkan lewat ukuran, bobot font, dan warna — bukan lewat dekorasi.
 - **Densitas informasi tinggi tapi rapi.** Karena ini aplikasi kerja (bukan marketing page), gunakan tabel, grid data, dan card yang padat informasi namun tetap punya spacing dan alignment presisi, bukan padat berantakan.
 - **Konsistensi komponen.** Satu jenis tombol, satu gaya badge status, satu gaya card di seluruh aplikasi — hindari campur-campur gaya antar halaman.
@@ -34,11 +35,15 @@ Aplikasi ini digunakan oleh manajemen dan staf PLN Nusantara Power di lingkungan
 - Font utama: sans-serif profesional dengan karakter tegas dan mudah dibaca dalam tabel data (mis. Inter, IBM Plex Sans, Söhne, atau setara).
 - Hierarki jelas: judul halaman (bold, ukuran besar), label section (medium, uppercase-tracking tipis untuk kesan formal), body text (regular), angka/data penting (semi-bold, tabular numerals agar rapi di tabel).
 
-### Palet Warna (arah, dapat disesuaikan dengan brand guideline PLN resmi)
+### Palet Warna (ditetapkan — biru muda & putih PLN)
 
-- **Base:** putih / abu-abu sangat terang untuk background, abu-abu gelap untuk teks utama (bukan hitam pekat penuh, agar tidak terlalu keras).
-- **Aksen Korporat:** satu warna dominan tegas (mis. biru navy `#0B2C4D`–`#1E4D78` atau merah maroon PLN) untuk header, tombol utama, dan elemen navigasi aktif.
-- **Warna Status (Status Progres):** dibedakan per kategori secara konsisten dan tidak terlalu terang — misalnya abu-abu untuk Pending, merah gelap untuk Batal, kuning tua/amber untuk proses berjalan (Penyusunan RKS, Kelengkapan Dokumen, Penawaran Harga, Disposisi AMS, Proses Validasi), hijau tua untuk selesai/tervalidasi.
+Palet ini sudah tetap dan diterapkan di seluruh halaman melalui `resources/css/app.css`. Tema tunggal (light), tanpa mode gelap.
+
+- **Base:** putih untuk kartu/permukaan, biru-putih sangat terang untuk background halaman, biru keabuan gelap untuk teks utama (bukan hitam pekat penuh).
+- **Aksen Korporat:** satu warna **biru muda PLN** yang jelas untuk tombol utama, tautan, highlight data, dan elemen navigasi aktif (teks putih di atasnya).
+- **Navigasi:** sidebar tetap berwarna biru PLN dengan teks putih, menjadi jangkar visual di setiap halaman.
+- **Kuning pisang (logo PLN):** dipakai sangat terbatas — hanya pada badge status "berjalan" — sebagai sentuhan identitas, bukan warna utama.
+- **Warna Status (Status Progres):** abu-abu untuk Pending, merah gelap untuk Batal, kuning pisang untuk proses berjalan (Penyusunan RKS, Kelengkapan Dokumen, Penawaran Harga, Disposisi AMS, Proses Validasi), hijau tua untuk selesai/tervalidasi.
 - Hindari warna neon, pastel childish, atau kombinasi lebih dari 2 warna aksen sekaligus dalam satu tampilan.
 
 ### Layout & Komponen

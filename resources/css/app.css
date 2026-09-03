@@ -71,53 +71,56 @@
 }
 
 :root {
-    /* Corporate neutrals with a subtle navy cast. */
-    --background: oklch(0.975 0.003 250);
-    --foreground: oklch(0.26 0.014 252);
+    /* Light blue and white corporate palette (PLN). A single blue accent runs
+       across the whole app; banana yellow appears only on the in-progress
+       status badge, echoing the PLN logo without taking over. */
+    --background: oklch(0.98 0.008 240);
+    --foreground: oklch(0.28 0.03 252);
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.26 0.014 252);
+    --card-foreground: oklch(0.28 0.03 252);
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.26 0.014 252);
+    --popover-foreground: oklch(0.28 0.03 252);
 
-    /* Single corporate accent: PLN navy. */
-    --primary: oklch(0.33 0.073 250);
-    --primary-foreground: oklch(0.985 0.002 250);
-    --secondary: oklch(0.955 0.005 250);
-    --secondary-foreground: oklch(0.33 0.073 250);
-    --muted: oklch(0.955 0.005 250);
-    --muted-foreground: oklch(0.5 0.015 252);
-    --accent: oklch(0.94 0.012 250);
-    --accent-foreground: oklch(0.33 0.073 250);
-    --destructive: oklch(0.46 0.166 26);
-    --destructive-foreground: oklch(0.985 0.002 250);
-    --border: oklch(0.9 0.006 250);
-    --input: oklch(0.88 0.007 250);
-    --ring: oklch(0.45 0.09 250);
+    /* PLN blue accent: clear and light, with white text for contrast. */
+    --primary: oklch(0.55 0.14 245);
+    --primary-foreground: oklch(0.99 0.01 240);
+    --secondary: oklch(0.94 0.028 240);
+    --secondary-foreground: oklch(0.36 0.1 248);
+    --muted: oklch(0.955 0.016 240);
+    --muted-foreground: oklch(0.52 0.035 248);
+    --accent: oklch(0.92 0.04 240);
+    --accent-foreground: oklch(0.36 0.1 248);
+    --destructive: oklch(0.5 0.17 26);
+    --destructive-foreground: oklch(0.99 0.01 240);
+    --border: oklch(0.9 0.02 240);
+    --input: oklch(0.88 0.025 240);
+    --ring: oklch(0.6 0.13 245);
     --radius: 0.375rem;
 
-    --chart-1: oklch(0.33 0.073 250);
-    --chart-2: oklch(0.48 0.09 250);
-    --chart-3: oklch(0.62 0.075 250);
-    --chart-4: oklch(0.74 0.055 250);
-    --chart-5: oklch(0.85 0.035 250);
+    --chart-1: oklch(0.55 0.14 245);
+    --chart-2: oklch(0.64 0.12 240);
+    --chart-3: oklch(0.72 0.1 238);
+    --chart-4: oklch(0.8 0.075 236);
+    --chart-5: oklch(0.87 0.05 235);
 
-    /* Fixed navy navigation rail. */
-    --sidebar: oklch(0.27 0.06 251);
-    --sidebar-foreground: oklch(0.9 0.012 250);
-    --sidebar-primary: oklch(0.6 0.13 245);
-    --sidebar-primary-foreground: oklch(0.99 0 0);
-    --sidebar-accent: oklch(0.35 0.07 250);
-    --sidebar-accent-foreground: oklch(0.985 0.002 250);
-    --sidebar-border: oklch(0.35 0.05 250);
-    --sidebar-ring: oklch(0.6 0.13 245);
+    /* Blue navigation rail with white text, anchoring every page. */
+    --sidebar: oklch(0.44 0.115 250);
+    --sidebar-foreground: oklch(0.96 0.02 240);
+    --sidebar-primary: oklch(0.74 0.12 238);
+    --sidebar-primary-foreground: oklch(0.18 0.03 252);
+    --sidebar-accent: oklch(0.52 0.1 249);
+    --sidebar-accent-foreground: oklch(0.98 0.01 240);
+    --sidebar-border: oklch(0.56 0.08 249);
+    --sidebar-ring: oklch(0.74 0.12 238);
 
-    --status-pending: oklch(0.46 0.014 252);
-    --status-pending-surface: oklch(0.94 0.006 252);
-    --status-batal: oklch(0.44 0.155 26);
-    --status-batal-surface: oklch(0.945 0.025 26);
-    --status-berjalan: oklch(0.5 0.11 74);
-    --status-berjalan-surface: oklch(0.95 0.038 84);
-    --status-selesai: oklch(0.44 0.095 158);
+    /* Status: grey pending, red batal, banana yellow berjalan, green selesai. */
+    --status-pending: oklch(0.47 0.02 248);
+    --status-pending-surface: oklch(0.95 0.012 240);
+    --status-batal: oklch(0.46 0.16 26);
+    --status-batal-surface: oklch(0.95 0.025 26);
+    --status-berjalan: oklch(0.54 0.12 84);
+    --status-berjalan-surface: oklch(0.95 0.08 95);
+    --status-selesai: oklch(0.46 0.1 158);
     --status-selesai-surface: oklch(0.94 0.03 158);
 }
 
