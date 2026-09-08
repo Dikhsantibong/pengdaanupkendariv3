@@ -499,9 +499,9 @@ function SigningLinkPanel({
 
     return (
         <div className="border-b border-border bg-muted/30 p-4">
-            <div className="flex flex-wrap items-end gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
 
-                <div className="grid gap-1.5">
+                <div className="grid gap-1.5 w-full sm:w-auto">
                     <Label
                         htmlFor={`recipient-name-${sheet.id}`}
                         className="text-xs"
@@ -513,11 +513,11 @@ function SigningLinkPanel({
                         value={name}
                         onChange={(event) => setName(event.target.value)}
                         placeholder="Nama penandatangan"
-                        className="h-9 w-56"
+                        className="h-9 w-full sm:w-56"
                         autoComplete="off"
                     />
                 </div>
-                <div className="grid gap-1.5">
+                <div className="grid gap-1.5 w-full sm:w-auto">
                     <Label
                         htmlFor={`recipient-phone-${sheet.id}`}
                         className="text-xs"
@@ -529,7 +529,7 @@ function SigningLinkPanel({
                         value={phone}
                         onChange={(event) => setPhone(event.target.value)}
                         placeholder="08xxxxxxxxxx"
-                        className="h-9 w-44"
+                        className="h-9 w-full sm:w-44"
                         inputMode="tel"
                         autoComplete="off"
                     />
@@ -976,29 +976,79 @@ function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
                     Edit Data
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>Edit Data Penilaian</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={submit} className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                        <Label htmlFor="project">Pekerjaan</Label>
-                        <Input
-                            id="project"
-                            value={form.data.project}
-                            onChange={(e) => form.setData('project', e.target.value)}
-                        />
-                        <InputError message={form.errors.project} />
+                <form onSubmit={submit} className="grid gap-4 py-4 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2">
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-2">
+                            <Label htmlFor="project">Pekerjaan</Label>
+                            <Input
+                                id="project"
+                                value={form.data.project}
+                                onChange={(e) => form.setData('project', e.target.value)}
+                            />
+                            <InputError message={form.errors.project} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="vendor_name">Penyedia</Label>
+                            <Input
+                                id="vendor_name"
+                                value={form.data.vendor_name}
+                                onChange={(e) => form.setData('vendor_name', e.target.value)}
+                            />
+                            <InputError message={form.errors.vendor_name} />
+                        </div>
                     </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="vendor_name">Penyedia</Label>
-                        <Input
-                            id="vendor_name"
-                            value={form.data.vendor_name}
-                            onChange={(e) => form.setData('vendor_name', e.target.value)}
-                        />
-                        <InputError message={form.errors.vendor_name} />
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-2">
+                            <Label htmlFor="po_number">No Kontrak</Label>
+                            <Input
+                                id="po_number"
+                                value={form.data.po_number}
+                                onChange={(e) => form.setData('po_number', e.target.value)}
+                            />
+                            <InputError message={form.errors.po_number} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="po_date">Tanggal Kontrak</Label>
+                            <Input
+                                id="po_date"
+                                type="date"
+                                value={form.data.po_date}
+                                onChange={(e) => form.setData('po_date', e.target.value)}
+                                className="tabular"
+                            />
+                            <InputError message={form.errors.po_date} />
+                        </div>
                     </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-2">
+                            <Label htmlFor="amendment_number">Nomor Amandemen</Label>
+                            <Input
+                                id="amendment_number"
+                                value={form.data.amendment_number}
+                                onChange={(e) => form.setData('amendment_number', e.target.value)}
+                                placeholder="Contoh: AMD-01, dll (opsional)"
+                            />
+                            <InputError message={form.errors.amendment_number} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="bastp_date">Tgl BASTP</Label>
+                            <Input
+                                id="bastp_date"
+                                type="date"
+                                value={form.data.bastp_date}
+                                onChange={(e) => form.setData('bastp_date', e.target.value)}
+                                className="tabular"
+                            />
+                            <InputError message={form.errors.bastp_date} />
+                        </div>
+                    </div>
+                    
                     <div className="grid gap-2">
                         <Label htmlFor="has_penalty_edit">Denda</Label>
                         <Select
@@ -1015,47 +1065,7 @@ function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
                         </Select>
                         <InputError message={form.errors.has_penalty} />
                     </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="po_number">No Kontrak</Label>
-                        <Input
-                            id="po_number"
-                            value={form.data.po_number}
-                            onChange={(e) => form.setData('po_number', e.target.value)}
-                        />
-                        <InputError message={form.errors.po_number} />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="bastp_date">Tgl BASTP</Label>
-                        <Input
-                            id="bastp_date"
-                            type="date"
-                            value={form.data.bastp_date}
-                            onChange={(e) => form.setData('bastp_date', e.target.value)}
-                            className="tabular"
-                        />
-                        <InputError message={form.errors.bastp_date} />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="po_date">Tanggal Kontrak</Label>
-                        <Input
-                            id="po_date"
-                            type="date"
-                            value={form.data.po_date}
-                            onChange={(e) => form.setData('po_date', e.target.value)}
-                            className="tabular"
-                        />
-                        <InputError message={form.errors.po_date} />
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="amendment_number">Nomor Amandemen</Label>
-                        <Input
-                            id="amendment_number"
-                            value={form.data.amendment_number}
-                            onChange={(e) => form.setData('amendment_number', e.target.value)}
-                            placeholder="Contoh: AMD-01, dll (opsional)"
-                        />
-                        <InputError message={form.errors.amendment_number} />
-                    </div>
+
                     <div className="grid gap-4 md:grid-cols-2">
                         <div className="grid gap-2">
                             <Label htmlFor="form_number">Nomor Formulir</Label>
@@ -1077,6 +1087,9 @@ function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
                             />
                             <InputError message={form.errors.revision_number} />
                         </div>
+                    </div>
+                    
+                    <div className="grid gap-4 md:grid-cols-2">
                         <div className="grid gap-2">
                             <Label htmlFor="form_date">Tanggal Formulir</Label>
                             <Input
@@ -1098,6 +1111,7 @@ function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
                             <InputError message={form.errors.place} />
                         </div>
                     </div>
+
                     <div className="grid gap-2">
                         <Label htmlFor="notes">Catatan</Label>
                         <textarea
