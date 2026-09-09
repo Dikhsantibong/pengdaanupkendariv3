@@ -353,10 +353,12 @@ class VendorAssessmentTest extends TestCase
         $this->assertStringContainsString('KDD075.SPK/612/UPKD/2026', $html);
         $this->assertStringNotContainsString('SMT-FM-DAN-02.02', $html);
 
-        // The weighted table: a Bobot column, and the weighted score.
+        // The weighted table: a Bobot column, the level and the weighted score,
+        // both printed with a fixed two decimal places.
         $this->assertStringContainsString('Bobot', $html);
         $this->assertStringContainsString('20%', $html);
-        $this->assertStringContainsString('0,8', $html);
+        $this->assertStringContainsString('4,00', $html);
+        $this->assertStringContainsString('0,80', $html);
 
         // Signed off by unit management, dated from the BASTP.
         $this->assertStringContainsString('Manajemen UP Kendari', $html);

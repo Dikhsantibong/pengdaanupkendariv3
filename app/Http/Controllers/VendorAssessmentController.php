@@ -306,6 +306,7 @@ class VendorAssessmentController extends Controller
         if ($request->string('format')->value() === 'html') {
             return response($this->renderer->html($assessment, $form), 200, [
                 'Content-Type' => 'text/html; charset=UTF-8',
+                'Cache-Control' => 'no-store, max-age=0',
             ]);
         }
 
@@ -313,6 +314,7 @@ class VendorAssessmentController extends Controller
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="'
                 .$this->renderer->fileName($assessment, $form).'"',
+            'Cache-Control' => 'no-store, max-age=0',
         ]);
     }
 
@@ -326,6 +328,7 @@ class VendorAssessmentController extends Controller
         return response($this->renderer->allPdf($assessment), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="'.$fileName.'"',
+            'Cache-Control' => 'no-store, max-age=0',
         ]);
     }
 
@@ -418,6 +421,7 @@ class VendorAssessmentController extends Controller
         return response($this->renderer->panitiaPdf($assessment), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="'.$fileName.'"',
+            'Cache-Control' => 'no-store, max-age=0',
         ]);
     }
 
@@ -431,6 +435,7 @@ class VendorAssessmentController extends Controller
         return response($this->renderer->pdf($assessment), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="'.$fileName.'"',
+            'Cache-Control' => 'no-store, max-age=0',
         ]);
     }
 

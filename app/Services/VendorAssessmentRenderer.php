@@ -380,7 +380,7 @@ class VendorAssessmentRenderer
                 $name = e($aspect->name);
                 $weight = $aspect->weight;
 
-                $level = $average === null ? '-' : $this->number($average);
+                $level = $average === null ? '-' : $this->certNumber($average);
 
                 if ($average === null) {
                     $value = '-';
@@ -388,7 +388,7 @@ class VendorAssessmentRenderer
                     $levelTotal += $average;
                     $weighted = $average * $weight / 100;
                     $total += $weighted;
-                    $value = $this->weightedNumber($weighted);
+                    $value = $this->certNumber($weighted);
                 }
 
                 return <<<HTML
@@ -402,15 +402,16 @@ class VendorAssessmentRenderer
             })
             ->implode('');
 
-        return [$rows, $this->number($levelTotal), $this->weightedNumber($total)];
+        return [$rows, $this->certNumber($levelTotal), $this->certNumber($total)];
     }
 
     /**
-     * Format a weighted figure with a comma decimal mark, trimmed.
+     * Format a certificate figure with a comma decimal mark and a fixed two
+     * decimal places, e.g. 4,00 or 0,60.
      */
-    protected function weightedNumber(float $value): string
+    protected function certNumber(float $value): string
     {
-        return rtrim(rtrim(number_format($value, 4, ',', '.'), '0'), ',');
+        return number_format($value, 2, ',', '.');
     }
 
     /**
