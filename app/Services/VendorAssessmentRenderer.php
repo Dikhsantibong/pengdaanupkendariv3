@@ -300,7 +300,7 @@ class VendorAssessmentRenderer
             ?? $assessment->form_date?->translatedFormat('d F Y')
             ?? '..........................';
 
-        [$rows, $levelTotal, $total] = $this->certificateTable($assessment);
+        [$rows, $levelAverage] = $this->certificateTable($assessment);
 
         $body = <<<HTML
             <div class="deco">{$deco}</div>
@@ -323,7 +323,6 @@ class VendorAssessmentRenderer
                             <th class="ind">Indikator</th>
                             <th class="num">Bobot</th>
                             <th class="num">Level [1-5]</th>
-                            <th class="num">Nilai</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -331,9 +330,8 @@ class VendorAssessmentRenderer
                     </tbody>
                     <tfoot>
                         <tr class="total">
-                            <td class="ind" colspan="2">Total Nilai</td>
-                            <td class="num">{$levelTotal}</td>
-                            <td class="num">{$total}</td>
+                            <td class="ind" colspan="2">Rata-Rata Level</td>
+                            <td class="num">{$levelAverage}</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -368,27 +366,23 @@ class VendorAssessmentRenderer
      */
     protected function certificateTable(VendorAssessment $assessment): array
     {
-        $levelTotal = 0.0;
-        $total = 0.0;
+        $levelSum = 0.0;
+        $scoredCount = 0;
 
         $rows = AssessmentAspect::query()
             ->active()
             ->ordered()
             ->get()
-            ->map(function (AssessmentAspect $aspect) use ($assessment, &$levelTotal, &$total): string {
+            ->map(function (AssessmentAspect $aspect) use ($assessment, &$levelSum, &$scoredCount): string {
                 $average = $assessment->averageFor($aspect->id);
                 $name = e($aspect->name);
                 $weight = $aspect->weight;
 
                 $level = $average === null ? '-' : $this->certNumber($average);
 
-                if ($average === null) {
-                    $value = '-';
-                } else {
-                    $levelTotal += $average;
-                    $weighted = $average * $weight / 100;
-                    $total += $weighted;
-                    $value = $this->certNumber($weighted);
+                if ($average !== null) {
+                    $levelSum += $average;
+                    $scoredCount++;
                 }
 
                 return <<<HTML
@@ -396,13 +390,14 @@ class VendorAssessmentRenderer
                     <td class="ind">{$name}</td>
                     <td class="num">{$weight}%</td>
                     <td class="num">{$level}</td>
-                    <td class="num">{$value}</td>
                 </tr>
                 HTML;
             })
             ->implode('');
 
-        return [$rows, $this->certNumber($levelTotal), $this->certNumber($total)];
+        $levelAverage = $scoredCount > 0 ? $levelSum / $scoredCount : 0.0;
+
+        return [$rows, $this->certNumber($levelAverage)];
     }
 
     /**
