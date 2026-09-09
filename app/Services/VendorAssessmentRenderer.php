@@ -300,7 +300,7 @@ class VendorAssessmentRenderer
             ?? $assessment->form_date?->translatedFormat('d F Y')
             ?? '..........................';
 
-        [$rows, $total] = $this->certificateTable($assessment);
+        [$rows, $levelTotal, $total] = $this->certificateTable($assessment);
 
         $body = <<<HTML
             <div class="deco">{$deco}</div>
@@ -314,7 +314,7 @@ class VendorAssessmentRenderer
                 <p class="narrative">
                     Hasil kinerja perusahaan terhadap surat perjanjian nomor
                     <strong>{$poNumber}</strong>, tanggal <strong>{$poDate}</strong>
-                    tentang {$project}.
+                    tentang <strong>{$project}</strong>.
                 </p>
 
                 <table class="grid">
@@ -331,7 +331,8 @@ class VendorAssessmentRenderer
                     </tbody>
                     <tfoot>
                         <tr class="total">
-                            <td class="ind" colspan="3">Total Nilai</td>
+                            <td class="ind" colspan="2">Total Nilai</td>
+                            <td class="num">{$levelTotal}</td>
                             <td class="num">{$total}</td>
                         </tr>
                     </tfoot>
@@ -347,7 +348,7 @@ class VendorAssessmentRenderer
                 <table class="sign-cert">
                     <tr><td>{$place}, {$date}</td></tr>
                     <tr><td class="space"></td></tr>
-                    <tr><td class="role">Tim Pengadaan</td></tr>
+                    <tr><td class="role">Manajemen UP Kendari</td></tr>
                 </table>
             </div>
         HTML;
@@ -359,19 +360,22 @@ class VendorAssessmentRenderer
      * The certificate rows and their weighted total.
      *
      * Each aspect's score is its average level times its weight; unscored
-     * aspects show a dash and contribute nothing to the total.
+     * aspects show a dash and contribute nothing to the totals. The footer
+     * accumulates both the levels and the weighted scores.
      *
-     * @return array{0: string, 1: string} The rows HTML and the formatted total.
+     * @return array{0: string, 1: string, 2: string} Rows HTML, the level
+     *                                                total, and the weighted total.
      */
     protected function certificateTable(VendorAssessment $assessment): array
     {
+        $levelTotal = 0.0;
         $total = 0.0;
 
         $rows = AssessmentAspect::query()
             ->active()
             ->ordered()
             ->get()
-            ->map(function (AssessmentAspect $aspect) use ($assessment, &$total): string {
+            ->map(function (AssessmentAspect $aspect) use ($assessment, &$levelTotal, &$total): string {
                 $average = $assessment->averageFor($aspect->id);
                 $name = e($aspect->name);
                 $weight = $aspect->weight;
@@ -381,6 +385,7 @@ class VendorAssessmentRenderer
                 if ($average === null) {
                     $value = '-';
                 } else {
+                    $levelTotal += $average;
                     $weighted = $average * $weight / 100;
                     $total += $weighted;
                     $value = $this->weightedNumber($weighted);
@@ -397,7 +402,7 @@ class VendorAssessmentRenderer
             })
             ->implode('');
 
-        return [$rows, $this->weightedNumber($total)];
+        return [$rows, $this->number($levelTotal), $this->weightedNumber($total)];
     }
 
     /**
@@ -450,42 +455,42 @@ class VendorAssessmentRenderer
             /* Real page margins, so text on any overflow page keeps its inset;
                the decoration is drawn full-bleed behind, from the paper edge. */
             @page { size: A4 portrait; margin: 18mm 24mm; }
-            body { font-family: 'DejaVu Sans', sans-serif; font-size: 9pt; color: #3f4650; margin: 0; }
+            body { font-family: 'DejaVu Sans', sans-serif; font-size: 9pt; color: #000; margin: 0; }
             .deco { position: fixed; top: -18mm; left: -24mm; width: 210mm; height: 297mm; }
             .deco img { width: 210mm; height: 297mm; }
             .watermark {
                 position: fixed; top: 122mm; left: -24mm; width: 210mm;
                 text-align: center; font-size: 54pt; font-weight: bold;
-                color: #f1f4f8; letter-spacing: 6pt; white-space: nowrap;
+                color: #f0f0f0; letter-spacing: 6pt; white-space: nowrap;
             }
             .content { position: relative; text-align: center; }
             .logo { margin-bottom: 8pt; }
-            .logo img { width: 132pt; }
-            .cert-title { margin: 0; font-size: 15pt; font-weight: bold; letter-spacing: 1.5pt; color: #123a5e; }
+            .logo img { width: 168pt; }
+            .cert-title { margin: 0; font-size: 15pt; font-weight: bold; letter-spacing: 1.5pt; color: #000; }
             .rule { width: 46pt; height: 2pt; background: #c9a227; margin: 6pt auto 0; }
-            .given { margin: 12pt 0 2pt; font-size: 8.5pt; color: #7a828d; letter-spacing: 0.3pt; }
-            .vendor { margin: 0; font-size: 13pt; font-weight: bold; color: #111827; letter-spacing: 0.5pt; }
-            .narrative { margin: 9pt auto 0; max-width: 134mm; font-size: 9pt; line-height: 1.55; color: #3f4650; }
+            .given { margin: 12pt 0 2pt; font-size: 8.5pt; color: #000; letter-spacing: 0.3pt; }
+            .vendor { margin: 0; font-size: 13pt; font-weight: bold; color: #000; letter-spacing: 0.5pt; }
+            .narrative { margin: 9pt auto 0; max-width: 134mm; font-size: 9pt; line-height: 1.55; color: #000; }
             .grid { width: 100%; border-collapse: collapse; margin: 12pt 0; font-size: 8.5pt; }
             .grid thead th {
-                padding: 5pt 8pt; color: #123a5e; font-weight: bold; font-size: 7.5pt;
+                padding: 5pt 8pt; color: #000; font-weight: bold; font-size: 7.5pt;
                 letter-spacing: 0.4pt; text-transform: uppercase;
                 border-top: 1.2pt solid #123a5e; border-bottom: 1.2pt solid #123a5e;
             }
             .grid tbody td { padding: 4pt 8pt; border-bottom: 0.4pt solid #e3e8ee; }
             .grid .ind { text-align: left; }
-            .grid tbody .ind { font-style: italic; color: #3f4650; }
+            .grid tbody .ind { font-style: italic; color: #000; }
             .grid .num { text-align: center; width: 58pt; }
             .grid tfoot .total td {
                 padding: 5.5pt 8pt; border-top: 1.2pt solid #123a5e;
-                font-weight: bold; color: #123a5e; font-size: 9pt;
+                font-weight: bold; color: #000; font-size: 9pt;
             }
             .grid tfoot .total .ind { text-align: right; text-transform: uppercase; letter-spacing: 0.4pt; }
-            .closing { margin: 4pt auto 0; max-width: 134mm; font-size: 9pt; line-height: 1.55; text-align: justify; color: #3f4650; }
+            .closing { margin: 4pt auto 0; max-width: 134mm; font-size: 9pt; line-height: 1.55; text-align: justify; color: #000; }
             .sign-cert { width: 62mm; margin-top: 16pt; margin-left: auto; margin-right: 0; page-break-inside: avoid; }
             .sign-cert td { text-align: center; padding: 0; font-size: 9pt; }
             .sign-cert .space { height: 40pt; }
-            .sign-cert .role { font-weight: bold; color: #123a5e; }
+            .sign-cert .role { font-weight: bold; color: #000; }
         </style>
         </head>
         <body>

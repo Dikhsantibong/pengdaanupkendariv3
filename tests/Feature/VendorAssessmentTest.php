@@ -358,8 +358,8 @@ class VendorAssessmentTest extends TestCase
         $this->assertStringContainsString('20%', $html);
         $this->assertStringContainsString('0,8', $html);
 
-        // Signed off by the procurement team, dated from the BASTP.
-        $this->assertStringContainsString('Tim Pengadaan', $html);
+        // Signed off by unit management, dated from the BASTP.
+        $this->assertStringContainsString('Manajemen UP Kendari', $html);
         $this->assertStringNotContainsString('Kepala Divisi', $html);
         $this->assertStringContainsString('September 2026', $html);
 
