@@ -29,6 +29,7 @@ class AssessmentAspectFactory extends Factory
                 rtrim(fake()->sentence(4), '.'),
             ],
             'sort_order' => 0,
+            'weight' => 0,
             'is_active' => true,
         ];
     }

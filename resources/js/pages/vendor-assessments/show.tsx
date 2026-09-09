@@ -867,7 +867,7 @@ function RecapPanel({
                     <Button asChild variant="outline">
                         <a href={printUrl} target="_blank">
                             <Printer className="size-4" />
-                            Cetak Akumulasi
+                            Cetak Sertifikat
                         </a>
                     </Button>
                     <Button asChild className="bg-green-600 hover:bg-green-700 text-white">

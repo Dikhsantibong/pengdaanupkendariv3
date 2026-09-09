@@ -430,6 +430,23 @@ Pengaturan
 
 ---
 
+# Penilaian Kinerja Penyedia — Output Sertifikat Akumulasi
+
+Lembar **Akumulasi** pada detail penilaian dicetak sebagai **Sertifikat "LAPORAN KINERJA SUPPLIER"** (tombol **Cetak Sertifikat**), terpisah dari lembar penilai per-fungsi yang tetap memakai formulir internal `FORMULIR PENILAIAN KINERJA PENYEDIA BARANG DAN JASA`.
+
+Ketentuan tampilan sertifikat:
+
+- **Tata letak berbingkai** dengan hiasan sudut biru navy dan emas (kiri-atas & kanan-bawah) serta **watermark "PLN"** abu-abu samar di latar.
+- Judul **LAPORAN KINERJA SUPPLIER**, diikuti "diberikan kepada" dan nama penyedia.
+- **Tanpa nomor VO/nomor formulir** pada sertifikat.
+- **Narasi**: "Hasil kinerja perusahaan terhadap surat perjanjian nomor *(nomor kontrak)*, tanggal *(tanggal kontrak)* tentang *(nama pekerjaan/pengadaan)*".
+- **Tabel berbobot**: kolom Indikator, **Bobot** (persentase per aspek), Level [1-5] (rata-rata level tiap aspek antar penilai), dan Nilai (= Level × Bobot), ditutup baris **Total Nilai** (jumlah seluruh Nilai berbobot). Bobot tiap aspek dikelola sebagai data master pada **Aspek Penilaian** (field Bobot %), total bobot aspek aktif sebaiknya 100%. Aspek yang belum dinilai tampil "-" dan tidak menambah total.
+- **Tanggal** diambil dari **tanggal BASTP** (fallback tanggal formulir).
+- Ditandatangani oleh **Tim Pengadaan** (menggantikan "Kepala Divisi Supply Chain Management").
+- **Tipografi ringkas** setara ukuran Word (± 9pt body, judul 15pt) dengan gaya korporat bersih, diusahakan muat dalam satu halaman A4. Margin diatur pada `@page` sehingga bila isi melebar ke halaman kedua, teksnya tetap berada di dalam margin kertas; ornamen sudut & watermark tetap full-bleed di setiap halaman.
+
+---
+
 # Dashboard
 
 Menampilkan informasi:

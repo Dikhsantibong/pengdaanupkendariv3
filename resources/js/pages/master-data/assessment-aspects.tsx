@@ -11,6 +11,7 @@ type AssessmentAspect = MasterRecord & {
     indicator_count: number;
     form_count: number;
     sort_order: number;
+    weight: number;
 };
 
 export default function AssessmentAspects({
@@ -38,6 +39,12 @@ export default function AssessmentAspects({
                     key: 'form_count',
                     label: 'Dipakai Lembar',
                     className: 'tabular',
+                },
+                {
+                    key: 'weight',
+                    label: 'Bobot',
+                    className: 'tabular',
+                    render: (record) => `${record.weight}%`,
                 },
                 { key: 'sort_order', label: 'Urutan', className: 'tabular' },
             ]}
@@ -73,6 +80,12 @@ export default function AssessmentAspects({
                     placeholder: 'Tulis satu indikator.',
                     hint: 'Tercetak berurutan sebagai a, b, c pada formulir. Gunakan panah untuk mengubah urutan.',
                 },
+                {
+                    name: 'weight',
+                    label: 'Bobot (%)',
+                    type: 'number',
+                    hint: 'Persentase bobot aspek pada Sertifikat Akumulasi. Nilai = rata-rata level × bobot. Total bobot seluruh aspek aktif sebaiknya 100%.',
+                },
                 { name: 'sort_order', label: 'Urutan Tampil', type: 'number' },
                 {
                     name: 'is_active',
@@ -86,6 +99,7 @@ export default function AssessmentAspects({
                 code: '',
                 preamble: '',
                 indicators: [],
+                weight: 0,
                 sort_order: 0,
                 is_active: true,
             }}

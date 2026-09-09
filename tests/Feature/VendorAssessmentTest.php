@@ -324,6 +324,49 @@ class VendorAssessmentTest extends TestCase
             ->assertHeader('Content-Type', 'application/pdf');
     }
 
+    public function test_the_akumulasi_is_rendered_as_a_performance_certificate(): void
+    {
+        [$assessment, $administrator] = $this->openAssessment();
+
+        $assessment->update([
+            'po_number' => 'KDD075.SPK/612/UPKD/2026',
+            'po_date' => '2026-01-15',
+            'bastp_date' => '2026-09-01',
+        ]);
+
+        // Integritas carries a 20% weight; a level of 4 weighs 4 × 20% = 0,8.
+        $integritas = AssessmentAspect::query()->where('code', 'integritas')->firstOrFail();
+        $this->assertSame(20, $integritas->weight);
+        $this->scoreSheet($assessment, $administrator, 'pengadaan', [$integritas->id => 4]);
+
+        $renderer = app(VendorAssessmentRenderer::class);
+        $html = $renderer->html($assessment->refresh());
+
+        // The certificate layout, not the plain internal form.
+        $this->assertStringContainsString('LAPORAN KINERJA SUPPLIER', $html);
+        $this->assertStringContainsString('diberikan kepada', $html);
+        $this->assertStringContainsString('PT. Surveyor Indonesia', $html);
+        $this->assertStringNotContainsString('FORMULIR', $html);
+
+        // The contract details are woven into the narrative, and the form/VO
+        // number is dropped.
+        $this->assertStringContainsString('KDD075.SPK/612/UPKD/2026', $html);
+        $this->assertStringNotContainsString('SMT-FM-DAN-02.02', $html);
+
+        // The weighted table: a Bobot column, and the weighted score.
+        $this->assertStringContainsString('Bobot', $html);
+        $this->assertStringContainsString('20%', $html);
+        $this->assertStringContainsString('0,8', $html);
+
+        // Signed off by the procurement team, dated from the BASTP.
+        $this->assertStringContainsString('Tim Pengadaan', $html);
+        $this->assertStringNotContainsString('Kepala Divisi', $html);
+        $this->assertStringContainsString('September 2026', $html);
+
+        // Still a valid PDF.
+        $this->assertStringStartsWith('%PDF-', $renderer->pdf($assessment->refresh()));
+    }
+
     public function test_the_printable_sheet_shows_the_official_heading_and_levels(): void
     {
         [$assessment, $administrator] = $this->openAssessment();

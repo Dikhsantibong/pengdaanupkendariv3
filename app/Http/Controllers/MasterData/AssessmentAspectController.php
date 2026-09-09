@@ -75,6 +75,7 @@ class AssessmentAspectController extends MasterDataController
                 'indicator_count' => count($record->indicators),
                 'form_count' => $record->forms_count,
                 'sort_order' => $record->sort_order,
+                'weight' => $record->weight,
                 'is_active' => $record->is_active,
                 'usage_count' => $record->scores_count,
             ])
@@ -109,6 +110,9 @@ class AssessmentAspectController extends MasterDataController
             'indicators' => ['required', 'array', 'min:1', 'max:26'],
             'indicators.*' => ['required', 'string', 'max:500'],
             'sort_order' => ['required', 'integer', 'min:0', 'max:999'],
+            // Optional so aspects created before weighting existed still save;
+            // the certificate multiplies the average level by this percentage.
+            'weight' => ['nullable', 'integer', 'min:0', 'max:100'],
             'is_active' => ['required', 'boolean'],
         ];
     }
@@ -123,6 +127,9 @@ class AssessmentAspectController extends MasterDataController
     {
         // The aspect names are printed in capitals on the official form.
         $validated['name'] = Str::upper(trim((string) $validated['name']));
+
+        // A blank weight is stored as zero rather than null.
+        $validated['weight'] = (int) ($validated['weight'] ?? 0);
 
         return $validated;
     }

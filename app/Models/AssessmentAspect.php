@@ -21,13 +21,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string|null $preamble
  * @property array<int, string> $indicators
  * @property int $sort_order
+ * @property int $weight
  * @property bool $is_active
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  * @property CarbonImmutable|null $deleted_at
  * @property-read int|null $scores_count
  */
-#[Fillable(['code', 'name', 'preamble', 'indicators', 'sort_order', 'is_active'])]
+#[Fillable(['code', 'name', 'preamble', 'indicators', 'sort_order', 'weight', 'is_active'])]
 class AssessmentAspect extends Model
 {
     /** @use HasFactory<AssessmentAspectFactory> */
@@ -65,6 +66,7 @@ class AssessmentAspect extends Model
     {
         return [
             'indicators' => 'array',
+            'weight' => 'integer',
             'is_active' => 'boolean',
         ];
     }

@@ -172,6 +172,19 @@ class VendorAssessmentSeeder extends Seeder
             ],
         ];
 
+        // Percentage weight each aspect carries on the certificate; adds to 100.
+        $weights = [
+            'integritas' => 20,
+            'kerja-sama' => 15,
+            'mutu' => 15,
+            'waktu' => 15,
+            'harga' => 15,
+            'manajemen-k3' => 5,
+            'lingkungan' => 5,
+            'keamanan' => 5,
+            'manajemen-energi' => 5,
+        ];
+
         foreach ($aspects as $index => [$code, $name, $preamble, $indicators]) {
             AssessmentAspect::query()->updateOrCreate(
                 ['code' => $code],
@@ -180,6 +193,7 @@ class VendorAssessmentSeeder extends Seeder
                     'preamble' => $preamble,
                     'indicators' => $indicators,
                     'sort_order' => $index + 1,
+                    'weight' => $weights[$code],
                     'is_active' => true,
                 ],
             );

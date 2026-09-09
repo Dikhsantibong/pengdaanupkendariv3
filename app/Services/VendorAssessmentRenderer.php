@@ -26,14 +26,14 @@ class VendorAssessmentRenderer
     {
         $assessment->loadMissing(['scores.form', 'scores.aspect', 'invitations']);
 
-        $title = $form === null
-            ? 'AKUMULASI HASIL PENILAIAN'
-            : $form->name;
+        // The akumulasi is issued as a performance certificate, not the plain
+        // internal form the individual assessor sheets use.
+        if ($form === null) {
+            return $this->certificateDocument($assessment);
+        }
 
-        $rows = $form === null
-            ? $this->recapRows($assessment)
-            : $this->formRows($assessment, $form);
-
+        $title = $form->name;
+        $rows = $this->formRows($assessment, $form);
         $signature = $this->signature($assessment, $form);
 
         $body = $this->bodyContent($assessment, $title, $rows, $signature);
@@ -274,6 +274,224 @@ class VendorAssessmentRenderer
             </table>
 
             {$signature}
+        HTML;
+    }
+
+    /**
+     * The akumulasi rendered as a performance certificate.
+     *
+     * A framed, watermarked page addressed to the vendor. Each aspect carries a
+     * percentage weight, so its score on the certificate is the average level
+     * across the assessors who scored it multiplied by that weight, and the
+     * total is the sum of those weighted figures. The contract details are
+     * woven into the narrative, the sheet is dated from the BASTP, and it is
+     * signed off by the procurement team.
+     */
+    protected function certificateDocument(VendorAssessment $assessment): string
+    {
+        $logo = $this->logo();
+        $deco = $this->certificateDecoration();
+        $vendor = e($assessment->vendor_name);
+        $project = e($assessment->project);
+        $poNumber = e((string) ($assessment->po_number ?? '-'));
+        $poDate = $assessment->po_date?->translatedFormat('d F Y') ?? '-';
+        $place = e($assessment->place);
+        $date = $assessment->bastp_date?->translatedFormat('d F Y')
+            ?? $assessment->form_date?->translatedFormat('d F Y')
+            ?? '..........................';
+
+        [$rows, $total] = $this->certificateTable($assessment);
+
+        $body = <<<HTML
+            <div class="deco">{$deco}</div>
+            <div class="watermark">PLN</div>
+            <div class="content">
+                <div class="logo">{$logo}</div>
+                <h1 class="cert-title">LAPORAN KINERJA SUPPLIER</h1>
+                <div class="rule"></div>
+                <p class="given">diberikan kepada</p>
+                <p class="vendor">{$vendor}</p>
+                <p class="narrative">
+                    Hasil kinerja perusahaan terhadap surat perjanjian nomor
+                    <strong>{$poNumber}</strong>, tanggal {$poDate} tentang
+                    {$project}.
+                </p>
+
+                <table class="grid">
+                    <thead>
+                        <tr>
+                            <th class="ind">Indikator</th>
+                            <th class="num">Bobot</th>
+                            <th class="num">Level [1-5]</th>
+                            <th class="num">Nilai</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {$rows}
+                    </tbody>
+                    <tfoot>
+                        <tr class="total">
+                            <td class="ind" colspan="3">Total Nilai</td>
+                            <td class="num">{$total}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <p class="closing">
+                    Atas nama manajemen PT PLN Nusantara Power UP Kendari, kami
+                    mengucapkan terima kasih atas kerjasamanya dan selamat atas
+                    kinerja Saudara, mohon dapat ditingkatkan lagi. Demikian atas
+                    perhatiannya kami mengucapkan terima kasih.
+                </p>
+
+                <table class="sign-cert">
+                    <tr><td>{$place}, {$date}</td></tr>
+                    <tr><td class="space"></td></tr>
+                    <tr><td class="role">Tim Pengadaan</td></tr>
+                </table>
+            </div>
+        HTML;
+
+        return $this->certificateShell($body);
+    }
+
+    /**
+     * The certificate rows and their weighted total.
+     *
+     * Each aspect's score is its average level times its weight; unscored
+     * aspects show a dash and contribute nothing to the total.
+     *
+     * @return array{0: string, 1: string} The rows HTML and the formatted total.
+     */
+    protected function certificateTable(VendorAssessment $assessment): array
+    {
+        $total = 0.0;
+
+        $rows = AssessmentAspect::query()
+            ->active()
+            ->ordered()
+            ->get()
+            ->map(function (AssessmentAspect $aspect) use ($assessment, &$total): string {
+                $average = $assessment->averageFor($aspect->id);
+                $name = e($aspect->name);
+                $weight = $aspect->weight;
+
+                $level = $average === null ? '-' : $this->number($average);
+
+                if ($average === null) {
+                    $value = '-';
+                } else {
+                    $weighted = $average * $weight / 100;
+                    $total += $weighted;
+                    $value = $this->weightedNumber($weighted);
+                }
+
+                return <<<HTML
+                <tr>
+                    <td class="ind">{$name}</td>
+                    <td class="num">{$weight}%</td>
+                    <td class="num">{$level}</td>
+                    <td class="num">{$value}</td>
+                </tr>
+                HTML;
+            })
+            ->implode('');
+
+        return [$rows, $this->weightedNumber($total)];
+    }
+
+    /**
+     * Format a weighted figure with a comma decimal mark, trimmed.
+     */
+    protected function weightedNumber(float $value): string
+    {
+        return rtrim(rtrim(number_format($value, 4, ',', '.'), '0'), ',');
+    }
+
+    /**
+     * The framed corner ornament, as an inline SVG data URI.
+     *
+     * Shapes only — navy and gold flourishes top-left and bottom-right plus a
+     * double border — because dompdf renders SVG paths reliably but its SVG
+     * text support is weak, so the "PLN" watermark is drawn as HTML instead.
+     */
+    protected function certificateDecoration(): string
+    {
+        $svg = <<<'SVG'
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 297" preserveAspectRatio="none">
+            <rect x="6" y="6" width="198" height="285" fill="none" stroke="#123a5e" stroke-width="0.6"/>
+            <rect x="8" y="8" width="194" height="281" fill="none" stroke="#c9a227" stroke-width="0.3"/>
+            <path d="M6,6 L52,6 C34,23 22,37 6,49 Z" fill="#123a5e"/>
+            <path d="M6,6 L36,6 C25,15 17,23 6,33 Z" fill="#1f4e79"/>
+            <path d="M58,6 C39,28 27,42 6,58" fill="none" stroke="#c9a227" stroke-width="0.9"/>
+            <path d="M204,291 L158,291 C176,274 188,260 204,248 Z" fill="#123a5e"/>
+            <path d="M204,291 L174,291 C185,282 193,274 204,264 Z" fill="#1f4e79"/>
+            <path d="M204,240 C185,262 173,276 152,291" fill="none" stroke="#c9a227" stroke-width="0.9"/>
+        </svg>
+        SVG;
+
+        return '<img src="data:image/svg+xml;base64,'.base64_encode($svg).'" alt="">';
+    }
+
+    /**
+     * The certificate document shell, framed to the page edge.
+     */
+    protected function certificateShell(string $content): string
+    {
+        return <<<HTML
+        <!doctype html>
+        <html lang="id">
+        <head>
+        <meta charset="utf-8">
+        <title>Laporan Kinerja Supplier</title>
+        <style>
+            :root { color-scheme: only light; }
+            html, body { background: #fff; }
+            /* Real page margins, so text on any overflow page keeps its inset;
+               the decoration is drawn full-bleed behind, from the paper edge. */
+            @page { size: A4 portrait; margin: 18mm 24mm; }
+            body { font-family: 'DejaVu Sans', sans-serif; font-size: 9pt; color: #3f4650; margin: 0; }
+            .deco { position: fixed; top: -18mm; left: -24mm; width: 210mm; height: 297mm; }
+            .deco img { width: 210mm; height: 297mm; }
+            .watermark {
+                position: fixed; top: 102mm; left: -24mm; width: 210mm;
+                text-align: center; font-size: 96pt; font-weight: bold;
+                color: #f1f4f8; letter-spacing: 10pt;
+            }
+            .content { position: relative; text-align: center; }
+            .logo { margin-bottom: 8pt; }
+            .logo img { width: 104pt; }
+            .cert-title { margin: 0; font-size: 15pt; font-weight: bold; letter-spacing: 1.5pt; color: #123a5e; }
+            .rule { width: 46pt; height: 2pt; background: #c9a227; margin: 6pt auto 0; }
+            .given { margin: 12pt 0 2pt; font-size: 8.5pt; color: #7a828d; letter-spacing: 0.3pt; }
+            .vendor { margin: 0; font-size: 13pt; font-weight: bold; color: #111827; letter-spacing: 0.5pt; }
+            .narrative { margin: 9pt auto 0; max-width: 134mm; font-size: 9pt; line-height: 1.55; color: #3f4650; }
+            .grid { width: 100%; border-collapse: collapse; margin: 12pt 0; font-size: 8.5pt; }
+            .grid thead th {
+                padding: 5pt 8pt; color: #123a5e; font-weight: bold; font-size: 7.5pt;
+                letter-spacing: 0.4pt; text-transform: uppercase;
+                border-top: 1.2pt solid #123a5e; border-bottom: 1.2pt solid #123a5e;
+            }
+            .grid tbody td { padding: 4pt 8pt; border-bottom: 0.4pt solid #e3e8ee; }
+            .grid .ind { text-align: left; }
+            .grid tbody .ind { font-style: italic; color: #3f4650; }
+            .grid .num { text-align: center; width: 58pt; }
+            .grid tfoot .total td {
+                padding: 5.5pt 8pt; border-top: 1.2pt solid #123a5e;
+                font-weight: bold; color: #123a5e; font-size: 9pt;
+            }
+            .grid tfoot .total .ind { text-align: right; text-transform: uppercase; letter-spacing: 0.4pt; }
+            .closing { margin: 4pt auto 0; max-width: 134mm; font-size: 9pt; line-height: 1.55; text-align: justify; color: #3f4650; }
+            .sign-cert { width: 62mm; margin-top: 16pt; margin-left: auto; margin-right: 0; page-break-inside: avoid; }
+            .sign-cert td { text-align: center; padding: 0; font-size: 9pt; }
+            .sign-cert .space { height: 40pt; }
+            .sign-cert .role { font-weight: bold; color: #123a5e; }
+        </style>
+        </head>
+        <body>
+            {$content}
+        </body>
+        </html>
         HTML;
     }
 
