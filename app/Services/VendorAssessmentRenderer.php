@@ -304,7 +304,7 @@ class VendorAssessmentRenderer
 
         $body = <<<HTML
             <div class="deco">{$deco}</div>
-            <div class="watermark">PLN</div>
+            <div class="watermark">UP KENDARI</div>
             <div class="content">
                 <div class="logo">{$logo}</div>
                 <h1 class="cert-title">LAPORAN KINERJA SUPPLIER</h1>
@@ -313,8 +313,8 @@ class VendorAssessmentRenderer
                 <p class="vendor">{$vendor}</p>
                 <p class="narrative">
                     Hasil kinerja perusahaan terhadap surat perjanjian nomor
-                    <strong>{$poNumber}</strong>, tanggal {$poDate} tentang
-                    {$project}.
+                    <strong>{$poNumber}</strong>, tanggal <strong>{$poDate}</strong>
+                    tentang {$project}.
                 </p>
 
                 <table class="grid">
@@ -454,13 +454,13 @@ class VendorAssessmentRenderer
             .deco { position: fixed; top: -18mm; left: -24mm; width: 210mm; height: 297mm; }
             .deco img { width: 210mm; height: 297mm; }
             .watermark {
-                position: fixed; top: 102mm; left: -24mm; width: 210mm;
-                text-align: center; font-size: 96pt; font-weight: bold;
-                color: #f1f4f8; letter-spacing: 10pt;
+                position: fixed; top: 122mm; left: -24mm; width: 210mm;
+                text-align: center; font-size: 54pt; font-weight: bold;
+                color: #f1f4f8; letter-spacing: 6pt; white-space: nowrap;
             }
             .content { position: relative; text-align: center; }
             .logo { margin-bottom: 8pt; }
-            .logo img { width: 104pt; }
+            .logo img { width: 132pt; }
             .cert-title { margin: 0; font-size: 15pt; font-weight: bold; letter-spacing: 1.5pt; color: #123a5e; }
             .rule { width: 46pt; height: 2pt; background: #c9a227; margin: 6pt auto 0; }
             .given { margin: 12pt 0 2pt; font-size: 8.5pt; color: #7a828d; letter-spacing: 0.3pt; }
