@@ -450,12 +450,12 @@ class VendorAssessmentRenderer
             html, body { background: #fff; }
             /* Real page margins, so text on any overflow page keeps its inset;
                the decoration is drawn full-bleed behind, from the paper edge. */
-            @page { size: A4 portrait; margin: 18mm 24mm; }
+            @page { size: A4 portrait; margin: 18mm 30mm; }
             body { font-family: 'DejaVu Sans', sans-serif; font-size: 9pt; color: #000; margin: 0; }
-            .deco { position: fixed; top: -18mm; left: -24mm; width: 210mm; height: 297mm; }
+            .deco { position: fixed; top: -18mm; left: -30mm; width: 210mm; height: 297mm; }
             .deco img { width: 210mm; height: 297mm; }
             .watermark {
-                position: fixed; top: 122mm; left: -24mm; width: 210mm;
+                position: fixed; top: 122mm; left: -30mm; width: 210mm;
                 text-align: center; font-size: 54pt; font-weight: bold;
                 color: #f0f0f0; letter-spacing: 6pt; white-space: nowrap;
             }
