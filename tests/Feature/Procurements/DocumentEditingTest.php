@@ -224,6 +224,73 @@ class DocumentEditingTest extends TestCase
         $this->assertSame(0, $document->refresh()->revision);
     }
 
+    public function test_the_preview_renders_the_unsaved_draft_as_a_pdf(): void
+    {
+        Storage::fake('local');
+
+        [$procurement, $document] = $this->generate();
+        $originalBody = $document->rendered_body;
+        $originalTitle = $document->title;
+
+        $response = $this->actingAs(User::factory()->teamLeader()->create())
+            ->postJson(route('procurements.documents.preview', [$procurement, $document]), [
+                'title' => 'Judul Draf',
+                'body' => '<p>DRAF BELUM DISIMPAN</p>',
+            ])
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
+
+        // Shown inline and never reused from a cache, so it always reflects
+        // the draft on screen.
+        $this->assertStringContainsString('inline', (string) $response->headers->get('Content-Disposition'));
+        $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+
+        $pdf = (string) $response->getContent();
+
+        $this->assertStringStartsWith('%PDF-', $pdf);
+        $this->assertStringContainsString(
+            (string) mb_convert_encoding('DRAF BELUM DISIMPAN', 'UTF-16BE', 'UTF-8'),
+            $this->inflateStreams($pdf),
+        );
+
+        // A preview saves nothing: the stored document and its PDF cache are
+        // exactly as they were.
+        $document->refresh();
+
+        $this->assertSame($originalBody, $document->rendered_body);
+        $this->assertSame($originalTitle, $document->title);
+        $this->assertSame(0, $document->revision);
+        $this->assertSame([], Storage::disk('local')->files('documents/pdf'));
+    }
+
+    public function test_the_preview_needs_a_body(): void
+    {
+        [$procurement, $document] = $this->generate();
+
+        $this->actingAs(User::factory()->teamLeader()->create())
+            ->postJson(route('procurements.documents.preview', [$procurement, $document]), [
+                'title' => 'Judul',
+                'body' => '',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('body');
+    }
+
+    public function test_an_unassigned_pic_cannot_preview_the_document(): void
+    {
+        $planner = User::factory()->planner()->create();
+        $outsider = User::factory()->planner()->create();
+
+        [$procurement, $document] = $this->generate([], $planner);
+
+        $this->actingAs($outsider)
+            ->postJson(route('procurements.documents.preview', [$procurement, $document]), [
+                'title' => $document->title,
+                'body' => '<p>Mengintip</p>',
+            ])
+            ->assertForbidden();
+    }
+
     public function test_rich_document_markup_survives_a_save(): void
     {
         [$procurement, $document] = $this->generate();

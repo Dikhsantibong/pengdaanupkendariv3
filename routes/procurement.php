@@ -33,6 +33,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
         Route::get('documents/{document}/edit', [DocumentController::class, 'edit'])->name('documents.edit');
         Route::put('documents/{document}', [DocumentController::class, 'update'])->name('documents.update');
+        Route::post('documents/{document}/preview', [DocumentController::class, 'preview'])
+            ->name('documents.preview');
         Route::post('documents/{document}/regenerate', [DocumentController::class, 'regenerate'])
             ->name('documents.regenerate');
         Route::post('documents/{document}/signed', [DocumentController::class, 'storeSigned'])

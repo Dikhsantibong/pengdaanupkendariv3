@@ -152,6 +152,36 @@ class DocumentController extends Controller
     }
 
     /**
+     * Render the document being edited as a PDF, without saving it.
+     *
+     * The editor's print preview shows exactly what the downloaded PDF will
+     * look like, including edits that are not saved yet. The draft is applied
+     * to the model in memory only and rendered outside the PDF cache, so
+     * nothing about the stored document changes.
+     */
+    public function preview(
+        UpdateDocumentRequest $request,
+        Procurement $procurement,
+        ProcurementDocument $document,
+    ): HttpResponse {
+        $this->authorize('editDocument', $procurement);
+
+        $this->assertBelongsTo($procurement, $document);
+
+        $draft = clone $document;
+        $draft->forceFill([
+            'title' => $request->string('title')->value(),
+            'rendered_body' => $request->string('body')->value(),
+        ]);
+
+        return response($this->pdf->render($draft), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="pratinjau-'.$this->pdf->fileName($document).'"',
+            'Cache-Control' => 'no-store, max-age=0',
+        ]);
+    }
+
+    /**
      * Rebuild the document from its template using the current data.
      */
     public function regenerate(

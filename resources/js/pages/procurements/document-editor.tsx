@@ -1,14 +1,14 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import {
     ArrowLeft,
-    Code2,
     Download,
     Eye,
     PenLine,
     RotateCcw,
     Save,
 } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { PdfPreview } from '@/components/document-editor/pdf-preview';
 import { VisualEditor } from '@/components/document-editor/visual-editor';
 import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/page-header';
@@ -24,7 +24,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
 import { formatDateTime } from '@/lib/format';
 import { dashboard } from '@/routes';
 import procurements from '@/routes/procurements';
@@ -48,7 +47,7 @@ type PlaceholderRow = {
     value: string;
 };
 
-type ViewMode = 'visual' | 'source' | 'preview';
+type ViewMode = 'visual' | 'preview';
 
 export default function DocumentEditor({
     procurement,
@@ -62,7 +61,6 @@ export default function DocumentEditor({
     const form = useForm({ title: doc.title, body: doc.body });
     const [mode, setMode] = useState<ViewMode>('visual');
     const [confirmReload, setConfirmReload] = useState(false);
-    const bodyRef = useRef<HTMLTextAreaElement>(null);
 
     const dirty = form.data.title !== doc.title || form.data.body !== doc.body;
 
@@ -78,6 +76,11 @@ export default function DocumentEditor({
         document: doc.id,
     }).url;
 
+    const previewUrl = procurements.documents.preview({
+        procurement: procurement.id,
+        document: doc.id,
+    }).url;
+
     const save = () => {
         form.put(
             procurements.documents.update({
@@ -89,37 +92,13 @@ export default function DocumentEditor({
     };
 
     /**
-     * Drop a placeholder code in at the caret, in whichever mode is open.
+     * Drop a placeholder code in at the caret of the visual editor.
      *
-     * In the visual editor the caret lives in the document itself; in source
-     * mode it lives in the textarea. Both are handled so the data catalogue
-     * below stays useful either way.
+     * The preview is read-only, so inserting from there switches back to the
+     * editor first and places the code where the caret was left.
      */
     const insertPlaceholder = (key: string) => {
         const code = `{{${key}}}`;
-
-        if (mode === 'source') {
-            const field = bodyRef.current;
-
-            if (field === null) {
-                return;
-            }
-
-            const { selectionStart: start, selectionEnd: end, value } = field;
-            const next = value.slice(0, start) + code + value.slice(end);
-
-            form.setData('body', next);
-
-            queueMicrotask(() => {
-                field.focus();
-                field.setSelectionRange(
-                    start + code.length,
-                    start + code.length,
-                );
-            });
-
-            return;
-        }
 
         setMode('visual');
 
@@ -258,10 +237,6 @@ export default function DocumentEditor({
                                 <Eye className="size-3.5" />
                                 Pratinjau Cetak
                             </TabsTrigger>
-                            <TabsTrigger value="source">
-                                <Code2 className="size-3.5" />
-                                Sumber HTML
-                            </TabsTrigger>
                         </TabsList>
 
                         <span className="tabular text-xs text-muted-foreground">
@@ -283,33 +258,11 @@ export default function DocumentEditor({
                     </TabsContent>
 
                     <TabsContent value="preview" className="mt-3">
-                        <div className="min-h-[70vh] overflow-auto rounded-md border border-border bg-white p-6">
-                            <div
-                                className="document-preview"
-                                dangerouslySetInnerHTML={{
-                                    __html: form.data.body,
-                                }}
-                            />
-                        </div>
-                    </TabsContent>
-
-                    <TabsContent value="source" className="mt-3">
-                        <Textarea
-                            id="body"
-                            ref={bodyRef}
-                            value={form.data.body}
-                            onChange={(event) =>
-                                form.setData('body', event.target.value)
-                            }
-                            spellCheck={false}
-                            className="min-h-[70vh] resize-y font-mono text-xs leading-relaxed"
+                        <PdfPreview
+                            endpoint={previewUrl}
+                            title={form.data.title}
+                            body={form.data.body}
                         />
-                        <p className="mt-2 text-xs text-muted-foreground">
-                            Mode lanjutan untuk penyuntingan HTML langsung.
-                            Gunakan bila perlu mengatur hal yang tidak tersedia
-                            di editor visual.
-                        </p>
-                        <InputError message={form.errors.body} />
                     </TabsContent>
                 </Tabs>
                 <section className="flex flex-col gap-3 rounded-md border border-border bg-card p-4">
