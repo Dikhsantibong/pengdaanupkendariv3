@@ -96,7 +96,7 @@ class ProcurementManagementTest extends TestCase
             ->assertSessionHasErrors([
                 'name',
                 'work_director_id',
-                'target_unit_id',
+                'target_unit_ids',
                 'procurement_method_id',
                 'budget_source_id',
                 'hpe_value',

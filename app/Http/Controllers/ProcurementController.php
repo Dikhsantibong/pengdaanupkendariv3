@@ -34,7 +34,7 @@ class ProcurementController extends Controller
         $procurements = ProcurementFilters::apply(
             Procurement::query()
                 ->visibleTo($request->user())
-                ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'prRoNumber', 'progressStatus', 'planner', 'executor']),
+                ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor']),
             $request,
         )
             ->latest('created_at')
@@ -96,7 +96,7 @@ class ProcurementController extends Controller
             'procurementMethod',
             'budgetSource',
             'contractType',
-            'prRoNumber',
+            'targetUnits',
             'progressStatus',
             'planner',
             'executor',
@@ -140,6 +140,7 @@ class ProcurementController extends Controller
                     'id' => $document->id,
                     'title' => $document->title,
                     'type' => $document->documentType->name,
+                    'upload_only' => $document->documentType->upload_only,
                     'template_version' => $document->template_version,
                     'revision' => $document->revision,
                     'generated_by' => $document->generatedBy?->name,
@@ -189,15 +190,22 @@ class ProcurementController extends Controller
                 'number' => $procurement->number,
                 'contract_number_format_id' => $procurement->contract_number_format_id,
                 'name' => $procurement->name,
+                'partner_name' => $procurement->partner_name ?? '',
                 'work_director_id' => $procurement->work_director_id,
-                'target_unit_id' => $procurement->target_unit_id,
+                'target_unit_ids' => $procurement->servedUnits()->pluck('id')->all(),
                 'procurement_method_id' => $procurement->procurement_method_id,
                 'budget_source_id' => $procurement->budget_source_id,
-                'pr_ro_number_id' => $procurement->pr_ro_number_id,
-                'prk_number' => $procurement->prk_number,
+                'prk_number' => $procurement->prk_number ?? '',
+                'proposal_memo_number' => $procurement->proposal_memo_number ?? '',
+                'icc_memo_number' => $procurement->icc_memo_number ?? '',
+                'pr_po_number' => $procurement->pr_po_number ?? '',
+                'coa_number' => $procurement->coa_number ?? '',
+                'wo_number' => $procurement->wo_number ?? '',
                 'hpe_value' => (float) $procurement->hpe_value,
+                'value_after_negotiation' => $procurement->value_after_negotiation === null
+                    ? null
+                    : (float) $procurement->value_after_negotiation,
                 'progress_status_id' => $procurement->progress_status_id,
-                'target_completion_date' => $procurement->target_completion_date?->toDateString(),
                 'notes' => $procurement->notes,
             ],
             'options' => MasterDataOptions::forProcurementForm(),
@@ -212,7 +220,7 @@ class ProcurementController extends Controller
     {
         $this->authorize('update', $procurement);
 
-        $procurement->fill($request->safe()->except('number'));
+        $procurement->fill($request->safe()->except(['number', 'target_unit_ids']));
 
         // The number is not mass assignable, so a correction is applied here
         // rather than through fill(). A blank field leaves the number alone.
@@ -223,6 +231,11 @@ class ProcurementController extends Controller
         }
 
         $procurement->save();
+
+        /** @var array<int, int|string> $unitIds */
+        $unitIds = $request->validated('target_unit_ids', []);
+
+        $this->procurements->syncTargetUnits($procurement, $unitIds);
 
         // The method decides which checklist steps apply, so a change to it has
         // to be reflected on the checklist straight away.
@@ -316,6 +329,8 @@ class ProcurementController extends Controller
             'is_signed' => $document?->isSigned() ?? false,
             'uploads' => $document === null ? [] : self::uploadPayload($document),
             'has_template' => in_array($type->id, $resolvable, true),
+            // Uploaded rather than generated: the step offers only an upload.
+            'upload_only' => $type->upload_only,
         ];
     }
 

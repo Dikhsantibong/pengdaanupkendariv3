@@ -183,12 +183,22 @@ function ChecklistDocumentActions({
                     }
                 >
                     {document.is_signed
-                        ? `Bertanda tangan · ${document.uploads.length} berkas`
+                        ? `${document.upload_only ? 'Terunggah' : 'Bertanda tangan'} · ${document.uploads.length} berkas`
                         : 'Wajib diunggah'}
                 </span>
             </div>
 
-            {document.id === null ? (
+            {document.upload_only ? (
+                // Filed as-is: no template, nothing to generate or edit.
+                <SignedUploadList
+                    procurementId={procurementId}
+                    documentId={document.id}
+                    documentTypeId={document.type_id}
+                    uploads={document.uploads}
+                    canManage={canManage}
+                    label="Unggah Dokumen"
+                />
+            ) : document.id === null ? (
                 <div className="flex flex-wrap items-center gap-2">
                     <p className="text-xs text-muted-foreground">
                         Belum digenerate.

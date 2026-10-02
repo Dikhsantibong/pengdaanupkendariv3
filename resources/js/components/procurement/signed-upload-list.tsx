@@ -35,26 +35,37 @@ function formatSize(bytes: number | null): string {
 export function SignedUploadList({
     procurementId,
     documentId,
+    documentTypeId,
     uploads,
     canManage,
     label = 'Unggah Hasil TTD',
 }: {
     procurementId: number;
-    documentId: number;
+    /** Null for an upload-only step that has no files yet. */
+    documentId: number | null;
+    /** Needed for that first upload, which creates the archive entry. */
+    documentTypeId?: number;
     uploads: SignedUpload[];
     canManage: boolean;
     label?: string;
 }) {
     const input = useRef<HTMLInputElement>(null);
-    const form = useForm<{ files: File[] }>({ files: [] });
+    const form = useForm<{ files: File[]; document_type_id?: number }>({
+        files: [],
+        ...(documentTypeId === undefined
+            ? {}
+            : { document_type_id: documentTypeId }),
+    });
 
-    const routeArgs = { procurement: procurementId, document: documentId };
+    const routeArgs = { procurement: procurementId, document: documentId ?? 0 };
 
     const upload = (files: FileList) => {
         form.setData('files', Array.from(files));
         form.submit(
             'post',
-            procurements.documents.signed.store(routeArgs).url,
+            documentId === null
+                ? procurements.documents.upload(procurementId).url
+                : procurements.documents.signed.store(routeArgs).url,
             {
                 preserveScroll: true,
                 forceFormData: true,

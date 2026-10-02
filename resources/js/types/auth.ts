@@ -22,6 +22,8 @@ export type AuthPermissions = {
     manageUsers: boolean;
     viewAllProcurements: boolean;
     createProcurement: boolean;
+    assignPic: boolean;
+    manageVendorAssessments: boolean;
 };
 
 export type Auth = {

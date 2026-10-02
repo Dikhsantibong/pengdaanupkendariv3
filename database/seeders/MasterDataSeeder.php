@@ -176,6 +176,7 @@ class MasterDataSeeder extends Seeder
         $formats = [
             ['SPK', 'Surat Perintah Kerja', 75],
             ['PJ', 'Perjanjian', 20],
+            ['SPPL', 'SPPL', 1],
         ];
 
         foreach ($formats as $index => [$code, $name, $startsAt]) {
@@ -235,11 +236,11 @@ class MasterDataSeeder extends Seeder
         $planning = [
             ['Checklist Perencanaan', false],
             ['Nota Dinas Usulan', false],
-            ['TOR (Term of Reference)', false],
+            ['TOR / KAK', false],
             ['RAB (Rencana Anggaran Biaya)', false],
             ['Penawaran', false],
-            ['CSMS', true],
-            ['Nota Dinas Perintah Pekerjaan', false],
+            ['CSMS (Sertifikat)', true],
+            ['Nota Dinas ke Pengadaan', false],
             ['HPE (Harga Perkiraan Engineer)', false],
             ['UPB', false],
             ['RKS (Rencana Kerja dan Syarat)', false],
@@ -293,11 +294,11 @@ class MasterDataSeeder extends Seeder
         $map = [
             ProcurementStage::Perencanaan->value => [
                 'Nota Dinas Usulan' => ['nota-dinas-usulan'],
-                'TOR (Term of Reference)' => ['tor'],
+                'TOR / KAK' => ['tor'],
                 'RAB (Rencana Anggaran Biaya)' => ['rab'],
                 'Penawaran' => ['penawaran'],
-                'CSMS' => ['csms'],
-                'Nota Dinas Perintah Pekerjaan' => ['nota-dinas-perintah-pekerjaan'],
+                'CSMS (Sertifikat)' => ['csms'],
+                'Nota Dinas ke Pengadaan' => ['nota-dinas-perintah-pekerjaan'],
                 'HPE (Harga Perkiraan Engineer)' => ['hpe'],
                 'UPB' => ['upb'],
                 'RKS (Rencana Kerja dan Syarat)' => ['rks'],
@@ -371,6 +372,9 @@ class MasterDataSeeder extends Seeder
         $renames = [
             ['stage' => ProcurementStage::Perencanaan, 'from' => 'Smart SCM', 'to' => 'Inisiasi SMART SCM'],
             ['stage' => ProcurementStage::Pelaksanaan, 'from' => 'Progress Pengadaan', 'to' => 'Proses SMART SCM'],
+            ['stage' => ProcurementStage::Perencanaan, 'from' => 'TOR (Term of Reference)', 'to' => 'TOR / KAK'],
+            ['stage' => ProcurementStage::Perencanaan, 'from' => 'CSMS', 'to' => 'CSMS (Sertifikat)'],
+            ['stage' => ProcurementStage::Perencanaan, 'from' => 'Nota Dinas Perintah Pekerjaan', 'to' => 'Nota Dinas ke Pengadaan'],
         ];
 
         foreach ($renames as $rename) {
@@ -417,6 +421,17 @@ class MasterDataSeeder extends Seeder
 
         foreach ($excluded as $checklistItemId) {
             $suratPesanan->excludedChecklistItems()->syncWithoutDetaching([$checklistItemId]);
+        }
+
+        // SPPL folds the RAB into its Penawaran, so it skips the RAB step.
+        $sppl = ContractNumberFormat::query()->where('code', 'SPPL')->first();
+        $rab = ChecklistItem::query()
+            ->forStage(ProcurementStage::Perencanaan)
+            ->where('name', 'RAB (Rencana Anggaran Biaya)')
+            ->first();
+
+        if ($sppl !== null && $rab !== null) {
+            $rab->excludedContractNumberFormats()->syncWithoutDetaching([$sppl->id]);
         }
     }
 
@@ -469,5 +484,11 @@ class MasterDataSeeder extends Seeder
         DocumentType::query()
             ->whereIn('code', ['pr-ro', 'inisiasi-smart-scm', 'purchase-order', 'rentang-waktu'])
             ->update(['is_active' => false]);
+
+        // The opening planning documents are prepared outside the system and
+        // simply uploaded on their step; nothing is generated for them.
+        DocumentType::query()
+            ->whereIn('code', ['nota-dinas-usulan', 'tor', 'rab', 'penawaran', 'csms', 'nota-dinas-perintah-pekerjaan'])
+            ->update(['upload_only' => true]);
     }
 }

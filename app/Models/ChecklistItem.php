@@ -78,6 +78,40 @@ class ChecklistItem extends Model
     }
 
     /**
+     * The contract number formats that skip this step.
+     *
+     * Exclusion rather than inclusion, like the methods: a new format or a
+     * new step applies everywhere until it is explicitly switched off.
+     *
+     * @return BelongsToMany<ContractNumberFormat, $this>
+     */
+    public function excludedContractNumberFormats(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            ContractNumberFormat::class,
+            'checklist_item_format_exclusions',
+        )->withTimestamps();
+    }
+
+    /**
+     * Limit the query to the steps that apply to a contract number format.
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeForContractNumberFormat(Builder $query, ?int $formatId): Builder
+    {
+        if ($formatId === null) {
+            return $query;
+        }
+
+        return $query->whereDoesntHave(
+            'excludedContractNumberFormats',
+            fn (Builder $formats): Builder => $formats->whereKey($formatId),
+        );
+    }
+
+    /**
      * Limit the query to a single procurement stage.
      *
      * @param  Builder<static>  $query

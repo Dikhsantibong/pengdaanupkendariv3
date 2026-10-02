@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccessRightController;
 use App\Http\Controllers\MasterData\AssessmentAspectController;
 use App\Http\Controllers\MasterData\AssessmentFormController;
 use App\Http\Controllers\MasterData\BudgetSourceController;
@@ -10,7 +11,6 @@ use App\Http\Controllers\MasterData\DocumentTemplateController;
 use App\Http\Controllers\MasterData\DocumentTypeController;
 use App\Http\Controllers\MasterData\ProcurementMethodController;
 use App\Http\Controllers\MasterData\ProgressStatusController;
-use App\Http\Controllers\MasterData\PrRoNumberController;
 use App\Http\Controllers\MasterData\TargetUnitController;
 use App\Http\Controllers\MasterData\WorkDirectorController;
 use App\Http\Controllers\UserController;
@@ -27,7 +27,6 @@ Route::middleware(['auth', 'verified', 'can:manage-master-data'])
         Route::resource('contract-types', ContractTypeController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('contract-number-formats', ContractNumberFormatController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('progress-statuses', ProgressStatusController::class)->only(['index', 'store', 'update', 'destroy']);
-        Route::resource('pr-ro-numbers', PrRoNumberController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('checklist-items', ChecklistItemController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('document-types', DocumentTypeController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('document-templates', DocumentTemplateController::class)->only(['index', 'store', 'update', 'destroy']);
@@ -36,5 +35,7 @@ Route::middleware(['auth', 'verified', 'can:manage-master-data'])
     });
 
 Route::middleware(['auth', 'verified', 'can:manage-users'])->group(function () {
+    Route::get('hak-akses', [AccessRightController::class, 'index'])->name('access-rights.index');
+    Route::put('hak-akses', [AccessRightController::class, 'update'])->name('access-rights.update');
     Route::resource('users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
 });

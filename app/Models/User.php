@@ -3,7 +3,9 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\Permission;
 use App\Enums\UserRole;
+use App\Services\AccessRights;
 use Carbon\CarbonImmutable;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -70,6 +72,14 @@ class User extends Authenticatable implements PasskeyUser
     public function isAdministrator(): bool
     {
         return $this->role === UserRole::Administrator;
+    }
+
+    /**
+     * Determine whether the user holds a right set on the access screen.
+     */
+    public function hasPermission(Permission $permission): bool
+    {
+        return AccessRights::allows($this, $permission);
     }
 
     /**

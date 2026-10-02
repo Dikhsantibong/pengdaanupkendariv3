@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Enums\Permission;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
@@ -34,14 +35,18 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function configureGates(): void
     {
-        Gate::define('manage-master-data', fn (User $user): bool => $user->isAdministrator());
+        // These follow the rights set on the "Hak Akses" screen.
+        Gate::define('manage-master-data', fn (User $user): bool => $user->hasPermission(Permission::ManageMasterData));
 
+        Gate::define('manage-vendor-assessments', fn (User $user): bool => $user->hasPermission(Permission::ManageVendorAssessments));
+
+        Gate::define('view-all-procurements', fn (User $user): bool => $user->hasPermission(Permission::ViewAllProcurements));
+
+        Gate::define('assign-pic', fn (User $user): bool => $user->hasPermission(Permission::AssignPic));
+
+        // Users and access rights stay with the administrator alone: anyone
+        // able to change them could raise their own role.
         Gate::define('manage-users', fn (User $user): bool => $user->isAdministrator());
-
-        // The vendor performance form is an administrator responsibility.
-        Gate::define('manage-vendor-assessments', fn (User $user): bool => $user->isAdministrator());
-
-        Gate::define('view-all-procurements', fn (User $user): bool => $user->isSupervisor());
     }
 
     /**

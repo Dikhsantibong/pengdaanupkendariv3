@@ -12,7 +12,6 @@ use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementMethod;
 use App\Models\ProgressStatus;
-use App\Models\PrRoNumber;
 use App\Models\TargetUnit;
 use App\Models\User;
 use App\Models\WorkDirector;
@@ -40,12 +39,6 @@ class MasterDataOptions
             'targetUnits' => self::targetUnits(true),
             'procurementMethods' => self::procurementMethods(true),
             'budgetSources' => self::budgetSources(true),
-            'prRoNumbers' => PrRoNumber::query()->active()->ordered()->get()
-                ->map(fn (PrRoNumber $number): array => [
-                    'value' => $number->id,
-                    'label' => $number->number,
-                    'description' => $number->description,
-                ])->all(),
             'progressStatuses' => self::statuses(),
             'defaultProgressStatusId' => ProgressStatus::defaultStatus()?->id,
             'planners' => self::users(UserRole::PicPerencana),
@@ -87,7 +80,9 @@ class MasterDataOptions
             'planners' => self::users(UserRole::PicPerencana),
             'executors' => self::users(UserRole::PicPelaksana),
             'contractTypes' => self::contractTypes(),
-            'documentTypes' => DocumentType::query()->active()->ordered()->get()
+            // Upload-only documents are filed on their checklist step, never
+            // generated, so they are not offered here.
+            'documentTypes' => DocumentType::query()->active()->where('upload_only', false)->ordered()->get()
                 ->map(fn (DocumentType $type): array => [
                     'value' => $type->id,
                     'label' => $type->name,

@@ -62,6 +62,7 @@ class DocumentTypeController extends MasterDataController
                 'code' => $record->code,
                 'name' => $record->name,
                 'stage' => $record->stage->value,
+                'upload_only' => $record->upload_only,
                 'stage_label' => $record->stage->label(),
                 'description' => $record->description,
                 'sort_order' => $record->sort_order,
@@ -109,6 +110,8 @@ class DocumentTypeController extends MasterDataController
                 Rule::unique('document_types', 'code')->ignore($record?->getKey())->whereNull('deleted_at'),
             ],
             'stage' => ['required', Rule::enum(ProcurementStage::class)],
+            // Optional so a form that predates the switch still saves.
+            'upload_only' => ['sometimes', 'boolean'],
             'description' => ['nullable', 'string', 'max:255'],
             'sort_order' => ['required', 'integer', 'min:0', 'max:999'],
             'is_active' => ['required', 'boolean'],

@@ -24,7 +24,7 @@ class ReportController extends Controller
         $query = ProcurementFilters::apply(
             Procurement::query()
                 ->visibleTo($request->user())
-                ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'prRoNumber', 'progressStatus', 'planner', 'executor']),
+                ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor']),
             $request,
         );
 
@@ -53,7 +53,7 @@ class ReportController extends Controller
         $rows = ProcurementFilters::apply(
             Procurement::query()
                 ->visibleTo($request->user())
-                ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'prRoNumber', 'progressStatus', 'planner', 'executor']),
+                ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor']),
             $request,
         )->latest('created_at')->get();
 
@@ -64,9 +64,10 @@ class ReportController extends Controller
         }
 
         fputcsv($handle, [
-            'Nomor Pengadaan', 'Nama Pengadaan', 'Direksi Pekerjaan', 'Unit Tujuan',
-            'Metode Pengadaan', 'Sumber Anggaran', 'Nomor PR/RO', 'Nomor PRK',
-            'Nilai HPE', 'Status Progres', 'PIC Perencana', 'PIC Pelaksana',
+            'Nomor Pengadaan', 'Nama Pengadaan', 'Nama Mitra/Pelaksana', 'Direksi Pekerjaan', 'Unit Tujuan',
+            'Metode Pengadaan', 'Sumber Anggaran', 'Nomor PR/PO', 'Nomor PRK',
+            'Nomor Nota Dinas Usulan', 'Nomor Nota Dinas ICC', 'Nomor COA', 'Nomor WO',
+            'Nilai Sebelum Nego', 'Nilai Setelah Nego', 'Status Progres', 'PIC Perencana', 'PIC Pelaksana',
             'Status Persetujuan', 'Dibuat',
         ]);
 
@@ -74,13 +75,21 @@ class ReportController extends Controller
             fputcsv($handle, [
                 $procurement->number,
                 $procurement->name,
+                $procurement->partner_name ?? '-',
                 $procurement->workDirector->name,
-                $procurement->targetUnit->name,
+                $procurement->targetUnitNames(),
                 $procurement->procurement_method_id === null ? '-' : $procurement->procurementMethod->name,
                 $procurement->budget_source_id === null ? '-' : $procurement->budgetSource->name,
-                $procurement->pr_ro_number_id === null ? '-' : $procurement->prRoNumber->number,
+                $procurement->pr_po_number ?? '-',
                 $procurement->prk_number ?? '-',
+                $procurement->proposal_memo_number ?? '-',
+                $procurement->icc_memo_number ?? '-',
+                $procurement->coa_number ?? '-',
+                $procurement->wo_number ?? '-',
                 number_format((float) $procurement->hpe_value, 2, ',', '.'),
+                $procurement->value_after_negotiation === null
+                    ? '-'
+                    : number_format((float) $procurement->value_after_negotiation, 2, ',', '.'),
                 $procurement->progressStatus->name,
                 $procurement->planner_id === null ? '-' : $procurement->planner->name,
                 $procurement->executor_id === null ? '-' : $procurement->executor->name,

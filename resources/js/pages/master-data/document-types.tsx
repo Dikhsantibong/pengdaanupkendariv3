@@ -9,6 +9,7 @@ type DocumentType = MasterRecord & {
     name: string;
     stage: ProcurementStage;
     stage_label: string;
+    upload_only: boolean;
     description: string | null;
     sort_order: number;
     template_count: number;
@@ -41,7 +42,11 @@ export default function DocumentTypes({
                     key: 'active_template',
                     label: 'Template Aktif',
                     render: (record) =>
-                        record.active_template === null ? (
+                        record.upload_only ? (
+                            <span className="text-muted-foreground">
+                                Hanya diunggah
+                            </span>
+                        ) : record.active_template === null ? (
                             <span className="text-status-batal">Belum ada</span>
                         ) : (
                             `${record.active_template.name} (v${record.active_template.version})`
@@ -82,6 +87,12 @@ export default function DocumentTypes({
                     type: 'text',
                     placeholder: 'Opsional',
                 },
+                {
+                    name: 'upload_only',
+                    label: 'Hanya diunggah (tanpa generate)',
+                    type: 'switch',
+                    hint: 'Dokumen disiapkan di luar sistem lalu diunggah pada tahapannya. Tombol generate dan edit tidak ditampilkan.',
+                },
                 { name: 'sort_order', label: 'Urutan Tampil', type: 'number' },
                 { name: 'is_active', label: 'Aktif', type: 'switch' },
             ]}
@@ -89,6 +100,7 @@ export default function DocumentTypes({
                 name: '',
                 code: '',
                 stage: 'perencanaan',
+                upload_only: false,
                 description: '',
                 sort_order: 0,
                 is_active: true,

@@ -24,7 +24,7 @@ class MonitoringController extends Controller
         $procurements = ProcurementFilters::apply(
             Procurement::query()
                 ->visibleTo($request->user())
-                ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'prRoNumber', 'progressStatus', 'planner', 'executor', 'checklists']),
+                ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor', 'checklists']),
             $request,
         )
             ->orderBy('progress_status_id')

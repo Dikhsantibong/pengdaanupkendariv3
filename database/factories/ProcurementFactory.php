@@ -31,7 +31,7 @@ class ProcurementFactory extends Factory
             'target_unit_id' => TargetUnit::factory(),
             'procurement_method_id' => ProcurementMethod::factory(),
             'budget_source_id' => BudgetSource::factory(),
-            'pr_ro_number_id' => null,
+            'pr_po_number' => null,
             'prk_number' => fake()->numerify('ND-###/PRK/####'),
             'hpe_value' => fake()->numberBetween(10_000_000, 5_000_000_000),
             'progress_status_id' => ProgressStatus::factory(),

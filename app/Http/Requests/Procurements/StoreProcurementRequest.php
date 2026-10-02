@@ -13,6 +13,14 @@ class StoreProcurementRequest extends FormRequest
     use ProcurementValidationRules;
 
     /**
+     * Prepare the data for validation.
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->normaliseTargetUnits();
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * The planning PIC may be appointed straight from the create form. It stays

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Procurements;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Procurements\GenerateDocumentRequest;
 use App\Http\Requests\Procurements\UpdateDocumentRequest;
+use App\Http\Requests\Procurements\UploadDocumentRequest;
 use App\Http\Requests\Procurements\UploadSignedDocumentRequest;
 use App\Models\DocumentType;
 use App\Models\Procurement;
@@ -17,6 +18,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
@@ -61,10 +63,17 @@ class DocumentController extends Controller
         Request $request,
         Procurement $procurement,
         ProcurementDocument $document,
-    ): HttpResponse {
+    ): HttpResponse|RedirectResponse {
         $this->authorize('view', $procurement);
 
         $this->assertBelongsTo($procurement, $document);
+
+        // An uploaded document has no body to render: open the file itself.
+        if ($document->documentType->upload_only) {
+            $first = $document->signedUploads()->oldest('id')->firstOrFail();
+
+            return to_route('procurements.documents.signed.show', [$procurement, $document, $first]);
+        }
 
         if ($request->string('format')->value() === 'html') {
             return response($this->generator->printableHtml($document), 200, [
@@ -89,6 +98,9 @@ class DocumentController extends Controller
         $this->assertBelongsTo($procurement, $document);
 
         $document->load(['documentType', 'generatedBy', 'editedBy']);
+
+        // Nothing to edit in a document that is only uploaded.
+        abort_if($document->documentType->upload_only, 404);
 
         $values = $this->generator->placeholderValues($procurement);
 
@@ -230,6 +242,44 @@ class DocumentController extends Controller
             'type' => 'success',
             'message' => $stored->count().' dokumen bertanda tangan untuk '
                 .$document->title.' tersimpan.',
+        ]);
+
+        return back();
+    }
+
+    /**
+     * File the documents of a step that is uploaded rather than generated.
+     *
+     * The first upload creates the archive entry the files hang off, with no
+     * body of its own, so the step's "uploaded before ticked" check and the
+     * document archive keep working exactly as they do for generated ones.
+     */
+    public function storeUpload(UploadDocumentRequest $request, Procurement $procurement): RedirectResponse
+    {
+        $this->authorize('editDocument', $procurement);
+
+        $type = DocumentType::query()->findOrFail($request->integer('document_type_id'));
+
+        $document = $procurement->documentFor($type->id)
+            ?? $procurement->documents()->create([
+                'document_type_id' => $type->id,
+                'document_template_id' => null,
+                'title' => $type->name.' - '.$procurement->name,
+                'file_name' => Str::slug($type->code.'-'.$procurement->number).'.pdf',
+                'template_version' => 0,
+                'rendered_body' => '',
+                'generated_by' => $request->user()->id,
+                'generated_at' => now(),
+            ]);
+
+        /** @var array<int, UploadedFile> $files */
+        $files = $request->file('files');
+
+        $stored = $this->signed->store($document, $files, $request->user());
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => $stored->count().' berkas '.$type->name.' tersimpan.',
         ]);
 
         return back();

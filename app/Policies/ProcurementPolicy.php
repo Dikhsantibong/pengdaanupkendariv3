@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
 use App\Models\Procurement;
 use App\Models\User;
@@ -21,7 +22,9 @@ class ProcurementPolicy
      */
     public function view(User $user, Procurement $procurement): bool
     {
-        return $user->isSupervisor() || $procurement->isAssignedTo($user);
+        return $user->hasPermission(Permission::ViewAllProcurements)
+            || $procurement->isAssignedTo($user)
+            || $procurement->created_by === $user->id;
     }
 
     /**
@@ -29,7 +32,7 @@ class ProcurementPolicy
      */
     public function create(User $user): bool
     {
-        return $user->isSupervisor();
+        return $user->hasPermission(Permission::CreateProcurement);
     }
 
     /**
@@ -37,7 +40,7 @@ class ProcurementPolicy
      */
     public function update(User $user, Procurement $procurement): bool
     {
-        return $user->isSupervisor();
+        return $user->hasPermission(Permission::UpdateProcurement) && $this->view($user, $procurement);
     }
 
     /**
@@ -45,7 +48,7 @@ class ProcurementPolicy
      */
     public function delete(User $user, Procurement $procurement): bool
     {
-        return $user->isSupervisor();
+        return $user->hasPermission(Permission::DeleteProcurement) && $this->view($user, $procurement);
     }
 
     /**
@@ -53,7 +56,7 @@ class ProcurementPolicy
      */
     public function assignPic(User $user, Procurement $procurement): bool
     {
-        return $user->isSupervisor();
+        return $user->hasPermission(Permission::AssignPic) && $this->view($user, $procurement);
     }
 
     /**
@@ -121,12 +124,14 @@ class ProcurementPolicy
     /**
      * Determine whether the user may approve or reject the planning stage.
      *
-     * A supervisor never reviews their own submission, because they cannot be
-     * the submitter in the first place.
+     * Nobody reviews their own submission: once the right can be given to a
+     * PIC, the planning PIC of this procurement is explicitly excluded.
      */
     public function reviewPlanning(User $user, Procurement $procurement): bool
     {
-        return $user->isSupervisor()
+        return $user->hasPermission(Permission::ReviewPlanning)
+            && $procurement->planner_id !== $user->id
+            && $this->view($user, $procurement)
             && $procurement->planning_approval_state === PlanningApprovalState::MenungguPersetujuan;
     }
 
@@ -139,7 +144,9 @@ class ProcurementPolicy
      */
     public function revertPlanningRejection(User $user, Procurement $procurement): bool
     {
-        return $user->isSupervisor()
+        return $user->hasPermission(Permission::ReviewPlanning)
+            && $procurement->planner_id !== $user->id
+            && $this->view($user, $procurement)
             && $procurement->planning_approval_state === PlanningApprovalState::Ditolak;
     }
 
@@ -160,7 +167,9 @@ class ProcurementPolicy
      */
     public function complete(User $user, Procurement $procurement): bool
     {
-        return $user->isSupervisor() && $procurement->completed_at === null;
+        return $user->hasPermission(Permission::CompleteProcurement)
+            && $this->view($user, $procurement)
+            && $procurement->completed_at === null;
     }
 
     /**

@@ -33,7 +33,15 @@ class ProcurementService
             $plannerId = $attributes['planner_id'] ?? null;
             unset($attributes['planner_id']);
 
+            /** @var array<int, int|string> $unitIds */
+            $unitIds = $attributes['target_unit_ids'] ?? [];
+            unset($attributes['target_unit_ids']);
+
             $procurement = new Procurement($attributes);
+
+            if ($unitIds !== []) {
+                $procurement->target_unit_id = (int) reset($unitIds);
+            }
 
             // The form offers the next free number and lets it be corrected, so
             // only fall back to generating one when nothing was submitted.
@@ -43,6 +51,8 @@ class ProcurementService
 
             $procurement->created_by = $author->id;
             $procurement->save();
+
+            $this->syncTargetUnits($procurement, $unitIds);
 
             $this->syncChecklists($procurement);
 
@@ -59,6 +69,40 @@ class ProcurementService
 
             return $procurement;
         });
+    }
+
+    /**
+     * Record the units a procurement serves, in the order they were chosen.
+     *
+     * The first unit is also kept in `target_unit_id`, so every query and
+     * screen that reads a single unit keeps working. An empty list leaves the
+     * current units untouched.
+     *
+     * @param  array<int, int|string>  $unitIds
+     */
+    public function syncTargetUnits(Procurement $procurement, array $unitIds): void
+    {
+        $unitIds = array_values(array_unique(array_map('intval', $unitIds)));
+
+        if ($unitIds === []) {
+            return;
+        }
+
+        $links = [];
+
+        foreach ($unitIds as $index => $unitId) {
+            $links[$unitId] = ['sort_order' => $index + 1];
+        }
+
+        $procurement->targetUnits()->sync($links);
+
+        if ($procurement->target_unit_id !== $unitIds[0]) {
+            $procurement->target_unit_id = $unitIds[0];
+            $procurement->save();
+        }
+
+        $procurement->unsetRelation('targetUnits');
+        $procurement->unsetRelation('targetUnit');
     }
 
     /**
@@ -150,6 +194,7 @@ class ProcurementService
         $applicable = ChecklistItem::query()
             ->active()
             ->forProcurementMethod($procurement->procurement_method_id)
+            ->forContractNumberFormat($procurement->contract_number_format_id)
             ->ordered()
             ->get();
 

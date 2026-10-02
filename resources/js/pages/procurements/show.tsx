@@ -82,6 +82,10 @@ export default function ShowProcurement({
         value: string;
         field?: 'contract_type' | 'manager_memo_number';
     }> = [
+        {
+            label: 'Nama Mitra / Pelaksana',
+            value: procurement.partner_name ?? '—',
+        },
         { label: 'Direksi Pekerjaan', value: procurement.work_director },
         { label: 'Unit Tujuan', value: procurement.target_unit },
         {
@@ -102,15 +106,28 @@ export default function ShowProcurement({
             value: procurement.manager_memo_number ?? '—',
             field: 'manager_memo_number' as const,
         },
-        { label: 'Nomor PR/RO', value: procurement.pr_ro_number ?? '—' },
         { label: 'Nomor PRK', value: procurement.prk_number ?? '—' },
         {
-            label: 'Nilai HPE / Anggaran',
+            label: 'Nomor Nota Dinas Usulan',
+            value: procurement.proposal_memo_number ?? '—',
+        },
+        {
+            label: 'Nomor Nota Dinas ICC',
+            value: procurement.icc_memo_number ?? '—',
+        },
+        { label: 'Nomor PR/PO', value: procurement.pr_po_number ?? '—' },
+        { label: 'Nomor COA', value: procurement.coa_number ?? '—' },
+        { label: 'Nomor WO', value: procurement.wo_number ?? '—' },
+        {
+            label: 'Nilai (Sebelum Nego)',
             value: formatCurrency(procurement.hpe_value),
         },
         {
-            label: 'Target Penyelesaian',
-            value: formatDate(procurement.target_completion_date),
+            label: 'Nilai Setelah Nego',
+            value:
+                procurement.value_after_negotiation === null
+                    ? '—'
+                    : formatCurrency(procurement.value_after_negotiation),
         },
         { label: 'Dibuat Oleh', value: detail.created_by ?? '—' },
         { label: 'Tanggal Dibuat', value: formatDate(procurement.created_at) },

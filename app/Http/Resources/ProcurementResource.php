@@ -24,7 +24,9 @@ class ProcurementResource extends JsonResource
             'number' => $this->number,
             'name' => $this->name,
             'work_director' => $this->workDirector->name,
-            'target_unit' => $this->targetUnit->name,
+            'target_unit' => $this->resource->targetUnitNames(),
+            'target_units' => $this->resource->servedUnits()->pluck('name')->all(),
+            'partner_name' => $this->partner_name,
             'procurement_method' => $this->procurement_method_id === null
                 ? null
                 : $this->procurementMethod->name,
@@ -36,9 +38,16 @@ class ProcurementResource extends JsonResource
                 : $this->contractType->name,
             'contract_type_id' => $this->contract_type_id,
             'manager_memo_number' => $this->manager_memo_number,
-            'pr_ro_number' => $this->prRoNumber?->number,
+            'pr_po_number' => $this->pr_po_number,
             'prk_number' => $this->prk_number,
+            'proposal_memo_number' => $this->proposal_memo_number,
+            'icc_memo_number' => $this->icc_memo_number,
+            'coa_number' => $this->coa_number,
+            'wo_number' => $this->wo_number,
             'hpe_value' => (float) $this->hpe_value,
+            'value_after_negotiation' => $this->value_after_negotiation === null
+                ? null
+                : (float) $this->value_after_negotiation,
             'status' => [
                 'id' => $this->progressStatus->id,
                 'name' => $this->progressStatus->name,

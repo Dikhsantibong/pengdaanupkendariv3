@@ -30,6 +30,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('approval', [ApprovalController::class, 'destroy'])->name('approval.destroy');
         Route::post('completion', [CompletionController::class, 'store'])->name('completion.store');
         Route::post('documents', [DocumentController::class, 'store'])->name('documents.store');
+        Route::post('documents/upload', [DocumentController::class, 'storeUpload'])->name('documents.upload');
         Route::get('documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
         Route::get('documents/{document}/edit', [DocumentController::class, 'edit'])->name('documents.edit');
         Route::put('documents/{document}', [DocumentController::class, 'update'])->name('documents.update');

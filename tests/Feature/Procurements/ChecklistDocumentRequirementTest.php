@@ -39,11 +39,11 @@ class ChecklistDocumentRequirementTest extends TestCase
     {
         return [
             'Nota Dinas Usulan',
-            'TOR (Term of Reference)',
+            'TOR / KAK',
             'RAB (Rencana Anggaran Biaya)',
             'Penawaran',
-            'CSMS',
-            'Nota Dinas Perintah Pekerjaan',
+            'CSMS (Sertifikat)',
+            'Nota Dinas ke Pengadaan',
             'HPE (Harga Perkiraan Engineer)',
             'UPB',
             'RKS (Rencana Kerja dan Syarat)',
@@ -111,7 +111,7 @@ class ChecklistDocumentRequirementTest extends TestCase
 
     public function test_a_step_cannot_be_ticked_before_the_signed_document_is_filed(): void
     {
-        [$procurement, $planner, $checklist] = $this->planningStep('TOR (Term of Reference)');
+        [$procurement, $planner, $checklist] = $this->planningStep('HPE (Harga Perkiraan Engineer)');
 
         $this->actingAs($planner)
             ->put(route('procurements.checklists.update', [$procurement, $checklist]), [
@@ -124,7 +124,7 @@ class ChecklistDocumentRequirementTest extends TestCase
 
     public function test_generating_the_document_is_not_enough_on_its_own(): void
     {
-        [$procurement, $planner, $checklist, $documentType] = $this->planningStep('TOR (Term of Reference)');
+        [$procurement, $planner, $checklist, $documentType] = $this->planningStep('HPE (Harga Perkiraan Engineer)');
 
         DocumentTemplate::factory()->create([
             'document_type_id' => $documentType->id,
@@ -151,7 +151,7 @@ class ChecklistDocumentRequirementTest extends TestCase
     {
         Storage::fake('local');
 
-        [$procurement, $planner, $checklist, $documentType] = $this->planningStep('TOR (Term of Reference)');
+        [$procurement, $planner, $checklist, $documentType] = $this->planningStep('HPE (Harga Perkiraan Engineer)');
 
         DocumentTemplate::factory()->create([
             'document_type_id' => $documentType->id,
@@ -182,7 +182,7 @@ class ChecklistDocumentRequirementTest extends TestCase
 
     public function test_a_step_without_a_document_is_ticked_freely(): void
     {
-        [$procurement, $planner] = $this->planningStep('TOR (Term of Reference)');
+        [$procurement, $planner] = $this->planningStep('HPE (Harga Perkiraan Engineer)');
 
         $plain = ChecklistItem::query()
             ->forStage(ProcurementStage::Perencanaan)
@@ -205,7 +205,7 @@ class ChecklistDocumentRequirementTest extends TestCase
 
     public function test_unticking_a_step_never_needs_a_document(): void
     {
-        [$procurement, $planner, $checklist] = $this->planningStep('TOR (Term of Reference)');
+        [$procurement, $planner, $checklist] = $this->planningStep('HPE (Harga Perkiraan Engineer)');
 
         $checklist->update(['is_completed' => true, 'completed_at' => now()]);
 
@@ -223,9 +223,9 @@ class ChecklistDocumentRequirementTest extends TestCase
     {
         Storage::fake('local');
 
-        [$procurement, $planner, $checklist] = $this->planningStep('TOR (Term of Reference)');
+        [$procurement, $planner, $checklist] = $this->planningStep('HPE (Harga Perkiraan Engineer)');
 
-        $otherType = DocumentType::query()->where('code', 'rab')->firstOrFail();
+        $otherType = DocumentType::query()->where('code', 'upb')->firstOrFail();
         DocumentTemplate::factory()->create([
             'document_type_id' => $otherType->id,
             'procurement_method_id' => null,
@@ -252,7 +252,7 @@ class ChecklistDocumentRequirementTest extends TestCase
 
     public function test_the_detail_screen_marks_which_steps_need_a_document(): void
     {
-        [$procurement, $planner] = $this->planningStep('TOR (Term of Reference)');
+        [$procurement, $planner] = $this->planningStep('HPE (Harga Perkiraan Engineer)');
 
         $this->actingAs($planner)
             ->get(route('procurements.show', $procurement))
@@ -260,12 +260,12 @@ class ChecklistDocumentRequirementTest extends TestCase
             ->assertInertia(function ($page) {
                 $rows = collect($page->toArray()['props']['checklists']['perencanaan']);
 
-                $tor = $rows->firstWhere('name', 'TOR (Term of Reference)');
+                $hpe = $rows->firstWhere('name', 'HPE (Harga Perkiraan Engineer)');
                 $plain = $rows->firstWhere('name', 'Checklist Perencanaan');
 
-                $this->assertCount(1, $tor['documents']);
-                $this->assertFalse($tor['documents'][0]['is_signed']);
-                $this->assertSame('TOR (Term of Reference)', $tor['documents'][0]['type_name']);
+                $this->assertCount(1, $hpe['documents']);
+                $this->assertFalse($hpe['documents'][0]['is_signed']);
+                $this->assertSame('HPE (Harga Perkiraan Engineer)', $hpe['documents'][0]['type_name']);
                 $this->assertSame([], $plain['documents']);
             });
     }
@@ -277,7 +277,7 @@ class ChecklistDocumentRequirementTest extends TestCase
         $administrator = User::factory()->administrator()->create();
         $item = ChecklistItem::query()
             ->forStage(ProcurementStage::Perencanaan)
-            ->where('name', 'CSMS')
+            ->where('name', 'CSMS (Sertifikat)')
             ->firstOrFail();
 
         $this->actingAs($administrator)

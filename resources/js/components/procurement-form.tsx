@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { CurrencyInput } from '@/components/currency-input';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -23,7 +24,6 @@ export type ProcurementFormOptions = {
     targetUnits: Option[];
     procurementMethods: Option[];
     budgetSources: Option[];
-    prRoNumbers: Option[];
     progressStatuses: StatusOption[];
     defaultProgressStatusId: number | null;
     planners: Option[];
@@ -33,15 +33,20 @@ export type ProcurementFormValues = {
     contract_number_format_id: number | null;
     number: string;
     name: string;
+    partner_name: string;
     work_director_id: number | null;
-    target_unit_id: number | null;
+    target_unit_ids: number[];
     procurement_method_id: number | null;
     budget_source_id: number | null;
-    pr_ro_number_id: number | null;
     prk_number: string;
+    proposal_memo_number: string;
+    icc_memo_number: string;
+    pr_po_number: string;
+    coa_number: string;
+    wo_number: string;
     hpe_value: number;
+    value_after_negotiation: number | null;
     progress_status_id: number | null;
-    target_completion_date: string;
     notes: string;
     planner_id?: number | null;
 };
@@ -84,20 +89,52 @@ export function ProcurementForm({
                 ? ''
                 : (nextNumbers[startingFormatId] ?? '')),
         name: initialValues?.name ?? '',
+        partner_name: initialValues?.partner_name ?? '',
         work_director_id: initialValues?.work_director_id ?? null,
-        target_unit_id: initialValues?.target_unit_id ?? null,
+        target_unit_ids: initialValues?.target_unit_ids ?? [],
         procurement_method_id: initialValues?.procurement_method_id ?? null,
         budget_source_id: initialValues?.budget_source_id ?? null,
-        pr_ro_number_id: initialValues?.pr_ro_number_id ?? null,
         prk_number: initialValues?.prk_number ?? '',
+        proposal_memo_number: initialValues?.proposal_memo_number ?? '',
+        icc_memo_number: initialValues?.icc_memo_number ?? '',
+        pr_po_number: initialValues?.pr_po_number ?? '',
+        coa_number: initialValues?.coa_number ?? '',
+        wo_number: initialValues?.wo_number ?? '',
         hpe_value: initialValues?.hpe_value ?? 0,
+        value_after_negotiation: initialValues?.value_after_negotiation ?? null,
         progress_status_id:
             initialValues?.progress_status_id ??
             options.defaultProgressStatusId ??
             null,
-        target_completion_date: initialValues?.target_completion_date ?? '',
         notes: initialValues?.notes ?? '',
     });
+
+    /**
+     * Tick or untick a unit, keeping the list in master data order so the
+     * first unit shown is always the same one.
+     */
+    const toggleUnit = (unitId: number, checked: boolean) => {
+        const chosen = new Set(form.data.target_unit_ids);
+
+        if (checked) {
+            chosen.add(unitId);
+        } else {
+            chosen.delete(unitId);
+        }
+
+        form.setData(
+            'target_unit_ids',
+            options.targetUnits
+                .map((option) => option.value)
+                .filter((value) => chosen.has(value)),
+        );
+    };
+
+    const unitError =
+        form.errors.target_unit_ids ??
+        Object.entries(form.errors).find(([key]) =>
+            key.startsWith('target_unit_ids.'),
+        )?.[1];
 
     const { data, setData, errors, processing } = form;
 
@@ -225,6 +262,20 @@ export function ProcurementForm({
                     <InputError message={errors.name} />
                 </div>
 
+                <div className="grid gap-2">
+                    <Label htmlFor="partner_name">Nama Mitra / Pelaksana</Label>
+                    <Input
+                        id="partner_name"
+                        value={data.partner_name}
+                        onChange={(event) =>
+                            setData('partner_name', event.target.value)
+                        }
+                        placeholder="Contoh: PT Konstruksi Indonesia"
+                        autoComplete="off"
+                    />
+                    <InputError message={errors.partner_name} />
+                </div>
+
                 <div className="grid gap-4 md:grid-cols-2">
                     <div className="grid gap-2">
                         <Label htmlFor="work_director_id">
@@ -260,36 +311,43 @@ export function ProcurementForm({
                         <InputError message={errors.work_director_id} />
                     </div>
 
-                    <div className="grid gap-2">
-                        <Label htmlFor="target_unit_id">Unit Tujuan</Label>
-                        <Select
-                            value={
-                                data.target_unit_id === null
-                                    ? undefined
-                                    : String(data.target_unit_id)
-                            }
-                            onValueChange={(value) =>
-                                setData('target_unit_id', Number(value))
-                            }
+                    <div className="grid gap-2 md:row-span-3">
+                        <div className="flex items-baseline justify-between gap-2">
+                            <Label>Unit Tujuan</Label>
+                            <span className="text-xs text-muted-foreground">
+                                {data.target_unit_ids.length} dipilih
+                            </span>
+                        </div>
+                        <div
+                            role="group"
+                            aria-label="Unit Tujuan"
+                            className="grid max-h-56 gap-1.5 overflow-y-auto rounded-md border border-input px-3 py-2.5"
                         >
-                            <SelectTrigger
-                                id="target_unit_id"
-                                className="w-full"
-                            >
-                                <SelectValue placeholder="Pilih unit tujuan" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {options.targetUnits.map((option) => (
-                                    <SelectItem
-                                        key={option.value}
-                                        value={String(option.value)}
-                                    >
-                                        {option.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <InputError message={errors.target_unit_id} />
+                            {options.targetUnits.map((option) => (
+                                <label
+                                    key={option.value}
+                                    className="flex cursor-pointer items-center gap-2.5 text-sm"
+                                >
+                                    <Checkbox
+                                        checked={data.target_unit_ids.includes(
+                                            option.value,
+                                        )}
+                                        onCheckedChange={(next) =>
+                                            toggleUnit(
+                                                option.value,
+                                                next === true,
+                                            )
+                                        }
+                                    />
+                                    {option.label}
+                                </label>
+                            ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Pilih satu atau lebih unit yang dilayani pengadaan
+                            ini.
+                        </p>
+                        <InputError message={unitError} />
                     </div>
 
                     <div className="grid gap-2">
@@ -367,74 +425,91 @@ export function ProcurementForm({
             </section>
 
             <section className="space-y-4 rounded-md border border-border bg-card p-5">
-                <p className="section-label">Referensi &amp; Anggaran</p>
+                <p className="section-label">Usulan Pekerjaan</p>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                    <div className="grid gap-2">
-                        <Label htmlFor="pr_ro_number_id">Nomor PR/RO</Label>
-                        <Select
-                            value={
-                                data.pr_ro_number_id === null
-                                    ? NONE
-                                    : String(data.pr_ro_number_id)
-                            }
-                            onValueChange={(value) =>
-                                setData(
-                                    'pr_ro_number_id',
-                                    value === NONE ? null : Number(value),
-                                )
-                            }
-                        >
-                            <SelectTrigger
-                                id="pr_ro_number_id"
-                                className="w-full"
-                            >
-                                <SelectValue placeholder="Belum tersedia" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value={NONE}>
-                                    Belum tersedia
-                                </SelectItem>
-                                {options.prRoNumbers.map((option) => (
-                                    <SelectItem
-                                        key={option.value}
-                                        value={String(option.value)}
-                                    >
-                                        {option.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <p className="text-xs text-muted-foreground">
-                            Daftar nomor PR/RO yang tersedia dari Smart SCM.
-                        </p>
-                        <InputError message={errors.pr_ro_number_id} />
-                    </div>
+                    <TextField
+                        id="prk_number"
+                        label="Nomor PRK"
+                        value={data.prk_number}
+                        onChange={(value) => setData('prk_number', value)}
+                        placeholder="Contoh: 2026.AO.01.001"
+                        error={errors.prk_number}
+                    />
+                    <TextField
+                        id="proposal_memo_number"
+                        label="Nomor Nota Dinas Usulan"
+                        value={data.proposal_memo_number}
+                        onChange={(value) =>
+                            setData('proposal_memo_number', value)
+                        }
+                        placeholder="Contoh: ND-021/USL/2026"
+                        error={errors.proposal_memo_number}
+                    />
+                    <TextField
+                        id="icc_memo_number"
+                        label="Nomor Nota Dinas ICC"
+                        value={data.icc_memo_number}
+                        onChange={(value) => setData('icc_memo_number', value)}
+                        placeholder="Contoh: ND-014/ICC/2026"
+                        error={errors.icc_memo_number}
+                    />
+                    <TextField
+                        id="pr_po_number"
+                        label="Nomor PR/PO"
+                        value={data.pr_po_number}
+                        onChange={(value) => setData('pr_po_number', value)}
+                        placeholder="Kosongkan bila belum tersedia"
+                        error={errors.pr_po_number}
+                    />
+                    <TextField
+                        id="coa_number"
+                        label="Nomor COA"
+                        value={data.coa_number}
+                        onChange={(value) => setData('coa_number', value)}
+                        placeholder="Contoh: 5110100000"
+                        error={errors.coa_number}
+                    />
+                    <TextField
+                        id="wo_number"
+                        label="Nomor WO"
+                        value={data.wo_number}
+                        onChange={(value) => setData('wo_number', value)}
+                        placeholder="Contoh: WO-2026-0042"
+                        error={errors.wo_number}
+                    />
 
                     <div className="grid gap-2">
-                        <Label htmlFor="prk_number">
-                            Nomor PRK (Nota Dinas Usulan)
-                        </Label>
-                        <Input
-                            id="prk_number"
-                            value={data.prk_number}
-                            onChange={(event) =>
-                                setData('prk_number', event.target.value)
-                            }
-                            placeholder="Contoh: ND-021/PRK/2026"
-                            autoComplete="off"
-                        />
-                        <InputError message={errors.prk_number} />
-                    </div>
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="hpe_value">Nilai HPE / Anggaran</Label>
+                        <Label htmlFor="hpe_value">Nilai (Sebelum Nego)</Label>
                         <CurrencyInput
                             id="hpe_value"
                             value={data.hpe_value}
                             onValueChange={(next) => setData('hpe_value', next)}
                         />
+                        <p className="text-xs text-muted-foreground">
+                            Nilai HPE / anggaran sebelum negosiasi.
+                        </p>
                         <InputError message={errors.hpe_value} />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="value_after_negotiation">
+                            Nilai Setelah Nego
+                        </Label>
+                        <CurrencyInput
+                            id="value_after_negotiation"
+                            value={data.value_after_negotiation ?? 0}
+                            onValueChange={(next) =>
+                                setData(
+                                    'value_after_negotiation',
+                                    next === 0 ? null : next,
+                                )
+                            }
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Kosongkan bila negosiasi belum dilakukan.
+                        </p>
+                        <InputError message={errors.value_after_negotiation} />
                     </div>
 
                     <div className="grid gap-2">
@@ -529,27 +604,6 @@ export function ProcurementForm({
             <section className="space-y-4 rounded-md border border-border bg-card p-5">
                 <p className="section-label">Informasi Tambahan</p>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                    <div className="grid gap-2">
-                        <Label htmlFor="target_completion_date">
-                            Target Penyelesaian
-                        </Label>
-                        <Input
-                            id="target_completion_date"
-                            type="date"
-                            value={data.target_completion_date}
-                            onChange={(event) =>
-                                setData(
-                                    'target_completion_date',
-                                    event.target.value,
-                                )
-                            }
-                            className="tabular"
-                        />
-                        <InputError message={errors.target_completion_date} />
-                    </div>
-                </div>
-
                 <div className="grid gap-2">
                     <Label htmlFor="notes">Catatan</Label>
                     <Textarea
@@ -581,5 +635,36 @@ export function ProcurementForm({
                 )}
             </div>
         </form>
+    );
+}
+
+/** A labelled, optional text field for a reference number. */
+function TextField({
+    id,
+    label,
+    value,
+    onChange,
+    placeholder,
+    error,
+}: {
+    id: string;
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    placeholder?: string;
+    error?: string;
+}) {
+    return (
+        <div className="grid gap-2">
+            <Label htmlFor={id}>{label}</Label>
+            <Input
+                id={id}
+                value={value}
+                onChange={(event) => onChange(event.target.value)}
+                placeholder={placeholder}
+                autoComplete="off"
+            />
+            <InputError message={error} />
+        </div>
     );
 }

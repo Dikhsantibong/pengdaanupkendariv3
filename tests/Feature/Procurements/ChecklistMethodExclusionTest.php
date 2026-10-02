@@ -44,7 +44,7 @@ class ChecklistMethodExclusionTest extends TestCase
         }
 
         $this->assertContains('Nota Dinas Usulan', $names);
-        $this->assertContains('TOR (Term of Reference)', $names);
+        $this->assertContains('TOR / KAK', $names);
     }
 
     public function test_other_methods_keep_the_full_checklist(): void
@@ -143,7 +143,7 @@ class ChecklistMethodExclusionTest extends TestCase
 
         $administrator = User::factory()->administrator()->create();
         $tender = ProcurementMethod::query()->where('code', 'tender')->firstOrFail();
-        $item = ChecklistItem::query()->where('name', 'CSMS')->firstOrFail();
+        $item = ChecklistItem::query()->where('name', 'CSMS (Sertifikat)')->firstOrFail();
 
         $this->actingAs($administrator)
             ->put(route('master-data.checklist-items.update', $item), [

@@ -24,11 +24,12 @@ class PicAssignmentController extends Controller
      */
     public function index(Request $request): Response
     {
-        $this->authorize('create', Procurement::class);
+        $this->authorize('assign-pic');
 
         $procurements = ProcurementFilters::apply(
             Procurement::query()
-                ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'prRoNumber', 'progressStatus', 'planner', 'executor'])
+                ->visibleTo($request->user())
+                ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor'])
                 ->when(
                     $request->boolean('unassigned'),
                     fn ($query) => $query->where(function ($inner): void {

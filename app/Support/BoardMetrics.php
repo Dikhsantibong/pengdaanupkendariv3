@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Enums\ProcurementStage;
 use App\Models\Procurement;
 use App\Models\ProcurementChecklist;
+use App\Models\TargetUnit;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 
@@ -50,12 +51,15 @@ class BoardMetrics
      */
     public function unitProgress(Collection $procurements, ProcurementStage $stage): array
     {
+        // A procurement serving several units counts towards each of them.
         return $procurements
-            ->groupBy(fn (Procurement $procurement): int => $procurement->target_unit_id)
+            ->flatMap(fn (Procurement $procurement): Collection => $procurement->servedUnits()
+                ->map(fn (TargetUnit $unit): array => ['unit' => $unit, 'procurement' => $procurement]))
+            ->groupBy(fn (array $pair): int => $pair['unit']->id)
             ->map(fn (Collection $group): array => [
-                'name' => $group->first()->targetUnit->name,
+                'name' => $group->first()['unit']->name,
                 'total' => $group->count(),
-                'percentage' => $this->averageProgress($group, $stage),
+                'percentage' => $this->averageProgress($group->pluck('procurement'), $stage),
             ])
             ->sortByDesc('total')
             ->values()

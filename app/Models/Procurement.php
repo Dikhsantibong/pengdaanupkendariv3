@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Enums\StatusCategory;
@@ -12,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
@@ -21,15 +23,21 @@ use Illuminate\Support\Collection;
  * @property string $number
  * @property int|null $contract_number_format_id
  * @property string $name
+ * @property string|null $partner_name
  * @property int $work_director_id
  * @property int $target_unit_id
  * @property int|null $procurement_method_id
  * @property int|null $budget_source_id
  * @property int|null $contract_type_id
  * @property string|null $manager_memo_number
- * @property int|null $pr_ro_number_id
+ * @property string|null $pr_po_number
  * @property string|null $prk_number
+ * @property string|null $proposal_memo_number
+ * @property string|null $icc_memo_number
+ * @property string|null $coa_number
+ * @property string|null $wo_number
  * @property string $hpe_value
+ * @property string|null $value_after_negotiation
  * @property int $progress_status_id
  * @property int|null $planner_id
  * @property int|null $executor_id
@@ -48,10 +56,12 @@ use Illuminate\Support\Collection;
  * @property CarbonImmutable|null $deleted_at
  * @property-read WorkDirector $workDirector
  * @property-read TargetUnit $targetUnit
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, TargetUnit> $targetUnits
  * @property-read ProgressStatus $progressStatus
  */
 #[Fillable([
     'name',
+    'partner_name',
     'work_director_id',
     'target_unit_id',
     'procurement_method_id',
@@ -59,9 +69,14 @@ use Illuminate\Support\Collection;
     'contract_type_id',
     'contract_number_format_id',
     'manager_memo_number',
-    'pr_ro_number_id',
+    'pr_po_number',
     'prk_number',
+    'proposal_memo_number',
+    'icc_memo_number',
+    'coa_number',
+    'wo_number',
     'hpe_value',
+    'value_after_negotiation',
     'progress_status_id',
     'target_completion_date',
     'notes',
@@ -82,13 +97,71 @@ class Procurement extends Model
     }
 
     /**
-     * The unit this procurement is destined for.
+     * Keep the pivot in step with the single unit column.
+     *
+     * Every procurement serves at least the unit in `target_unit_id`. Writing it
+     * into the pivot as soon as the row exists means a procurement made by a
+     * factory, a seeder or the service is always found by unit, before the
+     * service replaces the list with the full selection.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (Procurement $procurement): void {
+            $procurement->targetUnits()->syncWithoutDetaching([
+                $procurement->target_unit_id => ['sort_order' => 1],
+            ]);
+        });
+    }
+
+    /**
+     * The first unit this procurement serves.
+     *
+     * Kept alongside the full list so existing single-unit queries still work.
      *
      * @return BelongsTo<TargetUnit, $this>
      */
     public function targetUnit(): BelongsTo
     {
         return $this->belongsTo(TargetUnit::class)->withTrashed();
+    }
+
+    /**
+     * Every unit this procurement serves, in the order they were chosen.
+     *
+     * @return BelongsToMany<TargetUnit, $this>
+     */
+    public function targetUnits(): BelongsToMany
+    {
+        return $this->belongsToMany(TargetUnit::class, 'procurement_target_unit')
+            ->withTrashed()
+            ->withPivot('sort_order')
+            ->withTimestamps()
+            ->orderByPivot('sort_order');
+    }
+
+    /**
+     * The units served, falling back to the single unit for a procurement
+     * whose list has not been written yet.
+     *
+     * @return Collection<int, TargetUnit>
+     */
+    public function servedUnits(): Collection
+    {
+        $units = $this->targetUnits->toBase();
+
+        if ($units->isEmpty()) {
+            return collect([$this->targetUnit]);
+        }
+
+        return $units->values();
+    }
+
+    /**
+     * The names of the units served, joined for display.
+     */
+    public function targetUnitNames(): string
+    {
+        return $this->servedUnits()->pluck('name')->implode(', ');
     }
 
     /**
@@ -129,16 +202,6 @@ class Procurement extends Model
     public function contractType(): BelongsTo
     {
         return $this->belongsTo(ContractType::class)->withTrashed();
-    }
-
-    /**
-     * The PR/RO number attached to this procurement.
-     *
-     * @return BelongsTo<PrRoNumber, $this>
-     */
-    public function prRoNumber(): BelongsTo
-    {
-        return $this->belongsTo(PrRoNumber::class)->withTrashed();
     }
 
     /**
@@ -229,12 +292,16 @@ class Procurement extends Model
      */
     public function scopeVisibleTo(Builder $query, User $user): Builder
     {
-        if ($user->role->isSupervisor()) {
+        if ($user->hasPermission(Permission::ViewAllProcurements)) {
             return $query;
         }
 
+        // Whoever registered a procurement keeps sight of it, so a PIC given
+        // the right to create one can follow it up.
         return $query->where(function (Builder $builder) use ($user): void {
-            $builder->where('planner_id', $user->id)->orWhere('executor_id', $user->id);
+            $builder->where('planner_id', $user->id)
+                ->orWhere('executor_id', $user->id)
+                ->orWhere('created_by', $user->id);
         });
     }
 
@@ -346,6 +413,7 @@ class Procurement extends Model
     {
         return [
             'hpe_value' => 'decimal:2',
+            'value_after_negotiation' => 'decimal:2',
             'planning_approval_state' => PlanningApprovalState::class,
             'planning_submitted_at' => 'datetime',
             'planning_reviewed_at' => 'datetime',

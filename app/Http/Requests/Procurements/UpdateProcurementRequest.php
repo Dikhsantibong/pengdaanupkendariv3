@@ -12,6 +12,14 @@ class UpdateProcurementRequest extends FormRequest
     use ProcurementValidationRules;
 
     /**
+     * Prepare the data for validation.
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->normaliseTargetUnits();
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, ValidationRule|array<mixed>|string>

@@ -101,6 +101,36 @@ Setiap **PIC Perencana** dan **PIC Pelaksana** hanya dapat melihat data pengadaa
 - Ketentuan ini berlaku di seluruh fitur yang menampilkan data pengadaan: Daftar Pengadaan, Perencanaan, Pelaksanaan, Monitoring, Generate Dokumen, dan Laporan.
 - **Team Leader Pengadaan** dan **Administrator** dikecualikan dari pembatasan ini — keduanya tetap dapat melihat seluruh data pengadaan sebagai pengawas/pengelola sistem.
 - Saat Team Leader mengganti/menunjuk ulang PIC pada suatu pengadaan (mis. PIC lama digantikan PIC baru), akses PIC lama terhadap pengadaan tersebut otomatis dicabut, dan PIC baru otomatis mendapat akses.
+- **Pembuat pengadaan** selalu dapat melihat pengadaan yang ia buat, meskipun tidak ditunjuk sebagai PIC.
+
+---
+
+# Hak Akses (Dapat Diatur Administrator)
+
+Fitur berbasis peran tidak lagi terkunci di kode, tetapi diatur Administrator melalui menu **Administrasi → Hak Akses** dalam bentuk tabel fitur × peran (centang). Contoh: memberi PIC Perencana hak **Buat perencanaan pengadaan** agar tidak hanya akun TL yang dapat membuat perencanaan.
+
+### Hak yang dapat diatur
+
+| Kelompok | Hak | Bawaan |
+|----------|-----|--------|
+| Pengadaan | Buat perencanaan pengadaan | TL Perencanaan |
+| Pengadaan | Ubah data pengadaan | TL Perencanaan |
+| Pengadaan | Arsipkan pengadaan | TL Perencanaan |
+| Pengadaan | Tunjuk PIC perencana & pelaksana (menu Penunjukan PIC) | TL Perencanaan |
+| Pengadaan | Setujui / tolak perencanaan | TL Perencanaan |
+| Pengadaan | Nyatakan pengadaan selesai | TL Perencanaan |
+| Pengadaan | Lihat seluruh pengadaan | TL Perencanaan |
+| Penilaian Penyedia | Kelola penilaian penyedia | (hanya Administrator) |
+| Administrasi | Kelola data master | (hanya Administrator) |
+
+### Ketentuan keamanan
+
+- Nilai bawaan sama persis dengan perilaku sebelumnya, sehingga tidak ada akses yang berubah sebelum Administrator mengubah pengaturan. Tombol **Kembalikan Bawaan** tersedia.
+- **Administrator selalu memiliki seluruh hak** dan kolomnya terkunci, agar sistem tidak pernah terkunci.
+- **Kelola pengguna & hak akses** hanya untuk Administrator dan tidak dapat diberikan ke peran lain (mencegah peran menaikkan aksesnya sendiri).
+- Peran yang diberi hak menyetujui perencanaan **tetap tidak dapat menyetujui perencanaan yang ia ajukan sendiri** (pemisahan tugas).
+- Hak yang mengikuti penugasan — mengisi checklist, generate/unggah dokumen, mengajukan perencanaan — tetap mengikuti PIC yang ditunjuk, bukan peran.
+- Perubahan berlaku pada permintaan berikutnya tanpa perlu login ulang.
 
 ---
 
@@ -147,17 +177,35 @@ Daftar unit yang dapat dipilih sebagai unit tujuan pengadaan:
 
 # Form Input Awal Pembuatan Pengadaan
 
-Form ini diisi oleh **Team Leader Pengadaan** saat pertama kali membuat sebuah pengadaan baru, sebelum proses perencanaan dimulai. Data pada form ini menjadi identitas utama pengadaan dan akan tampil pada dashboard, monitoring, serta laporan.
+Form ini (menu **Buat Perencanaan Pengadaan**) diisi oleh **Team Leader Pengadaan** — atau peran lain yang diberi hak lewat menu Hak Akses — saat pertama kali membuat sebuah pengadaan baru, sebelum proses perencanaan dimulai. Data pada form ini menjadi identitas utama pengadaan dan akan tampil pada dashboard, monitoring, serta laporan.
+
+### Bagian Identitas Pengadaan
 
 | No | Field | Tipe Input | Keterangan |
 |----|-------|-----------|------------|
-| 1 | Nama Pengadaan | Text | Nama/judul pekerjaan pengadaan |
-| 2 | Direksi Pekerjaan | Dropdown (single select) | Diambil dari Master Data Direksi Pekerjaan |
-| 3 | Unit Tujuan | Dropdown (single select) | Diambil dari Master Data Unit Tujuan |
-| 4 | Nomor PR/RO | Dropdown (single select) | Menampilkan daftar nomor PR/RO yang tersedia/terintegrasi dari sistem (mis. Smart SCM); dapat dikosongkan jika belum tersedia |
-| 5 | Nomor PRK (Nota Dinas Usulan) | Text | Nomor referensi nota dinas usulan |
-| 6 | Nilai HPE / Anggaran | Number (currency, format Rupiah) | Estimasi nilai Harga Perkiraan Engineer / pagu anggaran |
-| 7 | Status Progres | Dropdown (single select) | Lihat daftar status pada bagian di bawah |
+| 1 | Jenis No Kontrak & No Kontrak | Dropdown + Text | Format dari master Format No Kontrak (SPK, PJ, SPPL); nomor terisi otomatis berurutan dan dapat diubah |
+| 2 | Nama Pengadaan | Text | Nama/judul pekerjaan pengadaan |
+| 3 | Nama Mitra / Pelaksana | Text | Opsional; nama mitra/penyedia yang melaksanakan pekerjaan |
+| 4 | Direksi Pekerjaan | Dropdown (single select) | Diambil dari Master Data Direksi Pekerjaan |
+| 5 | Unit Tujuan | Checklist (multi select) | **Dapat lebih dari 1 unit**, minimal 1; diambil dari Master Data Unit Tujuan |
+| 6 | Metode Pengadaan | Dropdown | Diambil dari master Metode Pengadaan |
+| 7 | Sumber Anggaran | Dropdown | Diambil dari master Sumber Anggaran |
+
+### Bagian Usulan Pekerjaan
+
+| No | Field | Tipe Input | Keterangan |
+|----|-------|-----------|------------|
+| 1 | Nomor PRK | Text | Opsional |
+| 2 | Nomor Nota Dinas Usulan | Text | Opsional |
+| 3 | Nomor Nota Dinas ICC | Text | Opsional |
+| 4 | Nomor PR/PO | Text (input manual) | Opsional, boleh dikosongkan; **tidak lagi diambil dari data master** |
+| 5 | Nomor COA | Text | Opsional |
+| 6 | Nomor WO | Text | Opsional |
+| 7 | Nilai (Sebelum Nego) | Number (currency, Rupiah) | Nilai HPE / anggaran sebelum negosiasi |
+| 8 | Nilai Setelah Nego | Number (currency, Rupiah) | Opsional; dikosongkan bila negosiasi belum dilakukan |
+| 9 | Status Progres | Dropdown (single select) | Lihat daftar status pada bagian di bawah |
+
+> **Target Penyelesaian** sudah dihapus dari form. Data lama yang sudah terisi tetap tersimpan dan tetap dipakai oleh jadwal dashboard dan kurva-S.
 
 ### Daftar Pilihan Status Progres
 
@@ -230,18 +278,33 @@ Sebelum proses perencanaan dimulai, **Team Leader Pengadaan** wajib menunjuk **1
 
 ### Checklist Perencanaan
 
-- Checklist Perencanaan
-- Nota Dinas Usulan
-- TOR (Term of Reference)
-- RAB (Rencana Anggaran Biaya)
-- Penawaran
-- CSMS (Opsional)
-- Nota Dinas Perintah Pekerjaan
-- HPE (Harga Perkiraan Engineer)
-- UPB
-- RKS (Rencana Kerja dan Syarat)
-- Smart SCM
-- PR / RO (Opsional)
+| Tahapan | Cara penyelesaian |
+|---------|-------------------|
+| Checklist Perencanaan | Centang |
+| Nota Dinas Usulan | **Unggah saja** |
+| TOR / KAK | **Unggah saja** |
+| RAB (Rencana Anggaran Biaya) | **Unggah saja** — dilewati untuk format SPPL |
+| Penawaran | **Unggah saja** — untuk SPPL sekaligus mencakup RAB |
+| CSMS (Sertifikat) — opsional | **Unggah saja** |
+| Nota Dinas ke Pengadaan | **Unggah saja** |
+| HPE (Harga Perkiraan Engineer) | Generate dari template, lalu unggah hasil tanda tangan |
+| UPB | Generate dari template, lalu unggah hasil tanda tangan |
+| RKS (Rencana Kerja dan Syarat) | Generate dari template, lalu unggah hasil tanda tangan |
+| Inisiasi SMART SCM | Centang |
+| PR / RO — opsional | Centang |
+
+- Tahapan **unggah saja** tidak menampilkan tombol generate maupun edit: dokumen disiapkan di luar sistem, diunggah (boleh beberapa berkas, PDF/JPG/PNG), lalu tahapan dapat dicentang dan lanjut ke tahap berikutnya.
+- Tahapan yang memiliki dokumen tetap **wajib diunggah** sebelum dapat dicentang.
+- Sifat "unggah saja" diatur per jenis dokumen di **Data Master → Jenis Dokumen** (saklar *Hanya diunggah (tanpa generate)*).
+
+### Susunan Tahapan per Format Kontrak & Metode
+
+Susunan tahapan dapat disesuaikan tanpa mengubah kode, di **Data Master → Item Checklist**:
+
+- **Dilewati oleh Format Kontrak** — tahapan tidak dipakai oleh format kontrak tertentu. Contoh bawaan: format **SPPL** melewati RAB, sehingga RAB dan Penawaran disatukan menjadi Penawaran.
+- **Dilewati oleh Metode Pengadaan** — contoh bawaan: Surat Pesanan melewati RKS, Inisiasi SMART SCM, PR/RO, UPB, dan HPE.
+- Format kontrak baru dapat ditambah di **Data Master → Format No Kontrak**, lalu diatur tahapan mana yang dilewatinya.
+- Susunan berlaku untuk pengadaan baru, dan untuk pengadaan lama saat datanya disimpan ulang (tahapan yang sudah selesai tetap tersimpan sebagai riwayat).
 
 ### Output
 
@@ -292,7 +355,7 @@ Setelah dokumen perencanaan disetujui, **Team Leader Pengadaan** menunjuk **1 or
 
 ## Administrator
 
-Mengelola data master (termasuk Direksi Pekerjaan, Unit Tujuan, Status Progres), pengguna, konfigurasi sistem, dan hak akses.
+Mengelola data master (termasuk Direksi Pekerjaan, Unit Tujuan, Status Progres), pengguna, konfigurasi sistem, dan **hak akses tiap peran** (menu Hak Akses). Selalu memiliki seluruh hak.
 
 ---
 
@@ -333,7 +396,8 @@ Mengelola data master (termasuk Direksi Pekerjaan, Unit Tujuan, Status Progres),
 - Approval
 - Laporan
 - Manajemen Pengguna
-- Manajemen Data Master (Direksi Pekerjaan, Unit Tujuan, Status Progres)
+- Hak Akses per peran (dapat diatur Administrator)
+- Manajemen Data Master (Direksi Pekerjaan, Unit Tujuan, Status Progres, dll.)
 - Penilaian Kinerja Penyedia (Vendor Assessment) dengan riwayat penyedia otomatis, integrasi denda, dan Export Excel (OpenSpout).
 - Notifikasi
 
@@ -344,13 +408,11 @@ Mengelola data master (termasuk Direksi Pekerjaan, Unit Tujuan, Status Progres),
 ```text
 Team Leader Mengisi Form Input Awal Pengadaan
 │
-├── Nama Pengadaan
-├── Direksi Pekerjaan
-├── Unit Tujuan
-├── Nomor PR/RO
-├── Nomor PRK (Nota Dinas Usulan)
-├── Nilai HPE/Anggaran
-└── Status Progres
+├── Identitas: No Kontrak, Nama Pengadaan, Nama Mitra/Pelaksana,
+│   Direksi Pekerjaan, Unit Tujuan (bisa lebih dari 1), Metode, Sumber Anggaran
+└── Usulan Pekerjaan: No PRK, No Nota Dinas Usulan, No Nota Dinas ICC,
+    No PR/PO (manual), No COA, No WO, Nilai Sebelum Nego,
+    Nilai Setelah Nego, Status Progres
             │
             ▼
 Penunjukan PIC Perencana
@@ -358,11 +420,12 @@ Penunjukan PIC Perencana
             ▼
 Tahap Perencanaan
 │
-├── Nota Dinas Usulan
-├── TOR
-├── RAB
-├── Penawaran
-├── CSMS
+├── Nota Dinas Usulan        (unggah)
+├── TOR / KAK                (unggah)
+├── RAB                      (unggah; dilewati SPPL)
+├── Penawaran                (unggah)
+├── CSMS (Sertifikat)        (unggah)
+├── Nota Dinas ke Pengadaan  (unggah)
 ├── HPE
 ├── UPB
 ├── RKS
@@ -401,31 +464,41 @@ Pengadaan Selesai
 Dashboard
 
 Pengadaan
-├── Buat Pengadaan Baru (Form Input Awal)
+├── Buat Perencanaan Pengadaan   (hak: Buat perencanaan pengadaan)
 ├── Daftar Pengadaan
-├── Penunjukan PIC
+├── Penunjukan PIC               (hak: Tunjuk PIC)
 ├── Perencanaan
 ├── Pelaksanaan
 ├── Approval
-└── Arsip Dokumen
+├── Arsip Dokumen
+└── Penilaian Penyedia           (hak: Kelola penilaian penyedia)
 
-Monitoring
+Pengawasan
+├── Monitoring
+├── Laporan
+└── Monitoring Publik
 
-Laporan
+Administrasi                     (hanya Administrator)
+├── Pengguna
+└── Hak Akses
 
-Penilaian Penyedia
-├── Buat Formulir Penilaian
-├── Daftar Penilaian
-└── Ekspor Excel Rekapitulasi Penilaian
-
-Pengguna
-
-Data Master
+Data Master                      (hak: Kelola data master)
 ├── Direksi Pekerjaan
 ├── Unit Tujuan
-└── Status Progres
+├── Metode Pengadaan
+├── Sumber Anggaran
+├── Jenis Kontrak
+├── Format No Kontrak
+├── Status Progres
+├── Item Checklist
+├── Jenis Dokumen
+├── Template Dokumen
+├── Aspek Penilaian
+└── Lembar Penilai
 
 Pengaturan
+
+Catatan: master "Nomor PR/RO" sudah dihapus; Nomor PR/PO kini diinput manual pada form pengadaan.
 ```
 
 ---

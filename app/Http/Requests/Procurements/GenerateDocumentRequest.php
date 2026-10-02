@@ -18,7 +18,13 @@ class GenerateDocumentRequest extends FormRequest
         return [
             'document_type_id' => [
                 'required',
-                Rule::exists('document_types', 'id')->where('is_active', true)->whereNull('deleted_at'),
+                // Upload-only documents are filed, never generated. Written as
+                // 0, not false: the rule stringifies its values and false would
+                // become an empty string that matches nothing.
+                Rule::exists('document_types', 'id')
+                    ->where('is_active', true)
+                    ->where('upload_only', 0)
+                    ->whereNull('deleted_at'),
             ],
         ];
     }

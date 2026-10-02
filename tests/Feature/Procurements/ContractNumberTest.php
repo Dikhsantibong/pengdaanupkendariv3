@@ -26,7 +26,7 @@ class ContractNumberTest extends TestCase
 
         $formats = ContractNumberFormat::query()->active()->ordered()->get();
 
-        $this->assertSame(['SPK', 'PJ'], $formats->pluck('code')->all());
+        $this->assertSame(['SPK', 'PJ', 'SPPL'], $formats->pluck('code')->all());
 
         // The unit is partway through the year, so the count resumes rather
         // than starting over at 001.
@@ -165,7 +165,7 @@ class ContractNumberTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('procurements/create')
-                ->has('options.contractNumberFormats', 2)
+                ->has('options.contractNumberFormats', 3)
                 ->where('nextNumbers.'.$formats[0]->id, 'KDD075.SPK/612/UPKD/2026')
                 ->where('nextNumbers.'.$formats[1]->id, 'KDD020.PJ/612/UPKD/2026'));
     }

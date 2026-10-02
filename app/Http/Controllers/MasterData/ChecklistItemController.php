@@ -4,6 +4,7 @@ namespace App\Http\Controllers\MasterData;
 
 use App\Enums\ProcurementStage;
 use App\Models\ChecklistItem;
+use App\Models\ContractNumberFormat;
 use App\Models\DocumentType;
 use App\Models\ProcurementMethod;
 use Illuminate\Database\Eloquent\Model;
@@ -70,7 +71,7 @@ class ChecklistItemController extends MasterDataController
     protected function records(): array
     {
         return ChecklistItem::query()
-            ->with(['excludedProcurementMethods:id', 'documentTypes:id,name'])
+            ->with(['excludedProcurementMethods:id', 'excludedContractNumberFormats:id', 'documentTypes:id,name'])
             ->withCount('procurementChecklists')
             ->orderBy('stage')
             ->ordered()
@@ -88,6 +89,9 @@ class ChecklistItemController extends MasterDataController
                 'excluded_procurement_method_ids' => $record->excludedProcurementMethods
                     ->pluck('id')
                     ->all(),
+                'excluded_contract_number_format_ids' => $record->excludedContractNumberFormats
+                    ->pluck('id')
+                    ->all(),
                 'document_type_ids' => $record->documentTypes->pluck('id')->all(),
                 'document_types' => $record->documentTypes->pluck('name')->all(),
             ])
@@ -102,7 +106,11 @@ class ChecklistItemController extends MasterDataController
      */
     protected function prepare(array $validated, ?Model $record = null): array
     {
-        unset($validated['excluded_procurement_method_ids'], $validated['document_type_ids']);
+        unset(
+            $validated['excluded_procurement_method_ids'],
+            $validated['excluded_contract_number_format_ids'],
+            $validated['document_type_ids'],
+        );
 
         return $validated;
     }
@@ -117,6 +125,13 @@ class ChecklistItemController extends MasterDataController
             $methodIds = $request->input('excluded_procurement_method_ids', []);
 
             $item->excludedProcurementMethods()->sync($methodIds);
+        }
+
+        if ($request->has('excluded_contract_number_format_ids')) {
+            /** @var array<int, int> $formatIds */
+            $formatIds = $request->input('excluded_contract_number_format_ids', []);
+
+            $item->excludedContractNumberFormats()->sync($formatIds);
         }
 
         if (! $request->has('document_type_ids')) {
@@ -158,6 +173,11 @@ class ChecklistItemController extends MasterDataController
                     'value' => $method->id,
                     'label' => $method->name,
                 ])->all(),
+            'contractNumberFormats' => ContractNumberFormat::query()->active()->ordered()->get()
+                ->map(fn (ContractNumberFormat $format): array => [
+                    'value' => $format->id,
+                    'label' => $format->code,
+                ])->all(),
             'documentTypes' => DocumentType::query()->active()->orderBy('stage')->ordered()->get()
                 ->map(fn (DocumentType $type): array => [
                     'value' => $type->id,
@@ -182,6 +202,8 @@ class ChecklistItemController extends MasterDataController
             'is_active' => ['required', 'boolean'],
             'excluded_procurement_method_ids' => ['sometimes', 'array'],
             'excluded_procurement_method_ids.*' => ['integer', Rule::exists('procurement_methods', 'id')],
+            'excluded_contract_number_format_ids' => ['sometimes', 'array'],
+            'excluded_contract_number_format_ids.*' => ['integer', Rule::exists('contract_number_formats', 'id')],
             // An empty list means the step is a plain tick with no paperwork.
             'document_type_ids' => ['sometimes', 'array'],
             'document_type_ids.*' => ['integer', Rule::exists('document_types', 'id')->whereNull('deleted_at')],

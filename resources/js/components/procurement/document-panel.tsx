@@ -166,29 +166,30 @@ export function DocumentPanel({
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <div className="flex justify-end gap-2">
-                                        {canGenerate && (
-                                            <Button
-                                                asChild
-                                                size="sm"
-                                                variant="ghost"
-                                            >
-                                                <Link
-                                                    href={
-                                                        procurements.documents.edit(
-                                                            {
-                                                                procurement:
-                                                                    procurementId,
-                                                                document:
-                                                                    document.id,
-                                                            },
-                                                        ).url
-                                                    }
+                                        {canGenerate &&
+                                            !document.upload_only && (
+                                                <Button
+                                                    asChild
+                                                    size="sm"
+                                                    variant="ghost"
                                                 >
-                                                    <Pencil className="size-3.5" />
-                                                    Edit
-                                                </Link>
-                                            </Button>
-                                        )}
+                                                    <Link
+                                                        href={
+                                                            procurements.documents.edit(
+                                                                {
+                                                                    procurement:
+                                                                        procurementId,
+                                                                    document:
+                                                                        document.id,
+                                                                },
+                                                            ).url
+                                                        }
+                                                    >
+                                                        <Pencil className="size-3.5" />
+                                                        Edit
+                                                    </Link>
+                                                </Button>
+                                            )}
                                         <Button
                                             asChild
                                             size="sm"

@@ -33,15 +33,23 @@ export type ProcurementRow = {
     number: string;
     name: string;
     work_director: string;
+    /** Every unit served, joined with commas. */
     target_unit: string;
+    target_units: string[];
+    partner_name: string | null;
     procurement_method: string | null;
     budget_source: string | null;
     contract_type: string | null;
     contract_type_id: number | null;
     manager_memo_number: string | null;
-    pr_ro_number: string | null;
+    pr_po_number: string | null;
     prk_number: string | null;
+    proposal_memo_number: string | null;
+    icc_memo_number: string | null;
+    coa_number: string | null;
+    wo_number: string | null;
     hpe_value: number;
+    value_after_negotiation: number | null;
     status: { id: number; name: string; category: StatusCategory };
     planner: UserRef | null;
     executor: UserRef | null;
@@ -72,6 +80,8 @@ export type ChecklistDocument = {
     is_signed: boolean;
     uploads: SignedUpload[];
     has_template: boolean;
+    /** Uploaded rather than generated: only an upload is offered. */
+    upload_only: boolean;
 };
 
 export type ChecklistRow = {
@@ -90,6 +100,7 @@ export type ProcurementDocumentRow = {
     id: number;
     title: string;
     type: string;
+    upload_only: boolean;
     template_version: number;
     revision: number;
     generated_by: string | null;

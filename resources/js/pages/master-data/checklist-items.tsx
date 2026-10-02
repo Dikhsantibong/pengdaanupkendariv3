@@ -12,6 +12,7 @@ type ChecklistItem = MasterRecord & {
     is_optional: boolean;
     sort_order: number;
     excluded_procurement_method_ids: number[];
+    excluded_contract_number_format_ids: number[];
     document_type_ids: number[];
     document_types: string[];
 };
@@ -20,15 +21,21 @@ export default function ChecklistItems({
     records,
     stages,
     procurementMethods,
+    contractNumberFormats,
     documentTypes,
 }: {
     records: ChecklistItem[];
     stages: EnumOption[];
     procurementMethods: EnumOption[];
+    contractNumberFormats: EnumOption[];
     documentTypes: EnumOption[];
 }) {
     const methodLabel = (id: number) =>
         procurementMethods.find((method) => Number(method.value) === id)?.label;
+
+    const formatLabel = (id: number) =>
+        contractNumberFormats.find((format) => Number(format.value) === id)
+            ?.label;
 
     return (
         <MasterDataPage<ChecklistItem>
@@ -66,6 +73,17 @@ export default function ChecklistItems({
                                   .filter(Boolean)
                                   .join(', '),
                 },
+                {
+                    key: 'excluded_contract_number_format_ids',
+                    label: 'Dilewati Format Kontrak',
+                    render: (record) =>
+                        record.excluded_contract_number_format_ids.length === 0
+                            ? '—'
+                            : record.excluded_contract_number_format_ids
+                                  .map(formatLabel)
+                                  .filter(Boolean)
+                                  .join(', '),
+                },
                 { key: 'sort_order', label: 'Urutan', className: 'tabular' },
             ]}
             fields={[
@@ -100,7 +118,7 @@ export default function ChecklistItems({
                     label: 'Dokumen yang Dihasilkan',
                     type: 'multiselect',
                     options: documentTypes,
-                    hint: 'Setiap dokumen yang dicentang wajib diunggah bertanda tangan sebelum tahapan ini dapat ditandai selesai. Kosongkan bila tahapan ini hanya centang biasa.',
+                    hint: 'Setiap dokumen yang dicentang wajib diunggah sebelum tahapan ini dapat ditandai selesai. Dokumen bertanda "Hanya diunggah" di Jenis Dokumen cukup diunggah tanpa generate. Kosongkan bila tahapan ini hanya centang biasa.',
                 },
                 {
                     name: 'excluded_procurement_method_ids',
@@ -108,6 +126,13 @@ export default function ChecklistItems({
                     type: 'multiselect',
                     options: procurementMethods,
                     hint: 'Centang metode yang tidak melalui tahapan ini. Metode yang tidak dicentang tetap memakai item ini.',
+                },
+                {
+                    name: 'excluded_contract_number_format_ids',
+                    label: 'Dilewati oleh Format Kontrak',
+                    type: 'multiselect',
+                    options: contractNumberFormats,
+                    hint: 'Centang format kontrak yang tidak melalui tahapan ini, misalnya SPPL tidak memakai RAB karena sudah tercakup di Penawaran. Berlaku untuk pengadaan baru dan saat data pengadaan disimpan ulang.',
                 },
                 { name: 'sort_order', label: 'Urutan Tampil', type: 'number' },
                 { name: 'is_active', label: 'Aktif', type: 'switch' },
@@ -119,6 +144,7 @@ export default function ChecklistItems({
                 is_optional: false,
                 document_type_ids: [],
                 excluded_procurement_method_ids: [],
+                excluded_contract_number_format_ids: [],
                 sort_order: 0,
                 is_active: true,
             }}

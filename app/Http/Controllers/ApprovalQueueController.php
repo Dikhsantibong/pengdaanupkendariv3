@@ -21,7 +21,7 @@ class ApprovalQueueController extends Controller
         $procurements = Procurement::query()
             ->visibleTo($request->user())
             ->where('planning_approval_state', PlanningApprovalState::MenungguPersetujuan->value)
-            ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'prRoNumber', 'progressStatus', 'planner', 'executor', 'checklists'])
+            ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor', 'checklists'])
             ->orderBy('planning_submitted_at')
             ->paginate(15);
 
@@ -31,7 +31,7 @@ class ApprovalQueueController extends Controller
                 PlanningApprovalState::Disetujui->value,
                 PlanningApprovalState::Ditolak->value,
             ])
-            ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'prRoNumber', 'progressStatus', 'planner', 'executor'])
+            ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor'])
             ->latest('planning_reviewed_at')
             ->limit(10)
             ->get();

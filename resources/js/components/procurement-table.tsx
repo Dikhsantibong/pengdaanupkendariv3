@@ -130,7 +130,14 @@ export function ProcurementTable({
 function renderCell(column: ProcurementColumn, row: ProcurementRow) {
     switch (column) {
         case 'unit':
-            return <span className="whitespace-nowrap">{row.target_unit}</span>;
+            // Several units stack one per line instead of stretching the row.
+            return (
+                <div className="flex flex-col whitespace-nowrap">
+                    {row.target_units.map((unit) => (
+                        <span key={unit}>{unit}</span>
+                    ))}
+                </div>
+            );
         case 'director':
             return (
                 <span className="whitespace-nowrap">{row.work_director}</span>

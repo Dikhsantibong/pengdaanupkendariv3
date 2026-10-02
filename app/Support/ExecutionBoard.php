@@ -67,6 +67,7 @@ class ExecutionBoard
             )
             ->with([
                 'targetUnit',
+                'targetUnits',
                 'workDirector',
                 'progressStatus',
                 'checklists.checklistItem',
@@ -163,7 +164,7 @@ class ExecutionBoard
                     'id' => $procurement->id,
                     'number' => $procurement->number,
                     'name' => $procurement->name,
-                    'target_unit' => $procurement->targetUnit->name,
+                    'target_unit' => $procurement->targetUnitNames(),
                     'work_director' => $procurement->workDirector->name,
                     'status' => $procurement->progressStatus->name,
                     'category' => $procurement->progressStatus->category->value,
@@ -189,7 +190,7 @@ class ExecutionBoard
     {
         return Procurement::query()
             ->whereNotNull('completed_at')
-            ->with('targetUnit')
+            ->with(['targetUnit', 'targetUnits'])
             ->latest('completed_at')
             ->limit($limit)
             ->get()
@@ -197,7 +198,7 @@ class ExecutionBoard
                 'id' => $procurement->id,
                 'number' => $procurement->number,
                 'name' => $procurement->name,
-                'target_unit' => $procurement->targetUnit->name,
+                'target_unit' => $procurement->targetUnitNames(),
                 'completed_at' => $procurement->completed_at?->toDateTimeString(),
             ])
             ->all();

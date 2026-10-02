@@ -23,6 +23,10 @@ class TorDocumentTemplateTest extends TestCase
         $this->seed(DocumentTemplateSeeder::class);
 
         $documentType = DocumentType::query()->where('code', 'tor')->firstOrFail();
+
+        // TOR is uploaded by default now; its template stays installed and
+        // must keep working for an administrator who switches generation on.
+        $documentType->update(['upload_only' => false]);
         $template = DocumentTemplate::resolveFor($documentType->id, null);
 
         $this->assertNotNull($template);
@@ -48,6 +52,10 @@ class TorDocumentTemplateTest extends TestCase
         ]);
 
         $documentType = DocumentType::query()->where('code', 'tor')->firstOrFail();
+
+        // TOR is uploaded by default now; its template stays installed and
+        // must keep working for an administrator who switches generation on.
+        $documentType->update(['upload_only' => false]);
 
         $this->actingAs($teamLeader)->post(route('procurements.documents.store', $procurement), [
             'document_type_id' => $documentType->id,
@@ -77,6 +85,10 @@ class TorDocumentTemplateTest extends TestCase
         ]);
 
         $documentType = DocumentType::query()->where('code', 'tor')->firstOrFail();
+
+        // TOR is uploaded by default now; its template stays installed and
+        // must keep working for an administrator who switches generation on.
+        $documentType->update(['upload_only' => false]);
 
         $this->actingAs($teamLeader)->post(route('procurements.documents.store', $procurement), [
             'document_type_id' => $documentType->id,

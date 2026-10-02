@@ -62,6 +62,7 @@ class PlanningBoard
             )
             ->with([
                 'targetUnit',
+                'targetUnits',
                 'workDirector',
                 'progressStatus',
                 'checklists.checklistItem',
@@ -153,7 +154,7 @@ class PlanningBoard
                     'id' => $procurement->id,
                     'number' => $procurement->number,
                     'name' => $procurement->name,
-                    'target_unit' => $procurement->targetUnit->name,
+                    'target_unit' => $procurement->targetUnitNames(),
                     'work_director' => $procurement->workDirector->name,
                     'status' => $procurement->progressStatus->name,
                     'category' => $procurement->progressStatus->category->value,

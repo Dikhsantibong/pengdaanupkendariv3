@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
  * @property string $code
  * @property string $name
  * @property ProcurementStage $stage
+ * @property bool $upload_only
  * @property string|null $description
  * @property int $sort_order
  * @property bool $is_active
@@ -29,7 +30,7 @@ use Illuminate\Support\Carbon;
  * @property-read int|null $templates_count
  * @property-read int|null $procurement_documents_count
  */
-#[Fillable(['code', 'name', 'stage', 'description', 'sort_order', 'is_active'])]
+#[Fillable(['code', 'name', 'stage', 'upload_only', 'description', 'sort_order', 'is_active'])]
 class DocumentType extends Model
 {
     /** @use HasFactory<DocumentTypeFactory> */
@@ -86,6 +87,7 @@ class DocumentType extends Model
     {
         return [
             'stage' => ProcurementStage::class,
+            'upload_only' => 'boolean',
             'is_active' => 'boolean',
         ];
     }

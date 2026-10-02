@@ -24,7 +24,7 @@ class ExecutionController extends Controller
             Procurement::query()
                 ->visibleTo($request->user())
                 ->where('planning_approval_state', PlanningApprovalState::Disetujui->value)
-                ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'prRoNumber', 'progressStatus', 'planner', 'executor', 'checklists']),
+                ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor', 'checklists']),
             $request,
         )
             ->latest('created_at')

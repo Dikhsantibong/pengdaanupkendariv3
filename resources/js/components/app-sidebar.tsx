@@ -11,6 +11,7 @@ import {
     FileText,
     Gauge,
     Hash,
+    KeyRound,
     LayoutDashboard,
     ListChecks,
     MonitorPlay,
@@ -35,6 +36,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import accessRights from '@/routes/access-rights';
 import approvals from '@/routes/approvals';
 import documents from '@/routes/documents';
 import execution from '@/routes/execution';
@@ -82,7 +84,7 @@ export function AppSidebar() {
                     icon: ClipboardList,
                     matchNested: true,
                 },
-                ...(permissions.createProcurement
+                ...(permissions.assignPic
                     ? [
                           {
                               title: 'Penunjukan PIC',
@@ -111,7 +113,7 @@ export function AppSidebar() {
                     href: documents.index(),
                     icon: Archive,
                 },
-                ...(permissions.manageMasterData
+                ...(permissions.manageVendorAssessments
                     ? [
                           {
                               title: 'Penilaian Penyedia',
@@ -142,89 +144,90 @@ export function AppSidebar() {
                 },
             ],
         },
-        ...(permissions.manageUsers || permissions.manageMasterData
+        ...(permissions.manageUsers
             ? [
                   {
                       title: 'Administrasi',
                       items: [
-                          ...(permissions.manageUsers
-                              ? [
-                                    {
-                                        title: 'Pengguna',
-                                        href: users.index(),
-                                        icon: UserCog,
-                                    },
-                                ]
-                              : []),
-                          ...(permissions.manageMasterData
-                              ? [
-                                    {
-                                        title: 'Direksi Pekerjaan',
-                                        href: masterData.workDirectors.index(),
-                                        icon: ShieldCheck,
-                                    },
-                                    {
-                                        title: 'Unit Tujuan',
-                                        href: masterData.targetUnits.index(),
-                                        icon: Building2,
-                                    },
-                                    {
-                                        title: 'Metode Pengadaan',
-                                        href: masterData.procurementMethods.index(),
-                                        icon: Workflow,
-                                    },
-                                    {
-                                        title: 'Sumber Anggaran',
-                                        href: masterData.budgetSources.index(),
-                                        icon: Wallet,
-                                    },
-                                    {
-                                        title: 'Jenis Kontrak',
-                                        href: masterData.contractTypes.index(),
-                                        icon: FileSignature,
-                                    },
-                                    {
-                                        title: 'Format No Kontrak',
-                                        href: masterData.contractNumberFormats.index(),
-                                        icon: Hash,
-                                    },
-                                    {
-                                        title: 'Status Progres',
-                                        href: masterData.progressStatuses.index(),
-                                        icon: Settings2,
-                                    },
-                                    {
-                                        title: 'Nomor PR/RO',
-                                        href: masterData.prRoNumbers.index(),
-                                        icon: Hash,
-                                    },
-                                    {
-                                        title: 'Item Checklist',
-                                        href: masterData.checklistItems.index(),
-                                        icon: ListChecks,
-                                    },
-                                    {
-                                        title: 'Jenis Dokumen',
-                                        href: masterData.documentTypes.index(),
-                                        icon: FileStack,
-                                    },
-                                    {
-                                        title: 'Template Dokumen',
-                                        href: masterData.documentTemplates.index(),
-                                        icon: FileText,
-                                    },
-                                    {
-                                        title: 'Aspek Penilaian',
-                                        href: masterData.assessmentAspects.index(),
-                                        icon: ClipboardList,
-                                    },
-                                    {
-                                        title: 'Lembar Penilai',
-                                        href: masterData.assessmentForms.index(),
-                                        icon: ClipboardCheck,
-                                    },
-                                ]
-                              : []),
+                          {
+                              title: 'Pengguna',
+                              href: users.index(),
+                              icon: UserCog,
+                          },
+                          {
+                              title: 'Hak Akses',
+                              href: accessRights.index(),
+                              icon: KeyRound,
+                          },
+                      ],
+                  },
+              ]
+            : []),
+        ...(permissions.manageMasterData
+            ? [
+                  {
+                      title: 'Data Master',
+                      items: [
+                          {
+                              title: 'Direksi Pekerjaan',
+                              href: masterData.workDirectors.index(),
+                              icon: ShieldCheck,
+                          },
+                          {
+                              title: 'Unit Tujuan',
+                              href: masterData.targetUnits.index(),
+                              icon: Building2,
+                          },
+                          {
+                              title: 'Metode Pengadaan',
+                              href: masterData.procurementMethods.index(),
+                              icon: Workflow,
+                          },
+                          {
+                              title: 'Sumber Anggaran',
+                              href: masterData.budgetSources.index(),
+                              icon: Wallet,
+                          },
+                          {
+                              title: 'Jenis Kontrak',
+                              href: masterData.contractTypes.index(),
+                              icon: FileSignature,
+                          },
+                          {
+                              title: 'Format No Kontrak',
+                              href: masterData.contractNumberFormats.index(),
+                              icon: Hash,
+                          },
+                          {
+                              title: 'Status Progres',
+                              href: masterData.progressStatuses.index(),
+                              icon: Settings2,
+                          },
+                          {
+                              title: 'Item Checklist',
+                              href: masterData.checklistItems.index(),
+                              icon: ListChecks,
+                          },
+                          {
+                              title: 'Jenis Dokumen',
+                              href: masterData.documentTypes.index(),
+                              icon: FileStack,
+                          },
+                          {
+                              title: 'Template Dokumen',
+                              href: masterData.documentTemplates.index(),
+                              icon: FileText,
+                          },
+                          {
+                              title: 'Aspek Penilaian',
+                              href: masterData.assessmentAspects.index(),
+                              icon: ClipboardList,
+                          },
+                          {
+                              title: 'Lembar Penilai',
+                              href: masterData.assessmentForms.index(),
+                              icon: ClipboardCheck,
+                          },
                       ],
                   },
               ]

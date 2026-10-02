@@ -52,6 +52,8 @@ class HandleInertiaRequests extends Middleware
                     'manageUsers' => $user !== null && Gate::forUser($user)->allows('manage-users'),
                     'viewAllProcurements' => $user !== null && Gate::forUser($user)->allows('view-all-procurements'),
                     'createProcurement' => $user !== null && Gate::forUser($user)->allows('create', Procurement::class),
+                    'assignPic' => $user !== null && Gate::forUser($user)->allows('assign-pic'),
+                    'manageVendorAssessments' => $user !== null && Gate::forUser($user)->allows('manage-vendor-assessments'),
                 ],
             ],
             'unreadNotifications' => $user === null ? 0 : $user->unreadNotifications()->count(),

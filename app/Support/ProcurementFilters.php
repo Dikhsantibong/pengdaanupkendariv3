@@ -30,7 +30,12 @@ class ProcurementFilters
             })
             ->when($request->integer('progress_status_id'), fn (Builder $builder, int $id) => $builder->where('progress_status_id', $id))
             ->when($request->integer('work_director_id'), fn (Builder $builder, int $id) => $builder->where('work_director_id', $id))
-            ->when($request->integer('target_unit_id'), fn (Builder $builder, int $id) => $builder->where('target_unit_id', $id))
+            // Matches any unit the procurement serves, not only the first.
+            ->when($request->integer('target_unit_id'), fn (Builder $builder, int $id) => $builder->where(
+                fn (Builder $inner) => $inner
+                    ->where('target_unit_id', $id)
+                    ->orWhereHas('targetUnits', fn (Builder $units) => $units->where('target_units.id', $id)),
+            ))
             ->when($request->integer('procurement_method_id'), fn (Builder $builder, int $id) => $builder->where('procurement_method_id', $id))
             ->when($request->integer('budget_source_id'), fn (Builder $builder, int $id) => $builder->where('budget_source_id', $id))
             ->when($request->integer('planner_id'), fn (Builder $builder, int $id) => $builder->where('planner_id', $id))
