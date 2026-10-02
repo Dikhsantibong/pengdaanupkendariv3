@@ -69,25 +69,27 @@ return new class extends Migration
             ->where('code', 'surat-pesanan-jasa')
             ->update(['name' => 'Lampiran SP Jasa', 'updated_at' => $now]);
 
-        $spplFormatId = DB::table('contract_number_formats')->where('code', 'SPPL')->value('id');
-        $penyusunanKontrakStepId = DB::table('checklist_items')
-            ->where('stage', 'pelaksanaan')
-            ->where('name', 'Penyusunan Kontrak')
-            ->value('id');
+        if (Schema::hasTable('checklist_item_format_exclusions') && Schema::hasTable('contract_number_formats')) {
+            $spplFormatId = DB::table('contract_number_formats')->where('code', 'SPPL')->value('id');
+            $penyusunanKontrakStepId = DB::table('checklist_items')
+                ->where('stage', 'pelaksanaan')
+                ->where('name', 'Penyusunan Kontrak')
+                ->value('id');
 
-        if ($spplFormatId !== null && $penyusunanKontrakStepId !== null) {
-            $alreadyExcluded = DB::table('contract_format_checklist_item_exclusions')
-                ->where('contract_number_format_id', $spplFormatId)
-                ->where('checklist_item_id', $penyusunanKontrakStepId)
-                ->exists();
+            if ($spplFormatId !== null && $penyusunanKontrakStepId !== null) {
+                $alreadyExcluded = DB::table('checklist_item_format_exclusions')
+                    ->where('contract_number_format_id', $spplFormatId)
+                    ->where('checklist_item_id', $penyusunanKontrakStepId)
+                    ->exists();
 
-            if (! $alreadyExcluded) {
-                DB::table('contract_format_checklist_item_exclusions')->insert([
-                    'contract_number_format_id' => $spplFormatId,
-                    'checklist_item_id' => $penyusunanKontrakStepId,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ]);
+                if (! $alreadyExcluded) {
+                    DB::table('checklist_item_format_exclusions')->insert([
+                        'contract_number_format_id' => $spplFormatId,
+                        'checklist_item_id' => $penyusunanKontrakStepId,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+                }
             }
         }
     }
