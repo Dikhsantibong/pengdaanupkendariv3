@@ -1,6 +1,5 @@
 <?php
 
-use Database\Seeders\SpplDocumentTemplateSeeder;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
@@ -8,6 +7,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! DB::table('checklist_items')->where('stage', 'pelaksanaan')->exists()) {
+            return;
+        }
+
         $now = now();
 
         $types = [
@@ -65,8 +68,6 @@ return new class extends Migration
                 ],
             ]);
         }
-
-        (new SpplDocumentTemplateSeeder)->run();
     }
 
     public function down(): void

@@ -90,6 +90,8 @@ class ProcurementController extends Controller
         /** @var User $user */
         $user = $request->user();
 
+        $this->procurements->syncChecklists($procurement);
+
         $procurement->load([
             'workDirector',
             'targetUnit',
