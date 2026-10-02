@@ -8,6 +8,7 @@ import {
     PenLine,
     Redo2,
     Rows3,
+    Scissors,
     SquareDashed,
     Table as TableIcon,
     Trash2,
@@ -78,10 +79,20 @@ export function VisualEditor({
             // a paragraph to start typing in.
             area.current.innerHTML =
                 value.trim() === '' ? '<p><br></p>' : value;
+            area.current.querySelectorAll('.page-break').forEach((el) => {
+                el.setAttribute('contenteditable', 'false');
+            });
             lastEmitted.current = value;
             seeded.current = true;
         }
     }, [value]);
+
+    const scrollContainer = useRef<HTMLDivElement>(null);
+    const paperContainer = useRef<HTMLDivElement>(null);
+    const [tableMenuPos, setTableMenuPos] = useState<{
+        top: number;
+        left: number;
+    } | null>(null);
 
     const emit = useCallback(() => {
         if (area.current) {
@@ -107,22 +118,60 @@ export function VisualEditor({
         return element && area.current.contains(element) ? element : null;
     }, []);
 
+    const updateTableMenuPosition = useCallback(() => {
+        const element = caretElement();
+        const cell = (element?.closest('td, th') as HTMLTableCellElement) ?? null;
+        const container = scrollContainer.current;
+
+        if (!cell || !container) {
+            setTableMenuPos(null);
+
+            return;
+        }
+
+        const cellRect = cell.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+
+        const relTop =
+            cellRect.top - containerRect.top + container.scrollTop - 40;
+        const relLeft =
+            cellRect.left - containerRect.left + container.scrollLeft;
+
+        const minTop = container.scrollTop + 8;
+        const maxTop = container.scrollTop + containerRect.height - 48;
+        const top = Math.min(maxTop, Math.max(minTop, relTop));
+        const left = Math.max(12, Math.min(containerRect.width - 340, relLeft));
+
+        setTableMenuPos({ top, left });
+    }, [caretElement]);
+
     // Track what the caret is sitting in so the toolbar can reflect it.
     useEffect(() => {
         const onSelectionChange = () => {
             const element = caretElement();
+            const isInTable =
+                element?.closest('td, th') !== null && element !== null;
 
-            setInTable(element?.closest('td, th') !== null && element !== null);
+            setInTable(isInTable);
 
             const block = element?.closest('h1, h2, h3, h4, p');
             setBlockStyle(block ? block.tagName.toLowerCase() : 'p');
+
+            if (isInTable) {
+                updateTableMenuPosition();
+            } else {
+                setTableMenuPos(null);
+            }
         };
 
         document.addEventListener('selectionchange', onSelectionChange);
+        window.addEventListener('resize', updateTableMenuPosition);
 
-        return () =>
+        return () => {
             document.removeEventListener('selectionchange', onSelectionChange);
-    }, [caretElement]);
+            window.removeEventListener('resize', updateTableMenuPosition);
+        };
+    }, [caretElement, updateTableMenuPosition]);
 
     /** Run a built-in editing command against the current selection. */
     const run = (command: string, argument?: string) => {
@@ -140,6 +189,12 @@ export function VisualEditor({
         },
         [emit],
     );
+
+    const insertPageBreak = () => {
+        insert(
+            '<div class="page-break" contenteditable="false"></div><p><br></p>',
+        );
+    };
 
     /** Insert a table of the given size, ready to type into. */
     const insertTable = (rows: number, columns: number) => {
@@ -179,6 +234,7 @@ export function VisualEditor({
 
         row.after(fresh);
         emit();
+        setTimeout(updateTableMenuPosition, 10);
     };
 
     const removeRow = () => {
@@ -192,8 +248,11 @@ export function VisualEditor({
 
         if (table.rows.length <= 1) {
             table.remove();
+            setInTable(false);
+            setTableMenuPos(null);
         } else {
             row.remove();
+            setTimeout(updateTableMenuPosition, 10);
         }
 
         emit();
@@ -225,6 +284,7 @@ export function VisualEditor({
         });
 
         emit();
+        setTimeout(updateTableMenuPosition, 10);
     };
 
     const removeColumn = () => {
@@ -239,6 +299,8 @@ export function VisualEditor({
 
         if (table.rows[0]?.cells.length <= 1) {
             table.remove();
+            setInTable(false);
+            setTableMenuPos(null);
             emit();
 
             return;
@@ -246,171 +308,263 @@ export function VisualEditor({
 
         Array.from(table.rows).forEach((row) => row.cells[index]?.remove());
         emit();
+        setTimeout(updateTableMenuPosition, 10);
     };
 
     return (
-        <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-1 rounded-md border border-border bg-card px-2 py-1.5">
-                <Select
-                    value={blockStyle}
-                    onValueChange={(next) => run('formatBlock', next)}
-                >
-                    <SelectTrigger className="h-8 w-40 text-xs">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {BLOCK_STYLES.map((style) => (
-                            <SelectItem key={style.value} value={style.value}>
-                                {style.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+        <div className="flex flex-col rounded-md border border-border bg-card shadow-sm">
+            {/* Toolbar header: pinned at the top */}
+            <div className="sticky top-0 z-30 flex flex-col gap-1.5 border-b border-border bg-card/95 backdrop-blur px-3 py-2">
+                <div className="flex flex-wrap items-center gap-1">
+                    <Select
+                        value={blockStyle}
+                        onValueChange={(next) => run('formatBlock', next)}
+                    >
+                        <SelectTrigger className="h-8 w-40 text-xs">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {BLOCK_STYLES.map((style) => (
+                                <SelectItem key={style.value} value={style.value}>
+                                    {style.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
 
-                <Separator orientation="vertical" className="mx-1 h-6" />
+                    <Separator orientation="vertical" className="mx-1 h-6" />
 
-                <ToolButton
-                    label="Tebal"
-                    icon={<Bold className="size-4" />}
-                    onClick={() => run('bold')}
-                />
-                <ToolButton
-                    label="Miring"
-                    icon={<Italic className="size-4" />}
-                    onClick={() => run('italic')}
-                />
-                <ToolButton
-                    label="Garis bawah"
-                    icon={<Underline className="size-4" />}
-                    onClick={() => run('underline')}
-                />
+                    <ToolButton
+                        label="Tebal"
+                        icon={<Bold className="size-4" />}
+                        onClick={() => run('bold')}
+                    />
+                    <ToolButton
+                        label="Miring"
+                        icon={<Italic className="size-4" />}
+                        onClick={() => run('italic')}
+                    />
+                    <ToolButton
+                        label="Garis bawah"
+                        icon={<Underline className="size-4" />}
+                        onClick={() => run('underline')}
+                    />
 
-                <Separator orientation="vertical" className="mx-1 h-6" />
+                    <Separator orientation="vertical" className="mx-1 h-6" />
 
-                <ToolButton
-                    label="Daftar bertitik"
-                    icon={<List className="size-4" />}
-                    onClick={() => run('insertUnorderedList')}
-                />
-                <ToolButton
-                    label="Daftar bernomor"
-                    icon={<ListOrdered className="size-4" />}
-                    onClick={() => run('insertOrderedList')}
-                />
+                    <ToolButton
+                        label="Daftar bertitik"
+                        icon={<List className="size-4" />}
+                        onClick={() => run('insertUnorderedList')}
+                    />
+                    <ToolButton
+                        label="Daftar bernomor"
+                        icon={<ListOrdered className="size-4" />}
+                        onClick={() => run('insertOrderedList')}
+                    />
 
-                <Separator orientation="vertical" className="mx-1 h-6" />
+                    <Separator orientation="vertical" className="mx-1 h-6" />
 
-                <ToolButton
-                    label="Sisipkan tabel 3 kolom"
-                    icon={<TableIcon className="size-4" />}
-                    onClick={() => insertTable(3, 3)}
-                />
-                <ToolButton
-                    label="Isian titik-titik"
-                    icon={<PenLine className="size-4" />}
-                    onClick={() =>
-                        insert(
-                            '<span class="fill">..........................</span>',
-                        )
-                    }
-                />
-                <ToolButton
-                    label="Halaman baru"
-                    icon={<SquareDashed className="size-4" />}
-                    onClick={() =>
-                        insert(
-                            '<section class="bab"><h2 class="bab-heading">JUDUL BAB</h2><p>Isi bab.</p></section>',
-                        )
-                    }
-                />
-                <ToolButton
-                    label="Blok tanda tangan"
-                    icon={<Minus className="size-4" />}
-                    onClick={() =>
-                        insert(
-                            '<table class="signature"><tr><td class="role">Jabatan Kiri</td><td class="role">Jabatan Kanan</td></tr>' +
-                                '<tr><td class="space"></td><td class="space"></td></tr>' +
-                                '<tr><td class="name fill">( Nama Jelas )</td><td class="name fill">( Nama Jelas )</td></tr></table>',
-                        )
-                    }
-                />
+                    <ToolButton
+                        label="Sisipkan tabel 3 kolom"
+                        icon={<TableIcon className="size-4" />}
+                        onClick={() => insertTable(3, 3)}
+                    />
+                    <ToolButton
+                        label="Isian titik-titik"
+                        icon={<PenLine className="size-4" />}
+                        onClick={() =>
+                            insert(
+                                '<span class="fill">..........................</span>',
+                            )
+                        }
+                    />
+                    <ToolButton
+                        label="Halaman baru"
+                        icon={<SquareDashed className="size-4" />}
+                        onClick={() =>
+                            insert(
+                                '<section class="bab"><h2 class="bab-heading">JUDUL BAB</h2><p>Isi bab.</p></section>',
+                            )
+                        }
+                    />
+                    <ToolButton
+                        label="Blok tanda tangan"
+                        icon={<Minus className="size-4" />}
+                        onClick={() =>
+                            insert(
+                                '<table class="signature"><tr><td class="role">Jabatan Kiri</td><td class="role">Jabatan Kanan</td></tr>' +
+                                    '<tr><td class="space"></td><td class="space"></td></tr>' +
+                                    '<tr><td class="name fill">( Nama Jelas )</td><td class="name fill">( Nama Jelas )</td></tr></table>',
+                            )
+                        }
+                    />
+                    <ToolButton
+                        label="Sisipkan Batas Halaman (Page Break)"
+                        icon={<Scissors className="size-4" />}
+                        onClick={insertPageBreak}
+                    />
 
-                <Separator orientation="vertical" className="mx-1 h-6" />
+                    <Separator orientation="vertical" className="mx-1 h-6" />
 
-                <ToolButton
-                    label="Batalkan"
-                    icon={<Undo2 className="size-4" />}
-                    onClick={() => run('undo')}
-                />
-                <ToolButton
-                    label="Ulangi"
-                    icon={<Redo2 className="size-4" />}
-                    onClick={() => run('redo')}
-                />
+                    <ToolButton
+                        label="Batalkan"
+                        icon={<Undo2 className="size-4" />}
+                        onClick={() => run('undo')}
+                    />
+                    <ToolButton
+                        label="Ulangi"
+                        icon={<Redo2 className="size-4" />}
+                        onClick={() => run('redo')}
+                    />
+                </div>
+
+                {inTable && (
+                    <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1.5 shadow-sm animate-in fade-in slide-in-from-top-1">
+                        <span className="mr-1 text-xs font-semibold text-primary flex items-center gap-1">
+                            <TableIcon className="size-3.5" />
+                            Aksi Tabel:
+                        </span>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            className="h-7 text-xs font-medium"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={addRow}
+                        >
+                            <Rows3 className="size-3.5 mr-1 text-primary" />
+                            Tambah Baris
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            className="h-7 text-xs font-medium"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={addColumn}
+                        >
+                            <Columns3 className="size-3.5 mr-1 text-primary" />
+                            Tambah Kolom
+                        </Button>
+                        <Separator orientation="vertical" className="h-4 mx-1" />
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={removeRow}
+                        >
+                            <Trash2 className="size-3.5 mr-1" />
+                            Hapus Baris
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={removeColumn}
+                        >
+                            <Trash2 className="size-3.5 mr-1" />
+                            Hapus Kolom
+                        </Button>
+                    </div>
+                )}
             </div>
 
-            {inTable && (
-                <div className="flex flex-wrap items-center gap-1 rounded-md border border-primary/30 bg-primary/5 px-2 py-1.5">
-                    <span className="mr-1 text-xs font-medium text-muted-foreground">
-                        Tabel:
-                    </span>
-                    <Button size="sm" variant="ghost" onClick={addRow}>
-                        <Rows3 className="size-3.5" />
-                        Tambah Baris
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={addColumn}>
-                        <Columns3 className="size-3.5" />
-                        Tambah Kolom
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        onClick={removeRow}
+            {/* Scrollable Document Area: ONLY this area scrolls */}
+            <div
+                ref={scrollContainer}
+                onScroll={updateTableMenuPosition}
+                className="relative h-[72vh] min-h-[520px] overflow-y-auto bg-muted/25 p-4 sm:p-8"
+            >
+                {/* Floating Quick Action Menu right at the Table/Cell */}
+                {tableMenuPos !== null && inTable && (
+                    <div
+                        style={{
+                            top: `${tableMenuPos.top}px`,
+                            left: `${tableMenuPos.left}px`,
+                        }}
+                        className="absolute z-20 flex items-center gap-1 rounded-lg border border-primary/40 bg-card/95 backdrop-blur px-2 py-1 shadow-lg animate-in fade-in zoom-in-95 text-xs ring-1 ring-black/5"
                     >
-                        <Trash2 className="size-3.5" />
-                        Hapus Baris
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        onClick={removeColumn}
-                    >
-                        <Trash2 className="size-3.5" />
-                        Hapus Kolom
-                    </Button>
-                </div>
-            )}
+                        <span className="font-semibold text-primary px-1 text-xs flex items-center gap-1">
+                            <TableIcon className="size-3.5" />
+                            Tabel:
+                        </span>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            className="h-6 px-2 text-xs font-medium"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={addRow}
+                        >
+                            <Rows3 className="size-3 mr-1 text-primary" />
+                            + Baris
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            className="h-6 px-2 text-xs font-medium"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={addColumn}
+                        >
+                            <Columns3 className="size-3 mr-1 text-primary" />
+                            + Kolom
+                        </Button>
+                        <Separator orientation="vertical" className="h-3.5 mx-0.5" />
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={removeRow}
+                        >
+                            <Trash2 className="size-3 mr-1" />
+                            - Baris
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={removeColumn}
+                        >
+                            <Trash2 className="size-3 mr-1" />
+                            - Kolom
+                        </Button>
+                    </div>
+                )}
 
-            {/*
-             * The page frame and the document are separate elements on
-             * purpose. `.document-preview` centres itself with `margin: 0
-             * auto`, and an auto cross-axis margin on a flex child collapses
-             * it to its content width; inside this plain block wrapper it
-             * lays out at full page width the way the print preview does.
-             */}
-            <div className="min-h-[70vh] overflow-auto rounded-md border border-border bg-white p-6 focus-within:ring-2 focus-within:ring-primary/40">
+                {/* Paper Canvas */}
                 <div
-                    ref={area}
-                    contentEditable={!disabled}
-                    suppressContentEditableWarning
-                    role="textbox"
-                    aria-multiline="true"
-                    aria-label="Isi dokumen"
-                    spellCheck={false}
-                    onInput={emit}
-                    onBlur={emit}
-                    // Pasting from Word drags in a mountain of inline styling
-                    // that would fight the print stylesheet, so only text comes.
-                    onPaste={(event) => {
-                        event.preventDefault();
-                        const text = event.clipboardData.getData('text/plain');
-                        document.execCommand('insertText', false, text);
-                        emit();
-                    }}
-                    className="document-preview min-h-[65vh] outline-none"
-                />
+                    ref={paperContainer}
+                    className="relative mx-auto max-w-[210mm] min-h-[65vh] rounded-sm border border-border bg-white p-6 sm:p-12 shadow-sm focus-within:ring-2 focus-within:ring-primary/40"
+                >
+                    <div
+                        ref={area}
+                        contentEditable={!disabled}
+                        suppressContentEditableWarning
+                        role="textbox"
+                        aria-multiline="true"
+                        aria-label="Isi dokumen"
+                        spellCheck={false}
+                        onInput={emit}
+                        onBlur={emit}
+                        onPaste={(event) => {
+                            event.preventDefault();
+                            const text = event.clipboardData.getData('text/plain');
+                            document.execCommand('insertText', false, text);
+                            emit();
+                        }}
+                        className="document-preview min-h-[60vh] outline-none"
+                    />
+                </div>
             </div>
         </div>
     );

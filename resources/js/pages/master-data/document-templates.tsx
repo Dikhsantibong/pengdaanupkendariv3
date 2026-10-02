@@ -1,5 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { Archive, FileCode2, Pencil, Plus } from 'lucide-react';
+import { Archive, Eye, FileCode2, Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { EmptyState } from '@/components/empty-state';
 import InputError from '@/components/input-error';
@@ -63,6 +63,55 @@ type TemplateFormValues = {
 /** Sentinel for "berlaku untuk semua metode pengadaan". */
 const ALL_METHODS = 'all';
 
+const SAMPLE_VALUES: Record<string, string> = {
+    nomor_pengadaan: '001/PENG/612/UPKD/2026',
+    nama_pengadaan: 'JASA PEMBUATAN WEB DIGITALISASI PLN NP UP KENDARI',
+    direksi_pekerjaan: 'Manager UPDK Kendari',
+    unit_tujuan: 'PLN NP UP Kendari',
+    metode_pengadaan: 'Pengadaan Langsung',
+    sumber_anggaran: 'AO',
+    sumber_anggaran_keterangan: 'Anggaran Operasi',
+    jenis_kontrak: 'Lumsum',
+    nomor_nota_dinas_manager: 'ND-012/UPKD/2026',
+    nomor_pr_ro: 'PR-2026-0042',
+    nomor_prk: 'KD262O0306',
+    nilai_hpe: 'Rp 85.000.000,00',
+    nilai_hpe_angka: '85.000.000',
+    nilai_hpe_terbilang: 'Delapan puluh lima juta rupiah',
+    status_progres: 'Penyusunan TOR',
+    pic_perencana: 'Dikhsan Tibong',
+    pic_pelaksana: 'Andi Pratama',
+    target_penyelesaian: '30 April 2026',
+    tanggal_dokumen: '04 Maret 2026',
+    tahun: '2026',
+    checklist_perencanaan: '<ul><li>[✓] TOR</li><li>[✓] RAB</li><li>[✓] HPE</li></ul>',
+    checklist_pelaksanaan: '<ul><li>[-] Penawaran</li></ul>',
+};
+
+function renderPreviewHtml(body: string): string {
+    const rendered = body.replace(/\{\{\s*([a-z0-9_]+)\s*\}\}/gi, (match, key) => {
+        return SAMPLE_VALUES[key.toLowerCase()] ?? match;
+    });
+
+    if (/<html[\s>]/i.test(rendered)) {
+        return rendered;
+    }
+
+    return `<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<style>
+    @page { size: A4; margin: 15mm; }
+    body { font-family: "Times New Roman", Times, serif; font-size: 11pt; line-height: 1.45; color: #111; margin: 0; padding: 15mm; }
+    table { width: 100%; border-collapse: collapse; margin: 8pt 0; font-size: 10.5pt; }
+    td, th { border: 1px solid #444; padding: 4pt 6pt; vertical-align: top; }
+</style>
+</head>
+<body>${rendered}</body>
+</html>`;
+}
+
 export default function DocumentTemplates({
     templates,
     documentTypes,
@@ -76,6 +125,13 @@ export default function DocumentTemplates({
 }) {
     const [editing, setEditing] = useState<TemplateRow | null>(null);
     const [open, setOpen] = useState(false);
+    const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+    const [previewTitle, setPreviewTitle] = useState<string>('');
+
+    const openPreview = (name: string, body: string) => {
+        setPreviewTitle(name);
+        setPreviewHtml(renderPreviewHtml(body));
+    };
 
     const defaults: TemplateFormValues = {
         document_type_id: documentTypes[0]?.value ?? null,
@@ -219,6 +275,19 @@ export default function DocumentTemplates({
                                             </span>
                                         </TableCell>
                                         <TableCell className="text-right whitespace-nowrap">
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() =>
+                                                    openPreview(
+                                                        `${template.name} v${template.version}`,
+                                                        template.body,
+                                                    )
+                                                }
+                                            >
+                                                <Eye className="size-3.5" />
+                                                Pratinjau
+                                            </Button>
                                             <Button
                                                 size="sm"
                                                 variant="ghost"
@@ -422,9 +491,26 @@ export default function DocumentTemplates({
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="template-body">
-                                Isi Template (HTML)
-                            </Label>
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="template-body">
+                                    Isi Template (HTML)
+                                </Label>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 text-xs"
+                                    onClick={() =>
+                                        openPreview(
+                                            form.data.name || 'Pratinjau Template',
+                                            form.data.body,
+                                        )
+                                    }
+                                >
+                                    <Eye className="size-3.5 mr-1" />
+                                    Pratinjau Tampilan
+                                </Button>
+                            </div>
                             <Textarea
                                 id="template-body"
                                 value={form.data.body}
@@ -472,6 +558,44 @@ export default function DocumentTemplates({
                             disabled={form.processing}
                         >
                             Simpan
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog
+                open={previewHtml !== null}
+                onOpenChange={(isOpen) => {
+                    if (!isOpen) {
+                        setPreviewHtml(null);
+                    }
+                }}
+            >
+                <DialogContent className="flex h-[92vh] max-w-5xl flex-col p-4 sm:p-6">
+                    <DialogHeader className="shrink-0">
+                        <DialogTitle>Pratinjau: {previewTitle}</DialogTitle>
+                        <DialogDescription>
+                            Tampilan dokumen dengan simulasi data pengadaan.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="my-2 flex-1 min-h-0 w-full overflow-hidden rounded-md border border-border bg-white shadow-inner">
+                        {previewHtml !== null && (
+                            <iframe
+                                title="Pratinjau Template Dokumen"
+                                srcDoc={previewHtml}
+                                className="h-full w-full border-0"
+                            />
+                        )}
+                    </div>
+
+                    <DialogFooter className="shrink-0">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setPreviewHtml(null)}
+                        >
+                            Tutup
                         </Button>
                     </DialogFooter>
                 </DialogContent>

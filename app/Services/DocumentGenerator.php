@@ -235,6 +235,20 @@ class DocumentGenerator
      */
     public function printableHtml(ProcurementDocument $document, bool $forPdf = false): string
     {
+        $body = $document->rendered_body;
+
+        if (preg_match('/<html[\s>]/i', $body)) {
+            if ($forPdf) {
+                return str_ireplace(
+                    ['font-family: "Times New Roman", Times, serif;', "font-family: 'Times New Roman', Times, serif;"],
+                    "font-family: 'DejaVu Serif', serif;",
+                    $body,
+                );
+            }
+
+            return $body;
+        }
+
         $title = e($document->title);
 
         $fontStack = $forPdf

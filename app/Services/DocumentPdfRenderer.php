@@ -74,7 +74,7 @@ class DocumentPdfRenderer
         $dompdf->loadHtml($this->generator->printableHtml($document, forPdf: true), 'UTF-8');
         $dompdf->render();
 
-        $this->stampFooter($dompdf);
+        $this->stampFooter($dompdf, $document);
 
         return (string) $dompdf->output();
     }
@@ -82,7 +82,7 @@ class DocumentPdfRenderer
     /**
      * Drop the running footer and page numbers onto every page.
      */
-    protected function stampFooter(Dompdf $dompdf): void
+    protected function stampFooter(Dompdf $dompdf, ?ProcurementDocument $document = null): void
     {
         $canvas = $dompdf->getCanvas();
         $font = $dompdf->getFontMetrics()->getFont('DejaVu Serif', 'normal');
@@ -91,8 +91,22 @@ class DocumentPdfRenderer
             return;
         }
 
-        $canvas->page_text(56, 800, 'Rencana Kerja dan Syarat-syarat', $font, 8, [0.35, 0.35, 0.35]);
-        $canvas->page_text(500, 800, 'Halaman {PAGE_NUM} dari {PAGE_COUNT}', $font, 8, [0.35, 0.35, 0.35]);
+        $docTitle = $document?->documentType?->name ?? 'Dokumen Pengadaan';
+        $body = $document?->rendered_body ?? '';
+        $hasCover = str_contains($body, 'cover-page') || str_contains($body, 'class="cover"');
+
+        if ($hasCover) {
+            $canvas->page_script(function ($pageNumber, $pageCount, $canvas, $fontMetrics) use ($font, $docTitle): void {
+                if ($pageNumber > 1) {
+                    $canvas->text(56, 800, $docTitle, $font, 8, [0.35, 0.35, 0.35]);
+                    $text = "Halaman {$pageNumber} dari {$pageCount}";
+                    $canvas->text(500, 800, $text, $font, 8, [0.35, 0.35, 0.35]);
+                }
+            });
+        } else {
+            $canvas->page_text(56, 800, $docTitle, $font, 8, [0.35, 0.35, 0.35]);
+            $canvas->page_text(500, 800, 'Halaman {PAGE_NUM} dari {PAGE_COUNT}', $font, 8, [0.35, 0.35, 0.35]);
+        }
     }
 
     /**

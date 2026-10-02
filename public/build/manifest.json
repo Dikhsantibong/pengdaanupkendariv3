@@ -758,7 +758,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-BixNIQ5O.css",
+    "file": "assets/app--wdaathM.css",
     "name": "app",
     "names": [
       "app.css"
@@ -767,7 +767,7 @@
     "isEntry": true
   },
   "resources/js/app.tsx": {
-    "file": "assets/app-BvtFXiih.js",
+    "file": "assets/app-CmiklGFr.js",
     "name": "app",
     "src": "resources/js/app.tsx",
     "isEntry": true,
@@ -1157,7 +1157,7 @@
     ]
   },
   "resources/js/pages/master-data/document-templates.tsx": {
-    "file": "assets/document-templates-CKdZKzXl.js",
+    "file": "assets/document-templates-NXKhwo10.js",
     "name": "document-templates",
     "src": "resources/js/pages/master-data/document-templates.tsx",
     "isDynamicEntry": true,
@@ -1168,6 +1168,7 @@
       "_createLucideIcon-Du2MnApG.js",
       "_archive-BrcTHBGX.js",
       "_select-BNFBZAiL.js",
+      "_eye-2LQ-PE_V.js",
       "_pencil-BDN7UnVh.js",
       "_plus-D-LNfkaj.js",
       "_input-CQtMo0tR.js",
@@ -1346,7 +1347,7 @@
     ]
   },
   "resources/js/pages/procurements/document-editor.tsx": {
-    "file": "assets/document-editor-kOPZ-tZS.js",
+    "file": "assets/document-editor-CPeNh8q-.js",
     "name": "document-editor",
     "src": "resources/js/pages/procurements/document-editor.tsx",
     "isDynamicEntry": true,
