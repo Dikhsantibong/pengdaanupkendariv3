@@ -6,6 +6,7 @@ use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Models\ChecklistItem;
 use App\Models\ContractNumberFormat;
+use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementChecklist;
@@ -238,6 +239,25 @@ class SpplExecutionTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->assertNull($item->refresh()->input_kind);
+    }
+
+    public function test_ba_negosiasi_sppl_template_is_single_page_harga_pembayaran_langsung(): void
+    {
+        $this->seed(MasterDataSeeder::class);
+        $this->seed(SpplDocumentTemplateSeeder::class);
+
+        $type = DocumentType::query()->where('code', 'ba-negosiasi-sppl')->firstOrFail();
+        $template = DocumentTemplate::query()->where('document_type_id', $type->id)->firstOrFail();
+
+        $this->assertStringContainsString('HARGA PEMBAYARAN LANGSUNG', $template->body);
+        $this->assertStringContainsString('/logo/sidebar-logo.png', $template->body);
+        $this->assertStringContainsString('UP KENDARI', $template->body);
+        $this->assertStringContainsString('TOTAL HARGA', $template->body);
+        $this->assertStringContainsString('DPP 11/12', $template->body);
+        $this->assertStringContainsString('PPN 12%', $template->body);
+        $this->assertStringContainsString('JUMLAH TOTAL', $template->body);
+        $this->assertStringContainsString('TL PELAKSANA PENGADAAN', $template->body);
+        $this->assertStringNotContainsString('class="page-break"', $template->body);
     }
 
     /**

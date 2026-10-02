@@ -158,7 +158,7 @@ class DocumentGenerator
                 : number_format($nego, 0, ',', '.'),
             'nilai_setelah_nego_terbilang' => $nego === null
                 ? '-'
-                : Str::ucfirst(IndonesianNumber::spellRupiah($nego)),
+                : Str::title(IndonesianNumber::spellRupiah($nego)),
             'nilai_setelah_nego_dpp' => $negoDpp === null
                 ? '-'
                 : 'Rp '.number_format($negoDpp, 0, ',', '.'),

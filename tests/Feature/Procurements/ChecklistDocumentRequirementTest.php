@@ -69,6 +69,7 @@ class ChecklistDocumentRequirementTest extends TestCase
             'Masa Pemeliharaan',
             // SPPL.
             'BA Negosiasi',
+            'Purchase Order (PO)',
             'Surat Pesanan',
         ];
     }
@@ -110,7 +111,6 @@ class ChecklistDocumentRequirementTest extends TestCase
             'Inisiasi SMART SCM',
             'Masa Garansi',
             'PR / RO',
-            'Purchase Order (PO)',
             'Rekening Pelaksana',
             'Rentang Waktu',
             'Rentang Waktu Pelaksanaan',

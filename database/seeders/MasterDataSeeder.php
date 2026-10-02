@@ -344,6 +344,7 @@ class MasterDataSeeder extends Seeder
                 'Masa Pemeliharaan' => ['masa-pemeliharaan'],
                 // SPPL.
                 'BA Negosiasi' => ['ba-negosiasi-sppl'],
+                'Purchase Order (PO)' => ['purchase-order'],
                 'Surat Pesanan' => [],
             ],
         ];
@@ -478,6 +479,7 @@ class MasterDataSeeder extends Seeder
                 'Penyusunan HPS',
                 'Proses SMART SCM',
                 'Berita Acara',
+                'Penyusunan Kontrak',
                 'Kontrak',
                 'Jaminan Bank',
                 'Rentang Waktu',
@@ -529,8 +531,9 @@ class MasterDataSeeder extends Seeder
             ['ba-klarifikasi', 'Berita Acara Klarifikasi', ProcurementStage::Pelaksanaan],
             ['kontrak', 'Kontrak', ProcurementStage::Pelaksanaan],
             ['ba-negosiasi-sppl', 'Berita Acara Negosiasi (SPPL)', ProcurementStage::Pelaksanaan],
-            ['surat-pesanan-barang', 'Surat Pesanan (Barang)', ProcurementStage::Pelaksanaan],
-            ['surat-pesanan-jasa', 'Surat Pesanan (Jasa)', ProcurementStage::Pelaksanaan],
+            ['purchase-order', 'Purchase Order (PO)', ProcurementStage::Pelaksanaan],
+            ['surat-pesanan-barang', 'Lampiran SP Barang', ProcurementStage::Pelaksanaan],
+            ['surat-pesanan-jasa', 'Lampiran SP Jasa', ProcurementStage::Pelaksanaan],
             ['surat-pesanan', 'Surat Pesanan', ProcurementStage::Pelaksanaan],
             ['lampiran-sp-barang', 'Lampiran SP Barang', ProcurementStage::Pelaksanaan],
             ['lampiran-sp-jasa', 'Lampiran SP Jasa', ProcurementStage::Pelaksanaan],
@@ -547,7 +550,7 @@ class MasterDataSeeder extends Seeder
         // it stops being offered, but stays on record in case it is wanted
         // back later. Any document already generated from it is untouched.
         DocumentType::query()
-            ->whereIn('code', ['pr-ro', 'inisiasi-smart-scm', 'purchase-order', 'rentang-waktu'])
+            ->whereIn('code', ['pr-ro', 'inisiasi-smart-scm', 'rentang-waktu'])
             ->update(['is_active' => false]);
 
         // The opening planning documents are prepared outside the system and
