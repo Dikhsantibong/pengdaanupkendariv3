@@ -25,6 +25,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('status', [StatusController::class, 'update'])->name('status.update');
         Route::put('planning-identity', [PlanningIdentityController::class, 'update'])->name('planning-identity.update');
         Route::put('checklists/{checklist}', [ChecklistController::class, 'update'])->name('checklists.update');
+        Route::put('checklists/{checklist}/input', [ChecklistController::class, 'updateInput'])->name('checklists.input');
         Route::post('approval', [ApprovalController::class, 'store'])->name('approval.store');
         Route::put('approval', [ApprovalController::class, 'update'])->name('approval.update');
         Route::delete('approval', [ApprovalController::class, 'destroy'])->name('approval.destroy');
@@ -49,14 +50,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::get('penunjukan-pic', [PicAssignmentController::class, 'index'])->name('pic-assignments.index');
-    Route::get('planning', [PlanningController::class, 'index'])->name('planning.index');
-    Route::get('execution', [ExecutionController::class, 'index'])->name('execution.index');
-    Route::get('approvals', [ApprovalQueueController::class, 'index'])->name('approvals.index');
-    Route::get('monitoring', [MonitoringController::class, 'index'])->name('monitoring.index');
-    Route::get('documents', [DocumentArchiveController::class, 'index'])->name('documents.index');
+    // Each menu is a right set on the "Hak Akses" screen.
+    Route::get('planning', [PlanningController::class, 'index'])
+        ->middleware('can:menu.planning')->name('planning.index');
+    Route::get('execution', [ExecutionController::class, 'index'])
+        ->middleware('can:menu.execution')->name('execution.index');
+    Route::get('approvals', [ApprovalQueueController::class, 'index'])
+        ->middleware('can:menu.approvals')->name('approvals.index');
+    Route::get('monitoring', [MonitoringController::class, 'index'])
+        ->middleware('can:menu.monitoring')->name('monitoring.index');
+    Route::get('documents', [DocumentArchiveController::class, 'index'])
+        ->middleware('can:menu.documents')->name('documents.index');
 
-    Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
-    Route::get('reports/export', [ReportController::class, 'export'])->name('reports.export');
+    Route::middleware('can:menu.reports')->group(function () {
+        Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('reports/export', [ReportController::class, 'export'])->name('reports.export');
+    });
 
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::put('notifications', [NotificationController::class, 'update'])->name('notifications.update');

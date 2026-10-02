@@ -54,6 +54,7 @@ import type { Auth, NavGroup } from '@/types';
 export function AppSidebar() {
     const { auth } = usePage<{ auth: Auth }>().props;
     const { permissions } = auth;
+    const { menus } = permissions;
 
     const groups: NavGroup[] = [
         {
@@ -93,26 +94,42 @@ export function AppSidebar() {
                           },
                       ]
                     : []),
-                {
-                    title: 'Perencanaan',
-                    href: planning.index(),
-                    icon: CalendarClock,
-                },
-                {
-                    title: 'Pelaksanaan',
-                    href: execution.index(),
-                    icon: Play,
-                },
-                {
-                    title: 'Approval',
-                    href: approvals.index(),
-                    icon: BadgeCheck,
-                },
-                {
-                    title: 'Arsip Dokumen',
-                    href: documents.index(),
-                    icon: Archive,
-                },
+                ...(menus.planning
+                    ? [
+                          {
+                              title: 'Perencanaan',
+                              href: planning.index(),
+                              icon: CalendarClock,
+                          },
+                      ]
+                    : []),
+                ...(menus.execution
+                    ? [
+                          {
+                              title: 'Pelaksanaan',
+                              href: execution.index(),
+                              icon: Play,
+                          },
+                      ]
+                    : []),
+                ...(menus.approvals
+                    ? [
+                          {
+                              title: 'Approval',
+                              href: approvals.index(),
+                              icon: BadgeCheck,
+                          },
+                      ]
+                    : []),
+                ...(menus.documents
+                    ? [
+                          {
+                              title: 'Arsip Dokumen',
+                              href: documents.index(),
+                              icon: Archive,
+                          },
+                      ]
+                    : []),
                 ...(permissions.manageVendorAssessments
                     ? [
                           {
@@ -127,21 +144,33 @@ export function AppSidebar() {
         {
             title: 'Pengawasan',
             items: [
-                {
-                    title: 'Monitoring',
-                    href: monitoring.index(),
-                    icon: Gauge,
-                },
-                {
-                    title: 'Laporan',
-                    href: reports.index(),
-                    icon: FileText,
-                },
-                {
-                    title: 'Monitoring Publik',
-                    href: publicMonitoring.planning(),
-                    icon: MonitorPlay,
-                },
+                ...(menus.monitoring
+                    ? [
+                          {
+                              title: 'Monitoring',
+                              href: monitoring.index(),
+                              icon: Gauge,
+                          },
+                      ]
+                    : []),
+                ...(menus.reports
+                    ? [
+                          {
+                              title: 'Laporan',
+                              href: reports.index(),
+                              icon: FileText,
+                          },
+                      ]
+                    : []),
+                ...(menus['public-monitoring']
+                    ? [
+                          {
+                              title: 'Monitoring Publik',
+                              href: publicMonitoring.planning(),
+                              icon: MonitorPlay,
+                          },
+                      ]
+                    : []),
             ],
         },
         ...(permissions.manageUsers
@@ -249,7 +278,10 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent className="gap-4">
-                <NavMain groups={groups} />
+                {/* A group whose every menu is switched off is not shown. */}
+                <NavMain
+                    groups={groups.filter((group) => group.items.length > 0)}
+                />
             </SidebarContent>
 
             <SidebarFooter>

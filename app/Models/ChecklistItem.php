@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\MasterDataScopes;
+use App\Enums\ChecklistInput;
 use App\Enums\ProcurementStage;
 use Database\Factories\ChecklistItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -20,6 +21,7 @@ use Illuminate\Support\Carbon;
  * @property string $name
  * @property string|null $description
  * @property bool $is_optional
+ * @property ChecklistInput|null $input_kind
  * @property int $sort_order
  * @property bool $is_active
  * @property Carbon|null $created_at
@@ -27,7 +29,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $deleted_at
  * @property-read int|null $procurement_checklists_count
  */
-#[Fillable(['stage', 'name', 'description', 'is_optional', 'sort_order', 'is_active'])]
+#[Fillable(['stage', 'name', 'description', 'is_optional', 'input_kind', 'sort_order', 'is_active'])]
 class ChecklistItem extends Model
 {
     /** @use HasFactory<ChecklistItemFactory> */
@@ -51,9 +53,38 @@ class ChecklistItem extends Model
     public function documentTypes(): BelongsToMany
     {
         return $this->belongsToMany(DocumentType::class)
-            ->withPivot('sort_order')
+            ->withPivot('sort_order', 'is_alternative')
             ->withTimestamps()
             ->orderByPivot('sort_order');
+    }
+
+    /**
+     * The documents still missing before this step may be ticked.
+     *
+     * Every required document must be signed. Alternative documents form one
+     * choice: a single signed copy among them is enough.
+     *
+     * @param  callable(int): bool  $isSigned  Whether a document type is signed.
+     * @return array<int, string> Names of what is missing, ready to show.
+     */
+    public function missingDocuments(callable $isSigned): array
+    {
+        $missing = [];
+
+        $required = $this->documentTypes->reject(fn (DocumentType $type): bool => $type->isAlternative());
+        $alternatives = $this->documentTypes->filter(fn (DocumentType $type): bool => $type->isAlternative());
+
+        foreach ($required as $type) {
+            if (! $isSigned($type->id)) {
+                $missing[] = $type->name;
+            }
+        }
+
+        if ($alternatives->isNotEmpty() && $alternatives->doesntContain(fn (DocumentType $type): bool => $isSigned($type->id))) {
+            $missing[] = 'salah satu dari '.$alternatives->pluck('name')->implode(' / ');
+        }
+
+        return $missing;
     }
 
     /**
@@ -153,6 +184,7 @@ class ChecklistItem extends Model
         return [
             'stage' => ProcurementStage::class,
             'is_optional' => 'boolean',
+            'input_kind' => ChecklistInput::class,
             'is_active' => 'boolean',
         ];
     }

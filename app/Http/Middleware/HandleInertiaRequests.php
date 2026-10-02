@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\Permission;
 use App\Models\Procurement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -54,6 +55,13 @@ class HandleInertiaRequests extends Middleware
                     'createProcurement' => $user !== null && Gate::forUser($user)->allows('create', Procurement::class),
                     'assignPic' => $user !== null && Gate::forUser($user)->allows('assign-pic'),
                     'manageVendorAssessments' => $user !== null && Gate::forUser($user)->allows('manage-vendor-assessments'),
+                    // Which menus to show, keyed by the right's name.
+                    'menus' => collect(Permission::cases())
+                        ->filter(fn (Permission $permission): bool => str_starts_with($permission->value, 'menu.'))
+                        ->mapWithKeys(fn (Permission $permission): array => [
+                            substr($permission->value, 5) => $user !== null && $user->hasPermission($permission),
+                        ])
+                        ->all(),
                 ],
             ],
             'unreadNotifications' => $user === null ? 0 : $user->unreadNotifications()->count(),

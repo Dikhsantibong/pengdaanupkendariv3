@@ -120,8 +120,22 @@ Fitur berbasis peran tidak lagi terkunci di kode, tetapi diatur Administrator me
 | Pengadaan | Setujui / tolak perencanaan | TL Perencanaan |
 | Pengadaan | Nyatakan pengadaan selesai | TL Perencanaan |
 | Pengadaan | Lihat seluruh pengadaan | TL Perencanaan |
-| Penilaian Penyedia | Kelola penilaian penyedia | (hanya Administrator) |
-| Administrasi | Kelola data master | (hanya Administrator) |
+| Penilaian Penyedia | Kelola penilaian penyedia (menu Penilaian Penyedia) — dapat diberikan mis. ke PIC Pelaksana | (hanya Administrator) |
+| Administrasi | Kelola data master (seluruh menu Data Master) | (hanya Administrator) |
+| Akses Menu | Menu Perencanaan | Semua peran |
+| Akses Menu | Menu Pelaksanaan | Semua peran |
+| Akses Menu | Menu Approval | Semua peran |
+| Akses Menu | Menu Arsip Dokumen | Semua peran |
+| Akses Menu | Menu Monitoring | Semua peran |
+| Akses Menu | Menu Laporan (termasuk ekspor) | Semua peran |
+| Akses Menu | Menu Monitoring Publik (tautan di menu; halaman publik tetap terbuka) | Semua peran |
+
+### Akses menu
+
+- Setiap menu adalah hak tersendiri. Mencabut hak menu **menyembunyikan menunya** dan **menutup halamannya** (akses langsung lewat URL ditolak), bukan sekadar menyembunyikan tautan.
+- Kelompok menu yang seluruh isinya dicabut tidak ditampilkan.
+- **Dashboard** dan **Daftar Pengadaan** selalu tersedia, karena keduanya pintu masuk ke pengadaan yang ditugaskan.
+- Hak baru ditambahkan di katalog `App\Enums\Permission` (kode, label, keterangan, kelompok, peran bawaan); setelah itu otomatis muncul di layar Hak Akses dan dapat dipakai di rute sebagai `can:<kode>`.
 
 ### Ketentuan keamanan
 
@@ -328,25 +342,61 @@ Setelah dokumen perencanaan disetujui, **Team Leader Pengadaan** menunjuk **1 or
 - Ahmad Bukhari
 - Supriadi
 
-### Checklist Pelaksanaan
+### Checklist Pelaksanaan — format SPK & PJ
 
-- Evaluasi Dokumen
-- Penyusunan HPS
-- Progress Pengadaan
-- Berita Acara
-- Penyusunan Kontrak
-- Purchase Order (PO)
-- Jaminan Bank
-- Kontrak
-- Rentang Waktu
-- Amandemen
-- Masa Pemeliharaan
+| Tahapan | Cara penyelesaian |
+|---------|-------------------|
+| Evaluasi Dokumen | Centang |
+| Penyusunan HPS | Unggah saja |
+| Proses SMART SCM | Unggah saja |
+| Berita Acara | **Generate** 6 dokumen (Aanwijzing, Lampiran BAPP, Evaluasi Teknis, Evaluasi Harga, Hasil Evaluasi, Klarifikasi) lalu unggah hasil TTD |
+| Purchase Order (PO) | Centang |
+| Jaminan Bank | Unggah saja |
+| Kontrak | **Generate** SPK, Lampiran SPK, BA Negosiasi lalu unggah hasil TTD |
+| Rentang Waktu | Centang |
+| Amandemen — opsional | Unggah saja |
+| Masa Pemeliharaan | Unggah saja |
+
+- **Generate dokumen hanya pada Berita Acara dan Kontrak**; tahapan lain cukup diunggah.
+- **Penyusunan Kontrak dihapus** (dinonaktifkan) untuk semua format.
+
+### Checklist Pelaksanaan — format SPPL
+
+| Tahapan | Cara penyelesaian |
+|---------|-------------------|
+| Evaluasi Dokumen | Centang |
+| BA Negosiasi | **Generate** Berita Acara Negosiasi (format SPPL) lalu unggah hasil TTD |
+| Purchase Order (PO) | Centang |
+| Rekening Pelaksana | **Isian**: nomor rekening, bank, dan nama pelaksana (pemilik rekening) |
+| Surat Pesanan | **Generate** Surat Pesanan + **pilih salah satu**: Lampiran SP Barang **atau** Lampiran SP Jasa; unggah hasil TTD |
+| Rentang Waktu Pelaksanaan | **Isian**: tanggal mulai + jumlah hari; **tanggal akhir dihitung otomatis** (tanggal mulai dihitung hari ke-1, mis. 1 Okt + 30 hari = 30 Okt) |
+| Masa Garansi | **Isian**: jumlah bulan (mis. 2 atau 3 bulan) — menggantikan Masa Pemeliharaan |
+
+- Tidak ada pada SPPL: Penyusunan HPS, Proses SMART SCM, Berita Acara (6 dokumen), Kontrak (SPK), Jaminan Bank, Rentang Waktu (centang biasa), Amandemen, Masa Pemeliharaan, Penyusunan Kontrak.
+- **Surat Pesanan mengikuti BA Negosiasi**: template Surat Pesanan dan lampirannya otomatis memuat nilai hasil negosiasi (Nilai Setelah Nego) beserta terbilangnya, rekening pelaksana, jangka waktu dan tanggal mulai–akhir pelaksanaan, serta masa garansi.
+- Tahapan berisian tidak dapat dicentang sebelum isiannya lengkap; tahapan berdokumen tidak dapat dicentang sebelum dokumennya diunggah.
+
+### Menyusun tahapan secara modular (Data Master → Item Checklist)
+
+Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
+
+| Pengaturan per tahapan | Fungsi |
+|------------------------|--------|
+| Dilewati oleh Format Kontrak | Tahapan tidak dipakai oleh format tertentu (SPK, PJ, SPPL, atau format baru). |
+| Dilewati oleh Metode Pengadaan | Tahapan tidak dipakai oleh metode tertentu. |
+| Dokumen yang Dihasilkan | Dokumen wajib — semuanya harus diunggah. |
+| Dokumen Pilihan (cukup salah satu) | Dokumen alternatif — cukup satu yang diunggah (mis. Lampiran SP Barang / Jasa). |
+| Isian Tahapan | Data wajib sebelum dicentang: Rentang waktu, Masa garansi, atau Rekening pelaksana. |
+
+- Sifat **generate** atau **unggah saja** diatur per jenis dokumen di **Data Master → Jenis Dokumen**.
+- Isi template (termasuk BA Negosiasi SPPL, Surat Pesanan, Lampiran SP Barang/Jasa) diubah di **Data Master → Template Dokumen**.
+- Placeholder baru untuk template: `{{nilai_setelah_nego_terbilang}}`, `{{tanggal_mulai_pelaksanaan}}`, `{{jangka_waktu_hari}}`, `{{tanggal_selesai_pelaksanaan}}`, `{{masa_garansi_bulan}}`, `{{nomor_rekening}}`, `{{nama_bank}}`, `{{nama_pemilik_rekening}}`.
 
 ### Output
 
 - Pengadaan selesai.
-- Kontrak selesai.
-- Masa pemeliharaan selesai.
+- Kontrak / Surat Pesanan selesai.
+- Masa pemeliharaan / masa garansi selesai.
 - Arsip dokumen lengkap.
 
 ---
@@ -439,18 +489,28 @@ Approval Team Leader
 Penunjukan PIC Pelaksana
             │
             ▼
-Tahap Pelaksanaan
+Tahap Pelaksanaan — SPK & PJ
 │
 ├── Evaluasi Dokumen
-├── Penyusunan HPS
-├── Progress Pengadaan
-├── Berita Acara
-├── Penyusunan Kontrak
+├── Penyusunan HPS            (unggah)
+├── Proses SMART SCM          (unggah)
+├── Berita Acara              (generate 6 dokumen)
 ├── Purchase Order
-├── Jaminan Bank
-├── Kontrak
-├── Amandemen
-└── Masa Pemeliharaan
+├── Jaminan Bank              (unggah)
+├── Kontrak                   (generate SPK, Lampiran SPK, BA Nego)
+├── Rentang Waktu
+├── Amandemen                 (unggah, opsional)
+└── Masa Pemeliharaan         (unggah)
+
+Tahap Pelaksanaan — SPPL
+│
+├── Evaluasi Dokumen
+├── BA Negosiasi              (generate)
+├── Purchase Order
+├── Rekening Pelaksana        (isian: no rekening, bank, nama)
+├── Surat Pesanan             (generate + pilih Lampiran SP Barang/Jasa)
+├── Rentang Waktu Pelaksanaan (isian: tanggal mulai + hari → tanggal akhir otomatis)
+└── Masa Garansi              (isian: bulan)
             │
             ▼
 Pengadaan Selesai
@@ -465,18 +525,18 @@ Dashboard
 
 Pengadaan
 ├── Buat Perencanaan Pengadaan   (hak: Buat perencanaan pengadaan)
-├── Daftar Pengadaan
+├── Daftar Pengadaan             (selalu tersedia)
 ├── Penunjukan PIC               (hak: Tunjuk PIC)
-├── Perencanaan
-├── Pelaksanaan
-├── Approval
-├── Arsip Dokumen
+├── Perencanaan                  (hak menu)
+├── Pelaksanaan                  (hak menu)
+├── Approval                     (hak menu)
+├── Arsip Dokumen                (hak menu)
 └── Penilaian Penyedia           (hak: Kelola penilaian penyedia)
 
 Pengawasan
-├── Monitoring
-├── Laporan
-└── Monitoring Publik
+├── Monitoring                   (hak menu)
+├── Laporan                      (hak menu)
+└── Monitoring Publik            (hak menu)
 
 Administrasi                     (hanya Administrator)
 ├── Pengguna

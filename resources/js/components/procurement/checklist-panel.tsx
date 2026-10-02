@@ -7,6 +7,7 @@ import {
     Lock,
     Pencil,
 } from 'lucide-react';
+import { ChecklistInputForm } from '@/components/procurement/checklist-input-form';
 import { SignedUploadList } from '@/components/procurement/signed-upload-list';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -122,16 +123,48 @@ export function ChecklistPanel({
                                 </p>
                             )}
 
-                            {row.documents.length > 0 && (
+                            {row.input !== null && (
+                                <div className="mt-2">
+                                    <ChecklistInputForm
+                                        procurementId={procurementId}
+                                        checklistId={row.id}
+                                        input={row.input}
+                                        canManage={editable}
+                                    />
+                                </div>
+                            )}
+
+                            {row.documents.some((d) => !d.is_alternative) && (
                                 <div className="mt-2 space-y-1.5">
-                                    {row.documents.map((document) => (
-                                        <ChecklistDocumentActions
-                                            key={document.type_id}
-                                            procurementId={procurementId}
-                                            document={document}
-                                            canManage={canManageDocuments}
-                                        />
-                                    ))}
+                                    {row.documents
+                                        .filter((d) => !d.is_alternative)
+                                        .map((document) => (
+                                            <ChecklistDocumentActions
+                                                key={document.type_id}
+                                                procurementId={procurementId}
+                                                document={document}
+                                                canManage={canManageDocuments}
+                                            />
+                                        ))}
+                                </div>
+                            )}
+
+                            {row.documents.some((d) => d.is_alternative) && (
+                                <div className="mt-2 space-y-1.5 rounded-sm border border-dashed border-border p-2">
+                                    <p className="text-xs font-medium text-muted-foreground">
+                                        Pilih salah satu — cukup satu dokumen
+                                        berikut yang diunggah:
+                                    </p>
+                                    {row.documents
+                                        .filter((d) => d.is_alternative)
+                                        .map((document) => (
+                                            <ChecklistDocumentActions
+                                                key={document.type_id}
+                                                procurementId={procurementId}
+                                                document={document}
+                                                canManage={canManageDocuments}
+                                            />
+                                        ))}
                                 </div>
                             )}
                         </div>

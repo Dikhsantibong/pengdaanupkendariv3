@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\ChecklistInput;
 use App\Enums\ProcurementStage;
 use App\Enums\StatusCategory;
 use App\Models\BudgetSource;
@@ -248,18 +249,32 @@ class MasterDataSeeder extends Seeder
             ['PR / RO', true],
         ];
 
+        // SPK/PJ and SPPL steps side by side; each format switches off the
+        // steps that are not its own (see seedChecklistExclusions).
         $execution = [
             ['Evaluasi Dokumen', false],
             ['Penyusunan HPS', false],
             ['Proses SMART SCM', false],
             ['Berita Acara', false],
+            ['BA Negosiasi', false],
             ['Penyusunan Kontrak', false],
             ['Purchase Order (PO)', false],
+            ['Rekening Pelaksana', false],
             ['Jaminan Bank', false],
             ['Kontrak', false],
+            ['Surat Pesanan', false],
             ['Rentang Waktu', false],
+            ['Rentang Waktu Pelaksanaan', false],
             ['Amandemen', true],
             ['Masa Pemeliharaan', false],
+            ['Masa Garansi', false],
+        ];
+
+        /** @var array<string, ChecklistInput> $inputs */
+        $inputs = [
+            'Rekening Pelaksana' => ChecklistInput::BankAccount,
+            'Rentang Waktu Pelaksanaan' => ChecklistInput::ContractPeriod,
+            'Masa Garansi' => ChecklistInput::Warranty,
         ];
 
         foreach ($planning as $index => [$name, $isOptional]) {
@@ -272,7 +287,13 @@ class MasterDataSeeder extends Seeder
         foreach ($execution as $index => [$name, $isOptional]) {
             ChecklistItem::query()->updateOrCreate(
                 ['stage' => ProcurementStage::Pelaksanaan->value, 'name' => $name],
-                ['is_optional' => $isOptional, 'sort_order' => $index + 1, 'is_active' => true],
+                [
+                    'is_optional' => $isOptional,
+                    'input_kind' => $inputs[$name] ?? null,
+                    'sort_order' => $index + 1,
+                    // Penyusunan Kontrak is no longer part of any format.
+                    'is_active' => $name !== 'Penyusunan Kontrak',
+                ],
             );
         }
 
@@ -321,7 +342,15 @@ class MasterDataSeeder extends Seeder
                 'Kontrak' => ['spk', 'lampiran-spk', 'ba-negosiasi'],
                 'Amandemen' => ['amandemen'],
                 'Masa Pemeliharaan' => ['masa-pemeliharaan'],
+                // SPPL.
+                'BA Negosiasi' => ['ba-negosiasi-sppl'],
+                'Surat Pesanan' => [],
             ],
+        ];
+
+        /** @var array<string, array<int, string>> $alternatives */
+        $alternatives = [
+            'Surat Pesanan' => ['surat-pesanan-barang', 'surat-pesanan-jasa'],
         ];
 
         $typeIds = DocumentType::query()->pluck('id', 'code');
@@ -338,10 +367,18 @@ class MasterDataSeeder extends Seeder
                 }
 
                 $links = [];
+                $order = 0;
 
-                foreach (array_values($codes) as $index => $code) {
+                foreach (array_values($codes) as $code) {
                     if (isset($typeIds[$code])) {
-                        $links[$typeIds[$code]] = ['sort_order' => $index + 1];
+                        $links[$typeIds[$code]] = ['sort_order' => ++$order, 'is_alternative' => false];
+                    }
+                }
+
+                // Alternatives: one signed copy among them completes the step.
+                foreach ($alternatives[$name] ?? [] as $code) {
+                    if (isset($typeIds[$code])) {
+                        $links[$typeIds[$code]] = ['sort_order' => ++$order, 'is_alternative' => true];
                     }
                 }
 
@@ -423,16 +460,38 @@ class MasterDataSeeder extends Seeder
             $suratPesanan->excludedChecklistItems()->syncWithoutDetaching([$checklistItemId]);
         }
 
-        // SPPL folds the RAB into its Penawaran, so it skips the RAB step.
-        $sppl = ContractNumberFormat::query()->where('code', 'SPPL')->first();
-        $rab = ChecklistItem::query()
-            ->forStage(ProcurementStage::Perencanaan)
-            ->where('name', 'RAB (Rencana Anggaran Biaya)')
-            ->first();
+        $formats = ContractNumberFormat::query()->pluck('id', 'code');
 
-        if ($sppl !== null && $rab !== null) {
-            $rab->excludedContractNumberFormats()->syncWithoutDetaching([$sppl->id]);
+        $skip = function (ProcurementStage $stage, array $names, array $formatIds): void {
+            ChecklistItem::query()
+                ->forStage($stage)
+                ->whereIn('name', $names)
+                ->get()
+                ->each(fn (ChecklistItem $item) => $item->excludedContractNumberFormats()->syncWithoutDetaching($formatIds));
+        };
+
+        if (isset($formats['SPPL'])) {
+            // SPPL folds the RAB into its Penawaran, so it skips the RAB step,
+            // and has its own execution steps in place of the SPK/PJ ones.
+            $skip(ProcurementStage::Perencanaan, ['RAB (Rencana Anggaran Biaya)'], [$formats['SPPL']]);
+            $skip(ProcurementStage::Pelaksanaan, [
+                'Penyusunan HPS',
+                'Proses SMART SCM',
+                'Berita Acara',
+                'Kontrak',
+                'Jaminan Bank',
+                'Rentang Waktu',
+                'Amandemen',
+                'Masa Pemeliharaan',
+            ], [$formats['SPPL']]);
         }
+
+        // The SPPL execution steps are not part of SPK or PJ.
+        $skip(
+            ProcurementStage::Pelaksanaan,
+            ['BA Negosiasi', 'Surat Pesanan', 'Rekening Pelaksana', 'Rentang Waktu Pelaksanaan', 'Masa Garansi'],
+            array_values(array_filter([$formats['SPK'] ?? null, $formats['PJ'] ?? null])),
+        );
     }
 
     /**
@@ -469,6 +528,12 @@ class MasterDataSeeder extends Seeder
             ['ba-hasil-evaluasi', 'Berita Acara Hasil Evaluasi', ProcurementStage::Pelaksanaan],
             ['ba-klarifikasi', 'Berita Acara Klarifikasi', ProcurementStage::Pelaksanaan],
             ['kontrak', 'Kontrak', ProcurementStage::Pelaksanaan],
+            ['ba-negosiasi-sppl', 'Berita Acara Negosiasi (SPPL)', ProcurementStage::Pelaksanaan],
+            ['surat-pesanan-barang', 'Surat Pesanan (Barang)', ProcurementStage::Pelaksanaan],
+            ['surat-pesanan-jasa', 'Surat Pesanan (Jasa)', ProcurementStage::Pelaksanaan],
+            ['surat-pesanan', 'Surat Pesanan', ProcurementStage::Pelaksanaan],
+            ['lampiran-sp-barang', 'Lampiran SP Barang', ProcurementStage::Pelaksanaan],
+            ['lampiran-sp-jasa', 'Lampiran SP Jasa', ProcurementStage::Pelaksanaan],
         ];
 
         foreach ($types as $index => [$code, $name, $stage]) {
@@ -488,7 +553,12 @@ class MasterDataSeeder extends Seeder
         // The opening planning documents are prepared outside the system and
         // simply uploaded on their step; nothing is generated for them.
         DocumentType::query()
-            ->whereIn('code', ['nota-dinas-usulan', 'tor', 'rab', 'penawaran', 'csms', 'nota-dinas-perintah-pekerjaan'])
+            // Only the Berita Acara and Kontrak documents are still generated
+            // during execution; the rest is uploaded.
+            ->whereIn('code', [
+                'nota-dinas-usulan', 'tor', 'rab', 'penawaran', 'csms', 'nota-dinas-perintah-pekerjaan',
+                'penyusunan-hps', 'proses-smart-scm', 'jaminan-bank', 'amandemen', 'masa-pemeliharaan',
+            ])
             ->update(['upload_only' => true]);
     }
 }

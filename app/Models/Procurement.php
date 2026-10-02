@@ -49,6 +49,12 @@ use Illuminate\Support\Collection;
  * @property int $planning_revision
  * @property CarbonImmutable|null $completed_at
  * @property CarbonImmutable|null $target_completion_date
+ * @property CarbonImmutable|null $execution_start_date
+ * @property int|null $execution_duration_days
+ * @property int|null $warranty_months
+ * @property string|null $bank_account_number
+ * @property string|null $bank_name
+ * @property string|null $bank_account_holder
  * @property string|null $notes
  * @property int|null $created_by
  * @property CarbonImmutable|null $created_at
@@ -419,6 +425,24 @@ class Procurement extends Model
             'planning_reviewed_at' => 'datetime',
             'completed_at' => 'datetime',
             'target_completion_date' => 'date',
+            'execution_start_date' => 'date',
+            'execution_duration_days' => 'integer',
+            'warranty_months' => 'integer',
         ];
+    }
+
+    /**
+     * The last day of the execution period.
+     *
+     * The start date counts as day one, so 30 days from 1 October ends on
+     * 30 October — the way "30 hari kalender" is read on a contract.
+     */
+    public function executionEndDate(): ?CarbonImmutable
+    {
+        if ($this->execution_start_date === null || $this->execution_duration_days === null) {
+            return null;
+        }
+
+        return $this->execution_start_date->addDays($this->execution_duration_days - 1);
     }
 }

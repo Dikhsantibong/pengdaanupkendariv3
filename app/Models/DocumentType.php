@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
@@ -29,12 +30,23 @@ use Illuminate\Support\Carbon;
  * @property-read DocumentTemplate|null $activeTemplate
  * @property-read int|null $templates_count
  * @property-read int|null $procurement_documents_count
+ * @property-read Pivot|null $pivot The checklist link, when loaded through a step.
  */
 #[Fillable(['code', 'name', 'stage', 'upload_only', 'description', 'sort_order', 'is_active'])]
 class DocumentType extends Model
 {
     /** @use HasFactory<DocumentTypeFactory> */
     use HasFactory, MasterDataScopes, SoftDeletes;
+
+    /**
+     * Whether this document is one of a step's alternatives, of which a
+     * single signed copy is enough. Only meaningful when loaded through a
+     * checklist step.
+     */
+    public function isAlternative(): bool
+    {
+        return (bool) $this->pivot?->getAttribute('is_alternative');
+    }
 
     /**
      * Every template ever registered for this document type.

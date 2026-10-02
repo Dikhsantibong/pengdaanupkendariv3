@@ -303,9 +303,33 @@ class ProcurementController extends Controller
                     'completed_by' => $checklist->completedBy?->name,
                     'completed_at' => $checklist->completed_at?->toDateTimeString(),
                     'documents' => $documents,
+                    'input' => $item->input_kind === null ? null : [
+                        'kind' => $item->input_kind->value,
+                        'label' => $item->input_kind->label(),
+                        'is_filled' => $item->input_kind->isFilledOn($procurement),
+                        'values' => $this->inputValues($procurement),
+                    ],
                 ];
             })
             ->all();
+    }
+
+    /**
+     * The current values of every step input, end date included.
+     *
+     * @return array<string, string|int|null>
+     */
+    protected function inputValues(Procurement $procurement): array
+    {
+        return [
+            'execution_start_date' => $procurement->execution_start_date?->toDateString(),
+            'execution_duration_days' => $procurement->execution_duration_days,
+            'execution_end_date' => $procurement->executionEndDate()?->toDateString(),
+            'warranty_months' => $procurement->warranty_months,
+            'bank_account_number' => $procurement->bank_account_number,
+            'bank_name' => $procurement->bank_name,
+            'bank_account_holder' => $procurement->bank_account_holder,
+        ];
     }
 
     /**
@@ -331,6 +355,8 @@ class ProcurementController extends Controller
             'has_template' => in_array($type->id, $resolvable, true),
             // Uploaded rather than generated: the step offers only an upload.
             'upload_only' => $type->upload_only,
+            // One of a set of alternatives; a single signed copy is enough.
+            'is_alternative' => $type->isAlternative(),
         ];
     }
 

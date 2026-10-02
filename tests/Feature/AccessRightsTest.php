@@ -155,6 +155,67 @@ class AccessRightsTest extends TestCase
         $this->assertSame(UserRole::PicPerencana, User::factory()->planner()->create()->role);
     }
 
+    public function test_every_role_keeps_every_menu_by_default(): void
+    {
+        foreach ([User::factory()->teamLeader(), User::factory()->planner(), User::factory()->executor()] as $factory) {
+            $user = $factory->create();
+
+            foreach (['planning', 'execution', 'approvals', 'documents', 'monitoring', 'reports'] as $menu) {
+                $this->actingAs($user)->get(route($menu.'.index'))->assertOk();
+            }
+
+            $this->actingAs($user)
+                ->get(route('dashboard'))
+                ->assertInertia(fn ($page) => $page
+                    ->where('auth.permissions.menus.reports', true)
+                    ->where('auth.permissions.menus.public-monitoring', true));
+        }
+    }
+
+    public function test_a_menu_taken_away_disappears_and_its_page_closes(): void
+    {
+        $executor = User::factory()->executor()->create();
+
+        $grants = AccessRights::grants();
+        $grants['pic_pelaksana'] = array_values(array_diff($grants['pic_pelaksana'] ?? [], ['menu.reports']));
+
+        $this->actingAs(User::factory()->administrator()->create())
+            ->put(route('access-rights.update'), ['grants' => $grants])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($executor)->get(route('reports.index'))->assertForbidden();
+        $this->actingAs($executor)->get(route('reports.export'))->assertForbidden();
+
+        $this->actingAs($executor)
+            ->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page
+                ->where('auth.permissions.menus.reports', false)
+                ->where('auth.permissions.menus.monitoring', true));
+
+        // Other roles are unaffected.
+        $this->actingAs(User::factory()->planner()->create())->get(route('reports.index'))->assertOk();
+    }
+
+    public function test_the_vendor_assessment_menu_can_be_given_to_the_execution_pic(): void
+    {
+        $executor = User::factory()->executor()->create();
+
+        $this->actingAs($executor)->get(route('vendor-assessments.index'))->assertForbidden();
+
+        $grants = AccessRights::grants();
+        $grants['pic_pelaksana'][] = 'vendor-assessments.manage';
+
+        $this->actingAs(User::factory()->administrator()->create())
+            ->put(route('access-rights.update'), ['grants' => $grants])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($executor)->get(route('vendor-assessments.index'))->assertOk();
+
+        $this->actingAs($executor)
+            ->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page->where('auth.permissions.manageVendorAssessments', true));
+    }
+
     public function test_the_master_data_right_can_be_shared(): void
     {
         $teamLeader = User::factory()->teamLeader()->create();

@@ -82,6 +82,8 @@ export type ChecklistDocument = {
     has_template: boolean;
     /** Uploaded rather than generated: only an upload is offered. */
     upload_only: boolean;
+    /** One of a set of alternatives; one signed copy among them is enough. */
+    is_alternative: boolean;
 };
 
 export type ChecklistRow = {
@@ -94,6 +96,26 @@ export type ChecklistRow = {
     completed_by: string | null;
     completed_at: string | null;
     documents: ChecklistDocument[];
+    /** Data the step asks for before it can be ticked, if any. */
+    input: ChecklistInput | null;
+};
+
+export type ChecklistInputKind =
+    'contract_period' | 'warranty' | 'bank_account';
+
+export type ChecklistInput = {
+    kind: ChecklistInputKind;
+    label: string;
+    is_filled: boolean;
+    values: {
+        execution_start_date: string | null;
+        execution_duration_days: number | null;
+        execution_end_date: string | null;
+        warranty_months: number | null;
+        bank_account_number: string | null;
+        bank_name: string | null;
+        bank_account_holder: string | null;
+    };
 };
 
 export type ProcurementDocumentRow = {

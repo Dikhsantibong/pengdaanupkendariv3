@@ -45,10 +45,36 @@ class DocumentGenerator
             'nilai_hpe' => 'Nilai sebelum nego / HPE (format Rupiah)',
             'nilai_hpe_angka' => 'Nilai HPE dalam angka tanpa simbol',
             'nilai_hpe_terbilang' => 'Nilai HPE dieja dalam huruf',
+            'nilai_hpe_dpp' => 'Nilai DPP HPE (11/12, format Rupiah)',
+            'nilai_hpe_dpp_angka' => 'Nilai DPP HPE dalam angka tanpa simbol',
+            'nilai_hpe_ppn' => 'Nilai PPN 12% HPE (format Rupiah)',
+            'nilai_hpe_ppn_angka' => 'Nilai PPN 12% HPE dalam angka tanpa simbol',
+            'nilai_hpe_total' => 'Total HPE termasuk PPN (format Rupiah)',
+            'nilai_hpe_total_angka' => 'Total HPE termasuk PPN dalam angka tanpa simbol',
+            'nilai_hpe_total_terbilang' => 'Total HPE termasuk PPN dieja dalam huruf',
             'nilai_setelah_nego' => 'Nilai setelah nego (format Rupiah)',
+            'nilai_setelah_nego_angka' => 'Nilai setelah nego dalam angka tanpa simbol',
+            'nilai_setelah_nego_terbilang' => 'Nilai setelah nego dieja dalam huruf',
+            'nilai_setelah_nego_dpp' => 'Nilai DPP setelah nego (11/12, format Rupiah)',
+            'nilai_setelah_nego_dpp_angka' => 'Nilai DPP setelah nego dalam angka tanpa simbol',
+            'nilai_setelah_nego_ppn' => 'Nilai PPN 12% setelah nego (format Rupiah)',
+            'nilai_setelah_nego_ppn_angka' => 'Nilai PPN 12% setelah nego dalam angka tanpa simbol',
+            'nilai_setelah_nego_total' => 'Total setelah nego termasuk PPN (format Rupiah)',
+            'nilai_setelah_nego_total_angka' => 'Total setelah nego termasuk PPN dalam angka tanpa simbol',
+            'nilai_setelah_nego_total_terbilang' => 'Total setelah nego termasuk PPN dieja dalam huruf',
+            'tanggal_mulai_pelaksanaan' => 'Tanggal mulai pelaksanaan',
+            'jangka_waktu_hari' => 'Jangka waktu pelaksanaan (hari)',
+            'jangka_waktu_hari_terbilang' => 'Jangka waktu pelaksanaan dieja dalam huruf',
+            'tanggal_selesai_pelaksanaan' => 'Tanggal akhir pelaksanaan (dihitung otomatis)',
+            'masa_garansi_bulan' => 'Masa garansi (bulan)',
+            'masa_garansi_bulan_terbilang' => 'Masa garansi dieja dalam huruf (mis. tiga)',
+            'nomor_rekening' => 'Nomor rekening pelaksana',
+            'nama_bank' => 'Nama bank pelaksana',
+            'nama_pemilik_rekening' => 'Nama pemilik rekening',
             'status_progres' => 'Status progres saat ini',
             'pic_perencana' => 'Nama PIC perencana',
             'pic_pelaksana' => 'Nama PIC pelaksana',
+            'nomor_ba_nego' => 'Nomor Berita Acara Negosiasi',
             'target_penyelesaian' => 'Target penyelesaian pengadaan',
             'tanggal_dokumen' => 'Tanggal dokumen digenerate',
             'tahun' => 'Tahun berjalan',
@@ -77,6 +103,16 @@ class DocumentGenerator
             'checklists.checklistItem',
         ]);
 
+        $hpe = (float) $procurement->hpe_value;
+        $hpeDpp = (float) round($hpe * 11 / 12);
+        $hpePpn = (float) round($hpe * 0.12);
+        $hpeTotal = $hpe + $hpePpn;
+
+        $nego = $procurement->value_after_negotiation !== null ? (float) $procurement->value_after_negotiation : null;
+        $negoDpp = $nego !== null ? (float) round($nego * 11 / 12) : null;
+        $negoPpn = $nego !== null ? (float) round($nego * 0.12) : null;
+        $negoTotal = $nego !== null ? $nego + $negoPpn : null;
+
         return [
             'nomor_pengadaan' => $procurement->number,
             'nama_pengadaan' => $procurement->name,
@@ -104,15 +140,67 @@ class DocumentGenerator
             'nomor_nota_dinas_icc' => $procurement->icc_memo_number ?? '-',
             'nomor_coa' => $procurement->coa_number ?? '-',
             'nomor_wo' => $procurement->wo_number ?? '-',
-            'nilai_hpe' => 'Rp '.number_format((float) $procurement->hpe_value, 2, ',', '.'),
-            'nilai_hpe_angka' => number_format((float) $procurement->hpe_value, 0, ',', '.'),
-            'nilai_hpe_terbilang' => Str::ucfirst(IndonesianNumber::spellRupiah((float) $procurement->hpe_value)),
-            'nilai_setelah_nego' => $procurement->value_after_negotiation === null
+            'nilai_hpe' => 'Rp '.number_format($hpe, 2, ',', '.'),
+            'nilai_hpe_angka' => number_format($hpe, 0, ',', '.'),
+            'nilai_hpe_terbilang' => Str::ucfirst(IndonesianNumber::spellRupiah($hpe)),
+            'nilai_hpe_dpp' => 'Rp '.number_format($hpeDpp, 0, ',', '.'),
+            'nilai_hpe_dpp_angka' => number_format($hpeDpp, 0, ',', '.'),
+            'nilai_hpe_ppn' => 'Rp '.number_format($hpePpn, 0, ',', '.'),
+            'nilai_hpe_ppn_angka' => number_format($hpePpn, 0, ',', '.'),
+            'nilai_hpe_total' => 'Rp '.number_format($hpeTotal, 0, ',', '.'),
+            'nilai_hpe_total_angka' => number_format($hpeTotal, 0, ',', '.'),
+            'nilai_hpe_total_terbilang' => Str::title(IndonesianNumber::spellRupiah($hpeTotal)),
+            'nilai_setelah_nego' => $nego === null
                 ? '-'
-                : 'Rp '.number_format((float) $procurement->value_after_negotiation, 2, ',', '.'),
+                : 'Rp '.number_format($nego, 2, ',', '.'),
+            'nilai_setelah_nego_angka' => $nego === null
+                ? '-'
+                : number_format($nego, 0, ',', '.'),
+            'nilai_setelah_nego_terbilang' => $nego === null
+                ? '-'
+                : Str::ucfirst(IndonesianNumber::spellRupiah($nego)),
+            'nilai_setelah_nego_dpp' => $negoDpp === null
+                ? '-'
+                : 'Rp '.number_format($negoDpp, 0, ',', '.'),
+            'nilai_setelah_nego_dpp_angka' => $negoDpp === null
+                ? '-'
+                : number_format($negoDpp, 0, ',', '.'),
+            'nilai_setelah_nego_ppn' => $negoPpn === null
+                ? '-'
+                : 'Rp '.number_format($negoPpn, 0, ',', '.'),
+            'nilai_setelah_nego_ppn_angka' => $negoPpn === null
+                ? '-'
+                : number_format($negoPpn, 0, ',', '.'),
+            'nilai_setelah_nego_total' => $negoTotal === null
+                ? '-'
+                : 'Rp '.number_format($negoTotal, 0, ',', '.'),
+            'nilai_setelah_nego_total_angka' => $negoTotal === null
+                ? '-'
+                : number_format($negoTotal, 0, ',', '.'),
+            'nilai_setelah_nego_total_terbilang' => $negoTotal === null
+                ? '-'
+                : Str::title(IndonesianNumber::spellRupiah($negoTotal)),
+            'tanggal_mulai_pelaksanaan' => $procurement->execution_start_date?->translatedFormat('d F Y') ?? '-',
+            'jangka_waktu_hari' => $procurement->execution_duration_days === null
+                ? '-'
+                : (string) $procurement->execution_duration_days,
+            'jangka_waktu_hari_terbilang' => $procurement->execution_duration_days === null
+                ? '-'
+                : IndonesianNumber::spell((int) $procurement->execution_duration_days),
+            'tanggal_selesai_pelaksanaan' => $procurement->executionEndDate()?->translatedFormat('d F Y') ?? '-',
+            'masa_garansi_bulan' => $procurement->warranty_months === null
+                ? '-'
+                : (string) $procurement->warranty_months,
+            'masa_garansi_bulan_terbilang' => $procurement->warranty_months === null
+                ? '-'
+                : IndonesianNumber::spell((int) $procurement->warranty_months),
+            'nomor_rekening' => $procurement->bank_account_number ?? '-',
+            'nama_bank' => $procurement->bank_name ?? '-',
+            'nama_pemilik_rekening' => $procurement->bank_account_holder ?? '-',
             'status_progres' => $procurement->progressStatus->name,
             'pic_perencana' => $procurement->planner_id === null ? '-' : $procurement->planner->name,
             'pic_pelaksana' => $procurement->executor_id === null ? '-' : $procurement->executor->name,
+            'nomor_ba_nego' => $procurement->number,
             'target_penyelesaian' => $procurement->target_completion_date === null
                 ? '-'
                 : $procurement->target_completion_date->translatedFormat('d F Y'),

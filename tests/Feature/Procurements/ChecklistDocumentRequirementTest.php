@@ -16,6 +16,7 @@ use Database\Seeders\BeritaAcaraTemplateSeeder;
 use Database\Seeders\DocumentTemplateSeeder;
 use Database\Seeders\KontrakTemplateSeeder;
 use Database\Seeders\MasterDataSeeder;
+use Database\Seeders\SpplDocumentTemplateSeeder;
 use Database\Seeders\StandardDocumentTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -66,6 +67,9 @@ class ChecklistDocumentRequirementTest extends TestCase
             'Kontrak',
             'Amandemen',
             'Masa Pemeliharaan',
+            // SPPL.
+            'BA Negosiasi',
+            'Surat Pesanan',
         ];
     }
 
@@ -91,7 +95,8 @@ class ChecklistDocumentRequirementTest extends TestCase
             $this->assertTrue($item->requiresDocument(), "[{$name}] seharusnya punya dokumen.");
         }
 
-        // Everything else is a plain tick with no paperwork.
+        // Everything else carries no paperwork: a plain tick, or a step that
+        // asks for data (the SPPL rekening, rentang waktu and garansi).
         $withoutDocument = ChecklistItem::query()
             ->whereDoesntHave('documentTypes')
             ->pluck('name')
@@ -103,9 +108,12 @@ class ChecklistDocumentRequirementTest extends TestCase
             'Checklist Perencanaan',
             'Evaluasi Dokumen',
             'Inisiasi SMART SCM',
+            'Masa Garansi',
             'PR / RO',
             'Purchase Order (PO)',
+            'Rekening Pelaksana',
             'Rentang Waktu',
+            'Rentang Waktu Pelaksanaan',
         ], $withoutDocument);
     }
 
@@ -418,6 +426,7 @@ class ChecklistDocumentRequirementTest extends TestCase
         $this->seed(BeritaAcaraTemplateSeeder::class);
         $this->seed(KontrakTemplateSeeder::class);
         $this->seed(StandardDocumentTemplateSeeder::class);
+        $this->seed(SpplDocumentTemplateSeeder::class);
 
         $linked = DocumentType::query()
             ->whereHas('checklistItems')

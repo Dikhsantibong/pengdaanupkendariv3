@@ -24,6 +24,16 @@ export type AuthPermissions = {
     createProcurement: boolean;
     assignPic: boolean;
     manageVendorAssessments: boolean;
+    /** Which menus are visible, as set on the Hak Akses screen. */
+    menus: {
+        planning: boolean;
+        execution: boolean;
+        approvals: boolean;
+        documents: boolean;
+        monitoring: boolean;
+        reports: boolean;
+        'public-monitoring': boolean;
+    };
 };
 
 export type Auth = {

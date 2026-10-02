@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             BeritaAcaraTemplateSeeder::class,
             KontrakTemplateSeeder::class,
             StandardDocumentTemplateSeeder::class,
+            SpplDocumentTemplateSeeder::class,
             VendorAssessmentSeeder::class,
             UserSeeder::class,
         ]);

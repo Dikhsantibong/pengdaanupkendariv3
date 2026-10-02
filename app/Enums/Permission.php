@@ -28,6 +28,13 @@ enum Permission: string
     case ViewAllProcurements = 'procurement.view-all';
     case ManageVendorAssessments = 'vendor-assessments.manage';
     case ManageMasterData = 'master-data.manage';
+    case MenuPlanning = 'menu.planning';
+    case MenuExecution = 'menu.execution';
+    case MenuApprovals = 'menu.approvals';
+    case MenuDocuments = 'menu.documents';
+    case MenuMonitoring = 'menu.monitoring';
+    case MenuReports = 'menu.reports';
+    case MenuPublicMonitoring = 'menu.public-monitoring';
 
     /**
      * The name shown on the access screen.
@@ -44,6 +51,13 @@ enum Permission: string
             self::ViewAllProcurements => 'Lihat seluruh pengadaan',
             self::ManageVendorAssessments => 'Kelola penilaian penyedia',
             self::ManageMasterData => 'Kelola data master',
+            self::MenuPlanning => 'Menu Perencanaan',
+            self::MenuExecution => 'Menu Pelaksanaan',
+            self::MenuApprovals => 'Menu Approval',
+            self::MenuDocuments => 'Menu Arsip Dokumen',
+            self::MenuMonitoring => 'Menu Monitoring',
+            self::MenuReports => 'Menu Laporan',
+            self::MenuPublicMonitoring => 'Menu Monitoring Publik',
         };
     }
 
@@ -62,6 +76,13 @@ enum Permission: string
             self::ViewAllProcurements => 'Melihat seluruh pengadaan, bukan hanya yang ditugaskan atau dibuat sendiri.',
             self::ManageVendorAssessments => 'Membuat, mengisi, dan mengirim formulir penilaian kinerja penyedia.',
             self::ManageMasterData => 'Mengubah seluruh data master.',
+            self::MenuPlanning => 'Menampilkan dan membuka papan Perencanaan.',
+            self::MenuExecution => 'Menampilkan dan membuka papan Pelaksanaan.',
+            self::MenuApprovals => 'Menampilkan dan membuka antrean Approval.',
+            self::MenuDocuments => 'Menampilkan dan membuka Arsip Dokumen.',
+            self::MenuMonitoring => 'Menampilkan dan membuka Monitoring.',
+            self::MenuReports => 'Menampilkan dan membuka Laporan, termasuk ekspor.',
+            self::MenuPublicMonitoring => 'Menampilkan tautan Monitoring Publik di menu. Halaman publiknya sendiri tetap terbuka untuk umum.',
         };
     }
 
@@ -80,6 +101,13 @@ enum Permission: string
             self::ViewAllProcurements => 'Pengadaan',
             self::ManageVendorAssessments => 'Penilaian Penyedia',
             self::ManageMasterData => 'Administrasi',
+            self::MenuPlanning,
+            self::MenuExecution,
+            self::MenuApprovals,
+            self::MenuDocuments,
+            self::MenuMonitoring,
+            self::MenuReports,
+            self::MenuPublicMonitoring => 'Akses Menu',
         };
     }
 
@@ -103,6 +131,14 @@ enum Permission: string
             self::ViewAllProcurements => [UserRole::TeamLeader],
             self::ManageVendorAssessments,
             self::ManageMasterData => [],
+            // Every menu was open to everyone before it became a right.
+            self::MenuPlanning,
+            self::MenuExecution,
+            self::MenuApprovals,
+            self::MenuDocuments,
+            self::MenuMonitoring,
+            self::MenuReports,
+            self::MenuPublicMonitoring => [UserRole::TeamLeader, UserRole::PicPerencana, UserRole::PicPelaksana],
         };
     }
 }

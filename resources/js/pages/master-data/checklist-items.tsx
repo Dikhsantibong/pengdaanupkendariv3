@@ -13,19 +13,24 @@ type ChecklistItem = MasterRecord & {
     sort_order: number;
     excluded_procurement_method_ids: number[];
     excluded_contract_number_format_ids: number[];
+    input_kind: string;
+    input_label: string | null;
     document_type_ids: number[];
+    alternative_document_type_ids: number[];
     document_types: string[];
 };
 
 export default function ChecklistItems({
     records,
     stages,
+    inputKinds,
     procurementMethods,
     contractNumberFormats,
     documentTypes,
 }: {
     records: ChecklistItem[];
     stages: EnumOption[];
+    inputKinds: EnumOption[];
     procurementMethods: EnumOption[];
     contractNumberFormats: EnumOption[];
     documentTypes: EnumOption[];
@@ -61,6 +66,11 @@ export default function ChecklistItems({
                         record.document_types.length === 0
                             ? '—'
                             : record.document_types.join(', '),
+                },
+                {
+                    key: 'input_label',
+                    label: 'Isian',
+                    render: (record) => record.input_label ?? '—',
                 },
                 {
                     key: 'excluded_procurement_method_ids',
@@ -121,6 +131,20 @@ export default function ChecklistItems({
                     hint: 'Setiap dokumen yang dicentang wajib diunggah sebelum tahapan ini dapat ditandai selesai. Dokumen bertanda "Hanya diunggah" di Jenis Dokumen cukup diunggah tanpa generate. Kosongkan bila tahapan ini hanya centang biasa.',
                 },
                 {
+                    name: 'alternative_document_type_ids',
+                    label: 'Dokumen Pilihan (cukup salah satu)',
+                    type: 'multiselect',
+                    options: documentTypes,
+                    hint: 'Dokumen yang dicentang di sini adalah pilihan: cukup salah satu yang diunggah. Contoh: Lampiran SP Barang atau Lampiran SP Jasa.',
+                },
+                {
+                    name: 'input_kind',
+                    label: 'Isian Tahapan',
+                    type: 'select',
+                    options: inputKinds,
+                    hint: 'Data yang wajib diisi pada tahapan ini sebelum dapat dicentang, mis. rentang waktu, masa garansi, atau rekening pelaksana.',
+                },
+                {
                     name: 'excluded_procurement_method_ids',
                     label: 'Dilewati oleh Metode Pengadaan',
                     type: 'multiselect',
@@ -143,6 +167,8 @@ export default function ChecklistItems({
                 description: '',
                 is_optional: false,
                 document_type_ids: [],
+                alternative_document_type_ids: [],
+                input_kind: 'none',
                 excluded_procurement_method_ids: [],
                 excluded_contract_number_format_ids: [],
                 sort_order: 0,

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Enums\ChecklistInput;
 use App\Enums\ProcurementStage;
 use App\Models\ChecklistItem;
 use App\Models\ContractNumberFormat;
@@ -92,8 +93,13 @@ class ChecklistItemController extends MasterDataController
                 'excluded_contract_number_format_ids' => $record->excludedContractNumberFormats
                     ->pluck('id')
                     ->all(),
-                'document_type_ids' => $record->documentTypes->pluck('id')->all(),
-                'document_types' => $record->documentTypes->pluck('name')->all(),
+                'input_kind' => $record->input_kind === null ? 'none' : $record->input_kind->value,
+                'input_label' => $record->input_kind?->label(),
+                'document_type_ids' => $this->currentLinks($record, false),
+                'alternative_document_type_ids' => $this->currentLinks($record, true),
+                'document_types' => $record->documentTypes
+                    ->map(fn (DocumentType $type): string => $type->name.($type->isAlternative() ? ' (pilihan)' : ''))
+                    ->all(),
             ])
             ->all();
     }
@@ -110,7 +116,12 @@ class ChecklistItemController extends MasterDataController
             $validated['excluded_procurement_method_ids'],
             $validated['excluded_contract_number_format_ids'],
             $validated['document_type_ids'],
+            $validated['alternative_document_type_ids'],
         );
+
+        // "none" is the select's way of saying the step asks for nothing.
+        $kind = $validated['input_kind'] ?? null;
+        $validated['input_kind'] = $kind === null || $kind === 'none' ? null : $kind;
 
         return $validated;
     }
@@ -134,21 +145,43 @@ class ChecklistItemController extends MasterDataController
             $item->excludedContractNumberFormats()->sync($formatIds);
         }
 
-        if (! $request->has('document_type_ids')) {
+        if (! $request->has('document_type_ids') && ! $request->has('alternative_document_type_ids')) {
             return;
         }
 
         /** @var array<int, int> $typeIds */
-        $typeIds = $request->input('document_type_ids', []);
+        $typeIds = $request->input('document_type_ids', $this->currentLinks($item, false));
 
-        // An empty selection makes the step a plain tick again.
+        /** @var array<int, int> $alternativeIds */
+        $alternativeIds = $request->input('alternative_document_type_ids', $this->currentLinks($item, true));
+
+        // An empty selection makes the step a plain tick again. A document
+        // listed as both required and alternative counts as required.
         $links = [];
+        $order = 0;
 
-        foreach (array_values($typeIds) as $index => $id) {
-            $links[(int) $id] = ['sort_order' => $index + 1];
+        foreach (array_values($typeIds) as $id) {
+            $links[(int) $id] = ['sort_order' => ++$order, 'is_alternative' => false];
+        }
+
+        foreach (array_values($alternativeIds) as $id) {
+            $links[(int) $id] ??= ['sort_order' => ++$order, 'is_alternative' => true];
         }
 
         $item->documentTypes()->sync($links);
+    }
+
+    /**
+     * The document type ids currently linked to a step, of one kind.
+     *
+     * @return array<int, int>
+     */
+    protected function currentLinks(ChecklistItem $item, bool $alternative): array
+    {
+        return $item->documentTypes
+            ->filter(fn (DocumentType $type): bool => $type->isAlternative() === $alternative)
+            ->pluck('id')
+            ->all();
     }
 
     /**
@@ -168,6 +201,10 @@ class ChecklistItemController extends MasterDataController
     {
         return [
             'stages' => ProcurementStage::options(),
+            'inputKinds' => [
+                ['value' => 'none', 'label' => 'Tanpa isian'],
+                ...ChecklistInput::options(),
+            ],
             'procurementMethods' => ProcurementMethod::query()->active()->ordered()->get()
                 ->map(fn (ProcurementMethod $method): array => [
                     'value' => $method->id,
@@ -198,6 +235,7 @@ class ChecklistItemController extends MasterDataController
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:255'],
             'is_optional' => ['required', 'boolean'],
+            'input_kind' => ['nullable', Rule::in(['none', ...array_column(ChecklistInput::cases(), 'value')])],
             'sort_order' => ['required', 'integer', 'min:0', 'max:999'],
             'is_active' => ['required', 'boolean'],
             'excluded_procurement_method_ids' => ['sometimes', 'array'],
@@ -207,6 +245,9 @@ class ChecklistItemController extends MasterDataController
             // An empty list means the step is a plain tick with no paperwork.
             'document_type_ids' => ['sometimes', 'array'],
             'document_type_ids.*' => ['integer', Rule::exists('document_types', 'id')->whereNull('deleted_at')],
+            // Alternatives: uploading any one of them completes the step.
+            'alternative_document_type_ids' => ['sometimes', 'array'],
+            'alternative_document_type_ids.*' => ['integer', Rule::exists('document_types', 'id')->whereNull('deleted_at')],
         ];
     }
 }

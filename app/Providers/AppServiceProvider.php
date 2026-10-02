@@ -44,6 +44,12 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('assign-pic', fn (User $user): bool => $user->hasPermission(Permission::AssignPic));
 
+        // Every right is also a gate under its own name, so a route can be
+        // closed with `can:menu.reports` and the like.
+        foreach (Permission::cases() as $permission) {
+            Gate::define($permission->value, fn (User $user): bool => $user->hasPermission($permission));
+        }
+
         // Users and access rights stay with the administrator alone: anyone
         // able to change them could raise their own role.
         Gate::define('manage-users', fn (User $user): bool => $user->isAdministrator());

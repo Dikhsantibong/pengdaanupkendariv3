@@ -29,12 +29,18 @@ class UploadOnlyStepTest extends TestCase
         $this->seed(MasterDataSeeder::class);
 
         $this->assertSame(
-            ['csms', 'nota-dinas-perintah-pekerjaan', 'nota-dinas-usulan', 'penawaran', 'rab', 'tor'],
+            [
+                'amandemen', 'csms', 'jaminan-bank', 'masa-pemeliharaan', 'nota-dinas-perintah-pekerjaan',
+                'nota-dinas-usulan', 'penawaran', 'penyusunan-hps', 'proses-smart-scm', 'rab', 'tor',
+            ],
             DocumentType::query()->where('upload_only', true)->orderBy('code')->pluck('code')->all(),
         );
 
-        // The documents further on are still generated.
-        $this->assertFalse(DocumentType::query()->where('code', 'hpe')->firstOrFail()->upload_only);
+        // HPE, UPB and RKS in planning, and the Berita Acara and Kontrak
+        // documents in execution, are still generated.
+        foreach (['hpe', 'upb', 'rks', 'ba-aanwijzing', 'spk', 'ba-negosiasi', 'surat-pesanan'] as $code) {
+            $this->assertFalse(DocumentType::query()->where('code', $code)->firstOrFail()->upload_only, $code);
+        }
     }
 
     public function test_an_upload_only_step_is_finished_by_uploading_alone(): void
