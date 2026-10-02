@@ -78,6 +78,9 @@ class RksSpkTemplateSeeder extends Seeder
     {
         return <<<'HTML'
         <section class="cover">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 48px; width: auto; display: inline-block;">
+            </div>
             <p class="org">PT PLN NUSANTARA POWER<br>UP KENDARI</p>
 
             <p class="doc-title">

@@ -75,10 +75,13 @@ class StandardDocumentTemplateSeeder extends Seeder
     protected function header(string $title, string $numberPrefix): string
     {
         return <<<HTML
-        <table class="lampiran-head">
+        <table class="lampiran-head" style="width: 100%; margin-bottom: 14px; border: none; border-collapse: collapse;">
             <tr>
-                <td><b>PT PLN NUSANTARA POWER<br>UP KENDARI</b></td>
-                <td style="text-align:right">Nomor : <span class="fill">............ /{$numberPrefix}/612/UPKD/{{tahun}}</span><br>Tanggal : {{tanggal_dokumen}}</td>
+                <td style="vertical-align: middle; border: none; padding: 0;">
+                    <img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 38px; width: auto; margin-bottom: 4px;"><br>
+                    <b>PT PLN NUSANTARA POWER<br>UP KENDARI</b>
+                </td>
+                <td style="text-align:right; vertical-align: middle; border: none; padding: 0;">Nomor : <span class="fill">............ /{$numberPrefix}/612/UPKD/{{tahun}}</span><br>Tanggal : {{tanggal_dokumen}}</td>
             </tr>
         </table>
 

@@ -76,8 +76,23 @@ class DocumentTemplateSeeder extends Seeder
         </table>
         HTML;
 
+        $kop = <<<'HTML'
+        <table class="lampiran-head" style="width: 100%; margin-bottom: 16px; border: none; border-collapse: collapse;">
+            <tr>
+                <td style="vertical-align: middle; border: none; padding: 0;">
+                    <img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 38px; width: auto; margin-bottom: 4px;"><br>
+                    <b>PT PLN NUSANTARA POWER<br>UP KENDARI</b>
+                </td>
+                <td style="text-align: right; vertical-align: middle; border: none; padding: 0;">
+                    Nomor: {{nomor_pengadaan}}<br>Tanggal: {{tanggal_dokumen}}
+                </td>
+            </tr>
+        </table>
+        HTML;
+
         return [
             'nota-dinas-usulan' => <<<HTML
+            {$kop}
             <h1>Nota Dinas Usulan Pengadaan</h1>
             <p>Nomor: {{nomor_prk}}</p>
             <h2>A. Identitas Pengadaan</h2>
@@ -93,6 +108,7 @@ class DocumentTemplateSeeder extends Seeder
             'tor' => $this->torTemplate(),
 
             'rab' => <<<HTML
+            {$kop}
             <h1>Rencana Anggaran Biaya (RAB)</h1>
             <h2>A. Identitas Pekerjaan</h2>
             {$identity}
@@ -106,6 +122,7 @@ class DocumentTemplateSeeder extends Seeder
             HTML,
 
             'hpe' => <<<HTML
+            {$kop}
             <h1>Harga Perkiraan Engineer (HPE)</h1>
             <h2>A. Identitas Pekerjaan</h2>
             {$identity}
@@ -116,6 +133,7 @@ class DocumentTemplateSeeder extends Seeder
             HTML,
 
             'upb' => <<<HTML
+            {$kop}
             <h1>Usulan Pengadaan Barang/Jasa (UPB)</h1>
             <h2>A. Identitas Pengadaan</h2>
             {$identity}
@@ -125,6 +143,7 @@ class DocumentTemplateSeeder extends Seeder
             HTML,
 
             'rks' => <<<HTML
+            {$kop}
             <h1>Rencana Kerja dan Syarat-Syarat (RKS)</h1>
             <h2>A. Identitas Pekerjaan</h2>
             {$identity}
@@ -140,6 +159,7 @@ class DocumentTemplateSeeder extends Seeder
             HTML,
 
             'berita-acara' => <<<HTML
+            {$kop}
             <h1>Berita Acara Pengadaan</h1>
             <p>Pada hari ini, {{tanggal_dokumen}}, telah dilaksanakan proses pengadaan sebagai berikut:</p>
             {$identity}
@@ -154,6 +174,7 @@ class DocumentTemplateSeeder extends Seeder
             HTML,
 
             'kontrak' => <<<HTML
+            {$kop}
             <h1>Perjanjian Kontrak Pekerjaan</h1>
             <p>Nomor: {{nomor_pengadaan}}</p>
             <p>Perjanjian ini dibuat pada {{tanggal_dokumen}} antara PT PLN Nusantara Power UP Kendari
