@@ -130,7 +130,6 @@ class ProcurementPolicy
     public function reviewPlanning(User $user, Procurement $procurement): bool
     {
         return $user->hasPermission(Permission::ReviewPlanning)
-            && $procurement->planner_id !== $user->id
             && $this->view($user, $procurement)
             && $procurement->planning_approval_state === PlanningApprovalState::MenungguPersetujuan;
     }
@@ -145,7 +144,6 @@ class ProcurementPolicy
     public function revertPlanningRejection(User $user, Procurement $procurement): bool
     {
         return $user->hasPermission(Permission::ReviewPlanning)
-            && $procurement->planner_id !== $user->id
             && $this->view($user, $procurement)
             && $procurement->planning_approval_state === PlanningApprovalState::Ditolak;
     }

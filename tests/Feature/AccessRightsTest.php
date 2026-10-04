@@ -118,9 +118,10 @@ class AccessRightsTest extends TestCase
         $this->actingAs($teamLeader)->get(route('procurements.create'))->assertForbidden();
     }
 
-    public function test_nobody_approves_their_own_planning(): void
+    public function test_planner_given_review_right_can_approve_their_own_planning(): void
     {
         $planner = User::factory()->planner()->create();
+        $plannerWithoutRight = User::factory()->planner()->create();
 
         AccessRights::replace([
             'team_leader_icc' => ['procurement.view-all', 'procurement.review-planning'],
@@ -131,8 +132,16 @@ class AccessRightsTest extends TestCase
             'planning_approval_state' => PlanningApprovalState::MenungguPersetujuan,
         ]);
 
-        $this->assertFalse($planner->can('reviewPlanning', $own));
-        $this->assertTrue(User::factory()->teamLeaderIcc()->create()->can('reviewPlanning', $own));
+        // When granted review-planning (or given TL ICC role), the planner can approve their own submission
+        $this->assertTrue($planner->can('reviewPlanning', $own));
+
+        // When the right is removed from pic_perencana, a planner without the right cannot review
+        AccessRights::replace([
+            'team_leader_icc' => ['procurement.view-all', 'procurement.review-planning'],
+            'pic_perencana' => [],
+        ]);
+
+        $this->assertFalse($plannerWithoutRight->can('reviewPlanning', $own));
     }
 
     public function test_the_administrator_rights_cannot_be_submitted(): void

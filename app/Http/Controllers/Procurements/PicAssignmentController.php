@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Procurements;
 
-use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Procurements\AssignPicRequest;
 use App\Http\Resources\ProcurementResource;
@@ -50,8 +49,8 @@ class PicAssignmentController extends Controller
             ],
             'options' => [
                 ...MasterDataOptions::forFilters(),
-                'planners' => MasterDataOptions::users(UserRole::PicPerencana),
-                'executors' => MasterDataOptions::users(UserRole::PicPelaksana),
+                'planners' => MasterDataOptions::planners(),
+                'executors' => MasterDataOptions::executors(),
             ],
         ]);
     }

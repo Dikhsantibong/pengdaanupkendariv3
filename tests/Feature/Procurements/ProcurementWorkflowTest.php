@@ -4,6 +4,7 @@ namespace Tests\Feature\Procurements;
 
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
+use App\Enums\UserRole;
 use App\Models\ChecklistItem;
 use App\Models\Procurement;
 use App\Models\ProgressStatus;
@@ -163,14 +164,25 @@ class ProcurementWorkflowTest extends TestCase
         $this->assertSame('RKS belum lengkap.', $procurement->planning_review_note);
     }
 
-    public function test_planner_cannot_approve_their_own_planning(): void
+    public function test_planner_without_tl_icc_role_cannot_approve_but_with_tl_icc_role_can_approve(): void
     {
         $planner = User::factory()->planner()->create();
         $procurement = Procurement::factory()->plannedBy($planner)->planningSubmitted()->create();
 
+        // Normal planner without TL ICC role cannot approve
         $this->actingAs($planner)
             ->put(route('procurements.approval.update', $procurement), ['approved' => true])
             ->assertForbidden();
+
+        // If planner is given the role of Team Leader ICC, they can approve their own planning
+        $planner->update(['role' => UserRole::TeamLeaderIcc]);
+
+        $this->actingAs($planner)
+            ->put(route('procurements.approval.update', $procurement), ['approved' => true])
+            ->assertRedirect();
+
+        $this->assertSame(PlanningApprovalState::Disetujui, $procurement->refresh()->planning_approval_state);
+        $this->assertSame($planner->id, $procurement->planning_reviewed_by);
     }
 
     public function test_status_changes_are_recorded_in_the_activity_history(): void

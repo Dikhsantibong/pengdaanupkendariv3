@@ -476,6 +476,13 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
   6. Status Progres
 - Inputan terpisah "Nota Dinas ke Manager" dihapus, dan field Nota Dinas ICC digantikan menjadi "Nota Dinas ke Manager" dengan penambahan inputan tanggal resmi.
 
+### 4. Penataan Role & Kemampuan Approval PIC sebagai TL
+- Tidak ada penambahan akun dummy baru untuk Team Leader; akun pengguna tetap akun pegawai riil (PIC Perencana, PIC Pelaksana, dan Administrator).
+- Akun PIC Perencana (misal: Bastial) dapat diberikan peran sebagai **Team Leader ICC** atau diberikan hak akses approval perencanaan (`procurement.review-planning`) oleh Super Admin.
+- Ketika PIC bertindak sebagai perencana dan juga memiliki hak/peran TL ICC, setelah mengajukan perencanaan (**Ajukan Persetujuan**), tombol **Setujui** dan **Tolak** langsung muncul di halaman detail sehingga dapat langsung menyetujui pengadaan tersebut.
+- PIC Pelaksana yang diberikan peran **Team Leader Pengadaan** (atau hak `procurement.complete`) dapat langsung menandai pengadaan selesai, menunjuk PIC, serta membuat pengadaan baru.
+- Pilihan dropdown penunjukan PIC Perencana secara otomatis menyertakan akun berstatus `pic_perencana` dan `team_leader_icc`, sementara PIC Pelaksana menyertakan akun `pic_pelaksana` dan `team_leader_pengadaan`.
+
 ---
 
 # Fitur Utama

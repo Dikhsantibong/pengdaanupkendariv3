@@ -20,14 +20,20 @@ class AssignPicRequest extends FormRequest
             'planner_id' => [
                 'nullable',
                 Rule::exists('users', 'id')
-                    ->where('role', UserRole::PicPerencana->value)
+                    ->whereIn('role', [
+                        UserRole::PicPerencana->value,
+                        UserRole::TeamLeaderIcc->value,
+                    ])
                     ->where('is_active', true)
                     ->whereNull('deleted_at'),
             ],
             'executor_id' => [
                 'nullable',
                 Rule::exists('users', 'id')
-                    ->where('role', UserRole::PicPelaksana->value)
+                    ->whereIn('role', [
+                        UserRole::PicPelaksana->value,
+                        UserRole::TeamLeaderPengadaan->value,
+                    ])
                     ->where('is_active', true)
                     ->whereNull('deleted_at'),
             ],

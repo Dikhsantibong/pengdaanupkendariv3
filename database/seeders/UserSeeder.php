@@ -3,6 +3,8 @@
 namespace Database\Seeders;
 
 use App\Enums\UserRole;
+use App\Models\Procurement;
+use App\Models\ProcurementActivity;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -26,18 +28,6 @@ class UserSeeder extends Seeder
             'name' => 'Administrator Sistem',
             'role' => UserRole::Administrator,
             'position' => 'Administrator',
-        ],
-        [
-            'email' => 'team.leader.pengadaan@upkendari.test',
-            'name' => 'Team Leader Pengadaan',
-            'role' => UserRole::TeamLeaderPengadaan,
-            'position' => 'Team Leader Pengadaan',
-        ],
-        [
-            'email' => 'team.leader.icc@upkendari.test',
-            'name' => 'Team Leader ICC',
-            'role' => UserRole::TeamLeaderIcc,
-            'position' => 'Team Leader ICC',
         ],
         [
             'email' => 'himatullah@upkendari.test',
@@ -104,6 +94,20 @@ class UserSeeder extends Seeder
             }
 
             $user->save();
+        }
+
+        $admin = User::query()->where('role', UserRole::Administrator)->first();
+        $dummyUsers = User::query()->whereIn('email', [
+            'team.leader.pengadaan@upkendari.test',
+            'team.leader.icc@upkendari.test',
+        ])->get();
+
+        if ($dummyUsers->isNotEmpty() && $admin) {
+            $dummyIds = $dummyUsers->pluck('id')->all();
+            Procurement::query()->whereIn('created_by', $dummyIds)->update(['created_by' => $admin->id]);
+            Procurement::query()->whereIn('planning_reviewed_by', $dummyIds)->update(['planning_reviewed_by' => $admin->id]);
+            ProcurementActivity::query()->whereIn('user_id', $dummyIds)->update(['user_id' => $admin->id]);
+            User::query()->whereIn('id', $dummyIds)->delete();
         }
     }
 }

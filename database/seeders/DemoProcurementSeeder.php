@@ -79,8 +79,9 @@ class DemoProcurementSeeder extends Seeder
         $units = TargetUnit::query()->active()->get();
         $planners = User::query()->active()->withRole([UserRole::PicPerencana])->get();
         $executors = User::query()->active()->withRole([UserRole::PicPelaksana])->get();
-        $teamLeaderPengadaan = User::query()->withRole([UserRole::TeamLeaderPengadaan])->first();
-        $teamLeaderIcc = User::query()->withRole([UserRole::TeamLeaderIcc])->first();
+        $admin = User::query()->where('role', UserRole::Administrator)->first();
+        $teamLeaderPengadaan = User::query()->withRole([UserRole::TeamLeaderPengadaan])->first() ?? $admin;
+        $teamLeaderIcc = User::query()->withRole([UserRole::TeamLeaderIcc])->first() ?? $admin;
 
         if ($directors->isEmpty() || $units->isEmpty() || $planners->isEmpty() || $executors->isEmpty()) {
             throw new RuntimeException('Jalankan DatabaseSeeder terlebih dahulu sebelum menambahkan data demo.');

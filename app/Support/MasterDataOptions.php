@@ -41,7 +41,7 @@ class MasterDataOptions
             'budgetSources' => self::budgetSources(true),
             'progressStatuses' => self::statuses(),
             'defaultProgressStatusId' => ProgressStatus::defaultStatus()?->id,
-            'planners' => self::users(UserRole::PicPerencana),
+            'planners' => self::planners(),
         ];
     }
 
@@ -77,8 +77,8 @@ class MasterDataOptions
 
         return [
             'progressStatuses' => self::statuses(),
-            'planners' => self::users(UserRole::PicPerencana),
-            'executors' => self::users(UserRole::PicPelaksana),
+            'planners' => self::planners(),
+            'executors' => self::executors(),
             'contractTypes' => self::contractTypes(),
             // Upload-only documents are filed on their checklist step, never
             // generated, so they are not offered here.
@@ -91,6 +91,44 @@ class MasterDataOptions
                 ])->all(),
             'stages' => ProcurementStage::options(),
         ];
+    }
+
+    /**
+     * Get the selectable planners (PIC Perencana or TL ICC).
+     *
+     * @return array<int, array{value: int, label: string}>
+     */
+    public static function planners(): array
+    {
+        return User::query()
+            ->active()
+            ->withRole([
+                UserRole::PicPerencana,
+                UserRole::TeamLeaderIcc,
+            ])
+            ->orderBy('name')
+            ->get()
+            ->map(fn (User $user): array => ['value' => $user->id, 'label' => $user->name])
+            ->all();
+    }
+
+    /**
+     * Get the selectable executors (PIC Pelaksana or TL Pengadaan).
+     *
+     * @return array<int, array{value: int, label: string}>
+     */
+    public static function executors(): array
+    {
+        return User::query()
+            ->active()
+            ->withRole([
+                UserRole::PicPelaksana,
+                UserRole::TeamLeaderPengadaan,
+            ])
+            ->orderBy('name')
+            ->get()
+            ->map(fn (User $user): array => ['value' => $user->id, 'label' => $user->name])
+            ->all();
     }
 
     /**

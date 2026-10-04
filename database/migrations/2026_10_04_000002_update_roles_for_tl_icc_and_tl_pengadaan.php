@@ -5,42 +5,25 @@ use App\Enums\UserRole;
 use App\Services\AccessRights;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        // 1. Update any existing users with role 'team_leader' to 'team_leader_pengadaan'
-        DB::table('users')
-            ->where('role', 'team_leader')
-            ->update([
-                'role' => UserRole::TeamLeaderPengadaan->value,
-            ]);
+        // 1. Remove obsolete dummy team leader accounts if present, reassigning to Administrator
+        $admin = DB::table('users')->where('role', UserRole::Administrator->value)->first();
+        $dummyUsers = DB::table('users')->whereIn('email', [
+            'team.leader.pengadaan@upkendari.test',
+            'team.leader.icc@upkendari.test',
+        ])->get();
 
-        // 2. Update the default team leader pengadaan user info if matching email
-        DB::table('users')
-            ->where('email', 'team.leader.pengadaan@upkendari.test')
-            ->update([
-                'name' => 'Team Leader Pengadaan',
-                'position' => 'Team Leader Pengadaan',
-                'role' => UserRole::TeamLeaderPengadaan->value,
-            ]);
-
-        // 3. Create Team Leader ICC account if it does not exist yet
-        if (! DB::table('users')->where('email', 'team.leader.icc@upkendari.test')->exists()) {
-            DB::table('users')->insert([
-                'name' => 'Team Leader ICC',
-                'email' => 'team.leader.icc@upkendari.test',
-                'role' => UserRole::TeamLeaderIcc->value,
-                'position' => 'Team Leader ICC',
-                'password' => Hash::make('password'),
-                'email_verified_at' => now(),
-                'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        if ($dummyUsers->isNotEmpty() && $admin) {
+            $dummyIds = $dummyUsers->pluck('id')->all();
+            DB::table('procurements')->whereIn('created_by', $dummyIds)->update(['created_by' => $admin->id]);
+            DB::table('procurements')->whereIn('planning_reviewed_by', $dummyIds)->update(['planning_reviewed_by' => $admin->id]);
+            DB::table('procurement_activities')->whereIn('user_id', $dummyIds)->update(['user_id' => $admin->id]);
+            DB::table('users')->whereIn('id', $dummyIds)->delete();
         }
 
         // 4. Update role_permissions: remove legacy 'team_leader' entries if table exists
