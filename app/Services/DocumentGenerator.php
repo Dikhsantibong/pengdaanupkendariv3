@@ -472,13 +472,20 @@ class DocumentGenerator
             ? trim((string) $procurement->prk_number)
             : '-';
 
+        $itemCount = count($items);
         $totalAfter = 0;
         $itemRowsHtml = '';
 
-        foreach ($items as $item) {
+        foreach ($items as $index => $item) {
             $priceFormatted = number_format($item['price_after'], 0, ',', '.');
             $totalFormatted = number_format($item['total_after'], 0, ',', '.');
             $totalAfter += $item['total_after'];
+
+            $deadlineTd = '';
+            if ($index === 0) {
+                $rowspan = $itemCount > 1 ? " rowspan=\"{$itemCount}\"" : '';
+                $deadlineTd = "\n                        <td{$rowspan} style=\"border: 1px solid #000; padding: 8px 6px; text-align: center; vertical-align: middle; font-weight: bold;\">{$deadline}</td>";
+            }
 
             $itemRowsHtml .= <<<HTML
 
@@ -488,8 +495,7 @@ class DocumentGenerator
                         <td style="border: 1px solid #000; padding: 8px 4px; text-align: center; vertical-align: middle;">{$item['volume']}</td>
                         <td style="border: 1px solid #000; padding: 8px 4px; text-align: center; vertical-align: middle;">{$item['satuan']}</td>
                         <td style="border: 1px solid #000; padding: 8px 6px; text-align: right; vertical-align: middle;">Rp {$priceFormatted}</td>
-                        <td style="border: 1px solid #000; padding: 8px 6px; text-align: right; vertical-align: middle;">Rp {$totalFormatted}</td>
-                        <td style="border: 1px solid #000; padding: 8px 6px; text-align: center; vertical-align: middle; font-weight: bold;">{$deadline}</td>
+                        <td style="border: 1px solid #000; padding: 8px 6px; text-align: right; vertical-align: middle;">Rp {$totalFormatted}</td>{$deadlineTd}
                     </tr>
 HTML;
         }

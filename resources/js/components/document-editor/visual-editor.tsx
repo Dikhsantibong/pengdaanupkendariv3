@@ -241,9 +241,14 @@ function recalculateSuratPesananTable(table: HTMLTableElement, activeCell?: HTML
         const text = r.innerText.toUpperCase();
         if (text.includes('PERHATIAN') && text.includes('TOTAL')) {
             rowTotal = r;
-        } else if (r.cells.length === 7) {
+        } else if (
+            (r.cells.length === 7 || r.cells.length === 6) &&
+            !text.includes('NOTE') &&
+            !text.includes('PERHATIAN') &&
+            !text.includes('TERBILANG')
+        ) {
             let hasColspan = false;
-            for (let i = 0; i < r.cells.length; i++) {
+            for (let i = 0; i < Math.min(6, r.cells.length); i++) {
                 if (r.cells[i].colSpan > 1) {
                     hasColspan = true;
                     break;
@@ -257,11 +262,30 @@ function recalculateSuratPesananTable(table: HTMLTableElement, activeCell?: HTML
 
     if (itemRows.length === 0) return;
 
+    // Ensure deadline column is merged across all item rows
+    const firstRow = itemRows[0];
+    if (firstRow) {
+        // Remove redundant cell 6 on rows 1..N if they have 7 cells
+        for (let k = 1; k < itemRows.length; k++) {
+            if (itemRows[k].cells.length >= 7) {
+                itemRows[k].deleteCell(6);
+            }
+        }
+        // Set rowspan on cell 6 of first row
+        if (firstRow.cells.length >= 7) {
+            if (itemRows.length > 1) {
+                firstRow.cells[6].rowSpan = itemRows.length;
+            } else {
+                firstRow.cells[6].removeAttribute('rowspan');
+            }
+        }
+    }
+
     let sumTotal = 0;
 
     itemRows.forEach((row, idx) => {
         const cells = row.cells;
-        if (cells.length < 7) return;
+        if (cells.length < 6) return;
 
         // Auto re-number NO
         if (cells[0] !== activeCell) {
@@ -373,7 +397,7 @@ export function VisualEditor({
                 }
             } else if (cell && table && isSuratPesananTable(table)) {
                 const row = cell.closest('tr');
-                if (row && row.cells.length === 7) {
+                if (row && (row.cells.length === 7 || row.cells.length === 6)) {
                     recalculateSuratPesananTable(table, cell);
                 }
             }
@@ -596,7 +620,7 @@ export function VisualEditor({
             return;
         }
 
-        // Surat Pesanan table: insert a fresh 7-cell item row above summary rows (NOTE / PERHATIAN / TOTAL)
+        // Surat Pesanan table: insert a fresh item row above summary rows (NOTE / PERHATIAN / TOTAL)
         if (isSuratPesananTable(table)) {
             const tbody = table.querySelector('tbody') || table;
             const allRows = Array.from(tbody.querySelectorAll('tr'));
@@ -615,12 +639,14 @@ export function VisualEditor({
                     txt.includes('TERBILANG')
                 ) {
                     if (!insertBefore) insertBefore = r;
-                } else if (r.cells.length === 7) {
+                } else if (r.cells.length === 7 || r.cells.length === 6) {
                     itemCount++;
-                    // Extract deadline date from cell 6 (BATAS WAKTU / PENYERAHAN BARANG / JASA)
-                    const deadlineText = r.cells[6]?.innerText?.trim() || '';
-                    if (deadlineText && deadlineText !== '&nbsp;') {
-                        prevDeadline = deadlineText;
+                    // Extract deadline date from cell 6 (BATAS WAKTU / PENYERAHAN BARANG / JASA) if present
+                    if (r.cells.length >= 7) {
+                        const deadlineText = r.cells[6]?.innerText?.trim() || '';
+                        if (deadlineText && deadlineText !== '&nbsp;') {
+                            prevDeadline = deadlineText;
+                        }
                     }
                     const satuanText = r.cells[3]?.innerText?.trim() || '';
                     if (satuanText && satuanText !== '&nbsp;') {
@@ -629,9 +655,11 @@ export function VisualEditor({
                 }
             }
 
-            // Build a clean item row with 7 cells matching Surat Pesanan
+            // Build a clean item row
+            // If itemCount === 0, create 7 cells. Otherwise 6 cells (deadline is merged with row 0).
+            const cellCount = itemCount === 0 ? 7 : 6;
             const fresh = document.createElement('tr');
-            for (let i = 0; i < 7; i++) {
+            for (let i = 0; i < cellCount; i++) {
                 const td = document.createElement('td');
                 td.style.border = '1px solid #000';
 
@@ -746,7 +774,7 @@ export function VisualEditor({
                 txt.includes('PERHATIAN') ||
                 txt.includes('TOTAL') ||
                 txt.includes('TERBILANG') ||
-                row.cells.length !== 7
+                (row.cells.length !== 7 && row.cells.length !== 6)
             ) {
                 return;
             }
@@ -754,10 +782,22 @@ export function VisualEditor({
             // Don't delete if it's the only item row
             const tbody = table.querySelector('tbody') || table;
             const itemRows = Array.from(tbody.querySelectorAll('tr')).filter(
-                (r) => r.cells.length === 7 && !r.innerText.toUpperCase().includes('TOTAL')
+                (r) =>
+                    (r.cells.length === 7 || r.cells.length === 6) &&
+                    !r.innerText.toUpperCase().includes('TOTAL') &&
+                    !r.innerText.toUpperCase().includes('NOTE') &&
+                    !r.innerText.toUpperCase().includes('PERHATIAN') &&
+                    !r.innerText.toUpperCase().includes('TERBILANG'),
             );
             if (itemRows.length <= 1) {
                 return;
+            }
+
+            // If we are deleting the first item row (which holds cell 6 with the merged deadline),
+            // we must transfer cell 6 to the next item row before deleting!
+            if (row === itemRows[0] && row.cells.length >= 7 && itemRows[1]) {
+                const deadlineCell = row.cells[6];
+                itemRows[1].appendChild(deadlineCell);
             }
 
             row.remove();
@@ -1191,6 +1231,18 @@ export function VisualEditor({
                                         }
                                     }
                                     recalculateNegotiationTable(prevTable, null);
+                                } else if (prevTable && isSuratPesananTable(prevTable)) {
+                                    const row = prevCell.closest('tr');
+                                    if (row && (row.cells.length === 7 || row.cells.length === 6)) {
+                                        const idx = prevCell.cellIndex;
+                                        if (idx === 4) {
+                                            const raw = parseNegoNumber(prevCell.innerText);
+                                            if (raw > 0) {
+                                                prevCell.innerText = 'Rp ' + formatRupiahDisplay(raw);
+                                            }
+                                        }
+                                    }
+                                    recalculateSuratPesananTable(prevTable, null);
                                 }
                                 lastActiveCell.current = null;
                             }
