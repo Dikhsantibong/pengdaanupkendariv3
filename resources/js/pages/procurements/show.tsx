@@ -6,10 +6,7 @@ import { ApprovalCard } from '@/components/procurement/approval-card';
 import { ChecklistPanel } from '@/components/procurement/checklist-panel';
 import { DocumentPanel } from '@/components/procurement/document-panel';
 import { PicAssignmentCard } from '@/components/procurement/pic-assignment-card';
-import {
-    ContractTypePicker,
-    ManagerMemoNumberField,
-} from '@/components/procurement/planning-identity-fields';
+import { ContractTypePicker } from '@/components/procurement/planning-identity-fields';
 import { StatusCard } from '@/components/procurement/status-card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -80,7 +77,7 @@ export default function ShowProcurement({
     const summary: Array<{
         label: string;
         value: string;
-        field?: 'contract_type' | 'manager_memo_number';
+        field?: 'contract_type';
     }> = [
         {
             label: 'Nama Mitra / Pelaksana',
@@ -101,23 +98,30 @@ export default function ShowProcurement({
             value: procurement.contract_type ?? '—',
             field: 'contract_type' as const,
         },
-        {
-            label: 'Nomor Nota Dinas Manager',
-            value: procurement.manager_memo_number ?? '—',
-            field: 'manager_memo_number' as const,
-        },
         { label: 'Nomor PRK', value: procurement.prk_number ?? '—' },
+        { label: 'Nomor COA', value: procurement.coa_number ?? '—' },
+        { label: 'Nomor PR/PO', value: procurement.pr_po_number ?? '—' },
+        { label: 'Nomor WO', value: procurement.wo_number ?? '—' },
         {
             label: 'Nomor Nota Dinas Usulan',
             value: procurement.proposal_memo_number ?? '—',
         },
         {
-            label: 'Nomor Nota Dinas ICC',
+            label: 'Tanggal Nota Dinas Usulan',
+            value: procurement.proposal_memo_date
+                ? formatDate(procurement.proposal_memo_date)
+                : '—',
+        },
+        {
+            label: 'Nomor Nota Dinas ke Manager',
             value: procurement.icc_memo_number ?? '—',
         },
-        { label: 'Nomor PR/PO', value: procurement.pr_po_number ?? '—' },
-        { label: 'Nomor COA', value: procurement.coa_number ?? '—' },
-        { label: 'Nomor WO', value: procurement.wo_number ?? '—' },
+        {
+            label: 'Tanggal Nota Dinas ke Manager',
+            value: procurement.icc_memo_date
+                ? formatDate(procurement.icc_memo_date)
+                : '—',
+        },
         {
             label: 'Nilai (Sebelum Nego)',
             value: formatCurrency(procurement.hpe_value),
@@ -150,7 +154,7 @@ export default function ShowProcurement({
                                         href={procurements.edit(procurement.id)}
                                     >
                                         <Pencil className="size-4" />
-                                        Ubah Data
+                                        Edit Identitas Pengadaan
                                     </Link>
                                 </Button>
                                 <Button
@@ -207,17 +211,6 @@ export default function ShowProcurement({
                                                     }
                                                     options={
                                                         options.contractTypes
-                                                    }
-                                                />
-                                            ) : can.updatePlanningIdentity &&
-                                              item.field ===
-                                                  'manager_memo_number' ? (
-                                                <ManagerMemoNumberField
-                                                    procurementId={
-                                                        procurement.id
-                                                    }
-                                                    value={
-                                                        procurement.manager_memo_number
                                                     }
                                                 />
                                             ) : (

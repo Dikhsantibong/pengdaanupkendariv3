@@ -72,13 +72,25 @@ class DocumentController extends Controller
         if ($document->documentType->upload_only) {
             $first = $document->signedUploads()->oldest('id')->firstOrFail();
 
-            return to_route('procurements.documents.signed.show', [$procurement, $document, $first]);
+            return to_route('procurements.documents.signed.show', [
+                $procurement,
+                $document,
+                $first,
+                'preview' => $request->boolean('preview') ? 1 : null,
+            ]);
         }
 
         if ($request->string('format')->value() === 'html') {
             return response($this->generator->printableHtml($document), 200, [
                 'Content-Type' => 'text/html; charset=UTF-8',
                 'Content-Disposition' => 'inline; filename="'.$document->file_name.'"',
+            ]);
+        }
+
+        if ($request->boolean('preview') || $request->query('disposition') === 'inline') {
+            return response($this->pdf->bytes($document), 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="'.$this->pdf->fileName($document).'"',
             ]);
         }
 
@@ -286,9 +298,10 @@ class DocumentController extends Controller
     }
 
     /**
-     * Download one signed scan of a document.
+     * Download or preview one signed scan of a document.
      */
     public function showSigned(
+        Request $request,
         Procurement $procurement,
         ProcurementDocument $document,
         ProcurementDocumentUpload $upload,
@@ -298,6 +311,12 @@ class DocumentController extends Controller
         $this->assertBelongsTo($procurement, $document);
 
         abort_unless($upload->procurement_document_id === $document->id, 404);
+
+        if ($request->boolean('preview') || $request->query('disposition') === 'inline') {
+            $headers = $upload->mime !== null ? ['Content-Type' => $upload->mime] : [];
+
+            return $this->signed->disk()->response($upload->path, $upload->file_name, $headers);
+        }
 
         return $this->signed->disk()->download($upload->path, $upload->file_name);
     }

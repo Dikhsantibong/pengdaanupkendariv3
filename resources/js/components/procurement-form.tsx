@@ -40,7 +40,9 @@ export type ProcurementFormValues = {
     budget_source_id: number | null;
     prk_number: string;
     proposal_memo_number: string;
+    proposal_memo_date: string;
     icc_memo_number: string;
+    icc_memo_date: string;
     pr_po_number: string;
     coa_number: string;
     wo_number: string;
@@ -96,7 +98,9 @@ export function ProcurementForm({
         budget_source_id: initialValues?.budget_source_id ?? null,
         prk_number: initialValues?.prk_number ?? '',
         proposal_memo_number: initialValues?.proposal_memo_number ?? '',
+        proposal_memo_date: initialValues?.proposal_memo_date ?? '',
         icc_memo_number: initialValues?.icc_memo_number ?? '',
+        icc_memo_date: initialValues?.icc_memo_date ?? '',
         pr_po_number: initialValues?.pr_po_number ?? '',
         coa_number: initialValues?.coa_number ?? '',
         wo_number: initialValues?.wo_number ?? '',
@@ -437,23 +441,14 @@ export function ProcurementForm({
                         error={errors.prk_number}
                     />
                     <TextField
-                        id="proposal_memo_number"
-                        label="Nomor Nota Dinas Usulan"
-                        value={data.proposal_memo_number}
-                        onChange={(value) =>
-                            setData('proposal_memo_number', value)
-                        }
-                        placeholder="Contoh: ND-021/USL/2026"
-                        error={errors.proposal_memo_number}
+                        id="coa_number"
+                        label="Nomor COA"
+                        value={data.coa_number}
+                        onChange={(value) => setData('coa_number', value)}
+                        placeholder="Contoh: 5110100000"
+                        error={errors.coa_number}
                     />
-                    <TextField
-                        id="icc_memo_number"
-                        label="Nomor Nota Dinas ICC"
-                        value={data.icc_memo_number}
-                        onChange={(value) => setData('icc_memo_number', value)}
-                        placeholder="Contoh: ND-014/ICC/2026"
-                        error={errors.icc_memo_number}
-                    />
+
                     <TextField
                         id="pr_po_number"
                         label="Nomor PR/PO"
@@ -463,20 +458,48 @@ export function ProcurementForm({
                         error={errors.pr_po_number}
                     />
                     <TextField
-                        id="coa_number"
-                        label="Nomor COA"
-                        value={data.coa_number}
-                        onChange={(value) => setData('coa_number', value)}
-                        placeholder="Contoh: 5110100000"
-                        error={errors.coa_number}
-                    />
-                    <TextField
                         id="wo_number"
                         label="Nomor WO"
                         value={data.wo_number}
                         onChange={(value) => setData('wo_number', value)}
                         placeholder="Contoh: WO-2026-0042"
                         error={errors.wo_number}
+                    />
+
+                    <TextField
+                        id="proposal_memo_number"
+                        label="Nomor Nota Dinas Usulan"
+                        value={data.proposal_memo_number}
+                        onChange={(value) =>
+                            setData('proposal_memo_number', value)
+                        }
+                        placeholder="Contoh: ND-021/USL/2026"
+                        error={errors.proposal_memo_number}
+                    />
+                    <DateField
+                        id="proposal_memo_date"
+                        label="Tanggal Nota Dinas Usulan"
+                        value={data.proposal_memo_date}
+                        onChange={(value) =>
+                            setData('proposal_memo_date', value)
+                        }
+                        error={errors.proposal_memo_date}
+                    />
+
+                    <TextField
+                        id="icc_memo_number"
+                        label="Nomor Nota Dinas ke Manager"
+                        value={data.icc_memo_number}
+                        onChange={(value) => setData('icc_memo_number', value)}
+                        placeholder="Contoh: ND-014/ND-MGR/2026"
+                        error={errors.icc_memo_number}
+                    />
+                    <DateField
+                        id="icc_memo_date"
+                        label="Tanggal Nota Dinas ke Manager"
+                        value={data.icc_memo_date}
+                        onChange={(value) => setData('icc_memo_date', value)}
+                        error={errors.icc_memo_date}
                     />
 
                     <div className="grid gap-2">
@@ -663,6 +686,35 @@ function TextField({
                 onChange={(event) => onChange(event.target.value)}
                 placeholder={placeholder}
                 autoComplete="off"
+            />
+            <InputError message={error} />
+        </div>
+    );
+}
+
+/** A labelled, optional date field for memo dates. */
+function DateField({
+    id,
+    label,
+    value,
+    onChange,
+    error,
+}: {
+    id: string;
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    error?: string;
+}) {
+    return (
+        <div className="grid gap-2">
+            <Label htmlFor={id}>{label}</Label>
+            <Input
+                id={id}
+                type="date"
+                className="tabular"
+                value={value}
+                onChange={(event) => onChange(event.target.value)}
             />
             <InputError message={error} />
         </div>

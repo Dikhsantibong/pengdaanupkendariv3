@@ -45,7 +45,9 @@ export type ProcurementRow = {
     pr_po_number: string | null;
     prk_number: string | null;
     proposal_memo_number: string | null;
+    proposal_memo_date: string | null;
     icc_memo_number: string | null;
+    icc_memo_date: string | null;
     coa_number: string | null;
     wo_number: string | null;
     hpe_value: number;

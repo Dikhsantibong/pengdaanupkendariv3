@@ -487,8 +487,8 @@
       "_label-Bu9P0MGx.js"
     ]
   },
-  "_procurement-form-CxVmB9FU.js": {
-    "file": "assets/procurement-form-CxVmB9FU.js",
+  "_procurement-form-CcMS6DHc.js": {
+    "file": "assets/procurement-form-CcMS6DHc.js",
     "name": "procurement-form",
     "imports": [
       "_jsx-runtime-CTQSNLil.js",
@@ -794,7 +794,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-D5ZcGIeq.css",
+    "file": "assets/app-BAl2WNdD.css",
     "name": "app",
     "names": [
       "app.css"
@@ -803,7 +803,7 @@
     "isEntry": true
   },
   "resources/js/app.tsx": {
-    "file": "assets/app-CTkq8dIH.js",
+    "file": "assets/app-VsP0fejz.js",
     "name": "app",
     "src": "resources/js/app.tsx",
     "isEntry": true,
@@ -1379,7 +1379,7 @@
     ]
   },
   "resources/js/pages/procurements/create.tsx": {
-    "file": "assets/create-DVgFh6G7.js",
+    "file": "assets/create-DXe43Iug.js",
     "name": "create",
     "src": "resources/js/pages/procurements/create.tsx",
     "isDynamicEntry": true,
@@ -1390,7 +1390,7 @@
       "_routes-Btsr50jI.js",
       "_procurements-CWeW7p3n.js",
       "_page-header-aeF00bxt.js",
-      "_procurement-form-CxVmB9FU.js"
+      "_procurement-form-CcMS6DHc.js"
     ]
   },
   "resources/js/pages/procurements/document-editor.tsx": {
@@ -1428,7 +1428,7 @@
     ]
   },
   "resources/js/pages/procurements/edit.tsx": {
-    "file": "assets/edit-BvouI3SG.js",
+    "file": "assets/edit-BfLpttby.js",
     "name": "edit",
     "src": "resources/js/pages/procurements/edit.tsx",
     "isDynamicEntry": true,
@@ -1439,7 +1439,7 @@
       "_routes-Btsr50jI.js",
       "_procurements-CWeW7p3n.js",
       "_page-header-aeF00bxt.js",
-      "_procurement-form-CxVmB9FU.js"
+      "_procurement-form-CcMS6DHc.js"
     ]
   },
   "resources/js/pages/procurements/index.tsx": {
@@ -1460,7 +1460,7 @@
     ]
   },
   "resources/js/pages/procurements/show.tsx": {
-    "file": "assets/show-CfNEXxpl.js",
+    "file": "assets/show-CbouA-Oy.js",
     "name": "show",
     "src": "resources/js/pages/procurements/show.tsx",
     "isDynamicEntry": true,
@@ -1494,6 +1494,7 @@
       "_progress-ojj6uTbG.js",
       "_format-CO100DCA.js",
       "_label-Bu9P0MGx.js",
+      "_dialog-CVe3aja3.js",
       "_textarea-bZaKHX4i.js",
       "_tabs-CuYfdT4S.js"
     ]

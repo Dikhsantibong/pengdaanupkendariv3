@@ -112,6 +112,28 @@ class SignedDocumentUploadTest extends TestCase
         }
     }
 
+    public function test_a_signed_scan_can_be_previewed_inline(): void
+    {
+        Storage::fake('local');
+
+        [$procurement, $document] = $this->generate();
+        $teamLeader = User::factory()->teamLeader()->create();
+
+        $this->actingAs($teamLeader)->post(
+            route('procurements.documents.signed.store', [$procurement, $document]),
+            ['files' => [
+                UploadedFile::fake()->create('preview-nodis.pdf', 50, 'application/pdf'),
+            ]],
+        );
+
+        $upload = $document->refresh()->load('signedUploads')->signedUploads->firstOrFail();
+
+        $this->actingAs($teamLeader)
+            ->get(route('procurements.documents.signed.show', [$procurement, $document, $upload, 'preview' => 1]))
+            ->assertOk()
+            ->assertHeader('Content-Disposition', 'inline; filename='.$upload->file_name);
+    }
+
     public function test_one_scan_can_be_removed_without_touching_the_rest(): void
     {
         Storage::fake('local');

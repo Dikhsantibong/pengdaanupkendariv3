@@ -33,7 +33,9 @@ class ProposalFieldsTest extends TestCase
                 'partner_name' => 'PT Konstruksi Indonesia',
                 'prk_number' => 'PRK-2026-01',
                 'proposal_memo_number' => 'ND-021/USL/2026',
+                'proposal_memo_date' => '2026-10-01',
                 'icc_memo_number' => 'ND-014/ICC/2026',
+                'icc_memo_date' => '2026-10-02',
                 'pr_po_number' => 'PR-778899',
                 'coa_number' => '5110100000',
                 'wo_number' => 'WO-2026-0042',
@@ -48,7 +50,9 @@ class ProposalFieldsTest extends TestCase
         $this->assertSame('PT Konstruksi Indonesia', $procurement->partner_name);
         $this->assertSame('PRK-2026-01', $procurement->prk_number);
         $this->assertSame('ND-021/USL/2026', $procurement->proposal_memo_number);
+        $this->assertSame('2026-10-01', $procurement->proposal_memo_date?->toDateString());
         $this->assertSame('ND-014/ICC/2026', $procurement->icc_memo_number);
+        $this->assertSame('2026-10-02', $procurement->icc_memo_date?->toDateString());
         $this->assertSame('PR-778899', $procurement->pr_po_number);
         $this->assertSame('5110100000', $procurement->coa_number);
         $this->assertSame('WO-2026-0042', $procurement->wo_number);
@@ -121,6 +125,10 @@ class ProposalFieldsTest extends TestCase
                 'hpe_value' => 1_000_000,
                 'progress_status_id' => $procurement->progress_status_id,
                 'pr_po_number' => 'PO-123',
+                'proposal_memo_number' => 'ND-EDIT-USL',
+                'proposal_memo_date' => '2026-10-10',
+                'icc_memo_number' => 'ND-EDIT-MGR',
+                'icc_memo_date' => '2026-10-11',
             ])
             ->assertSessionHasNoErrors()
             ->assertRedirect();
@@ -130,6 +138,10 @@ class ProposalFieldsTest extends TestCase
         $this->assertSame([$b->id, $a->id], $procurement->targetUnits->pluck('id')->all());
         $this->assertSame($b->id, $procurement->target_unit_id);
         $this->assertSame('PO-123', $procurement->pr_po_number);
+        $this->assertSame('ND-EDIT-USL', $procurement->proposal_memo_number);
+        $this->assertSame('2026-10-10', $procurement->proposal_memo_date?->toDateString());
+        $this->assertSame('ND-EDIT-MGR', $procurement->icc_memo_number);
+        $this->assertSame('2026-10-11', $procurement->icc_memo_date?->toDateString());
     }
 
     public function test_the_list_filter_finds_a_procurement_by_any_of_its_units(): void
