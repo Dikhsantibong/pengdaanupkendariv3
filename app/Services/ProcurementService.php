@@ -420,7 +420,7 @@ class ProcurementService
     {
         User::query()
             ->active()
-            ->withRole([UserRole::TeamLeader, UserRole::Administrator])
+            ->withRole([UserRole::TeamLeaderPengadaan, UserRole::TeamLeaderIcc, UserRole::Administrator])
             ->get()
             ->each(fn (User $user) => $user->notify($notification));
     }

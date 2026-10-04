@@ -71,9 +71,25 @@ class UserFactory extends Factory
     /**
      * Indicate that the user leads the procurement team.
      */
+    public function teamLeaderPengadaan(): static
+    {
+        return $this->role(UserRole::TeamLeaderPengadaan);
+    }
+
+    /**
+     * Indicate that the user leads the ICC team.
+     */
+    public function teamLeaderIcc(): static
+    {
+        return $this->role(UserRole::TeamLeaderIcc);
+    }
+
+    /**
+     * Alias for backward compatibility in tests.
+     */
     public function teamLeader(): static
     {
-        return $this->role(UserRole::TeamLeader);
+        return $this->teamLeaderPengadaan();
     }
 
     /**

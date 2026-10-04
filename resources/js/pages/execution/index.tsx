@@ -48,7 +48,7 @@ export default function ExecutionIndex({
                         'target',
                     ]}
                     emptyTitle="Belum ada pengadaan pada tahap pelaksanaan"
-                    emptyDescription="Pengadaan akan muncul di sini setelah dokumen perencanaannya disetujui TL Perencanaan."
+                    emptyDescription="Pengadaan akan muncul di sini setelah dokumen perencanaannya disetujui TL ICC."
                 />
             </div>
         </>

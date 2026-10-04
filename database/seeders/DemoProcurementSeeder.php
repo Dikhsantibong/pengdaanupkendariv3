@@ -79,7 +79,8 @@ class DemoProcurementSeeder extends Seeder
         $units = TargetUnit::query()->active()->get();
         $planners = User::query()->active()->withRole([UserRole::PicPerencana])->get();
         $executors = User::query()->active()->withRole([UserRole::PicPelaksana])->get();
-        $teamLeader = User::query()->withRole([UserRole::TeamLeader])->first();
+        $teamLeaderPengadaan = User::query()->withRole([UserRole::TeamLeaderPengadaan])->first();
+        $teamLeaderIcc = User::query()->withRole([UserRole::TeamLeaderIcc])->first();
 
         if ($directors->isEmpty() || $units->isEmpty() || $planners->isEmpty() || $executors->isEmpty()) {
             throw new RuntimeException('Jalankan DatabaseSeeder terlebih dahulu sebelum menambahkan data demo.');
@@ -96,7 +97,8 @@ class DemoProcurementSeeder extends Seeder
                 $units,
                 $planners,
                 $executors,
-                $teamLeader,
+                $teamLeaderPengadaan,
+                $teamLeaderIcc,
                 $planningItems,
                 $executionItems,
             );
@@ -123,7 +125,8 @@ class DemoProcurementSeeder extends Seeder
         Collection $units,
         Collection $planners,
         Collection $executors,
-        ?User $teamLeader,
+        ?User $teamLeaderPengadaan,
+        ?User $teamLeaderIcc,
         Collection $planningItems,
         Collection $executionItems,
     ): void {
@@ -149,13 +152,13 @@ class DemoProcurementSeeder extends Seeder
 
         $procurement->number = sprintf('PGD/%s/%04d', $createdAt->format('Y/m'), $index + 1);
         $procurement->planner_id = $planners[$index % $planners->count()]->id;
-        $procurement->created_by = $teamLeader?->id;
+        $procurement->created_by = $teamLeaderPengadaan?->id;
         $procurement->created_at = $createdAt;
         $procurement->updated_at = $createdAt;
         $procurement->save();
 
-        $this->log($procurement, $teamLeader, ActivityType::Dibuat, "Pengadaan {$procurement->number} dibuat.", $createdAt);
-        $this->log($procurement, $teamLeader, ActivityType::PicDitunjuk, 'PIC Perencana ditunjuk.', $createdAt->addHours(3));
+        $this->log($procurement, $teamLeaderPengadaan, ActivityType::Dibuat, "Pengadaan {$procurement->number} dibuat.", $createdAt);
+        $this->log($procurement, $teamLeaderPengadaan, ActivityType::PicDitunjuk, 'PIC Perencana ditunjuk.', $createdAt->addHours(3));
 
         $planningRatio = $this->planningRatio($track);
         $planningWindow = $this->window($createdAt, $track === 'inisiasi' ? $createdAt->addDays(30) : $target);
@@ -181,10 +184,10 @@ class DemoProcurementSeeder extends Seeder
                 $reviewedAt = $submittedAt->addDays(3);
                 $procurement->planning_approval_state = PlanningApprovalState::Ditolak;
                 $procurement->planning_reviewed_at = $reviewedAt;
-                $procurement->planning_reviewed_by = $teamLeader?->id;
+                $procurement->planning_reviewed_by = $teamLeaderIcc?->id;
                 $procurement->planning_review_note = 'RKS dan HPE perlu disesuaikan dengan spesifikasi terbaru.';
 
-                $this->log($procurement, $teamLeader, ActivityType::PerencanaanDitolak, 'Dokumen perencanaan ditolak.', $reviewedAt);
+                $this->log($procurement, $teamLeaderIcc, ActivityType::PerencanaanDitolak, 'Dokumen perencanaan ditolak.', $reviewedAt);
             }
 
             if (in_array($track, ['pelaksanaan', 'selesai'], true)) {
@@ -192,11 +195,11 @@ class DemoProcurementSeeder extends Seeder
 
                 $procurement->planning_approval_state = PlanningApprovalState::Disetujui;
                 $procurement->planning_reviewed_at = $reviewedAt;
-                $procurement->planning_reviewed_by = $teamLeader?->id;
+                $procurement->planning_reviewed_by = $teamLeaderIcc?->id;
                 $procurement->executor_id = $executors[$index % $executors->count()]->id;
 
-                $this->log($procurement, $teamLeader, ActivityType::PerencanaanDisetujui, 'Dokumen perencanaan disetujui.', $reviewedAt);
-                $this->log($procurement, $teamLeader, ActivityType::PicDitunjuk, 'PIC Pelaksana ditunjuk.', $reviewedAt->addHour());
+                $this->log($procurement, $teamLeaderIcc, ActivityType::PerencanaanDisetujui, 'Dokumen perencanaan disetujui.', $reviewedAt);
+                $this->log($procurement, $teamLeaderPengadaan, ActivityType::PicDitunjuk, 'PIC Pelaksana ditunjuk.', $reviewedAt->addHour());
 
                 $this->fillChecklist(
                     $procurement,
@@ -213,13 +216,13 @@ class DemoProcurementSeeder extends Seeder
             $completedAt = $target->subDays(fake()->numberBetween(0, 12));
             $procurement->completed_at = $completedAt;
 
-            $this->log($procurement, $teamLeader, ActivityType::PengadaanSelesai, 'Pengadaan dinyatakan selesai.', $completedAt);
+            $this->log($procurement, $teamLeaderPengadaan, ActivityType::PengadaanSelesai, 'Pengadaan dinyatakan selesai.', $completedAt);
         }
 
         $procurement->save();
 
         if (in_array($track, ['pelaksanaan', 'selesai'], true)) {
-            $this->generateDocuments($procurement, $teamLeader);
+            $this->generateDocuments($procurement, $teamLeaderPengadaan);
         }
     }
 

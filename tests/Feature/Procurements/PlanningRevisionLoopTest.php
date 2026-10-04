@@ -297,15 +297,16 @@ class PlanningRevisionLoopTest extends TestCase
 
     public function test_reassigning_the_pic_hands_the_revision_to_someone_else(): void
     {
-        [$procurement, , $teamLeader] = $this->submitted();
+        [$procurement, , $teamLeaderIcc] = $this->submitted();
+        $teamLeaderPengadaan = User::factory()->teamLeaderPengadaan()->create();
         $replacement = User::factory()->planner()->create();
 
-        $this->actingAs($teamLeader)->put(route('procurements.approval.update', $procurement), [
+        $this->actingAs($teamLeaderIcc)->put(route('procurements.approval.update', $procurement), [
             'approved' => false,
             'note' => 'Perlu revisi.',
         ]);
 
-        $this->actingAs($teamLeader)
+        $this->actingAs($teamLeaderPengadaan)
             ->put(route('procurements.pic.update', $procurement), [
                 'planner_id' => $replacement->id,
                 'executor_id' => null,
@@ -331,7 +332,7 @@ class PlanningRevisionLoopTest extends TestCase
     protected function submitted(): array
     {
         $planner = User::factory()->planner()->create();
-        $teamLeader = User::factory()->teamLeader()->create();
+        $teamLeader = User::factory()->teamLeaderIcc()->create();
 
         ChecklistItem::factory()->stage(ProcurementStage::Perencanaan)->count(2)->create();
         ChecklistItem::factory()->stage(ProcurementStage::Pelaksanaan)->count(1)->create();

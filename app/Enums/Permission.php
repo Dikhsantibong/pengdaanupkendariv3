@@ -126,9 +126,9 @@ enum Permission: string
             self::UpdateProcurement,
             self::DeleteProcurement,
             self::AssignPic,
-            self::ReviewPlanning,
-            self::CompleteProcurement,
-            self::ViewAllProcurements => [UserRole::TeamLeader],
+            self::CompleteProcurement => [UserRole::TeamLeaderPengadaan],
+            self::ReviewPlanning => [UserRole::TeamLeaderIcc],
+            self::ViewAllProcurements => [UserRole::TeamLeaderPengadaan, UserRole::TeamLeaderIcc],
             self::ManageVendorAssessments,
             self::ManageMasterData => [],
             // Every menu was open to everyone before it became a right.
@@ -138,7 +138,12 @@ enum Permission: string
             self::MenuDocuments,
             self::MenuMonitoring,
             self::MenuReports,
-            self::MenuPublicMonitoring => [UserRole::TeamLeader, UserRole::PicPerencana, UserRole::PicPelaksana],
+            self::MenuPublicMonitoring => [
+                UserRole::TeamLeaderPengadaan,
+                UserRole::TeamLeaderIcc,
+                UserRole::PicPerencana,
+                UserRole::PicPelaksana,
+            ],
         };
     }
 }

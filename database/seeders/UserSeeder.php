@@ -29,9 +29,15 @@ class UserSeeder extends Seeder
         ],
         [
             'email' => 'team.leader.pengadaan@upkendari.test',
-            'name' => 'TL Perencanaan',
-            'role' => UserRole::TeamLeader,
-            'position' => 'TL Perencanaan',
+            'name' => 'Team Leader Pengadaan',
+            'role' => UserRole::TeamLeaderPengadaan,
+            'position' => 'Team Leader Pengadaan',
+        ],
+        [
+            'email' => 'team.leader.icc@upkendari.test',
+            'name' => 'Team Leader ICC',
+            'role' => UserRole::TeamLeaderIcc,
+            'position' => 'Team Leader ICC',
         ],
         [
             'email' => 'himatullah@upkendari.test',

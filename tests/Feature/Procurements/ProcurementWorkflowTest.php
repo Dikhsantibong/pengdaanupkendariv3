@@ -99,7 +99,7 @@ class ProcurementWorkflowTest extends TestCase
     {
         Notification::fake();
 
-        $teamLeader = User::factory()->teamLeader()->create();
+        $teamLeader = User::factory()->teamLeaderIcc()->create();
         $planner = User::factory()->planner()->create();
         $executor = User::factory()->executor()->create();
         $procurement = $this->procurementWithChecklists($planner, $executor);
@@ -141,7 +141,7 @@ class ProcurementWorkflowTest extends TestCase
 
     public function test_rejecting_the_planning_stage_requires_a_note(): void
     {
-        $teamLeader = User::factory()->teamLeader()->create();
+        $teamLeader = User::factory()->teamLeaderIcc()->create();
         $planner = User::factory()->planner()->create();
         $procurement = Procurement::factory()->plannedBy($planner)->planningSubmitted()->create();
 

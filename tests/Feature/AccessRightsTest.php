@@ -56,9 +56,9 @@ class AccessRightsTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('access-rights/index')
                 ->has('permissions', count(Permission::cases()))
-                ->where('grants.team_leader', fn ($grants) => in_array('procurement.create', $grants->all(), true)));
+                ->where('grants.team_leader_pengadaan', fn ($grants) => in_array('procurement.create', $grants->all(), true)));
 
-        $this->actingAs(User::factory()->teamLeader()->create())
+        $this->actingAs(User::factory()->teamLeaderPengadaan()->create())
             ->get(route('access-rights.index'))
             ->assertForbidden();
     }
@@ -72,7 +72,8 @@ class AccessRightsTest extends TestCase
         $this->actingAs(User::factory()->administrator()->create())
             ->put(route('access-rights.update'), [
                 'grants' => [
-                    'team_leader' => ['procurement.create', 'procurement.view-all'],
+                    'team_leader_pengadaan' => ['procurement.create', 'procurement.view-all'],
+                    'team_leader_icc' => ['procurement.review-planning', 'procurement.view-all'],
                     'pic_perencana' => ['procurement.create'],
                     'pic_pelaksana' => [],
                 ],
@@ -110,9 +111,9 @@ class AccessRightsTest extends TestCase
 
     public function test_revoking_a_right_takes_it_away(): void
     {
-        $teamLeader = User::factory()->teamLeader()->create();
+        $teamLeader = User::factory()->teamLeaderPengadaan()->create();
 
-        AccessRights::replace(['team_leader' => ['procurement.view-all']]);
+        AccessRights::replace(['team_leader_pengadaan' => ['procurement.view-all']]);
 
         $this->actingAs($teamLeader)->get(route('procurements.create'))->assertForbidden();
     }
@@ -122,7 +123,7 @@ class AccessRightsTest extends TestCase
         $planner = User::factory()->planner()->create();
 
         AccessRights::replace([
-            'team_leader' => ['procurement.view-all', 'procurement.review-planning'],
+            'team_leader_icc' => ['procurement.view-all', 'procurement.review-planning'],
             'pic_perencana' => ['procurement.review-planning'],
         ]);
 
@@ -131,7 +132,7 @@ class AccessRightsTest extends TestCase
         ]);
 
         $this->assertFalse($planner->can('reviewPlanning', $own));
-        $this->assertTrue(User::factory()->teamLeader()->create()->can('reviewPlanning', $own));
+        $this->assertTrue(User::factory()->teamLeaderIcc()->create()->can('reviewPlanning', $own));
     }
 
     public function test_the_administrator_rights_cannot_be_submitted(): void
@@ -157,7 +158,7 @@ class AccessRightsTest extends TestCase
 
     public function test_every_role_keeps_every_menu_by_default(): void
     {
-        foreach ([User::factory()->teamLeader(), User::factory()->planner(), User::factory()->executor()] as $factory) {
+        foreach ([User::factory()->teamLeaderPengadaan(), User::factory()->teamLeaderIcc(), User::factory()->planner(), User::factory()->executor()] as $factory) {
             $user = $factory->create();
 
             foreach (['planning', 'execution', 'approvals', 'documents', 'monitoring', 'reports'] as $menu) {
@@ -218,14 +219,14 @@ class AccessRightsTest extends TestCase
 
     public function test_the_master_data_right_can_be_shared(): void
     {
-        $teamLeader = User::factory()->teamLeader()->create();
+        $teamLeader = User::factory()->teamLeaderPengadaan()->create();
 
         $this->actingAs($teamLeader)->get(route('master-data.target-units.index'))->assertForbidden();
 
         AccessRights::replace([
-            'team_leader' => [...array_map(
+            'team_leader_pengadaan' => [...array_map(
                 fn (Permission $permission): string => $permission->value,
-                array_filter(Permission::cases(), fn (Permission $p): bool => in_array(UserRole::TeamLeader, $p->defaultRoles(), true)),
+                array_filter(Permission::cases(), fn (Permission $p): bool => in_array(UserRole::TeamLeaderPengadaan, $p->defaultRoles(), true)),
             ), 'master-data.manage'],
         ]);
 
@@ -233,5 +234,38 @@ class AccessRightsTest extends TestCase
 
         // Users stay with the administrator whatever is ticked.
         $this->actingAs($teamLeader)->get(route('users.index'))->assertForbidden();
+    }
+
+    public function test_super_admin_can_grant_review_planning_and_complete_rights_to_pic(): void
+    {
+        $plannerReviewer = User::factory()->planner()->create();
+        $otherPlanner = User::factory()->planner()->create();
+        $executor = User::factory()->executor()->create();
+
+        $procurementWaiting = Procurement::factory()->plannedBy($otherPlanner)->create([
+            'planning_approval_state' => PlanningApprovalState::MenungguPersetujuan,
+        ]);
+        $procurementApproved = Procurement::factory()->planningApproved()->create();
+
+        // Initially PICs cannot review planning or complete procurements
+        $this->assertFalse($plannerReviewer->can('reviewPlanning', $procurementWaiting));
+        $this->assertFalse($executor->can('complete', $procurementApproved));
+
+        // Super Admin grants review-planning to pic_perencana and complete to pic_pelaksana
+        $grants = AccessRights::grants();
+        $grants['pic_perencana'][] = 'procurement.review-planning';
+        $grants['pic_perencana'][] = 'procurement.view-all';
+        $grants['pic_pelaksana'][] = 'procurement.complete';
+        $grants['pic_pelaksana'][] = 'procurement.view-all';
+
+        $this->actingAs(User::factory()->administrator()->create())
+            ->put(route('access-rights.update'), ['grants' => $grants])
+            ->assertSessionHasNoErrors();
+
+        // Now plannerReviewer can review other planner's submission
+        $this->assertTrue($plannerReviewer->can('reviewPlanning', $procurementWaiting));
+
+        // And executor can complete approved procurement
+        $this->assertTrue($executor->can('complete', $procurementApproved));
     }
 }

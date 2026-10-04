@@ -109,7 +109,7 @@ export default function Dashboard({
                         icon={CircleDashed}
                         hint={
                             summary.awaitingApproval > 0
-                                ? 'Perlu tindakan TL Perencanaan'
+                                ? 'Perlu tindakan TL ICC'
                                 : 'Tidak ada antrean'
                         }
                     />

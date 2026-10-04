@@ -251,7 +251,7 @@ export default function ShowProcurement({
                                 <ChecklistPanel
                                     procurementId={procurement.id}
                                     title="Checklist Perencanaan"
-                                    description="Dokumen yang harus dilengkapi PIC Perencana sebelum diajukan ke TL Perencanaan."
+                                    description="Dokumen yang harus dilengkapi PIC Perencana sebelum diajukan ke TL ICC."
                                     rows={checklists.perencanaan}
                                     editable={can.updatePlanningChecklist}
                                     canManageDocuments={can.generateDocument}

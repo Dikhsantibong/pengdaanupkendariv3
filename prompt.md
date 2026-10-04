@@ -113,22 +113,28 @@ Fitur berbasis peran tidak lagi terkunci di kode, tetapi diatur Administrator me
 
 | Kelompok | Hak | Bawaan |
 |----------|-----|--------|
-| Pengadaan | Buat perencanaan pengadaan | TL Perencanaan |
-| Pengadaan | Ubah data pengadaan | TL Perencanaan |
-| Pengadaan | Arsipkan pengadaan | TL Perencanaan |
-| Pengadaan | Tunjuk PIC perencana & pelaksana (menu Penunjukan PIC) | TL Perencanaan |
-| Pengadaan | Setujui / tolak perencanaan | TL Perencanaan |
-| Pengadaan | Nyatakan pengadaan selesai | TL Perencanaan |
-| Pengadaan | Lihat seluruh pengadaan | TL Perencanaan |
+| Pengadaan | Buat perencanaan pengadaan | TL Pengadaan |
+| Pengadaan | Ubah data pengadaan | TL Pengadaan |
+| Pengadaan | Arsipkan pengadaan | TL Pengadaan |
+| Pengadaan | Tunjuk PIC perencana & pelaksana (menu Penunjukan PIC) | TL Pengadaan |
+| Pengadaan | Setujui / tolak perencanaan | TL ICC |
+| Pengadaan | Nyatakan pengadaan selesai | TL Pengadaan |
+| Pengadaan | Lihat seluruh pengadaan | TL Pengadaan, TL ICC |
 | Penilaian Penyedia | Kelola penilaian penyedia (menu Penilaian Penyedia) — dapat diberikan mis. ke PIC Pelaksana | (hanya Administrator) |
 | Administrasi | Kelola data master (seluruh menu Data Master) | (hanya Administrator) |
-| Akses Menu | Menu Perencanaan | Semua peran |
-| Akses Menu | Menu Pelaksanaan | Semua peran |
-| Akses Menu | Menu Approval | Semua peran |
-| Akses Menu | Menu Arsip Dokumen | Semua peran |
-| Akses Menu | Menu Monitoring | Semua peran |
-| Akses Menu | Menu Laporan (termasuk ekspor) | Semua peran |
-| Akses Menu | Menu Monitoring Publik (tautan di menu; halaman publik tetap terbuka) | Semua peran |
+| Akses Menu | Menu Perencanaan | Semua peran (TL Pengadaan, TL ICC, PIC Perencana, PIC Pelaksana) |
+| Akses Menu | Menu Pelaksanaan | Semua peran (TL Pengadaan, TL ICC, PIC Perencana, PIC Pelaksana) |
+| Akses Menu | Menu Approval | Semua peran (TL Pengadaan, TL ICC, PIC Perencana, PIC Pelaksana) |
+| Akses Menu | Menu Arsip Dokumen | Semua peran (TL Pengadaan, TL ICC, PIC Perencana, PIC Pelaksana) |
+| Akses Menu | Menu Monitoring | Semua peran (TL Pengadaan, TL ICC, PIC Perencana, PIC Pelaksana) |
+| Akses Menu | Menu Laporan (termasuk ekspor) | Semua peran (TL Pengadaan, TL ICC, PIC Perencana, PIC Pelaksana) |
+| Akses Menu | Menu Monitoring Publik (tautan di menu; halaman publik tetap terbuka) | Semua peran (TL Pengadaan, TL ICC, PIC Perencana, PIC Pelaksana) |
+
+### Fleksibilitas Peran oleh Super Admin
+
+- Super Admin (Administrator) dapat memberikan peran / hak akses approval (`Setujui / tolak perencanaan` atau `Nyatakan pengadaan selesai`) kepada **PIC Perencana** maupun **PIC Pelaksana** melalui menu **Administrasi → Hak Akses**.
+- Super Admin juga dapat langsung mengubah peran pengguna menjadi **Team Leader ICC** atau **Team Leader Pengadaan** melalui menu **Administrasi → Pengguna**.
+- Prinsip pemisahan tugas tetap terjaga: pengguna yang memiliki hak approval perencanaan tetap **tidak dapat menyetujui pengadaan yang ia rencanakan sendiri**.
 
 ### Akses menu
 
@@ -209,17 +215,20 @@ Form ini (menu **Buat Perencanaan Pengadaan**) diisi oleh **Team Leader Pengadaa
 
 | No | Field | Tipe Input | Keterangan |
 |----|-------|-----------|------------|
-| 1 | Nomor PRK | Text | Opsional |
-| 2 | Nomor Nota Dinas Usulan | Text | Opsional |
-| 3 | Nomor Nota Dinas ICC | Text | Opsional |
-| 4 | Nomor PR/PO | Text (input manual) | Opsional, boleh dikosongkan; **tidak lagi diambil dari data master** |
-| 5 | Nomor COA | Text | Opsional |
-| 6 | Nomor WO | Text | Opsional |
+| 1 | No. PRK | Text | Opsional (Berpasangan dengan No. COA) |
+| 2 | No. COA | Text | Opsional |
+| 3 | No. PR | Text (input manual) | Opsional (Berpasangan dengan No. WO) |
+| 4 | No. WO | Text | Opsional |
+| 5 | No. Nodis Usulan & Tgl. Nodis Usulan | Text & Date | Nomor dan tanggal nota dinas usulan (`proposal_memo_date`) |
+| 6 | No. Nodis Manager & Tgl. Nodis Manager | Text & Date | Nomor dan tanggal nota dinas ke manager (`icc_memo_date`, sebelumnya Nota Dinas ICC) |
 | 7 | Nilai (Sebelum Nego) | Number (currency, Rupiah) | Nilai HPE / anggaran sebelum negosiasi |
-| 8 | Nilai Setelah Nego | Number (currency, Rupiah) | Opsional; dikosongkan bila negosiasi belum dilakukan |
-| 9 | Status Progres | Dropdown (single select) | Lihat daftar status pada bagian di bawah |
+| 8 | Nilai Setelah Nego | Number (currency, Rupiah) | Opsional; hasil kesepakatan negosiasi harga |
+| 9 | Status Progres | Dropdown (single select) | Status progres tahapan pengadaan |
 
-> **Target Penyelesaian** sudah dihapus dari form. Data lama yang sudah terisi tetap tersimpan dan tetap dipakai oleh jadwal dashboard dan kurva-S.
+> **Catatan Penyempurnaan Form:**
+> - Inputan nomor dan tanggal nota dinas disatukan di Edit Identitas Pengadaan.
+> - Form "Nota Dinas ke Manager" yang terpisah telah dihapus seluruh inputannya, dan field Nota Dinas ICC diganti namanya menjadi **Nota Dinas ke Manager** lengkap dengan tanggal suratnya (`icc_memo_date`).
+> - Target Penyelesaian sudah dihapus dari form. Data lama yang sudah terisi tetap tersimpan.
 
 ### Daftar Pilihan Status Progres
 
@@ -403,34 +412,69 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 
 # Role
 
-## Administrator
+## Administrator (Super Admin)
 
-Mengelola data master (termasuk Direksi Pekerjaan, Unit Tujuan, Status Progres), pengguna, konfigurasi sistem, dan **hak akses tiap peran** (menu Hak Akses). Selalu memiliki seluruh hak.
-
----
-
-## Team Leader Pengadaan
-
-- Mengisi form input awal dan membuat proyek pengadaan.
-- Menunjuk PIC Perencana.
-- Menyetujui dokumen perencanaan.
-- Menunjuk PIC Pelaksana.
-- Melakukan monitoring seluruh proses pengadaan.
-- Menyetujui penyelesaian pengadaan.
+- Memiliki akses penuh terhadap seluruh fitur, menu, data pengadaan, dan konfigurasi sistem.
+- Mengelola data master (Direksi Pekerjaan, Unit Tujuan, Status Progres, Template Dokumen, dll.).
+- Mengelola akun pengguna dan pembagian peran (User Management).
+- Mengatur matriks **Hak Akses** per peran secara dinamis, termasuk memberikan hak approval (`procurement.review-planning` atau `procurement.complete`) kepada PIC Perencana atau PIC Pelaksana.
 
 ---
 
-## PIC Perencana
+## Team Leader Pengadaan (`team_leader_pengadaan`)
 
-- Bertanggung jawab menyusun seluruh dokumen pada tahap perencanaan.
-- Hanya dapat melihat dan mengakses data pengadaan yang ditugaskan kepadanya (lihat **Prinsip Hak Akses: Visibilitas Data Per PIC**).
+- Mengisi form input awal dan membuat pengadaan baru (`procurement.create`).
+- Mengubah dan mengarsipkan data pengadaan (`procurement.update`, `procurement.delete`).
+- Menunjuk PIC Perencana dan PIC Pelaksana (`procurement.assign-pic`).
+- Memantau seluruh pengadaan di sistem (`procurement.view-all`).
+- Menandai dan menutup bahwa pengadaan telah selesai (`procurement.complete`).
 
 ---
 
-## PIC Pelaksana
+## Team Leader ICC (`team_leader_icc`)
 
-- Bertanggung jawab melaksanakan seluruh proses pengadaan hingga selesai.
-- Hanya dapat melihat dan mengakses data pengadaan yang ditugaskan kepadanya (lihat **Prinsip Hak Akses: Visibilitas Data Per PIC**).
+- Menyetujui atau menolak dokumen perencanaan pengadaan yang diajukan oleh PIC Perencana (`procurement.review-planning`).
+- Membuka kembali penolakan perencanaan jika diperlukan revisi ulang.
+- Memantau seluruh pengadaan di sistem (`procurement.view-all`).
+- Mengakses antrean menu Approval, Monitoring, dan laporan.
+
+---
+
+## PIC Perencana (`pic_perencana`)
+
+- Bertanggung jawab menyusun seluruh dokumen pada tahap perencanaan dan mengajukan persetujuan (submit approval).
+- Secara bawaan hanya dapat melihat dan mengakses data pengadaan yang ditugaskan kepadanya (lihat **Prinsip Hak Akses: Visibilitas Data Per PIC**).
+- Dapat diberikan wewenang approval atau peran TL oleh Administrator melalui menu Hak Akses / Pengguna jika ditugaskan sebagai pengelola approve.
+
+---
+
+## PIC Pelaksana (`pic_pelaksana`)
+
+- Bertanggung jawab melaksanakan seluruh proses pengadaan hingga pengadaan siap diselesaikan.
+- Secara bawaan hanya dapat melihat dan mengakses data pengadaan yang ditugaskan kepadanya (lihat **Prinsip Hak Akses: Visibilitas Data Per PIC**).
+- Dapat diberikan wewenang penutupan pengadaan atau peran TL oleh Administrator melalui menu Hak Akses / Pengguna jika ditugaskan sebagai pengelola approve.
+
+---
+
+# Fitur Tambahan & Penyempurnaan Terkini
+
+### 1. Fitur Preview Dokumen pada Checklist Perencanaan & Pelaksanaan
+- Setiap dokumen yang diunggah pada tabel checklist perencanaan maupun pelaksanaan kini dilengkapi tombol **Preview** (ikon mata `Eye`) di sebelah tombol Unduh dan Hapus.
+- Tombol Preview memunculkan modal dialog responsif yang menampilkan dokumen secara langsung di dalam browser (menggunakan `iframe` untuk berkas PDF dan tag `img` untuk berkas PNG/JPG), sehingga pengguna tidak perlu mengunduh file untuk memeriksa kelengkapan dokumen.
+
+### 2. Standarisasi Logo Perusahaan pada Dokumen
+- Seluruh template dokumen (Nota Dinas Usulan, TOR, UPB, RKS, SPK, BA Negosiasi, Surat Pesanan, Lampiran SP Barang/Jasa) menggunakan logo korporat resmi PLN yang bersumber dari `public/logo/sidebar-logo.png`.
+- Mendukung embedding gambar base64 otomatis pada render DOMPDF/HTML untuk memastikan logo selalu tampil sempurna baik di lingkungan lokal maupun server production tanpa terhalang konfigurasi allow-url-fopen atau path asset.
+
+### 3. Penataan Form Usulan Pekerjaan & Nota Dinas
+- Urutan inputan Usulan Pekerjaan disusun simetris dan rapi:
+  1. No. PRK & No. COA
+  2. No. PR & No. WO
+  3. No. Nodis Usulan & Tgl. Nodis Usulan (`proposal_memo_date`)
+  4. No. Nodis Manager & Tgl. Nodis Manager (`icc_memo_date`)
+  5. Nilai Sebelum Nego & Nilai Setelah Nego
+  6. Status Progres
+- Inputan terpisah "Nota Dinas ke Manager" dihapus, dan field Nota Dinas ICC digantikan menjadi "Nota Dinas ke Manager" dengan penambahan inputan tanggal resmi.
 
 ---
 

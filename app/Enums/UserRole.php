@@ -5,7 +5,8 @@ namespace App\Enums;
 enum UserRole: string
 {
     case Administrator = 'administrator';
-    case TeamLeader = 'team_leader';
+    case TeamLeaderPengadaan = 'team_leader_pengadaan';
+    case TeamLeaderIcc = 'team_leader_icc';
     case PicPerencana = 'pic_perencana';
     case PicPelaksana = 'pic_pelaksana';
 
@@ -16,7 +17,8 @@ enum UserRole: string
     {
         return match ($this) {
             self::Administrator => 'Administrator',
-            self::TeamLeader => 'TL Perencanaan',
+            self::TeamLeaderPengadaan => 'Team Leader Pengadaan',
+            self::TeamLeaderIcc => 'Team Leader ICC',
             self::PicPerencana => 'PIC Perencana',
             self::PicPelaksana => 'PIC Pelaksana',
         };
@@ -27,7 +29,7 @@ enum UserRole: string
      */
     public function isSupervisor(): bool
     {
-        return in_array($this, [self::Administrator, self::TeamLeader], true);
+        return in_array($this, [self::Administrator, self::TeamLeaderPengadaan, self::TeamLeaderIcc], true);
     }
 
     /**

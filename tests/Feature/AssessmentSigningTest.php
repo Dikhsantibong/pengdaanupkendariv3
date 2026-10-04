@@ -151,8 +151,10 @@ class AssessmentSigningTest extends TestCase
         $this->assertNull($invitation->fresh()?->submitted_at);
     }
 
-    public function test_a_name_outside_the_offered_list_is_rejected(): void
+    public function test_a_name_outside_the_offered_list_is_allowed(): void
     {
+        Storage::fake('local');
+
         [$assessment, $administrator, $form] = $this->openSheet();
 
         $invitation = $this->issue($assessment, $administrator, $form);
@@ -161,7 +163,9 @@ class AssessmentSigningTest extends TestCase
             'assessor_name' => 'ORANG LAIN',
             'scores' => $this->everyAspect($form, 3),
             'signature' => self::SIGNATURE,
-        ])->assertSessionHasErrors('assessor_name');
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame('ORANG LAIN', $invitation->fresh()?->assessor_name);
     }
 
     public function test_a_link_is_spent_once_the_sheet_is_signed(): void

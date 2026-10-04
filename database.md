@@ -619,9 +619,10 @@ Nilai-nilai berikut ditulis sebagai string agar mudah dibaca langsung di databas
 | Nilai | Keterangan |
 | --- | --- |
 | `administrator` | Akses penuh |
-| `team_leader` | TL Perencanaan, menyetujui perencanaan |
-| `pic_perencana` | Hanya melihat pengadaan yang ditugaskan kepadanya |
-| `pic_pelaksana` | Hanya melihat pengadaan yang ditugaskan kepadanya |
+| `team_leader_pengadaan` | Team Leader Pengadaan, membuat pengadaan, menunjuk PIC, menandai pengadaan selesai |
+| `team_leader_icc` | Team Leader ICC, menyetujui perencanaan |
+| `pic_perencana` | PIC Perencana, menyusun perencanaan (dapat diberi peran TL/hak approval oleh Super Admin) |
+| `pic_pelaksana` | PIC Pelaksana, melaksanakan pengadaan (dapat diberi peran TL/hak approval oleh Super Admin) |
 
 ### ProcurementStage
 `checklist_items.stage`, `procurement_checklists.stage`, `document_types.stage`

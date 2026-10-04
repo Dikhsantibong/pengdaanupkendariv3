@@ -1,5 +1,9 @@
 export type UserRole =
-    'administrator' | 'team_leader' | 'pic_perencana' | 'pic_pelaksana';
+    | 'administrator'
+    | 'team_leader_pengadaan'
+    | 'team_leader_icc'
+    | 'pic_perencana'
+    | 'pic_pelaksana';
 
 export type User = {
     id: number;

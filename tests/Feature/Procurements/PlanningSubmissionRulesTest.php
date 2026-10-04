@@ -205,7 +205,7 @@ class PlanningSubmissionRulesTest extends TestCase
     public function test_a_rejected_stage_can_be_resubmitted_by_the_planner_only(): void
     {
         $planner = User::factory()->planner()->create();
-        $teamLeader = User::factory()->teamLeader()->create();
+        $teamLeader = User::factory()->teamLeaderIcc()->create();
         $procurement = $this->readyProcurement($planner);
 
         $this->actingAs($planner)->post(route('procurements.approval.store', $procurement));
