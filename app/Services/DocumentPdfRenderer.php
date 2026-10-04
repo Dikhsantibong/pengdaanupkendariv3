@@ -100,20 +100,44 @@ class DocumentPdfRenderer
         $footerY = $isLandscape ? 560 : 800;
         $pageTextX = $isLandscape ? 700 : 500;
 
-        $isSuratPesananOrLampiran = in_array($docTypeCode, [
-            'surat-pesanan',
-            'purchase-order',
-            'surat-pesanan-barang',
-            'surat-pesanan-jasa',
+        $isLampiranSp = in_array($docTypeCode, [
             'lampiran-sp-barang',
             'lampiran-sp-jasa',
-        ]) || str_contains(strtolower($docTitle), 'surat pesanan')
+            'surat-pesanan-barang',
+            'surat-pesanan-jasa',
+        ]) || str_contains(strtolower($docTypeCode), 'lampiran-sp')
            || str_contains(strtolower($docTitle), 'lampiran sp')
-           || str_contains(strtolower($document?->title ?? ''), 'surat pesanan')
            || str_contains(strtolower($document?->title ?? ''), 'lampiran sp')
            || str_contains(strtolower($body), 'syarat umum');
 
-        if ($isSuratPesananOrLampiran) {
+        if ($isLampiranSp) {
+            $contractNumber = ! empty($document?->procurement?->number)
+                ? trim($document->procurement->number)
+                : (! empty($document?->procurement?->pr_po_number)
+                    ? trim($document->procurement->pr_po_number)
+                    : '—');
+            $leftText = $contractNumber;
+            $rightText = 'Pihak Pertama : ....................   Pihak Kedua : ....................';
+            $footerFontSize = 7;
+
+            $canvas->page_script(function ($pageNumber, $pageCount, $canvas, $fontMetrics) use ($font, $leftText, $rightText, $footerY, $footerFontSize): void {
+                $canvas->text(56, $footerY, $leftText, $font, $footerFontSize, [0.25, 0.25, 0.25]);
+                $pageWidth = $canvas->get_width();
+                $textWidth = $fontMetrics->getTextWidth($rightText, $font, $footerFontSize);
+                $rightX = $pageWidth - 56 - $textWidth;
+                $canvas->text($rightX, $footerY, $rightText, $font, $footerFontSize, [0.25, 0.25, 0.25]);
+            });
+
+            return;
+        }
+
+        $isSuratPesanan = in_array($docTypeCode, [
+            'surat-pesanan',
+            'purchase-order',
+        ]) || str_contains(strtolower($docTitle), 'surat pesanan')
+           || str_contains(strtolower($document?->title ?? ''), 'surat pesanan');
+
+        if ($isSuratPesanan) {
             return;
         }
 
