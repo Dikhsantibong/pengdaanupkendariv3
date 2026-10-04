@@ -10,7 +10,9 @@ use App\Models\ProcurementDocument;
 use App\Models\User;
 use App\Services\DocumentPdfRenderer;
 use Database\Seeders\BeritaAcaraTemplateSeeder;
+use Database\Seeders\KontrakTemplateSeeder;
 use Database\Seeders\MasterDataSeeder;
+use Database\Seeders\SpplDocumentTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -107,6 +109,23 @@ class BeritaAcaraDocumentTest extends TestCase
         $this->seed(BeritaAcaraTemplateSeeder::class);
 
         $this->assertDatabaseCount('document_templates', 0);
+    }
+
+    public function test_ba_negosiasi_templates_use_landscape_paper_format(): void
+    {
+        $this->seed(MasterDataSeeder::class);
+        $this->seed(SpplDocumentTemplateSeeder::class);
+        $this->seed(KontrakTemplateSeeder::class);
+
+        $spplType = DocumentType::query()->where('code', 'ba-negosiasi-sppl')->firstOrFail();
+        $spplTemplate = DocumentTemplate::query()->where('document_type_id', $spplType->id)->firstOrFail();
+        $this->assertStringContainsString('@page { size: A4 landscape', $spplTemplate->body);
+        $this->assertStringContainsString('table-layout: fixed', $spplTemplate->body);
+
+        $kontrakType = DocumentType::query()->where('code', 'ba-negosiasi')->firstOrFail();
+        $kontrakTemplate = DocumentTemplate::query()->where('document_type_id', $kontrakType->id)->firstOrFail();
+        $this->assertStringContainsString('@page { size: A4 landscape', $kontrakTemplate->body);
+        $this->assertStringContainsString('table-layout: fixed', $kontrakTemplate->body);
     }
 
     /**

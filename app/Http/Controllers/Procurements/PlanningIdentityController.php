@@ -7,13 +7,17 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Procurements\UpdatePlanningIdentityRequest;
 use App\Models\ContractType;
 use App\Models\Procurement;
+use App\Services\DocumentGenerator;
 use App\Services\ProcurementService;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 
 class PlanningIdentityController extends Controller
 {
-    public function __construct(protected ProcurementService $procurements) {}
+    public function __construct(
+        protected ProcurementService $procurements,
+        protected DocumentGenerator $generator,
+    ) {}
 
     /**
      * Record the identity details the planning PIC supplies.
@@ -25,6 +29,8 @@ class PlanningIdentityController extends Controller
     public function update(UpdatePlanningIdentityRequest $request, Procurement $procurement): RedirectResponse
     {
         $this->authorize('updatePlanningIdentity', $procurement);
+
+        $oldPlaceholders = $this->generator->placeholderValues($procurement);
 
         $changes = [];
 
@@ -46,6 +52,8 @@ class PlanningIdentityController extends Controller
         }
 
         $procurement->save();
+
+        $this->generator->syncDocumentsOnProcurementUpdate($procurement, $oldPlaceholders);
 
         $this->procurements->recordActivity(
             $procurement,

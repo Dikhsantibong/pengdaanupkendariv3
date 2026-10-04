@@ -69,8 +69,8 @@ class ChecklistDocumentRequirementTest extends TestCase
             'Masa Pemeliharaan',
             // SPPL.
             'BA Negosiasi',
-            'Purchase Order (PO)',
             'Surat Pesanan',
+            'Lampiran Surat Pesanan',
         ];
     }
 

@@ -27,6 +27,8 @@ class ProcurementResource extends JsonResource
             'target_unit' => $this->resource->targetUnitNames(),
             'target_units' => $this->resource->servedUnits()->pluck('name')->all(),
             'partner_name' => $this->partner_name,
+            'partner_director_name' => $this->partner_director_name,
+            'partner_address' => $this->partner_address,
             'procurement_method' => $this->procurement_method_id === null
                 ? null
                 : $this->procurementMethod->name,

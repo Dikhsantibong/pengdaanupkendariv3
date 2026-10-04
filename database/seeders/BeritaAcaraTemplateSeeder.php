@@ -440,6 +440,9 @@ class BeritaAcaraTemplateSeeder extends Seeder
 
         return <<<HTML
         <section>
+            <style>
+                @page { size: A4 portrait; margin: 20mm 15mm; }
+            </style>
             {$header}
 
             <p>Pada hari ini <span class="fill">..................</span> tanggal <span class="fill">..................</span> bulan <span class="fill">..................</span> tahun {{tahun}}, telah dilaksanakan klarifikasi dan negosiasi atas pekerjaan <b>{{nama_pengadaan}}</b> antara:</p>
@@ -452,8 +455,8 @@ class BeritaAcaraTemplateSeeder extends Seeder
             </table>
 
             <h3>A. Materi Klarifikasi</h3>
-            <table>
-                <tr><th style="width:5%">No</th><th style="width:24%">Materi</th><th>Hal yang Diklarifikasi</th><th>Penjelasan Penyedia</th></tr>
+            <table style="width: 100%; max-width: 100%; table-layout: fixed; word-break: break-word;">
+                <tr><th style="width:5%">No</th><th style="width:24%">Materi</th><th style="width:35%">Hal yang Diklarifikasi</th><th style="width:36%">Penjelasan Penyedia</th></tr>
                 <tr><td>1</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td></tr>
                 <tr><td>2</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td></tr>
                 <tr><td>3</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td></tr>

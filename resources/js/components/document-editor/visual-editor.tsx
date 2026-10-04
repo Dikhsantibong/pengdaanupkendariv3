@@ -62,6 +62,7 @@ export function VisualEditor({
     const seeded = useRef(false);
     const [inTable, setInTable] = useState(false);
     const [blockStyle, setBlockStyle] = useState('p');
+    const isLandscape = value.toLowerCase().includes('landscape');
 
     // The area is uncontrolled while typing: writing innerHTML on every render
     // would move the caret to the start on each keystroke. So it is written on
@@ -544,7 +545,7 @@ export function VisualEditor({
                 {/* Paper Canvas */}
                 <div
                     ref={paperContainer}
-                    className="relative mx-auto max-w-[210mm] min-h-[65vh] rounded-sm border border-border bg-white p-6 sm:p-12 shadow-sm focus-within:ring-2 focus-within:ring-primary/40"
+                    className={`relative mx-auto w-full ${isLandscape ? 'max-w-[297mm]' : 'max-w-[210mm]'} min-h-[65vh] rounded-sm border border-border bg-white p-6 sm:p-12 shadow-sm focus-within:ring-2 focus-within:ring-primary/40`}
                 >
                     <div
                         ref={area}

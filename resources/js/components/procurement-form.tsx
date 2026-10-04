@@ -34,6 +34,8 @@ export type ProcurementFormValues = {
     number: string;
     name: string;
     partner_name: string;
+    partner_director_name: string;
+    partner_address: string;
     work_director_id: number | null;
     target_unit_ids: number[];
     procurement_method_id: number | null;
@@ -94,6 +96,8 @@ export function ProcurementForm({
                 : (nextNumbers[startingFormatId] ?? '')),
         name: initialValues?.name ?? '',
         partner_name: initialValues?.partner_name ?? '',
+        partner_director_name: initialValues?.partner_director_name ?? '',
+        partner_address: initialValues?.partner_address ?? '',
         work_director_id: initialValues?.work_director_id ?? null,
         target_unit_ids: initialValues?.target_unit_ids ?? [],
         procurement_method_id: initialValues?.procurement_method_id ?? null,
@@ -270,20 +274,6 @@ export function ProcurementForm({
                     <InputError message={errors.name} />
                 </div>
 
-                <div className="grid gap-2">
-                    <Label htmlFor="partner_name">Nama Mitra / Pelaksana</Label>
-                    <Input
-                        id="partner_name"
-                        value={data.partner_name}
-                        onChange={(event) =>
-                            setData('partner_name', event.target.value)
-                        }
-                        placeholder="Contoh: PT Konstruksi Indonesia"
-                        autoComplete="off"
-                    />
-                    <InputError message={errors.partner_name} />
-                </div>
-
                 <div className="grid gap-4 md:grid-cols-2">
                     <div className="grid gap-2">
                         <Label htmlFor="work_director_id">
@@ -433,6 +423,62 @@ export function ProcurementForm({
             </section>
 
             <section className="space-y-4 rounded-md border border-border bg-card p-5">
+                <p className="section-label">Calon Mitra</p>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                    <TextField
+                        id="partner_name"
+                        label="Nama Calon Mitra"
+                        value={data.partner_name}
+                        onChange={(value) => setData('partner_name', value)}
+                        placeholder="Contoh: PT Konstruksi Indonesia"
+                        error={errors.partner_name}
+                    />
+
+                    <TextField
+                        id="partner_director_name"
+                        label="Nama Direktur"
+                        value={data.partner_director_name}
+                        onChange={(value) =>
+                            setData('partner_director_name', value)
+                        }
+                        error={errors.partner_director_name}
+                    />
+
+                    <TextField
+                        id="quotation_number"
+                        label="Nomor Surat Penawaran"
+                        value={data.quotation_number}
+                        onChange={(value) => setData('quotation_number', value)}
+                        placeholder="Contoh: 012/PMR/X/2026"
+                        error={errors.quotation_number}
+                    />
+
+                    <DateField
+                        id="quotation_date"
+                        label="Tanggal Surat Penawaran"
+                        value={data.quotation_date}
+                        onChange={(value) => setData('quotation_date', value)}
+                        error={errors.quotation_date}
+                    />
+
+                    <div className="grid gap-2 md:col-span-2">
+                        <Label htmlFor="partner_address">Alamat Perusahaan</Label>
+                        <Textarea
+                            id="partner_address"
+                            value={data.partner_address}
+                            onChange={(event) =>
+                                setData('partner_address', event.target.value)
+                            }
+                            rows={3}
+                            placeholder="Alamat lengkap kantor / perusahaan calon mitra"
+                        />
+                        <InputError message={errors.partner_address} />
+                    </div>
+                </div>
+            </section>
+
+            <section className="space-y-4 rounded-md border border-border bg-card p-5">
                 <p className="section-label">Usulan Pekerjaan</p>
 
                 <div className="grid gap-4 md:grid-cols-2">
@@ -504,22 +550,6 @@ export function ProcurementForm({
                         value={data.icc_memo_date}
                         onChange={(value) => setData('icc_memo_date', value)}
                         error={errors.icc_memo_date}
-                    />
-
-                    <TextField
-                        id="quotation_number"
-                        label="Nomor Surat Penawaran"
-                        value={data.quotation_number}
-                        onChange={(value) => setData('quotation_number', value)}
-                        placeholder="Contoh: 012/PMR/X/2026"
-                        error={errors.quotation_number}
-                    />
-                    <DateField
-                        id="quotation_date"
-                        label="Tanggal Surat Penawaran"
-                        value={data.quotation_date}
-                        onChange={(value) => setData('quotation_date', value)}
-                        error={errors.quotation_date}
                     />
 
                     <div className="grid gap-2">

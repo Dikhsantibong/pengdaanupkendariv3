@@ -28,7 +28,9 @@ class DocumentGenerator
         return [
             'nomor_pengadaan' => 'Nomor pengadaan internal',
             'nama_pengadaan' => 'Nama/judul pekerjaan',
-            'nama_mitra' => 'Nama mitra/pelaksana pekerjaan',
+            'nama_mitra' => 'Nama calon mitra / pelaksana pekerjaan',
+            'nama_direktur' => 'Nama direktur calon mitra',
+            'alamat_perusahaan' => 'Alamat perusahaan calon mitra',
             'direksi_pekerjaan' => 'Direksi pekerjaan',
             'unit_tujuan' => 'Unit tujuan (seluruh unit, dipisah koma)',
             'metode_pengadaan' => 'Metode pengadaan',
@@ -130,6 +132,8 @@ class DocumentGenerator
             'nomor_pengadaan' => $procurement->number,
             'nama_pengadaan' => $procurement->name,
             'nama_mitra' => $procurement->partner_name ?? '-',
+            'nama_direktur' => $procurement->partner_director_name ?: ($procurement->bank_account_holder ?: '-'),
+            'alamat_perusahaan' => $procurement->partner_address ?: '-',
             'direksi_pekerjaan' => $procurement->workDirector->name,
             'nama_manager' => $managerName,
             'unit_tujuan' => $procurement->targetUnitNames(),
@@ -352,6 +356,71 @@ class DocumentGenerator
     }
 
     /**
+     * Synchronize existing generated documents when procurement fields change,
+     * without requiring the user to manually trigger "Muat Ulang dari Template".
+     *
+     * @param  array<string, string>  $oldPlaceholders
+     */
+    public function syncDocumentsOnProcurementUpdate(Procurement $procurement, array $oldPlaceholders): void
+    {
+        $newPlaceholders = $this->placeholderValues($procurement);
+        $documents = $procurement->documents()->with(['documentType', 'documentTemplate'])->get();
+
+        if ($documents->isEmpty()) {
+            return;
+        }
+
+        $changed = [];
+        foreach ($newPlaceholders as $key => $newValue) {
+            $oldValue = $oldPlaceholders[$key] ?? null;
+            if ($oldValue !== null && $oldValue !== $newValue) {
+                $changed[$key] = [
+                    'old' => $oldValue,
+                    'new' => $newValue,
+                ];
+            }
+        }
+
+        foreach ($documents as $document) {
+            $body = $document->rendered_body;
+            $newBody = $body;
+
+            // 1. If unedited revision (revision === 0) and template is available, re-render cleanly
+            if ($document->revision === 0 && $document->documentTemplate !== null) {
+                $candidate = $this->render($document->documentTemplate, $procurement);
+                if ($candidate !== $body) {
+                    $document->rendered_body = $candidate;
+                    $document->save();
+
+                    continue;
+                }
+            }
+
+            // 2. Expand any unexpanded placeholders like {{key}}
+            foreach ($newPlaceholders as $key => $val) {
+                $pattern = '/\{\{\s*'.preg_quote($key, '/').'\s*\}\}/i';
+                if (preg_match($pattern, $newBody)) {
+                    $newBody = preg_replace($pattern, $val, $newBody);
+                }
+            }
+
+            // 3. For any changed placeholders, replace old values if old was non-trivial
+            foreach ($changed as $key => $diff) {
+                $old = trim($diff['old']);
+                $new = trim($diff['new']);
+                if ($old !== '' && $old !== '-' && $old !== $new && str_contains($newBody, $old)) {
+                    $newBody = str_replace($old, $new, $newBody);
+                }
+            }
+
+            if ($newBody !== $body) {
+                $document->rendered_body = $newBody;
+                $document->save();
+            }
+        }
+    }
+
+    /**
      * Wrap a rendered document body in a printable HTML shell.
      *
      * The PDF renderer paginates with its own page box, so the on-screen page
@@ -396,16 +465,19 @@ class DocumentGenerator
                browser in dark mode does not render dark text on dark. */
             :root { color-scheme: only light; }
             html, body { background: #fff; }
-            @page { size: A4; margin: 22mm 18mm 20mm; }
+            @page { size: A4 portrait; margin: 20mm 15mm; }
             body { font-family: {$fontStack}; font-size: 11pt; color: #111; line-height: 1.45; text-align: justify; {$bodyBox} }
-            @media print { body { max-width: none; margin: 0; padding: 0; } }
+            @media print {
+                @page { size: A4 portrait; margin: 20mm 15mm; }
+                body { max-width: none; margin: 0; padding: 0; }
+            }
             h1 { font-size: 14pt; text-align: center; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4pt; }
             h2 { font-size: 12pt; text-transform: uppercase; border-bottom: 1px solid #111; padding-bottom: 2pt; margin-top: 18pt; }
             h3 { font-size: 11pt; margin: 12pt 0 4pt; }
             h4 { font-size: 11pt; margin: 10pt 0 4pt; }
             p { margin: 4pt 0; }
-            table { width: 100%; border-collapse: collapse; margin: 8pt 0; font-size: 10.5pt; }
-            td, th { border: 1px solid #444; padding: 4pt 6pt; vertical-align: top; }
+            table { width: 100%; max-width: 100%; border-collapse: collapse; margin: 8pt 0; font-size: 10.5pt; }
+            td, th { border: 1px solid #444; padding: 4pt 6pt; vertical-align: top; word-break: break-word; }
             th { background: #f0f0f0; text-align: left; }
             ol, ul { margin: 4pt 0 4pt 18pt; padding: 0; }
             li { margin: 2pt 0; }

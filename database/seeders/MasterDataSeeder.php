@@ -276,11 +276,11 @@ class MasterDataSeeder extends Seeder
             ['Berita Acara', false],
             ['BA Negosiasi', false],
             ['Penyusunan Kontrak', false],
-            ['Purchase Order (PO)', false],
+            ['Surat Pesanan', false],
             ['Rekening Pelaksana', false],
             ['Jaminan Bank', false],
             ['Kontrak', false],
-            ['Surat Pesanan', false],
+            ['Lampiran Surat Pesanan', false],
             ['Rentang Waktu', false],
             ['Rentang Waktu Pelaksanaan', false],
             ['Amandemen', true],
@@ -362,14 +362,14 @@ class MasterDataSeeder extends Seeder
                 'Masa Pemeliharaan' => ['masa-pemeliharaan'],
                 // SPPL.
                 'BA Negosiasi' => ['ba-negosiasi-sppl'],
-                'Purchase Order (PO)' => ['purchase-order'],
-                'Surat Pesanan' => [],
+                'Surat Pesanan' => ['purchase-order'],
+                'Lampiran Surat Pesanan' => [],
             ],
         ];
 
         /** @var array<string, array<int, string>> $alternatives */
         $alternatives = [
-            'Surat Pesanan' => ['surat-pesanan-barang', 'surat-pesanan-jasa'],
+            'Lampiran Surat Pesanan' => ['surat-pesanan-barang', 'surat-pesanan-jasa'],
         ];
 
         $typeIds = DocumentType::query()->pluck('id', 'code');
@@ -431,6 +431,8 @@ class MasterDataSeeder extends Seeder
             ['stage' => ProcurementStage::Perencanaan, 'from' => 'TOR (Term of Reference)', 'to' => 'TOR / KAK'],
             ['stage' => ProcurementStage::Perencanaan, 'from' => 'CSMS', 'to' => 'CSMS (Sertifikat)'],
             ['stage' => ProcurementStage::Perencanaan, 'from' => 'Nota Dinas Perintah Pekerjaan', 'to' => 'Nota Dinas ke Pengadaan'],
+            ['stage' => ProcurementStage::Pelaksanaan, 'from' => 'Surat Pesanan', 'to' => 'Lampiran Surat Pesanan'],
+            ['stage' => ProcurementStage::Pelaksanaan, 'from' => 'Purchase Order (PO)', 'to' => 'Surat Pesanan'],
         ];
 
         foreach ($renames as $rename) {
@@ -509,7 +511,7 @@ class MasterDataSeeder extends Seeder
         // The SPPL execution steps are not part of SPK or PJ.
         $skip(
             ProcurementStage::Pelaksanaan,
-            ['BA Negosiasi', 'Surat Pesanan', 'Rekening Pelaksana', 'Rentang Waktu Pelaksanaan', 'Masa Garansi'],
+            ['BA Negosiasi', 'Lampiran Surat Pesanan', 'Rekening Pelaksana', 'Rentang Waktu Pelaksanaan', 'Masa Garansi'],
             array_values(array_filter([$formats['SPK'] ?? null, $formats['PJ'] ?? null])),
         );
     }
@@ -549,7 +551,7 @@ class MasterDataSeeder extends Seeder
             ['ba-klarifikasi', 'Berita Acara Klarifikasi', ProcurementStage::Pelaksanaan],
             ['kontrak', 'Kontrak', ProcurementStage::Pelaksanaan],
             ['ba-negosiasi-sppl', 'Berita Acara Negosiasi (SPPL)', ProcurementStage::Pelaksanaan],
-            ['purchase-order', 'Purchase Order (PO)', ProcurementStage::Pelaksanaan],
+            ['purchase-order', 'Surat Pesanan', ProcurementStage::Pelaksanaan],
             ['surat-pesanan-barang', 'Lampiran SP Barang', ProcurementStage::Pelaksanaan],
             ['surat-pesanan-jasa', 'Lampiran SP Jasa', ProcurementStage::Pelaksanaan],
             ['surat-pesanan', 'Surat Pesanan', ProcurementStage::Pelaksanaan],

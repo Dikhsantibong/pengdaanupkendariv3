@@ -54,7 +54,7 @@ class KontrakTemplateSeeder extends Seeder
             $seeded++;
         }
 
-        $this->command->info("Template kontrak terpasang untuk {$seeded} jenis dokumen.");
+        $this->command?->info("Template kontrak terpasang untuk {$seeded} jenis dokumen.");
     }
 
     /**
@@ -296,6 +296,9 @@ class KontrakTemplateSeeder extends Seeder
         </section>
 
         <section class="lampiran">
+            <style>
+                @page { size: A4 landscape; margin: 15mm 20mm; }
+            </style>
             <table class="lampiran-head" style="width: 100%; margin-bottom: 14px; border: none; border-collapse: collapse;">
                 <tr>
                     <td style="vertical-align: middle; border: none; padding: 0;">
@@ -309,15 +312,15 @@ class KontrakTemplateSeeder extends Seeder
             <h1>RINCIAN HASIL NEGOSIASI HARGA</h1>
             <p style="text-align:center"><b>{{nama_pengadaan}}</b></p>
 
-            <table>
+            <table style="width: 100%; max-width: 100%; table-layout: fixed; word-break: break-word;">
                 <tr>
                     <th style="width:5%">No</th>
-                    <th>Uraian Barang/Jasa</th>
+                    <th style="width:29%">Uraian Barang/Jasa</th>
                     <th style="width:8%">Qty</th>
                     <th style="width:8%">Sat.</th>
-                    <th style="width:15%">Harga Penawaran (Rp)</th>
-                    <th style="width:15%">Harga Negosiasi (Rp)</th>
-                    <th style="width:15%">Jumlah (Rp)</th>
+                    <th style="width:16%">Harga Penawaran (Rp)</th>
+                    <th style="width:16%">Harga Negosiasi (Rp)</th>
+                    <th style="width:18%">Jumlah (Rp)</th>
                 </tr>
                 <tr><td>1</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td></tr>
                 <tr><td>2</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td></tr>
@@ -339,7 +342,7 @@ class KontrakTemplateSeeder extends Seeder
                 <tr><td class="space"></td><td class="space"></td></tr>
                 <tr>
                     <td class="name fill">( Nama Jelas )</td>
-                    <td class="name fill">( Nama Jelas )</td>
+                    <td class="name fill"><b>{{nama_direktur}}</b></td>
                 </tr>
             </table>
         </section>

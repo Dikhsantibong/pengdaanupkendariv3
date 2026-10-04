@@ -37,6 +37,8 @@ export type ProcurementRow = {
     target_unit: string;
     target_units: string[];
     partner_name: string | null;
+    partner_director_name: string | null;
+    partner_address: string | null;
     procurement_method: string | null;
     budget_source: string | null;
     contract_type: string | null;

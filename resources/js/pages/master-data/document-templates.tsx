@@ -97,15 +97,17 @@ function renderPreviewHtml(body: string): string {
         return rendered;
     }
 
+    const isLandscape = body.toLowerCase().includes('landscape');
+
     return `<!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="utf-8">
 <style>
-    @page { size: A4; margin: 15mm; }
-    body { font-family: "Times New Roman", Times, serif; font-size: 11pt; line-height: 1.45; color: #111; margin: 0; padding: 15mm; }
-    table { width: 100%; border-collapse: collapse; margin: 8pt 0; font-size: 10.5pt; }
-    td, th { border: 1px solid #444; padding: 4pt 6pt; vertical-align: top; }
+    @page { size: A4 ${isLandscape ? 'landscape; margin: 15mm 20mm;' : 'portrait; margin: 15mm;'}; }
+    body { font-family: "Times New Roman", Times, serif; font-size: 11pt; line-height: 1.45; color: #111; max-width: ${isLandscape ? '297mm' : '210mm'}; margin: 0 auto; padding: 15mm; }
+    table { width: 100%; max-width: 100%; border-collapse: collapse; margin: 8pt 0; font-size: 10.5pt; }
+    td, th { border: 1px solid #444; padding: 4pt 6pt; vertical-align: top; word-break: break-word; }
 </style>
 </head>
 <body>${rendered}</body>
@@ -571,7 +573,7 @@ export default function DocumentTemplates({
                     }
                 }}
             >
-                <DialogContent className="flex h-[92vh] max-w-5xl flex-col p-4 sm:p-6">
+                <DialogContent className={`flex h-[92vh] ${previewHtml?.toLowerCase().includes('landscape') ? 'max-w-6xl' : 'max-w-5xl'} flex-col p-4 sm:p-6`}>
                     <DialogHeader className="shrink-0">
                         <DialogTitle>Pratinjau: {previewTitle}</DialogTitle>
                         <DialogDescription>
@@ -579,12 +581,12 @@ export default function DocumentTemplates({
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="my-2 flex-1 min-h-0 w-full overflow-hidden rounded-md border border-border bg-white shadow-inner">
+                    <div className="my-2 flex-1 min-h-0 w-full overflow-y-auto rounded-md border border-border bg-muted/30 p-2 sm:p-4 flex justify-center shadow-inner">
                         {previewHtml !== null && (
                             <iframe
                                 title="Pratinjau Template Dokumen"
                                 srcDoc={previewHtml}
-                                className="h-full w-full border-0"
+                                className={`h-full w-full ${previewHtml?.toLowerCase().includes('landscape') ? 'max-w-[297mm]' : 'max-w-[210mm]'} border border-border bg-white shadow-sm`}
                             />
                         )}
                     </div>

@@ -62,20 +62,23 @@ class SpplDocumentTemplateSeeder extends Seeder
     }
 
     /**
-     * Berita Acara Negosiasi (Harga Pembayaran Langsung) - 1 Halaman.
+     * Berita Acara Negosiasi (Harga Pembayaran Langsung) - 1 Halaman Potret.
      */
     protected function baNegosiasi(): string
     {
         return <<<'HTML'
-        <section style="font-family: Arial, Helvetica, sans-serif; font-size: 10pt; line-height: 1.35; color: #000;">
-            <table style="width: 100%; border: none; border-collapse: collapse; margin-bottom: 12px;">
+        <section style="font-family: Arial, Helvetica, sans-serif; font-size: 9.5pt; line-height: 1.35; color: #000;">
+            <style>
+                @page { size: A4 landscape; margin: 15mm 20mm; }
+            </style>
+            <table style="width: 100%; max-width: 100%; border: none; border-collapse: collapse; margin-bottom: 12px;">
                 <tr>
                     <td style="width: 50%; border: none; padding: 0; vertical-align: top;">
                         <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="height: 38px; width: auto; display: block;">
                         <div style="font-weight: bold; font-size: 10.5pt; margin-top: 6px; letter-spacing: 0.5px;">UP KENDARI</div>
                     </td>
                     <td style="width: 50%; border: none; padding: 0; vertical-align: top; text-align: right;">
-                        <table style="display: inline-table; width: auto; border: none; border-collapse: collapse; font-size: 9.5pt; text-align: left;">
+                        <table style="display: inline-table; width: auto; border: none; border-collapse: collapse; font-size: 9pt; text-align: left;">
                             <tr>
                                 <td style="border: none; padding: 2px 4px 2px 0;">Tanggal</td>
                                 <td style="border: none; padding: 2px 4px;">:</td>
@@ -91,67 +94,67 @@ class SpplDocumentTemplateSeeder extends Seeder
                 </tr>
             </table>
 
-            <div style="text-align: center; margin: 16px 0 14px 0;">
-                <h2 style="font-size: 12pt; font-weight: bold; margin: 0; text-transform: uppercase; border: none; letter-spacing: 0.5px;">HARGA PEMBAYARAN LANGSUNG</h2>
+            <div style="text-align: center; margin: 14px 0 12px 0;">
+                <h2 style="font-size: 11.5pt; font-weight: bold; margin: 0; text-transform: uppercase; border: none; letter-spacing: 0.5px;">HARGA PEMBAYARAN LANGSUNG</h2>
             </div>
 
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 9pt; border: 1px solid #000;">
+            <table style="width: 100%; max-width: 100%; table-layout: fixed; border-collapse: collapse; margin-bottom: 20px; font-size: 8pt; border: 1px solid #000; word-break: break-word;">
                 <thead>
                     <tr style="text-align: center; font-weight: bold;">
-                        <th rowspan="2" style="border: 1px solid #000; padding: 6px 4px; width: 4%; vertical-align: middle; text-align: center;">NO</th>
-                        <th rowspan="2" style="border: 1px solid #000; padding: 6px 6px; vertical-align: middle; text-align: center;">NAMA BARANG/JASA</th>
-                        <th rowspan="2" style="border: 1px solid #000; padding: 6px 4px; width: 8%; vertical-align: middle; text-align: center;">VOLUME</th>
-                        <th rowspan="2" style="border: 1px solid #000; padding: 6px 4px; width: 8%; vertical-align: middle; text-align: center;">SATUAN</th>
-                        <th colspan="2" style="border: 1px solid #000; padding: 6px 4px; width: 26%; vertical-align: middle; text-align: center;">HARGA SEBELUM NEGO</th>
-                        <th colspan="2" style="border: 1px solid #000; padding: 6px 4px; width: 26%; vertical-align: middle; text-align: center;">HARGA SETELAH NEGO</th>
+                        <th rowspan="2" style="border: 1px solid #000; padding: 5px 2px; width: 5%; vertical-align: middle; text-align: center;">NO</th>
+                        <th rowspan="2" style="border: 1px solid #000; padding: 5px 4px; width: 27%; vertical-align: middle; text-align: center;">NAMA BARANG/JASA</th>
+                        <th rowspan="2" style="border: 1px solid #000; padding: 5px 2px; width: 6%; vertical-align: middle; text-align: center;">VOLUME</th>
+                        <th rowspan="2" style="border: 1px solid #000; padding: 5px 2px; width: 6%; vertical-align: middle; text-align: center;">SATUAN</th>
+                        <th colspan="2" style="border: 1px solid #000; padding: 5px 3px; width: 28%; vertical-align: middle; text-align: center;">HARGA SEBELUM NEGO</th>
+                        <th colspan="2" style="border: 1px solid #000; padding: 5px 3px; width: 28%; vertical-align: middle; text-align: center;">HARGA SETELAH NEGO</th>
                     </tr>
                     <tr style="text-align: center; font-weight: bold;">
-                        <th style="border: 1px solid #000; padding: 6px 4px; width: 13%; vertical-align: middle; text-align: center;">HARGA SATUAN</th>
-                        <th style="border: 1px solid #000; padding: 6px 4px; width: 13%; vertical-align: middle; text-align: center;">JUMLAH HARGA</th>
-                        <th style="border: 1px solid #000; padding: 6px 4px; width: 13%; vertical-align: middle; text-align: center;">HARGA SATUAN</th>
-                        <th style="border: 1px solid #000; padding: 6px 4px; width: 13%; vertical-align: middle; text-align: center;">JUMLAH HARGA</th>
+                        <th style="border: 1px solid #000; padding: 4px 2px; width: 14%; vertical-align: middle; text-align: center; font-size: 7.5pt;">HARGA SATUAN</th>
+                        <th style="border: 1px solid #000; padding: 4px 2px; width: 14%; vertical-align: middle; text-align: center; font-size: 7.5pt;">JUMLAH HARGA</th>
+                        <th style="border: 1px solid #000; padding: 4px 2px; width: 14%; vertical-align: middle; text-align: center; font-size: 7.5pt;">HARGA SATUAN</th>
+                        <th style="border: 1px solid #000; padding: 4px 2px; width: 14%; vertical-align: middle; text-align: center; font-size: 7.5pt;">JUMLAH HARGA</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td style="border: 1px solid #000; padding: 6px 4px; text-align: center;">1</td>
-                        <td style="border: 1px solid #000; padding: 6px 6px;">{{nama_pengadaan}}</td>
-                        <td style="border: 1px solid #000; padding: 6px 4px; text-align: center;">1</td>
-                        <td style="border: 1px solid #000; padding: 6px 4px; text-align: center;">Lot</td>
-                        <td style="border: 1px solid #000; padding: 6px 6px; text-align: right;">{{nilai_hpe_angka}}</td>
-                        <td style="border: 1px solid #000; padding: 6px 6px; text-align: right;">{{nilai_hpe_angka}}</td>
-                        <td style="border: 1px solid #000; padding: 6px 6px; text-align: right;">{{nilai_setelah_nego_angka}}</td>
-                        <td style="border: 1px solid #000; padding: 6px 6px; text-align: right;">{{nilai_setelah_nego_angka}}</td>
+                        <td style="border: 1px solid #000; padding: 5px 2px; text-align: center;">1</td>
+                        <td style="border: 1px solid #000; padding: 5px 4px;">{{nama_pengadaan}}</td>
+                        <td style="border: 1px solid #000; padding: 5px 2px; text-align: center;">1</td>
+                        <td style="border: 1px solid #000; padding: 5px 2px; text-align: center;">Lot</td>
+                        <td style="border: 1px solid #000; padding: 5px 3px; text-align: right;">{{nilai_hpe_angka}}</td>
+                        <td style="border: 1px solid #000; padding: 5px 3px; text-align: right;">{{nilai_hpe_angka}}</td>
+                        <td style="border: 1px solid #000; padding: 5px 3px; text-align: right;">{{nilai_setelah_nego_angka}}</td>
+                        <td style="border: 1px solid #000; padding: 5px 3px; text-align: right;">{{nilai_setelah_nego_angka}}</td>
                     </tr>
                     <tr>
-                        <td colspan="4" style="border: 1px solid #000; padding: 5px 6px; text-align: center; font-weight: bold;">TOTAL HARGA</td>
-                        <td colspan="2" style="border: 1px solid #000; padding: 5px 8px; text-align: right; font-weight: bold;">{{nilai_hpe_angka}}</td>
-                        <td colspan="2" style="border: 1px solid #000; padding: 5px 8px; text-align: right; font-weight: bold;">{{nilai_setelah_nego_angka}}</td>
+                        <td colspan="4" style="border: 1px solid #000; padding: 4px 4px; text-align: center; font-weight: bold;">TOTAL HARGA</td>
+                        <td colspan="2" style="border: 1px solid #000; padding: 4px 4px; text-align: right; font-weight: bold;">{{nilai_hpe_angka}}</td>
+                        <td colspan="2" style="border: 1px solid #000; padding: 4px 4px; text-align: right; font-weight: bold;">{{nilai_setelah_nego_angka}}</td>
                     </tr>
                     <tr>
-                        <td colspan="4" style="border: 1px solid #000; padding: 5px 6px; text-align: center; font-weight: bold;">DPP 11/12</td>
-                        <td colspan="2" style="border: 1px solid #000; padding: 5px 8px; text-align: right; font-weight: bold;">{{nilai_hpe_dpp_angka}}</td>
-                        <td colspan="2" style="border: 1px solid #000; padding: 5px 8px; text-align: right; font-weight: bold;">{{nilai_setelah_nego_dpp_angka}}</td>
+                        <td colspan="4" style="border: 1px solid #000; padding: 4px 4px; text-align: center; font-weight: bold;">DPP 11/12</td>
+                        <td colspan="2" style="border: 1px solid #000; padding: 4px 4px; text-align: right; font-weight: bold;">{{nilai_hpe_dpp_angka}}</td>
+                        <td colspan="2" style="border: 1px solid #000; padding: 4px 4px; text-align: right; font-weight: bold;">{{nilai_setelah_nego_dpp_angka}}</td>
                     </tr>
                     <tr>
-                        <td colspan="4" style="border: 1px solid #000; padding: 5px 6px; text-align: center; font-weight: bold;">PPN 12%</td>
-                        <td colspan="2" style="border: 1px solid #000; padding: 5px 8px; text-align: right; font-weight: bold;">{{nilai_hpe_ppn_angka}}</td>
-                        <td colspan="2" style="border: 1px solid #000; padding: 5px 8px; text-align: right; font-weight: bold;">{{nilai_setelah_nego_ppn_angka}}</td>
+                        <td colspan="4" style="border: 1px solid #000; padding: 4px 4px; text-align: center; font-weight: bold;">PPN 12%</td>
+                        <td colspan="2" style="border: 1px solid #000; padding: 4px 4px; text-align: right; font-weight: bold;">{{nilai_hpe_ppn_angka}}</td>
+                        <td colspan="2" style="border: 1px solid #000; padding: 4px 4px; text-align: right; font-weight: bold;">{{nilai_setelah_nego_ppn_angka}}</td>
                     </tr>
                     <tr>
-                        <td colspan="4" style="border: 1px solid #000; padding: 5px 6px; text-align: center; font-weight: bold;">JUMLAH TOTAL</td>
-                        <td colspan="2" style="border: 1px solid #000; padding: 5px 8px; text-align: right; font-weight: bold;">{{nilai_hpe_total_angka}}</td>
-                        <td colspan="2" style="border: 1px solid #000; padding: 5px 8px; text-align: right; font-weight: bold;">{{nilai_setelah_nego_total_angka}}</td>
+                        <td colspan="4" style="border: 1px solid #000; padding: 4px 4px; text-align: center; font-weight: bold;">JUMLAH TOTAL</td>
+                        <td colspan="2" style="border: 1px solid #000; padding: 4px 4px; text-align: right; font-weight: bold;">{{nilai_hpe_total_angka}}</td>
+                        <td colspan="2" style="border: 1px solid #000; padding: 4px 4px; text-align: right; font-weight: bold;">{{nilai_setelah_nego_total_angka}}</td>
                     </tr>
                 </tbody>
             </table>
 
-            <table style="width: 100%; border: none; border-collapse: collapse; margin-top: 40px; font-size: 10pt; page-break-inside: avoid;">
+            <table style="width: 100%; max-width: 100%; border: none; border-collapse: collapse; margin-top: 36px; font-size: 9.5pt; page-break-inside: avoid;">
                 <tr>
                     <td style="width: 50%; border: none; text-align: center; vertical-align: top;">
                         <b>{{nama_mitra}}</b><br>
                         <b>DIREKTUR</b><br><br><br><br><br><br>
-                        <b>{{nama_pemilik_rekening}}</b>
+                        <b>{{nama_direktur}}</b>
                     </td>
                     <td style="width: 50%; border: none; text-align: center; vertical-align: top;">
                         <b>PLN NP UP KENDARI</b><br>
@@ -293,7 +296,7 @@ class SpplDocumentTemplateSeeder extends Seeder
                     <td style="width: 50%; border: 1px solid #000; text-align: center; vertical-align: top; padding: 12px 8px;">
                         <div style="font-weight: bold;">{{nama_mitra}}</div>
                         <div style="font-weight: bold; margin-bottom: 75px;">DIREKTUR</div>
-                        <div style="font-weight: bold;">{{nama_pemilik_rekening}}</div>
+                        <div style="font-weight: bold;">{{nama_direktur}}</div>
                     </td>
                     <td style="width: 50%; border: 1px solid #000; text-align: center; vertical-align: top; padding: 12px 8px;">
                         <div style="font-weight: bold;">PT PLN NUSANTARA POWER UP KENDARI</div>
@@ -324,7 +327,7 @@ class SpplDocumentTemplateSeeder extends Seeder
 
         $pasalB3 = $isBarang
             ? 'Pelaksana Pekerjaan (PIHAK KEDUA) menjamin bahwa barang yang dijual bebas dari segala macam kerusakan sampai diterbitkannya Berita Acara Penerimaan Material yang dilengkapi Foto Dokumentasi.'
-            : 'Pelaksana Pekerjaan (PIHAK KEDUA) menjamin bahwa pekerjaan yang telah diselesaikan bebas dari segala macam kerusakan sampai diterbitkannya Berita Acara Penerimaan Material yang dilengkapi Foto Dokumentasi.';
+            : 'Pelaksana Pekerjaan (PIHAK KEDUA) menjamin bahwa pekerjaan yang telah diselesaikan bebas dari segala macam kerusakan sampai diterbitkannya Berita Acara Penerimaan jasa yang dilengkapi Foto Dokumentasi.';
 
         $pasalB4Lead = $isBarang
             ? 'Pelaksana Pekerjaan (PIHAK KEDUA) menjamin bahwa barang yang dijual bebas dari segala macam kerusakan selama {{masa_garansi_bulan}} ({{masa_garansi_bulan_terbilang}}) bulan (disebut sebagai Masa Garansi) terhitung sejak alat terpasang/digunakan atau sejak tanggal diterbitkannya Berita Acara Pemeriksaan Barang, kecuali:'
@@ -353,6 +356,10 @@ class SpplDocumentTemplateSeeder extends Seeder
         $docTagihanI = $isBarang
             ? 'Copy Surat Jalan'
             : 'Surat Pernyataan Garansi';
+
+        $docTagihanExtra = $isBarang
+            ? ''
+            : '<li style="margin-bottom: 1px;">Entry permit / working permit</li>';
 
         $dendaTelat = $isBarang
             ? 'Apabila terjadi keterlambatan penyerahan barang sesuai waktu yang telah ditentukan dalam Surat Pesanan ini maka PIHAK KEDUA dikenakan denda keterlambatan sebesar 1 ‰ (satu per mil) per hari kalender dari nilai item barang yang terlambat dengan batas maksimum denda keterlambatan sebesar 5% (lima persen) dari nilai item barang yang terlambat.'
@@ -414,7 +421,7 @@ class SpplDocumentTemplateSeeder extends Seeder
                 <div style="font-weight: bold; text-decoration: underline; margin-bottom: 3px;">D. PEMBAYARAN</div>
                 <ol style="margin: 0; padding-left: 18px; text-align: justify;">
                     <li style="margin-bottom: 2px;">Penagihan dapat dilakukan Pelaksana Pekerjaan (PIHAK KEDUA) dengan mengirimkan dokumen penagihan sebagai berikut :
-                        <ol type="a" style="margin: 2px 0; padding-left: 16px;">
+                        <ol type="a" style="margin: 2px 0; padding-left: 16px; list-style-type: lower-alpha;">
                             <li style="margin-bottom: 1px;">Surat Permohonan Pembayaran ditujukan kepada Manager UP Kendari;</li>
                             <li style="margin-bottom: 1px;">{$docTagihanB}</li>
                             <li style="margin-bottom: 1px;">Invoice, 3 (tiga) rangkap</li>
@@ -424,6 +431,7 @@ class SpplDocumentTemplateSeeder extends Seeder
                             <li style="margin-bottom: 1px;">Copy Surat Pesanan (SP);</li>
                             <li style="margin-bottom: 1px;">Copy NPWP dan PKP, 1 (satu) rangkap;</li>
                             <li style="margin-bottom: 1px;">{$docTagihanI}</li>
+                            {$docTagihanExtra}
                         </ol>
                     </li>
                     <li style="margin-bottom: 2px;">Pembayaran dari PIHAK PERTAMA kepada PIHAK KEDUA dilakukan dengan pemindahbukuan/transfer setiap hari kerja melalui :

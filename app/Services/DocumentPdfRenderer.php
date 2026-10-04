@@ -70,7 +70,8 @@ class DocumentPdfRenderer
         $options->set('chroot', public_path());
 
         $dompdf = new Dompdf($options);
-        $dompdf->setPaper('A4', 'portrait');
+        $isLandscape = str_contains(strtolower($document->rendered_body), 'landscape');
+        $dompdf->setPaper('A4', $isLandscape ? 'landscape' : 'portrait');
         $dompdf->loadHtml($this->generator->printableHtml($document, forPdf: true), 'UTF-8');
         $dompdf->render();
 
@@ -94,18 +95,21 @@ class DocumentPdfRenderer
         $docTitle = $document?->documentType?->name ?? 'Dokumen Pengadaan';
         $body = $document?->rendered_body ?? '';
         $hasCover = str_contains($body, 'cover-page') || str_contains($body, 'class="cover"');
+        $isLandscape = str_contains(strtolower($body), 'landscape');
+        $footerY = $isLandscape ? 560 : 800;
+        $pageTextX = $isLandscape ? 700 : 500;
 
         if ($hasCover) {
-            $canvas->page_script(function ($pageNumber, $pageCount, $canvas, $fontMetrics) use ($font, $docTitle): void {
+            $canvas->page_script(function ($pageNumber, $pageCount, $canvas, $fontMetrics) use ($font, $docTitle, $footerY, $pageTextX): void {
                 if ($pageNumber > 1) {
-                    $canvas->text(56, 800, $docTitle, $font, 8, [0.35, 0.35, 0.35]);
+                    $canvas->text(56, $footerY, $docTitle, $font, 8, [0.35, 0.35, 0.35]);
                     $text = "Halaman {$pageNumber} dari {$pageCount}";
-                    $canvas->text(500, 800, $text, $font, 8, [0.35, 0.35, 0.35]);
+                    $canvas->text($pageTextX, $footerY, $text, $font, 8, [0.35, 0.35, 0.35]);
                 }
             });
         } else {
-            $canvas->page_text(56, 800, $docTitle, $font, 8, [0.35, 0.35, 0.35]);
-            $canvas->page_text(500, 800, 'Halaman {PAGE_NUM} dari {PAGE_COUNT}', $font, 8, [0.35, 0.35, 0.35]);
+            $canvas->page_text(56, $footerY, $docTitle, $font, 8, [0.35, 0.35, 0.35]);
+            $canvas->page_text($pageTextX, $footerY, 'Halaman {PAGE_NUM} dari {PAGE_COUNT}', $font, 8, [0.35, 0.35, 0.35]);
         }
     }
 

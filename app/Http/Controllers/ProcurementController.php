@@ -12,6 +12,7 @@ use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementDocument;
 use App\Models\User;
+use App\Services\DocumentGenerator;
 use App\Services\ProcurementService;
 use App\Support\MasterDataOptions;
 use App\Support\ProcurementFilters;
@@ -22,7 +23,10 @@ use Inertia\Response;
 
 class ProcurementController extends Controller
 {
-    public function __construct(protected ProcurementService $procurements) {}
+    public function __construct(
+        protected ProcurementService $procurements,
+        protected DocumentGenerator $generator,
+    ) {}
 
     /**
      * Show every procurement the current user is allowed to see.
@@ -193,6 +197,8 @@ class ProcurementController extends Controller
                 'contract_number_format_id' => $procurement->contract_number_format_id,
                 'name' => $procurement->name,
                 'partner_name' => $procurement->partner_name ?? '',
+                'partner_director_name' => $procurement->partner_director_name ?? '',
+                'partner_address' => $procurement->partner_address ?? '',
                 'work_director_id' => $procurement->work_director_id,
                 'target_unit_ids' => $procurement->servedUnits()->pluck('id')->all(),
                 'procurement_method_id' => $procurement->procurement_method_id,
@@ -226,6 +232,8 @@ class ProcurementController extends Controller
     {
         $this->authorize('update', $procurement);
 
+        $oldPlaceholders = $this->generator->placeholderValues($procurement);
+
         $procurement->fill($request->safe()->except(['number', 'target_unit_ids']));
 
         // The number is not mass assignable, so a correction is applied here
@@ -246,6 +254,8 @@ class ProcurementController extends Controller
         // The method decides which checklist steps apply, so a change to it has
         // to be reflected on the checklist straight away.
         $this->procurements->syncChecklists($procurement);
+
+        $this->generator->syncDocumentsOnProcurementUpdate($procurement, $oldPlaceholders);
 
         $this->procurements->recordActivity(
             $procurement,

@@ -661,6 +661,15 @@ Menampilkan informasi:
 
 ---
 
+# Standar Orientasi Kertas Template Dokumen (Format Potret / Portrait)
+
+- Seluruh dokumen pengadaan dan berita acara, termasuk **Berita Acara Negosiasi (BA Negosiasi SPPL, SPK, dan Pelelangan/Tender)**, menggunakan format kertas **Potret (A4 Portrait)** secara konsisten.
+- Pengaturan cetak HTML dan PDF (`@page { size: A4 portrait; margin: 20mm 15mm; }`) mengunci orientasi kertas agar tidak pernah otomatis terbalik menjadi landscape saat dicetak melalui browser maupun Dompdf.
+- Tabel rincian hasil negosiasi menggunakan layout terstruktur (`table-layout: fixed; width: 100%; max-width: 100%; word-break: break-word;`) dengan proporsi persentase kolom yang pas, sehingga seluruh kolom muat dalam 1 halaman A4 potret tanpa terpotong atau melebar keluar batas halaman kertas.
+- Dialog pratinjau template dokumen pada Data Master dan editor visual membatasi bingkai tampilan pada ukuran kertas A4 potret (`max-w-[210mm]`).
+
+---
+
 # Teknologi
 
 Sesuai dengan `claude.md`.

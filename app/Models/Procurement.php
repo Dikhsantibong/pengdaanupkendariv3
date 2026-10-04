@@ -24,6 +24,8 @@ use Illuminate\Support\Collection;
  * @property int|null $contract_number_format_id
  * @property string $name
  * @property string|null $partner_name
+ * @property string|null $partner_director_name
+ * @property string|null $partner_address
  * @property int $work_director_id
  * @property int $target_unit_id
  * @property int|null $procurement_method_id
@@ -70,6 +72,8 @@ use Illuminate\Support\Collection;
 #[Fillable([
     'name',
     'partner_name',
+    'partner_director_name',
+    'partner_address',
     'work_director_id',
     'target_unit_id',
     'procurement_method_id',

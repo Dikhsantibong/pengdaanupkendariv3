@@ -32,9 +32,9 @@ class SpplExecutionTest extends TestCase
         $this->assertSame([
             'Evaluasi Dokumen',
             'BA Negosiasi',
-            'Purchase Order (PO)',
-            'Rekening Pelaksana',
             'Surat Pesanan',
+            'Rekening Pelaksana',
+            'Lampiran Surat Pesanan',
             'Rentang Waktu Pelaksanaan',
             'Masa Garansi',
         ], $this->executionSteps('SPPL'));
@@ -47,7 +47,7 @@ class SpplExecutionTest extends TestCase
             'Penyusunan HPS',
             'Proses SMART SCM',
             'Berita Acara',
-            'Purchase Order (PO)',
+            'Surat Pesanan',
             'Jaminan Bank',
             'Kontrak',
             'Rentang Waktu',
@@ -149,7 +149,7 @@ class SpplExecutionTest extends TestCase
     {
         Storage::fake('local');
 
-        [$procurement, $executor, $checklist] = $this->spplStep('Surat Pesanan');
+        [$procurement, $executor, $checklist] = $this->spplStep('Lampiran Surat Pesanan');
 
         // Neither alternative is signed yet: the step cannot be completed.
         $this->actingAs($executor)
@@ -200,7 +200,7 @@ class SpplExecutionTest extends TestCase
     {
         $this->seed(MasterDataSeeder::class);
 
-        $item = ChecklistItem::query()->where('name', 'Purchase Order (PO)')->firstOrFail();
+        $item = ChecklistItem::query()->where('name', 'Surat Pesanan')->firstOrFail();
         $barang = DocumentType::query()->where('code', 'lampiran-sp-barang')->firstOrFail();
         $jasa = DocumentType::query()->where('code', 'lampiran-sp-jasa')->firstOrFail();
 

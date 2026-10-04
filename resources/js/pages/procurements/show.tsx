@@ -74,15 +74,11 @@ export default function ShowProcurement({
     options,
     can,
 }: ShowProps) {
-    const summary: Array<{
+    const identitySummary: Array<{
         label: string;
         value: string;
         field?: 'contract_type';
     }> = [
-        {
-            label: 'Nama Mitra / Pelaksana',
-            value: procurement.partner_name ?? '—',
-        },
         { label: 'Direksi Pekerjaan', value: procurement.work_director },
         { label: 'Unit Tujuan', value: procurement.target_unit },
         {
@@ -98,6 +94,44 @@ export default function ShowProcurement({
             value: procurement.contract_type ?? '—',
             field: 'contract_type' as const,
         },
+        { label: 'Dibuat Oleh', value: detail.created_by ?? '—' },
+        { label: 'Tanggal Dibuat', value: formatDate(procurement.created_at) },
+    ];
+
+    const partnerSummary: Array<{
+        label: string;
+        value: string;
+        fullWidth?: boolean;
+    }> = [
+        {
+            label: 'Nama Calon Mitra',
+            value: procurement.partner_name ?? '—',
+        },
+        {
+            label: 'Nama Direktur',
+            value: procurement.partner_director_name ?? '—',
+        },
+        {
+            label: 'Nomor Surat Penawaran',
+            value: procurement.quotation_number ?? '—',
+        },
+        {
+            label: 'Tanggal Surat Penawaran',
+            value: procurement.quotation_date
+                ? formatDate(procurement.quotation_date)
+                : '—',
+        },
+        {
+            label: 'Alamat Perusahaan',
+            value: procurement.partner_address ?? '—',
+            fullWidth: true,
+        },
+    ];
+
+    const proposalSummary: Array<{
+        label: string;
+        value: string;
+    }> = [
         { label: 'Nomor PRK', value: procurement.prk_number ?? '—' },
         { label: 'Nomor COA', value: procurement.coa_number ?? '—' },
         { label: 'Nomor PR/PO', value: procurement.pr_po_number ?? '—' },
@@ -123,16 +157,6 @@ export default function ShowProcurement({
                 : '—',
         },
         {
-            label: 'Nomor Surat Penawaran',
-            value: procurement.quotation_number ?? '—',
-        },
-        {
-            label: 'Tanggal Surat Penawaran',
-            value: procurement.quotation_date
-                ? formatDate(procurement.quotation_date)
-                : '—',
-        },
-        {
             label: 'Nilai (Sebelum Nego)',
             value: formatCurrency(procurement.hpe_value),
         },
@@ -143,8 +167,6 @@ export default function ShowProcurement({
                     ? '—'
                     : formatCurrency(procurement.value_after_negotiation),
         },
-        { label: 'Dibuat Oleh', value: detail.created_by ?? '—' },
-        { label: 'Tanggal Dibuat', value: formatDate(procurement.created_at) },
     ];
 
     return (
@@ -201,7 +223,7 @@ export default function ShowProcurement({
                             </header>
 
                             <dl className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
-                                {summary.map((item) => (
+                                {identitySummary.map((item) => (
                                     <div
                                         key={item.label}
                                         className="flex items-baseline justify-between gap-4 border-b border-border px-4 py-2.5 last:border-b-0 sm:[&:nth-last-child(2)]:border-b-0"
@@ -226,6 +248,54 @@ export default function ShowProcurement({
                                             ) : (
                                                 item.value
                                             )}
+                                        </dd>
+                                    </div>
+                                ))}
+                            </dl>
+                        </section>
+
+                        <section className="rounded-md border border-border bg-card">
+                            <header className="border-b border-border px-4 py-3">
+                                <h2 className="text-sm font-semibold text-foreground">
+                                    Calon Mitra
+                                </h2>
+                            </header>
+
+                            <dl className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
+                                {partnerSummary.map((item) => (
+                                    <div
+                                        key={item.label}
+                                        className={`flex items-baseline justify-between gap-4 border-b border-border px-4 py-2.5 last:border-b-0 sm:[&:nth-last-child(2)]:border-b-0 ${item.fullWidth ? 'sm:col-span-2' : ''}`}
+                                    >
+                                        <dt className="text-sm text-muted-foreground">
+                                            {item.label}
+                                        </dt>
+                                        <dd className="tabular text-right text-sm font-medium text-foreground">
+                                            {item.value}
+                                        </dd>
+                                    </div>
+                                ))}
+                            </dl>
+                        </section>
+
+                        <section className="rounded-md border border-border bg-card">
+                            <header className="border-b border-border px-4 py-3">
+                                <h2 className="text-sm font-semibold text-foreground">
+                                    Usulan Pekerjaan
+                                </h2>
+                            </header>
+
+                            <dl className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
+                                {proposalSummary.map((item) => (
+                                    <div
+                                        key={item.label}
+                                        className="flex items-baseline justify-between gap-4 border-b border-border px-4 py-2.5 last:border-b-0 sm:[&:nth-last-child(2)]:border-b-0"
+                                    >
+                                        <dt className="text-sm text-muted-foreground">
+                                            {item.label}
+                                        </dt>
+                                        <dd className="tabular text-right text-sm font-medium text-foreground">
+                                            {item.value}
                                         </dd>
                                     </div>
                                 ))}
