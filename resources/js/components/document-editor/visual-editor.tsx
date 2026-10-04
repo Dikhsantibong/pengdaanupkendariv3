@@ -221,6 +221,72 @@ function recalculateNegotiationTable(table: HTMLTableElement, activeCell?: HTMLE
     }
 }
 
+function isSuratPesananTable(table: HTMLTableElement): boolean {
+    const text = (table.innerText || '').toUpperCase();
+    return (
+        text.includes('BATAS WAKTU') &&
+        (text.includes('PENYERAHAN') || text.includes('PENYELESAIAN')) &&
+        (text.includes('PERHATIAN') || text.includes('TOTAL'))
+    );
+}
+
+function recalculateSuratPesananTable(table: HTMLTableElement, activeCell?: HTMLElement | null) {
+    const tbody = table.querySelector('tbody') || table;
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    const itemRows: HTMLTableRowElement[] = [];
+    let rowTotal: HTMLTableRowElement | null = null;
+
+    for (const r of rows) {
+        const text = r.innerText.toUpperCase();
+        if (text.includes('PERHATIAN') && text.includes('TOTAL')) {
+            rowTotal = r;
+        } else if (r.cells.length === 7) {
+            let hasColspan = false;
+            for (let i = 0; i < r.cells.length; i++) {
+                if (r.cells[i].colSpan > 1) {
+                    hasColspan = true;
+                    break;
+                }
+            }
+            if (!hasColspan) {
+                itemRows.push(r);
+            }
+        }
+    }
+
+    if (itemRows.length === 0) return;
+
+    let sumTotal = 0;
+
+    itemRows.forEach((row, idx) => {
+        const cells = row.cells;
+        if (cells.length < 7) return;
+
+        // Auto re-number NO
+        if (cells[0] !== activeCell) {
+            cells[0].innerText = String(idx + 1);
+        }
+
+        const vol = parseNegoVolume(cells[2].innerText);
+        const price = parseNegoNumber(cells[4].innerText);
+        const total = Math.round(vol * price);
+
+        if (cells[5] !== activeCell && price > 0) {
+            cells[5].innerText = 'Rp ' + formatRupiahDisplay(total);
+        }
+
+        sumTotal += total > 0 ? total : parseNegoNumber(cells[5].innerText);
+    });
+
+    if (rowTotal && sumTotal > 0) {
+        const totalCell = rowTotal.cells.length >= 3 ? rowTotal.cells[2] : null;
+        if (totalCell && totalCell !== activeCell) {
+            totalCell.innerText = 'Rp ' + formatRupiahDisplay(sumTotal);
+        }
+    }
+}
+
 /**
  * Edit a document the way it will be printed.
  *
@@ -304,6 +370,11 @@ export function VisualEditor({
                     }
                 } else {
                     recalculateNegotiationTable(table, cell);
+                }
+            } else if (cell && table && isSuratPesananTable(table)) {
+                const row = cell.closest('tr');
+                if (row && row.cells.length === 7) {
+                    recalculateSuratPesananTable(table, cell);
                 }
             }
         }
@@ -525,7 +596,99 @@ export function VisualEditor({
             return;
         }
 
-        // Default: clone current row for non-negotiation tables
+        // Surat Pesanan table: insert a fresh 7-cell item row above summary rows (NOTE / PERHATIAN / TOTAL)
+        if (isSuratPesananTable(table)) {
+            const tbody = table.querySelector('tbody') || table;
+            const allRows = Array.from(tbody.querySelectorAll('tr'));
+
+            let insertBefore: HTMLTableRowElement | null = null;
+            let itemCount = 0;
+            let prevDeadline = '';
+            let prevSatuan = 'Lot';
+
+            for (const r of allRows) {
+                const txt = r.innerText.toUpperCase();
+                if (
+                    txt.includes('NOTE') ||
+                    txt.includes('PERHATIAN') ||
+                    txt.includes('TOTAL') ||
+                    txt.includes('TERBILANG')
+                ) {
+                    if (!insertBefore) insertBefore = r;
+                } else if (r.cells.length === 7) {
+                    itemCount++;
+                    // Extract deadline date from cell 6 (BATAS WAKTU / PENYERAHAN BARANG / JASA)
+                    const deadlineText = r.cells[6]?.innerText?.trim() || '';
+                    if (deadlineText && deadlineText !== '&nbsp;') {
+                        prevDeadline = deadlineText;
+                    }
+                    const satuanText = r.cells[3]?.innerText?.trim() || '';
+                    if (satuanText && satuanText !== '&nbsp;') {
+                        prevSatuan = satuanText;
+                    }
+                }
+            }
+
+            // Build a clean item row with 7 cells matching Surat Pesanan
+            const fresh = document.createElement('tr');
+            for (let i = 0; i < 7; i++) {
+                const td = document.createElement('td');
+                td.style.border = '1px solid #000';
+
+                if (i === 0) {
+                    td.style.padding = '8px 4px';
+                    td.style.textAlign = 'center';
+                    td.style.verticalAlign = 'middle';
+                    td.textContent = String(itemCount + 1);
+                } else if (i === 1) {
+                    td.style.padding = '8px 6px';
+                    td.style.textAlign = 'left';
+                    td.style.verticalAlign = 'middle';
+                    td.innerHTML = '&nbsp;';
+                } else if (i === 2) {
+                    td.style.padding = '8px 4px';
+                    td.style.textAlign = 'center';
+                    td.style.verticalAlign = 'middle';
+                    td.textContent = '1';
+                } else if (i === 3) {
+                    td.style.padding = '8px 4px';
+                    td.style.textAlign = 'center';
+                    td.style.verticalAlign = 'middle';
+                    td.textContent = prevSatuan;
+                } else if (i === 4) {
+                    td.style.padding = '8px 6px';
+                    td.style.textAlign = 'right';
+                    td.style.verticalAlign = 'middle';
+                    td.textContent = 'Rp 0';
+                } else if (i === 5) {
+                    td.style.padding = '8px 6px';
+                    td.style.textAlign = 'right';
+                    td.style.verticalAlign = 'middle';
+                    td.textContent = 'Rp 0';
+                } else if (i === 6) {
+                    td.style.padding = '8px 6px';
+                    td.style.textAlign = 'center';
+                    td.style.verticalAlign = 'middle';
+                    td.style.fontWeight = 'bold';
+                    // Muncul tanggal batas penyerahan yang sama seperti item sebelumnya!
+                    td.textContent = prevDeadline || '{{tanggal_selesai_pelaksanaan}}';
+                }
+                fresh.appendChild(td);
+            }
+
+            if (insertBefore) {
+                insertBefore.parentNode?.insertBefore(fresh, insertBefore);
+            } else {
+                tbody.appendChild(fresh);
+            }
+
+            recalculateSuratPesananTable(table, null);
+            emit();
+            setTimeout(updateTableMenuPosition, 10);
+            return;
+        }
+
+        // Default: clone current row for other non-negotiation tables
         const fresh = row.cloneNode(true) as HTMLTableRowElement;
 
         fresh.querySelectorAll('td, th').forEach((clone) => {
@@ -570,6 +733,35 @@ export function VisualEditor({
 
             row.remove();
             recalculateNegotiationTable(table, null);
+            emit();
+            setTimeout(updateTableMenuPosition, 10);
+            return;
+        }
+
+        if (isSuratPesananTable(table)) {
+            // Guard: DO NOT allow deleting summary / note rows or header rows!
+            const txt = (row.innerText || '').toUpperCase();
+            if (
+                txt.includes('NOTE') ||
+                txt.includes('PERHATIAN') ||
+                txt.includes('TOTAL') ||
+                txt.includes('TERBILANG') ||
+                row.cells.length !== 7
+            ) {
+                return;
+            }
+
+            // Don't delete if it's the only item row
+            const tbody = table.querySelector('tbody') || table;
+            const itemRows = Array.from(tbody.querySelectorAll('tr')).filter(
+                (r) => r.cells.length === 7 && !r.innerText.toUpperCase().includes('TOTAL')
+            );
+            if (itemRows.length <= 1) {
+                return;
+            }
+
+            row.remove();
+            recalculateSuratPesananTable(table, null);
             emit();
             setTimeout(updateTableMenuPosition, 10);
             return;
@@ -640,28 +832,33 @@ export function VisualEditor({
         setTimeout(updateTableMenuPosition, 10);
     };
 
-    /** Force-recalculate the negotiation table the caret is currently in. */
+    /** Force-recalculate the table the caret is currently in. */
     const recalculateCurrentTable = () => {
         const cell = currentCell();
         const table = cell?.closest('table') as HTMLTableElement | null;
-        if (!table || !isNegotiationTable(table)) return;
+        if (!table) return;
 
-        // Format all price cells as Rupiah first
-        const tbody = table.querySelector('tbody') || table;
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-        for (const r of rows) {
-            if (r.cells.length !== 8) continue;
-            // Price columns: 4 (Harga Satuan Sebelum) and 6 (Harga Satuan Setelah)
-            for (const idx of [4, 6]) {
-                const raw = parseNegoNumber(r.cells[idx].innerText);
-                if (raw > 0) {
-                    r.cells[idx].innerText = formatRupiahDisplay(raw);
+        if (isNegotiationTable(table)) {
+            // Format all price cells as Rupiah first
+            const tbody = table.querySelector('tbody') || table;
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            for (const r of rows) {
+                if (r.cells.length !== 8) continue;
+                // Price columns: 4 (Harga Satuan Sebelum) and 6 (Harga Satuan Setelah)
+                for (const idx of [4, 6]) {
+                    const raw = parseNegoNumber(r.cells[idx].innerText);
+                    if (raw > 0) {
+                        r.cells[idx].innerText = formatRupiahDisplay(raw);
+                    }
                 }
             }
-        }
 
-        recalculateNegotiationTable(table, null);
-        emit();
+            recalculateNegotiationTable(table, null);
+            emit();
+        } else if (isSuratPesananTable(table)) {
+            recalculateSuratPesananTable(table, null);
+            emit();
+        }
     };
 
     return (

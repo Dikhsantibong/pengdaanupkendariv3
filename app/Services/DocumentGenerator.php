@@ -468,6 +468,10 @@ class DocumentGenerator
             ? $procurement->execution_start_date->copy()->addDays($procurement->execution_duration_days - 1)->translatedFormat('d F Y')
             : '{{tanggal_selesai_pelaksanaan}}');
 
+        $prkDisplay = ! empty(trim((string) $procurement->prk_number))
+            ? trim((string) $procurement->prk_number)
+            : '-';
+
         $totalAfter = 0;
         $itemRowsHtml = '';
 
@@ -495,6 +499,11 @@ HTML;
 
         return <<<HTML
 <tbody>{$itemRowsHtml}
+                    <tr>
+                        <td colspan="7" style="border: 1px solid #000; padding: 6px 8px; font-size: 8.5pt;">
+                            <b>NOTE :</b> {$prkDisplay}
+                        </td>
+                    </tr>
                     <tr>
                         <td colspan="4" style="border: 1px solid #000; padding: 6px 8px; vertical-align: middle; font-size: 8pt; line-height: 1.35;">
                             <b>PERHATIAN :</b><br>
@@ -535,7 +544,34 @@ HTML;
         // Replace the tbody that contains PERHATIAN in Surat Pesanan
         $pattern = '/<tbody>(?:(?!<\/tbody>).)*?PERHATIAN\s*:.*?<\/tbody>/is';
         if (preg_match($pattern, $suratPesananHtml)) {
-            return preg_replace($pattern, $newTbody, $suratPesananHtml);
+            $suratPesananHtml = preg_replace($pattern, $newTbody, $suratPesananHtml);
+        }
+
+        // Also clean up thead so column headers never wrap into cut words (e.g. NOMO R, VOLU ME, SATUA N)
+        $headerPattern = '/<thead>.*?<\/thead>/is';
+        $colItemHeader = str_contains($suratPesananHtml, 'URAIAN PEKERJAAN JASA')
+            ? 'URAIAN PEKERJAAN JASA /<br>SPESIFIKASI'
+            : 'NAMA BARANG SPESIFIKASI/<br>PART NUMBER';
+        $colDeadlineHeader = str_contains($suratPesananHtml, 'PENYELESAIAN')
+            ? 'BATAS WAKTU /<br>PENYELESAIAN<br>JASA'
+            : 'BATAS WAKTU /<br>PENYERAHAN<br>BARANG / JASA';
+
+        $cleanThead = <<<HTML
+<thead>
+                    <tr style="text-align: center; font-weight: bold; background-color: #ffffff;">
+                        <th style="border: 1px solid #000; padding: 6px 2px; width: 6%; vertical-align: middle; white-space: nowrap; font-size: 8pt;">NOMOR</th>
+                        <th style="border: 1px solid #000; padding: 6px 6px; width: 33%; vertical-align: middle;">{$colItemHeader}</th>
+                        <th style="border: 1px solid #000; padding: 6px 2px; width: 8%; vertical-align: middle; white-space: nowrap; font-size: 8pt;">VOLUME</th>
+                        <th style="border: 1px solid #000; padding: 6px 2px; width: 8%; vertical-align: middle; white-space: nowrap; font-size: 8pt;">SATUAN</th>
+                        <th style="border: 1px solid #000; padding: 6px 4px; width: 14%; vertical-align: middle; white-space: nowrap; font-size: 8pt;">HARGA SATUAN</th>
+                        <th style="border: 1px solid #000; padding: 6px 4px; width: 15%; vertical-align: middle; white-space: nowrap; font-size: 8pt;">JUMLAH HARGA</th>
+                        <th style="border: 1px solid #000; padding: 6px 4px; width: 16%; vertical-align: middle; font-size: 7.5pt; line-height: 1.25;">{$colDeadlineHeader}</th>
+                    </tr>
+                </thead>
+HTML;
+
+        if (preg_match($headerPattern, $suratPesananHtml)) {
+            $suratPesananHtml = preg_replace($headerPattern, $cleanThead, $suratPesananHtml);
         }
 
         return $suratPesananHtml;

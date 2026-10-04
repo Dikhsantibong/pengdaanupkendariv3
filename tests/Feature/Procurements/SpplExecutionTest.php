@@ -274,11 +274,15 @@ class SpplExecutionTest extends TestCase
             'partner_name' => 'PT Maju Bersama',
             'partner_director_name' => 'Budi Santoso',
             'partner_address' => 'Jl. Chairil Anwar No. 10 Kendari',
+            'prk_number' => 'KD262O0306',
         ]);
 
         $rendered = app(DocumentGenerator::class)->render($template, $procurement);
         $this->assertStringContainsString('PT Maju Bersama', $rendered);
         $this->assertStringContainsString('Jl. Chairil Anwar No. 10 Kendari', $rendered);
+        $this->assertStringContainsString('NOTE :', $rendered);
+        $this->assertStringContainsString('KD262O0306', $rendered);
+        $this->assertStringContainsString('white-space: nowrap', $rendered);
     }
 
     public function test_surat_pesanan_defaults_alamat_mitra_to_di_tempat_when_empty(): void
@@ -310,6 +314,9 @@ class SpplExecutionTest extends TestCase
             'partner_name' => 'CV Sumber Makmur',
             'partner_director_name' => 'Ahmad Dahlan',
             'partner_address' => 'Jl. Pattimura No. 5',
+            'prk_number' => 'PRK-999',
+            'execution_start_date' => now(),
+            'execution_duration_days' => 15,
             'value_after_negotiation' => 100000000,
         ]);
 
@@ -386,6 +393,12 @@ HTML;
         $this->assertStringContainsString('Rp 4.500.000', $spDoc->rendered_body);
         $this->assertStringContainsString('Rp 18.000.000', $spDoc->rendered_body);
         $this->assertStringContainsString('Rp 63.000.000', $spDoc->rendered_body);
+        $this->assertStringContainsString('NOTE :', $spDoc->rendered_body);
+        $this->assertStringContainsString('PRK-999', $spDoc->rendered_body);
+
+        $expectedDeadline = now()->addDays(14)->translatedFormat('d F Y');
+        $this->assertStringContainsString($expectedDeadline, $spDoc->rendered_body);
+        $this->assertSame(2, substr_count($spDoc->rendered_body, $expectedDeadline));
     }
 
     public function test_surat_pesanan_render_pulls_items_from_existing_ba_negosiasi(): void

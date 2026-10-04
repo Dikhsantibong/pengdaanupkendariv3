@@ -255,13 +255,13 @@ class SpplDocumentTemplateSeeder extends Seeder
             <table style="width: 100%; border-collapse: collapse; border: 1.5px solid #000; border-top: none; font-size: 8.5pt; margin-top: 0; margin-bottom: 0;">
                 <thead>
                     <tr style="text-align: center; font-weight: bold; background-color: #ffffff;">
-                        <th style="border: 1px solid #000; padding: 6px 4px; width: 6%; vertical-align: middle;">NOMOR</th>
-                        <th style="border: 1px solid #000; padding: 6px 6px; width: 34%; vertical-align: middle;">{$colItemHeader}</th>
-                        <th style="border: 1px solid #000; padding: 6px 4px; width: 7%; vertical-align: middle;">VOLUME</th>
-                        <th style="border: 1px solid #000; padding: 6px 4px; width: 7%; vertical-align: middle;">SATUAN</th>
-                        <th style="border: 1px solid #000; padding: 6px 6px; width: 15%; vertical-align: middle;">HARGA SATUAN</th>
-                        <th style="border: 1px solid #000; padding: 6px 6px; width: 15%; vertical-align: middle;">JUMLAH HARGA</th>
-                        <th style="border: 1px solid #000; padding: 6px 6px; width: 16%; vertical-align: middle;">{$colDeadlineHeader}</th>
+                        <th style="border: 1px solid #000; padding: 6px 2px; width: 6%; vertical-align: middle; white-space: nowrap; font-size: 8pt;">NOMOR</th>
+                        <th style="border: 1px solid #000; padding: 6px 6px; width: 33%; vertical-align: middle;">{$colItemHeader}</th>
+                        <th style="border: 1px solid #000; padding: 6px 2px; width: 8%; vertical-align: middle; white-space: nowrap; font-size: 8pt;">VOLUME</th>
+                        <th style="border: 1px solid #000; padding: 6px 2px; width: 8%; vertical-align: middle; white-space: nowrap; font-size: 8pt;">SATUAN</th>
+                        <th style="border: 1px solid #000; padding: 6px 4px; width: 14%; vertical-align: middle; white-space: nowrap; font-size: 8pt;">HARGA SATUAN</th>
+                        <th style="border: 1px solid #000; padding: 6px 4px; width: 15%; vertical-align: middle; white-space: nowrap; font-size: 8pt;">JUMLAH HARGA</th>
+                        <th style="border: 1px solid #000; padding: 6px 4px; width: 16%; vertical-align: middle; font-size: 7.5pt; line-height: 1.25;">{$colDeadlineHeader}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -273,6 +273,11 @@ class SpplDocumentTemplateSeeder extends Seeder
                         <td style="border: 1px solid #000; padding: 8px 6px; text-align: right; vertical-align: middle;">Rp {{nilai_setelah_nego_angka}}</td>
                         <td style="border: 1px solid #000; padding: 8px 6px; text-align: right; vertical-align: middle;">Rp {{nilai_setelah_nego_angka}}</td>
                         <td style="border: 1px solid #000; padding: 8px 6px; text-align: center; vertical-align: middle; font-weight: bold;">{{tanggal_selesai_pelaksanaan}}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="7" style="border: 1px solid #000; padding: 6px 8px; font-size: 8.5pt;">
+                            <b>NOTE :</b> {{nomor_prk}}
+                        </td>
                     </tr>
                     <tr>
                         <td colspan="4" style="border: 1px solid #000; padding: 6px 8px; vertical-align: middle; font-size: 8pt; line-height: 1.35;">
@@ -371,9 +376,13 @@ class SpplDocumentTemplateSeeder extends Seeder
 
         return <<<HTML
         <section style="font-family: Arial, Helvetica, sans-serif; font-size: 8pt; line-height: 1.25; color: #000;">
-            <div style="text-align: center; margin-bottom: 6px;">
-                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="height: 36px; width: auto; display: inline-block;">
-            </div>
+            <table style="width: 100%; border: none; border-collapse: collapse; margin-bottom: 6px;">
+                <tr>
+                    <td style="border: none; padding: 0; vertical-align: top;">
+                        <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="height: 38px; width: auto; display: block;">
+                    </td>
+                </tr>
+            </table>
 
             <div style="text-align: center; margin-bottom: 10px;">
                 <div style="font-weight: bold; font-size: 10.5pt; text-decoration: underline; letter-spacing: 0.5px;">SYARAT UMUM</div>
@@ -473,6 +482,19 @@ class SpplDocumentTemplateSeeder extends Seeder
                 <div style="font-weight: bold; text-decoration: underline; margin-bottom: 3px;">H. LAIN-LAIN</div>
                 <div style="text-align: justify;">Hal-hal yang belum diatur dalam Surat Pesanan (SP) ini akan diatur tersendiri.</div>
             </div>
+
+            <table style="width: 100%; border: none; border-collapse: collapse; margin-top: 24px; font-size: 8pt; page-break-inside: avoid;">
+                <tr>
+                    <td style="width: 40%; border: none; padding: 4px 0; vertical-align: bottom; font-weight: bold;">
+                        NO. KONTRAK : {{nomor_pengadaan}}
+                    </td>
+                    <td style="width: 60%; border: none; padding: 4px 0; text-align: right; vertical-align: bottom; font-weight: bold; white-space: nowrap;">
+                        <span>PIHAK PERTAMA : ....................</span>
+                        <span style="display: inline-block; width: 18px;"></span>
+                        <span>PIHAK KEDUA : ....................</span>
+                    </td>
+                </tr>
+            </table>
         </section>
         HTML;
     }
