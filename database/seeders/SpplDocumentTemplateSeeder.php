@@ -82,7 +82,7 @@ class SpplDocumentTemplateSeeder extends Seeder
                             <tr>
                                 <td style="border: none; padding: 2px 4px 2px 0;">Tanggal</td>
                                 <td style="border: none; padding: 2px 4px;">:</td>
-                                <td style="border: none; padding: 2px 0;">{{tanggal_dokumen}}</td>
+                                <td style="border: none; padding: 2px 0;">{{tanggal_mulai_pelaksanaan}}</td>
                             </tr>
                             <tr>
                                 <td style="border: none; padding: 2px 4px 2px 0;">Perusahaan</td>
