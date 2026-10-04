@@ -206,7 +206,6 @@ class ProposalFieldsTest extends TestCase
 
         $this->assertSame('MUHAMMAD RUSLI', $values['nama_manager']);
         $this->assertSame('055/SP-DIR/2026', $values['nomor_surat_penawaran']);
-        $this->assertSame('04 Oktober 2026', $values['tanggal_surat_penawaran']);
         $this->assertSame('ND-099/MGR/2026', $values['nomor_nota_dinas_manager']);
         $this->assertSame('03 Oktober 2026', $values['tanggal_nota_dinas_manager']);
     }

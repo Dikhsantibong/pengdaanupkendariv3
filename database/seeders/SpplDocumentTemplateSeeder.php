@@ -211,7 +211,7 @@ class SpplDocumentTemplateSeeder extends Seeder
                     <tr>
                         <td style="padding: 1.5px 0; border: none;">TANGGAL</td>
                         <td style="padding: 1.5px 0; border: none;">:</td>
-                        <td style="padding: 1.5px 0; border: none;">{{tanggal_dokumen}}</td>
+                        <td style="padding: 1.5px 0; border: none;">{{tanggal_mulai_pelaksanaan}}</td>
                     </tr>
                 </table>
             </div>
