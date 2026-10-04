@@ -221,13 +221,15 @@ Form ini (menu **Buat Perencanaan Pengadaan**) diisi oleh **Team Leader Pengadaa
 | 4 | No. WO | Text | Opsional |
 | 5 | No. Nodis Usulan & Tgl. Nodis Usulan | Text & Date | Nomor dan tanggal nota dinas usulan (`proposal_memo_date`) |
 | 6 | No. Nodis Manager & Tgl. Nodis Manager | Text & Date | Nomor dan tanggal nota dinas ke manager (`icc_memo_date`, sebelumnya Nota Dinas ICC) |
-| 7 | Nilai (Sebelum Nego) | Number (currency, Rupiah) | Nilai HPE / anggaran sebelum negosiasi |
-| 8 | Nilai Setelah Nego | Number (currency, Rupiah) | Opsional; hasil kesepakatan negosiasi harga |
-| 9 | Status Progres | Dropdown (single select) | Status progres tahapan pengadaan |
+| 7 | No. Surat Penawaran & Tgl. Surat Penawaran | Text & Date | Nomor dan tanggal surat penawaran dari penyedia (`quotation_number`, `quotation_date`) |
+| 8 | Nilai (Sebelum Nego) | Number (currency, Rupiah) | Nilai HPE / anggaran sebelum negosiasi |
+| 9 | Nilai Setelah Nego | Number (currency, Rupiah) | Opsional; hasil kesepakatan negosiasi harga |
+| 10 | Status Progres | Dropdown (single select) | Status progres tahapan pengadaan |
 
 > **Catatan Penyempurnaan Form:**
 > - Inputan nomor dan tanggal nota dinas disatukan di Edit Identitas Pengadaan.
 > - Form "Nota Dinas ke Manager" yang terpisah telah dihapus seluruh inputannya, dan field Nota Dinas ICC diganti namanya menjadi **Nota Dinas ke Manager** lengkap dengan tanggal suratnya (`icc_memo_date`).
+> - Ditambahkan inputan **No. Surat Penawaran** dan **Tgl. Surat Penawaran** yang terintegrasi dengan template Surat Pesanan (PO).
 > - Target Penyelesaian sudah dihapus dari form. Data lama yang sudah terisi tetap tersimpan.
 
 ### Daftar Pilihan Status Progres
@@ -483,6 +485,16 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 - PIC Pelaksana yang diberikan peran **Team Leader Pengadaan** (atau hak `procurement.complete`) dapat langsung menandai pengadaan selesai, menunjuk PIC, serta membuat pengadaan baru.
 - Pilihan dropdown penunjukan PIC Perencana secara otomatis menyertakan akun berstatus `pic_perencana` dan `team_leader_icc`, sementara PIC Pelaksana menyertakan akun `pic_pelaksana` dan `team_leader_pengadaan`.
 
+### 5. Penyesuaian Dokumen Template PO / Surat Pesanan & Data Master Manager Unit
+- **Perbaikan Garis Kolom Tanda Tangan**: Garis kolom tabel tanda tangan pada template Surat Pesanan dan Purchase Order (PO) diperbaiki dengan border penutup utuh atas-bawah-kiri-kanan (`border: 1px solid #000; border-top: 1px solid #000; margin-top: 0; margin-bottom: 0;`), sehingga garis kolom tidak terputus atau terbuka di bagian atas.
+- **Penandatangan Manager**: Pihak penandatangan di sisi kanan dokumen Surat Pesanan ditetapkan sebagai **Manager** (`PT PLN NUSANTARA POWER UP KENDARI - MANAGER`), dan nama Manager diambil secara dinamis dari **Data Master → Manager Unit** (`{{nama_manager}}`).
+- **Data Master Manager Unit**: Disediakan menu **Data Master → Manager Unit** (`unit-managers`) untuk mengelola daftar nama dan jabatan Manager UP Kendari yang aktif.
+- **Otomatisasi Nomor & Tanggal Nota Dinas**: Pada template Surat Pesanan, bagian `1. NOTA DINAS` kini memanggil nomor (`{{nomor_nota_dinas_manager}}`) dan tanggal nota dinas (`{{tanggal_nota_dinas_manager}}`) secara dinamis dari form Usulan Pekerjaan.
+- **Inputan Nomor & Tanggal Surat Penawaran**: Ditambahkan field **No. Surat Penawaran** (`quotation_number`) dan **Tgl. Surat Penawaran** (`quotation_date`) pada Edit Identitas Pengadaan (bagian Usulan Pekerjaan), yang langsung terhubung ke bagian `2. SURAT PENAWARAN` pada template Surat Pesanan (`{{nomor_surat_penawaran}}` dan `{{tanggal_surat_penawaran}}`).
+
+### 6. Penyederhanaan Halaman Edit Dokumen
+- Bagian daftar kartu **Data yang Terpanggil** di bagian bawah editor dokumen telah dihilangkan dari antarmuka halaman edit dokumen ([`document-editor.tsx`](file:///d:/PROJECT_GROUP/Pengadaanv3/resources/js/pages/procurements/document-editor.tsx)). Layar kini lebih bersih, fokus, dan langsung menampilkan lembar kerja Editor Visual dan Pratinjau Cetak.
+
 ---
 
 # Fitur Utama
@@ -594,6 +606,7 @@ Administrasi                     (hanya Administrator)
 └── Hak Akses
 
 Data Master                      (hak: Kelola data master)
+├── Manager Unit
 ├── Direksi Pekerjaan
 ├── Unit Tujuan
 ├── Metode Pengadaan

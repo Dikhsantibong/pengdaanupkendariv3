@@ -7,6 +7,7 @@ use App\Models\Procurement;
 use App\Models\ProcurementMethod;
 use App\Models\ProgressStatus;
 use App\Models\TargetUnit;
+use App\Models\UnitManager;
 use App\Models\User;
 use App\Models\WorkDirector;
 use App\Services\DocumentGenerator;
@@ -39,6 +40,8 @@ class ProposalFieldsTest extends TestCase
                 'pr_po_number' => 'PR-778899',
                 'coa_number' => '5110100000',
                 'wo_number' => 'WO-2026-0042',
+                'quotation_number' => '012/PMR/X/2026',
+                'quotation_date' => '2026-10-03',
                 'hpe_value' => 250_000_000,
                 'value_after_negotiation' => 230_000_000,
             ])
@@ -56,6 +59,8 @@ class ProposalFieldsTest extends TestCase
         $this->assertSame('PR-778899', $procurement->pr_po_number);
         $this->assertSame('5110100000', $procurement->coa_number);
         $this->assertSame('WO-2026-0042', $procurement->wo_number);
+        $this->assertSame('012/PMR/X/2026', $procurement->quotation_number);
+        $this->assertSame('2026-10-03', $procurement->quotation_date?->toDateString());
         $this->assertSame('230000000.00', $procurement->value_after_negotiation);
 
         // Both units are kept in the order chosen; the first stays the single
@@ -180,6 +185,30 @@ class ProposalFieldsTest extends TestCase
         // Templates written for the old PR/RO key keep filling in.
         $this->assertSame('PR-555', $values['nomor_pr_ro']);
         $this->assertSame('PR-555', $values['nomor_pr_po']);
+    }
+
+    public function test_documents_name_manager_and_quotation_details(): void
+    {
+        UnitManager::factory()->create([
+            'name' => 'MUHAMMAD RUSLI',
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $procurement = Procurement::factory()->create([
+            'quotation_number' => '055/SP-DIR/2026',
+            'quotation_date' => '2026-10-04',
+            'icc_memo_number' => 'ND-099/MGR/2026',
+            'icc_memo_date' => '2026-10-03',
+        ]);
+
+        $values = app(DocumentGenerator::class)->placeholderValues($procurement->fresh());
+
+        $this->assertSame('MUHAMMAD RUSLI', $values['nama_manager']);
+        $this->assertSame('055/SP-DIR/2026', $values['nomor_surat_penawaran']);
+        $this->assertSame('04 Oktober 2026', $values['tanggal_surat_penawaran']);
+        $this->assertSame('ND-099/MGR/2026', $values['nomor_nota_dinas_manager']);
+        $this->assertSame('03 Oktober 2026', $values['tanggal_nota_dinas_manager']);
     }
 
     public function test_the_pr_ro_master_data_screen_is_gone(): void

@@ -46,6 +46,8 @@ export type ProcurementFormValues = {
     pr_po_number: string;
     coa_number: string;
     wo_number: string;
+    quotation_number: string;
+    quotation_date: string;
     hpe_value: number;
     value_after_negotiation: number | null;
     progress_status_id: number | null;
@@ -104,6 +106,8 @@ export function ProcurementForm({
         pr_po_number: initialValues?.pr_po_number ?? '',
         coa_number: initialValues?.coa_number ?? '',
         wo_number: initialValues?.wo_number ?? '',
+        quotation_number: initialValues?.quotation_number ?? '',
+        quotation_date: initialValues?.quotation_date ?? '',
         hpe_value: initialValues?.hpe_value ?? 0,
         value_after_negotiation: initialValues?.value_after_negotiation ?? null,
         progress_status_id:
@@ -500,6 +504,22 @@ export function ProcurementForm({
                         value={data.icc_memo_date}
                         onChange={(value) => setData('icc_memo_date', value)}
                         error={errors.icc_memo_date}
+                    />
+
+                    <TextField
+                        id="quotation_number"
+                        label="Nomor Surat Penawaran"
+                        value={data.quotation_number}
+                        onChange={(value) => setData('quotation_number', value)}
+                        placeholder="Contoh: 012/PMR/X/2026"
+                        error={errors.quotation_number}
+                    />
+                    <DateField
+                        id="quotation_date"
+                        label="Tanggal Surat Penawaran"
+                        value={data.quotation_date}
+                        onChange={(value) => setData('quotation_date', value)}
+                        error={errors.quotation_date}
                     />
 
                     <div className="grid gap-2">

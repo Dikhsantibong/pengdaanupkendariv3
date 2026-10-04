@@ -12,6 +12,7 @@ use App\Http\Controllers\MasterData\DocumentTypeController;
 use App\Http\Controllers\MasterData\ProcurementMethodController;
 use App\Http\Controllers\MasterData\ProgressStatusController;
 use App\Http\Controllers\MasterData\TargetUnitController;
+use App\Http\Controllers\MasterData\UnitManagerController;
 use App\Http\Controllers\MasterData\WorkDirectorController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -20,6 +21,7 @@ Route::middleware(['auth', 'verified', 'can:manage-master-data'])
     ->prefix('master-data')
     ->name('master-data.')
     ->group(function () {
+        Route::resource('unit-managers', UnitManagerController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('work-directors', WorkDirectorController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('target-units', TargetUnitController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('procurement-methods', ProcurementMethodController::class)->only(['index', 'store', 'update', 'destroy']);

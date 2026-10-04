@@ -46,6 +46,8 @@ class ProcurementResource extends JsonResource
             'icc_memo_date' => $this->icc_memo_date?->toDateString(),
             'coa_number' => $this->coa_number,
             'wo_number' => $this->wo_number,
+            'quotation_number' => $this->quotation_number,
+            'quotation_date' => $this->quotation_date?->toDateString(),
             'hpe_value' => (float) $this->hpe_value,
             'value_after_negotiation' => $this->value_after_negotiation === null
                 ? null

@@ -123,6 +123,16 @@ export default function ShowProcurement({
                 : '—',
         },
         {
+            label: 'Nomor Surat Penawaran',
+            value: procurement.quotation_number ?? '—',
+        },
+        {
+            label: 'Tanggal Surat Penawaran',
+            value: procurement.quotation_date
+                ? formatDate(procurement.quotation_date)
+                : '—',
+        },
+        {
             label: 'Nilai (Sebelum Nego)',
             value: formatCurrency(procurement.hpe_value),
         },

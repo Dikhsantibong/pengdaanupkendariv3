@@ -227,12 +227,12 @@ class SpplDocumentTemplateSeeder extends Seeder
                         <div style="font-weight: bold;">1. NOTA DINAS</div>
                         <div style="padding-left: 8px;">
                             <span style="display: inline-block; width: 80px;">- NOMOR</span>: {{nomor_nota_dinas_manager}}<br>
-                            <span style="display: inline-block; width: 80px;">- TANGGAL</span>: {{tanggal_dokumen}}
+                            <span style="display: inline-block; width: 80px;">- TANGGAL</span>: {{tanggal_nota_dinas_manager}}
                         </div>
                         <div style="font-weight: bold; margin-top: 4px;">2. SURAT PENAWARAN</div>
                         <div style="padding-left: 8px;">
-                            <span style="display: inline-block; width: 80px;">- NOMOR</span>: -<br>
-                            <span style="display: inline-block; width: 80px;">- TANGGAL</span>: -
+                            <span style="display: inline-block; width: 80px;">- NOMOR</span>: {{nomor_surat_penawaran}}<br>
+                            <span style="display: inline-block; width: 80px;">- TANGGAL</span>: {{tanggal_surat_penawaran}}
                         </div>
                     </td>
                     <td style="border: 1px solid #000; padding: 6px 8px; vertical-align: top; line-height: 1.45;">
@@ -288,17 +288,17 @@ class SpplDocumentTemplateSeeder extends Seeder
                 </tbody>
             </table>
 
-            <table style="width: 100%; border-collapse: collapse; border: 1.5px solid #000; border-top: none; font-size: 9pt; page-break-inside: avoid;">
+            <table style="width: 100%; border-collapse: collapse; border: 1.5px solid #000; border-top: 1px solid #000; font-size: 9pt; page-break-inside: avoid; margin-top: 0; margin-bottom: 0;">
                 <tr>
-                    <td style="width: 50%; border: 1px solid #000; border-top: none; text-align: center; vertical-align: top; padding: 12px 8px;">
+                    <td style="width: 50%; border: 1px solid #000; text-align: center; vertical-align: top; padding: 12px 8px;">
                         <div style="font-weight: bold;">{{nama_mitra}}</div>
                         <div style="font-weight: bold; margin-bottom: 75px;">DIREKTUR</div>
                         <div style="font-weight: bold;">{{nama_pemilik_rekening}}</div>
                     </td>
-                    <td style="width: 50%; border: 1px solid #000; border-top: none; text-align: center; vertical-align: top; padding: 12px 8px;">
+                    <td style="width: 50%; border: 1px solid #000; text-align: center; vertical-align: top; padding: 12px 8px;">
                         <div style="font-weight: bold;">PT PLN NUSANTARA POWER UP KENDARI</div>
                         <div style="font-weight: bold; margin-bottom: 75px;">MANAGER</div>
-                        <div style="font-weight: bold;">{{direksi_pekerjaan}}</div>
+                        <div style="font-weight: bold;">{{nama_manager}}</div>
                     </td>
                 </tr>
             </table>

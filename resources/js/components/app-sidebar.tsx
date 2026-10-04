@@ -18,6 +18,7 @@ import {
     Play,
     Settings2,
     ShieldCheck,
+    UserCheck,
     UserCog,
     UserSquare2,
     Wallet,
@@ -197,6 +198,11 @@ export function AppSidebar() {
                   {
                       title: 'Data Master',
                       items: [
+                          {
+                              title: 'Manager Unit',
+                              href: masterData.unitManagers.index(),
+                              icon: UserCheck,
+                          },
                           {
                               title: 'Direksi Pekerjaan',
                               href: masterData.workDirectors.index(),

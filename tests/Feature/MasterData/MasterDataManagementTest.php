@@ -7,6 +7,7 @@ use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProgressStatus;
 use App\Models\TargetUnit;
+use App\Models\UnitManager;
 use App\Models\User;
 use App\Models\WorkDirector;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -150,5 +151,41 @@ class MasterDataManagementTest extends TestCase
         $this->assertTrue($latest->is_active);
         $this->assertSame(['nama_pengadaan', 'unit_tujuan'], $latest->placeholders);
         $this->assertFalse($first->refresh()->is_active);
+    }
+
+    public function test_administrator_can_manage_unit_managers(): void
+    {
+        $administrator = User::factory()->administrator()->create();
+
+        $this->actingAs($administrator)
+            ->post(route('master-data.unit-managers.store'), [
+                'name' => 'MUHAMMAD RUSLI',
+                'position' => 'MANAGER',
+                'description' => 'Manager PT PLN Nusantara Power UP Kendari',
+                'sort_order' => 1,
+                'is_active' => true,
+            ])
+            ->assertRedirect();
+
+        $manager = UnitManager::query()->where('name', 'MUHAMMAD RUSLI')->firstOrFail();
+        $this->assertSame('MANAGER', $manager->position);
+
+        $this->actingAs($administrator)
+            ->put(route('master-data.unit-managers.update', $manager), [
+                'name' => 'MUHAMMAD RUSLI, S.T.',
+                'position' => 'MANAGER UP KENDARI',
+                'description' => 'Pejabat Unit',
+                'sort_order' => 1,
+                'is_active' => true,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('MUHAMMAD RUSLI, S.T.', $manager->refresh()->name);
+
+        $this->actingAs($administrator)
+            ->delete(route('master-data.unit-managers.destroy', $manager))
+            ->assertRedirect();
+
+        $this->assertSoftDeleted($manager);
     }
 }

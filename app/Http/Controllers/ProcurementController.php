@@ -205,6 +205,8 @@ class ProcurementController extends Controller
                 'pr_po_number' => $procurement->pr_po_number ?? '',
                 'coa_number' => $procurement->coa_number ?? '',
                 'wo_number' => $procurement->wo_number ?? '',
+                'quotation_number' => $procurement->quotation_number ?? '',
+                'quotation_date' => $procurement->quotation_date?->toDateString() ?? '',
                 'hpe_value' => (float) $procurement->hpe_value,
                 'value_after_negotiation' => $procurement->value_after_negotiation === null
                     ? null

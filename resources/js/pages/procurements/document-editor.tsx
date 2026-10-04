@@ -52,11 +52,10 @@ type ViewMode = 'visual' | 'preview';
 export default function DocumentEditor({
     procurement,
     document: doc,
-    placeholders,
 }: {
     procurement: { id: number; number: string; name: string };
     document: EditorDocument;
-    placeholders: PlaceholderRow[];
+    placeholders?: PlaceholderRow[];
 }) {
     const form = useForm({ title: doc.title, body: doc.body });
     const [mode, setMode] = useState<ViewMode>('visual');
@@ -89,32 +88,6 @@ export default function DocumentEditor({
             }).url,
             { preserveScroll: true },
         );
-    };
-
-    /**
-     * Drop a placeholder code in at the caret of the visual editor.
-     *
-     * The preview is read-only, so inserting from there switches back to the
-     * editor first and places the code where the caret was left.
-     */
-    const insertPlaceholder = (key: string) => {
-        const code = `{{${key}}}`;
-
-        setMode('visual');
-
-        queueMicrotask(() => {
-            const area = window.document.querySelector<HTMLElement>(
-                '[aria-label="Isi dokumen"]',
-            );
-
-            if (area === null) {
-                return;
-            }
-
-            area.focus();
-            window.document.execCommand('insertText', false, code);
-            form.setData('body', area.innerHTML);
-        });
     };
 
     return (
@@ -265,42 +238,6 @@ export default function DocumentEditor({
                         />
                     </TabsContent>
                 </Tabs>
-                <section className="flex flex-col gap-3 rounded-md border border-border bg-card p-4">
-                    <div>
-                        <h2 className="text-sm font-semibold">
-                            Data yang Terpanggil
-                        </h2>
-                        <p className="text-xs text-muted-foreground">
-                            Nilai berikut diambil dari data pengadaan saat
-                            dokumen digenerate. Bila ada yang keliru, perbaiki
-                            datanya lalu tekan Muat Ulang dari Template. Klik
-                            kode untuk menyisipkannya ke dokumen.
-                        </p>
-                    </div>
-
-                    <div className="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
-                        {placeholders.map((placeholder) => (
-                            <button
-                                key={placeholder.key}
-                                type="button"
-                                onClick={() =>
-                                    insertPlaceholder(placeholder.key)
-                                }
-                                className="flex flex-col gap-0.5 rounded-md border border-border px-3 py-2 text-left transition-colors hover:border-primary hover:bg-accent"
-                            >
-                                <span className="font-mono text-[11px] text-muted-foreground">
-                                    {`{{${placeholder.key}}}`}
-                                </span>
-                                <span className="text-sm font-medium">
-                                    {placeholder.value}
-                                </span>
-                                <span className="text-[11px] text-muted-foreground">
-                                    {placeholder.label}
-                                </span>
-                            </button>
-                        ))}
-                    </div>
-                </section>
             </div>
 
             <Dialog open={confirmReload} onOpenChange={setConfirmReload}>

@@ -8,6 +8,7 @@ use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementDocument;
+use App\Models\UnitManager;
 use App\Models\User;
 use App\Support\IndonesianNumber;
 use Illuminate\Support\Str;
@@ -34,6 +35,9 @@ class DocumentGenerator
             'sumber_anggaran' => 'Sumber anggaran (kode, mis. AO)',
             'sumber_anggaran_keterangan' => 'Kepanjangan sumber anggaran, mis. Anggaran Operasi',
             'jenis_kontrak' => 'Jenis kontrak, mis. KHS atau Lumsum',
+            'nama_manager' => 'Nama Manager UP Kendari',
+            'nomor_surat_penawaran' => 'Nomor surat penawaran',
+            'tanggal_surat_penawaran' => 'Tanggal surat penawaran',
             'nomor_nota_dinas_manager' => 'Nomor nota dinas ke manager',
             'nomor_pr_ro' => 'Nomor PR/PO (diketik manual)',
             'nomor_pr_po' => 'Nomor PR/PO (diketik manual)',
@@ -116,11 +120,18 @@ class DocumentGenerator
         $negoPpn = $nego !== null ? (float) round($nego * 0.12) : null;
         $negoTotal = $nego !== null ? $nego + $negoPpn : null;
 
+        $activeManager = UnitManager::query()
+            ->where('is_active', true)
+            ->ordered()
+            ->first();
+        $managerName = $activeManager?->name ?? 'MANAGER UP KENDARI';
+
         return [
             'nomor_pengadaan' => $procurement->number,
             'nama_pengadaan' => $procurement->name,
             'nama_mitra' => $procurement->partner_name ?? '-',
             'direksi_pekerjaan' => $procurement->workDirector->name,
+            'nama_manager' => $managerName,
             'unit_tujuan' => $procurement->targetUnitNames(),
             'metode_pengadaan' => $procurement->procurement_method_id === null
                 ? '-'
@@ -134,7 +145,7 @@ class DocumentGenerator
             'jenis_kontrak' => $procurement->contract_type_id === null
                 ? '-'
                 : $procurement->contractType->name,
-            'nomor_nota_dinas_manager' => $procurement->icc_memo_number ?? $procurement->manager_memo_number ?? '-',
+            'nomor_nota_dinas_manager' => $procurement->icc_memo_number ?? $procurement->proposal_memo_number ?? $procurement->manager_memo_number ?? '-',
             // Kept under its old key too, so templates written for PR/RO still fill in.
             'nomor_pr_ro' => $procurement->pr_po_number ?? '-',
             'nomor_pr_po' => $procurement->pr_po_number ?? '-',
@@ -143,7 +154,9 @@ class DocumentGenerator
             'tanggal_nota_dinas_usulan' => $procurement->proposal_memo_date?->translatedFormat('d F Y') ?? '-',
             'nomor_nota_dinas_icc' => $procurement->icc_memo_number ?? $procurement->manager_memo_number ?? '-',
             'tanggal_nota_dinas_icc' => $procurement->icc_memo_date?->translatedFormat('d F Y') ?? '-',
-            'tanggal_nota_dinas_manager' => $procurement->icc_memo_date?->translatedFormat('d F Y') ?? '-',
+            'tanggal_nota_dinas_manager' => $procurement->icc_memo_date?->translatedFormat('d F Y') ?? $procurement->proposal_memo_date?->translatedFormat('d F Y') ?? '-',
+            'nomor_surat_penawaran' => $procurement->quotation_number ?? '-',
+            'tanggal_surat_penawaran' => $procurement->quotation_date?->translatedFormat('d F Y') ?? '-',
             'nomor_coa' => $procurement->coa_number ?? '-',
             'nomor_wo' => $procurement->wo_number ?? '-',
             'nilai_hpe' => 'Rp '.number_format($hpe, 2, ',', '.'),

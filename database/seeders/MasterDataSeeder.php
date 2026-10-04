@@ -13,6 +13,7 @@ use App\Models\DocumentType;
 use App\Models\ProcurementMethod;
 use App\Models\ProgressStatus;
 use App\Models\TargetUnit;
+use App\Models\UnitManager;
 use App\Models\WorkDirector;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -27,6 +28,7 @@ class MasterDataSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->seedUnitManagers();
         $this->seedWorkDirectors();
         $this->seedTargetUnits();
         $this->seedProcurementMethods();
@@ -37,6 +39,22 @@ class MasterDataSeeder extends Seeder
         // Document types first: the checklist steps link to them.
         $this->seedDocumentTypes();
         $this->seedChecklistItems();
+    }
+
+    /**
+     * Seed the unit manager reference data.
+     */
+    protected function seedUnitManagers(): void
+    {
+        UnitManager::query()->updateOrCreate(
+            ['name' => 'MUHAMMAD RUSLI'],
+            [
+                'position' => 'MANAGER',
+                'description' => 'Manager PT PLN Nusantara Power UP Kendari',
+                'sort_order' => 1,
+                'is_active' => true,
+            ],
+        );
     }
 
     /**

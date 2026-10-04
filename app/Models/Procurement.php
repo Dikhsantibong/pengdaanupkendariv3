@@ -36,6 +36,8 @@ use Illuminate\Support\Collection;
  * @property string|null $icc_memo_number
  * @property string|null $coa_number
  * @property string|null $wo_number
+ * @property string|null $quotation_number
+ * @property CarbonImmutable|null $quotation_date
  * @property string $hpe_value
  * @property string|null $value_after_negotiation
  * @property int $progress_status_id
@@ -83,6 +85,8 @@ use Illuminate\Support\Collection;
     'icc_memo_date',
     'coa_number',
     'wo_number',
+    'quotation_number',
+    'quotation_date',
     'hpe_value',
     'value_after_negotiation',
     'progress_status_id',
@@ -429,6 +433,7 @@ class Procurement extends Model
             'target_completion_date' => 'date',
             'proposal_memo_date' => 'date',
             'icc_memo_date' => 'date',
+            'quotation_date' => 'date',
             'execution_start_date' => 'date',
             'execution_duration_days' => 'integer',
             'warranty_months' => 'integer',
