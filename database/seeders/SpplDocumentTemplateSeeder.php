@@ -389,10 +389,10 @@ class SpplDocumentTemplateSeeder extends Seeder
         <div class="header-logo">
             <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="height: 38px; width: auto; display: inline-block;">
         </div>
-        <section style="font-family: Arial, Helvetica, sans-serif; font-size: 10pt; line-height: 1.25; color: #000;">
+        <section style="font-family: Arial, Helvetica, sans-serif; font-size: 8pt; line-height: 1.25; color: #000;">
             <div style="text-align: center; margin-bottom: 8px;">
-                <div style="font-weight: bold; font-size: 11pt; text-decoration: underline; letter-spacing: 0.5px;">SYARAT UMUM</div>
-                <div style="font-weight: bold; font-size: 9.5pt; margin-top: 2px;">Surat Pesanan (SP) Nomor {{nomor_pengadaan}} tanggal {{tanggal_dokumen}}</div>
+                <div style="font-weight: bold; font-size: 10pt; text-decoration: underline; letter-spacing: 0.5px;">SYARAT UMUM</div>
+                <div style="font-weight: bold; font-size: 8.5pt; margin-top: 2px;">Surat Pesanan (SP) Nomor {{nomor_pengadaan}} tanggal {{tanggal_dokumen}}</div>
             </div>
 
             <div style="margin-bottom: 5px;">
@@ -461,6 +461,8 @@ class SpplDocumentTemplateSeeder extends Seeder
                     <li style="margin-bottom: 1px;">Apabila PIHAK KEDUA terlambat menyerahkan dokumen pembayaran mengakibatkan PPN tidak bisa dikreditkan oleh PIHAK PERTAMA maka PIHAK KEDUA akan dikenakan sanksi denda keterlambatan sesuai dengan point 3 Surat Pesanan ini.</li>
                 </ol>
             </div>
+
+            <div style="page-break-before: always;"></div>
 
             <div style="margin-bottom: 8px;">
                 <div style="font-weight: bold; text-decoration: underline; margin-bottom: 3px;">E. PEMUTUSAN ATAU PEMBATALAN SURAT PESANAN (SP)</div>
