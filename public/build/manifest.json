@@ -803,7 +803,7 @@
     "isEntry": true
   },
   "resources/js/app.tsx": {
-    "file": "assets/app-CHXvzOju.js",
+    "file": "assets/app-C526Wjux.js",
     "name": "app",
     "src": "resources/js/app.tsx",
     "isEntry": true,
@@ -1473,7 +1473,7 @@
     ]
   },
   "resources/js/pages/procurements/show.tsx": {
-    "file": "assets/show-DkRzQ2P0.js",
+    "file": "assets/show-DPvKvDrl.js",
     "name": "show",
     "src": "resources/js/pages/procurements/show.tsx",
     "isDynamicEntry": true,

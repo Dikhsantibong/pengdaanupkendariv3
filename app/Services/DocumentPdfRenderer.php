@@ -93,11 +93,39 @@ class DocumentPdfRenderer
         }
 
         $docTitle = $document?->documentType?->name ?? 'Dokumen Pengadaan';
+        $docTypeCode = $document?->documentType?->code ?? '';
         $body = $document?->rendered_body ?? '';
         $hasCover = str_contains($body, 'cover-page') || str_contains($body, 'class="cover"');
         $isLandscape = str_contains(strtolower($body), 'landscape');
         $footerY = $isLandscape ? 560 : 800;
         $pageTextX = $isLandscape ? 700 : 500;
+
+        $isLampiranSp = in_array($docTypeCode, [
+            'lampiran-sp-barang',
+            'lampiran-sp-jasa',
+            'surat-pesanan-barang',
+            'surat-pesanan-jasa',
+        ]) || str_contains(strtolower($docTitle), 'lampiran sp')
+           || str_contains(strtolower($document?->title ?? ''), 'lampiran sp')
+           || (str_contains(strtolower($docTitle), 'surat pesanan') && str_contains(strtolower($body), 'syarat umum'));
+
+        if ($isLampiranSp) {
+            $contractNumber = ! empty($document?->procurement?->number)
+                ? trim($document->procurement->number)
+                : '—';
+            $leftText = 'No. Kontrak : '.$contractNumber;
+            $rightText = 'PIHAK PERTAMA : ....................   PIHAK KEDUA : ....................';
+
+            $canvas->page_script(function ($pageNumber, $pageCount, $canvas, $fontMetrics) use ($font, $leftText, $rightText, $footerY): void {
+                $canvas->text(56, $footerY, $leftText, $font, 8, [0.2, 0.2, 0.2]);
+                $pageWidth = $canvas->get_width();
+                $textWidth = $fontMetrics->getTextWidth($rightText, $font, 8);
+                $rightX = $pageWidth - 56 - $textWidth;
+                $canvas->text($rightX, $footerY, $rightText, $font, 8, [0.2, 0.2, 0.2]);
+            });
+
+            return;
+        }
 
         if ($hasCover) {
             $canvas->page_script(function ($pageNumber, $pageCount, $canvas, $fontMetrics) use ($font, $docTitle, $footerY, $pageTextX): void {

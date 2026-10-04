@@ -456,6 +456,16 @@ class SpplDocumentTemplateSeeder extends Seeder
                 </ol>
             </div>
 
+            <div style="page-break-before: always; margin-top: 0;">
+                <table style="width: 100%; border: none; border-collapse: collapse; margin-bottom: 6px;">
+                    <tr>
+                        <td style="border: none; padding: 0; vertical-align: top;">
+                            <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="height: 38px; width: auto; display: block;">
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
             <div style="margin-bottom: 8px;">
                 <div style="font-weight: bold; text-decoration: underline; margin-bottom: 3px;">E. PEMUTUSAN ATAU PEMBATALAN SURAT PESANAN (SP)</div>
                 <ol style="margin: 0; padding-left: 18px; text-align: justify;">
@@ -482,19 +492,6 @@ class SpplDocumentTemplateSeeder extends Seeder
                 <div style="font-weight: bold; text-decoration: underline; margin-bottom: 3px;">H. LAIN-LAIN</div>
                 <div style="text-align: justify;">Hal-hal yang belum diatur dalam Surat Pesanan (SP) ini akan diatur tersendiri.</div>
             </div>
-
-            <table style="width: 100%; border: none; border-collapse: collapse; margin-top: 24px; font-size: 8pt; page-break-inside: avoid;">
-                <tr>
-                    <td style="width: 40%; border: none; padding: 4px 0; vertical-align: bottom; font-weight: bold;">
-                        NO. KONTRAK : {{nomor_pengadaan}}
-                    </td>
-                    <td style="width: 60%; border: none; padding: 4px 0; text-align: right; vertical-align: bottom; font-weight: bold; white-space: nowrap;">
-                        <span>PIHAK PERTAMA : ....................</span>
-                        <span style="display: inline-block; width: 18px;"></span>
-                        <span>PIHAK KEDUA : ....................</span>
-                    </td>
-                </tr>
-            </table>
         </section>
         HTML;
     }

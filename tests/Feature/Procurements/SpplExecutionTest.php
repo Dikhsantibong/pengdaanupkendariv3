@@ -457,6 +457,32 @@ HTML;
         $this->assertStringContainsString('Rp 42.000.000', $rendered);
     }
 
+    public function test_lampiran_surat_pesanan_has_logo_and_paraf_footer(): void
+    {
+        $this->seed(MasterDataSeeder::class);
+        $this->seed(SpplDocumentTemplateSeeder::class);
+
+        $generator = app(DocumentGenerator::class);
+        $procurement = Procurement::factory()->create([
+            'number' => 'KDD999.SPPL/612/UPKD/2026',
+        ]);
+
+        foreach (['surat-pesanan-barang', 'surat-pesanan-jasa', 'lampiran-sp-barang', 'lampiran-sp-jasa'] as $code) {
+            $type = DocumentType::query()->where('code', $code)->first();
+            if ($type === null) {
+                continue;
+            }
+
+            $template = DocumentTemplate::query()->where('document_type_id', $type->id)->firstOrFail();
+            $rendered = $generator->render($template, $procurement);
+
+            $this->assertStringContainsString('/logo/sidebar-logo.png', $rendered);
+            $this->assertStringContainsString('NO. KONTRAK : KDD999.SPPL/612/UPKD/2026', $rendered);
+            $this->assertStringContainsString('PIHAK PERTAMA : ....................', $rendered);
+            $this->assertStringContainsString('PIHAK KEDUA : ....................', $rendered);
+        }
+    }
+
     /**
      * The execution step names a format goes through, in order.
      *

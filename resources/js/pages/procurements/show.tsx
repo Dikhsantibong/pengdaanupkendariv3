@@ -94,8 +94,9 @@ export default function ShowProcurement({
             value: procurement.contract_type ?? '—',
             field: 'contract_type' as const,
         },
-        { label: 'Dibuat Oleh', value: detail.created_by ?? '—' },
-        { label: 'Tanggal Dibuat', value: formatDate(procurement.created_at) },
+        // Sembunyikan sementara sesuai permintaan user:
+        // { label: 'Dibuat Oleh', value: detail.created_by ?? '—' },
+        // { label: 'Tanggal Dibuat', value: formatDate(procurement.created_at) },
     ];
 
     const partnerSummary: Array<{
