@@ -113,15 +113,16 @@ class DocumentPdfRenderer
             $contractNumber = ! empty($document?->procurement?->number)
                 ? trim($document->procurement->number)
                 : '—';
-            $leftText = 'No. Kontrak : '.$contractNumber;
-            $rightText = 'PIHAK PERTAMA : ....................   PIHAK KEDUA : ....................';
+            $leftText = $contractNumber;
+            $rightText = 'Pihak Pertama : ....................   Pihak Kedua : ....................';
+            $footerFontSize = 7;
 
-            $canvas->page_script(function ($pageNumber, $pageCount, $canvas, $fontMetrics) use ($font, $leftText, $rightText, $footerY): void {
-                $canvas->text(56, $footerY, $leftText, $font, 8, [0.2, 0.2, 0.2]);
+            $canvas->page_script(function ($pageNumber, $pageCount, $canvas, $fontMetrics) use ($font, $leftText, $rightText, $footerY, $footerFontSize): void {
+                $canvas->text(56, $footerY, $leftText, $font, $footerFontSize, [0.25, 0.25, 0.25]);
                 $pageWidth = $canvas->get_width();
-                $textWidth = $fontMetrics->getTextWidth($rightText, $font, 8);
+                $textWidth = $fontMetrics->getTextWidth($rightText, $font, $footerFontSize);
                 $rightX = $pageWidth - 56 - $textWidth;
-                $canvas->text($rightX, $footerY, $rightText, $font, 8, [0.2, 0.2, 0.2]);
+                $canvas->text($rightX, $footerY, $rightText, $font, $footerFontSize, [0.25, 0.25, 0.25]);
             });
 
             return;

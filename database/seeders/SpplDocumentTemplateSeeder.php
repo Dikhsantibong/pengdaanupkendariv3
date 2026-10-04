@@ -375,62 +375,62 @@ class SpplDocumentTemplateSeeder extends Seeder
             : 'Penyerahan dokumen pembayaran dari PIHAK KEDUA kepada PIHAK PERTAMA paling lambat tanggal 15 (lima belas) setiap bulan berjalan dengan batas waktu tanggal invoice maksimal 3 (tiga) bulan terhitung sejak tanggal penerbitan Berita Acara Penyelesaian Pekerjaan / Bon Penerimaan Barang/Jasa.';
 
         return <<<HTML
-        <section style="font-family: Arial, Helvetica, sans-serif; font-size: 8pt; line-height: 1.25; color: #000;">
+        <section style="font-family: Arial, Helvetica, sans-serif; font-size: 10pt; line-height: 1.35; color: #000;">
             <table style="width: 100%; border: none; border-collapse: collapse; margin-bottom: 6px;">
                 <tr>
                     <td style="border: none; padding: 0; vertical-align: top;">
-                        <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="height: 38px; width: auto; display: block;">
+                        <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="height: 36px; width: auto; display: block;">
                     </td>
                 </tr>
             </table>
 
-            <div style="text-align: center; margin-bottom: 10px;">
-                <div style="font-weight: bold; font-size: 10.5pt; text-decoration: underline; letter-spacing: 0.5px;">SYARAT UMUM</div>
-                <div style="font-weight: bold; font-size: 9pt; margin-top: 3px;">Surat Pesanan (SP) Nomor {{nomor_pengadaan}} tanggal {{tanggal_dokumen}}</div>
+            <div style="text-align: center; margin-bottom: 8px;">
+                <div style="font-weight: bold; font-size: 11pt; text-decoration: underline; letter-spacing: 0.5px;">SYARAT UMUM</div>
+                <div style="font-weight: bold; font-size: 10pt; margin-top: 2px;">Surat Pesanan (SP) Nomor {{nomor_pengadaan}} tanggal {{tanggal_dokumen}}</div>
             </div>
 
-            <div style="margin-bottom: 8px;">
-                <div style="font-weight: bold; text-decoration: underline; margin-bottom: 3px;">A. UMUM</div>
+            <div style="margin-bottom: 5px;">
+                <div style="font-weight: bold; text-decoration: underline; margin-bottom: 2px;">A. UMUM</div>
                 <ol style="margin: 0; padding-left: 18px; text-align: justify;">
-                    <li style="margin-bottom: 2px;">Pemberi Pekerjaan (PIHAK PERTAMA) adalah PT PLN NUSANTARA POWER UPDK KENDARI dan Pelaksana Pekerjaan (PIHAK KEDUA) adalah {{nama_mitra}}</li>
-                    <li style="margin-bottom: 2px;">Surat Pesanan (SP) ini berlaku sampai dengan batas waktu berakhir, kecuali ditentukan lain sesuai kesepakatan Pemberi Pekerjaan (PIHAK PERTAMA) dan Pelaksana Pekerjaan (PIHAK KEDUA).</li>
-                    <li style="margin-bottom: 2px;">Pekerjaan yang dilaksanakan/barang yang dijual oleh Pelaksana Pekerjaan (PIHAK KEDUA) adalah pekerjaan/barang yang sah menurut hukum serta bebas dari tuntutan pihak lain dan penyitaan dari yang berwajib.</li>
-                    <li style="margin-bottom: 2px;">Sebagai tanda persetujuan atas syarat pelaksanaan pekerjaan pada halaman ini, agar Pelaksana Pekerjaan (PIHAK KEDUA) menandatangani Surat Pesanan (SP) ini di atas materai Rp. 10.000,00 dan menyerahkan kembali kepada Pemberi Pekerjaan (PIHAK PERTAMA).</li>
+                    <li style="margin-bottom: 1px;">Pemberi Pekerjaan (PIHAK PERTAMA) adalah PT PLN NUSANTARA POWER UPDK KENDARI dan Pelaksana Pekerjaan (PIHAK KEDUA) adalah {{nama_mitra}}</li>
+                    <li style="margin-bottom: 1px;">Surat Pesanan (SP) ini berlaku sampai dengan batas waktu berakhir, kecuali ditentukan lain sesuai kesepakatan Pemberi Pekerjaan (PIHAK PERTAMA) dan Pelaksana Pekerjaan (PIHAK KEDUA).</li>
+                    <li style="margin-bottom: 1px;">Pekerjaan yang dilaksanakan/barang yang dijual oleh Pelaksana Pekerjaan (PIHAK KEDUA) adalah pekerjaan/barang yang sah menurut hukum serta bebas dari tuntutan pihak lain dan penyitaan dari yang berwajib.</li>
+                    <li style="margin-bottom: 1px;">Sebagai tanda persetujuan atas syarat pelaksanaan pekerjaan pada halaman ini, agar Pelaksana Pekerjaan (PIHAK KEDUA) menandatangani Surat Pesanan (SP) ini di atas materai Rp. 10.000,00 dan menyerahkan kembali kepada Pemberi Pekerjaan (PIHAK PERTAMA).</li>
                 </ol>
             </div>
 
-            <div style="margin-bottom: 8px;">
-                <div style="font-weight: bold; text-decoration: underline; margin-bottom: 3px;">B. JAMINAN DAN KEWAJIBAN PELAKSANAAN PEKERJAAN (PIHAK KEDUA)</div>
+            <div style="margin-bottom: 5px;">
+                <div style="font-weight: bold; text-decoration: underline; margin-bottom: 2px;">B. JAMINAN DAN KEWAJIBAN PELAKSANAAN PEKERJAAN (PIHAK KEDUA)</div>
                 <ol style="margin: 0; padding-left: 18px; text-align: justify;">
-                    <li style="margin-bottom: 2px;">{$pasalB1}</li>
-                    <li style="margin-bottom: 2px;">{$pasalB2}</li>
-                    <li style="margin-bottom: 2px;">{$pasalB3}</li>
-                    <li style="margin-bottom: 2px;">{$pasalB4Lead}
-                        <ol type="a" style="margin: 2px 0; padding-left: 16px;">
+                    <li style="margin-bottom: 1px;">{$pasalB1}</li>
+                    <li style="margin-bottom: 1px;">{$pasalB2}</li>
+                    <li style="margin-bottom: 1px;">{$pasalB3}</li>
+                    <li style="margin-bottom: 1px;">{$pasalB4Lead}
+                        <ol type="a" style="margin: 1px 0; padding-left: 16px;">
                             <li style="margin-bottom: 1px;">Rusak atau cacat yang diakibatkan dari modifikasi oleh PIHAK PERTAMA terhadap hasil Pekerjaan sebagaimana dimaksud pada Surat Pesanan ini tanpa persetujuan terlebih dahulu dari PIHAK KEDUA;</li>
                             <li style="margin-bottom: 1px;">Rusak atau cacat yang diakibatkan dari pemasangan/perawatan/pengoperasian dan service yang dilakukan tidak menurut pedoman pengoperasian dan/atau buku-buku instruksi yang relevan dari PIHAK KEDUA/pabrikan;</li>
                             <li style="margin-bottom: 1px;">Rusak atau cacat yang timbul oleh sebab-sebab yang diakibatkan oleh PIHAK PERTAMA dan/atau pihak ketiga;</li>
                             <li style="margin-bottom: 1px;">Rusak atau cacat yang disebabkan oleh Force Majeure.</li>
                         </ol>
                     </li>
-                    <li style="margin-bottom: 2px;">Kerusakan barang selama masa garansi menjadi tanggung - jawab Pelaksana Pekerjaan (PIHAK KEDUA).</li>
+                    <li style="margin-bottom: 1px;">Kerusakan barang selama masa garansi menjadi tanggung - jawab Pelaksana Pekerjaan (PIHAK KEDUA).</li>
                     {$pasalB6}
                 </ol>
             </div>
 
-            <div style="margin-bottom: 8px;">
-                <div style="font-weight: bold; text-decoration: underline; margin-bottom: 3px;">{$titleC}</div>
+            <div style="margin-bottom: 5px;">
+                <div style="font-weight: bold; text-decoration: underline; margin-bottom: 2px;">{$titleC}</div>
                 <ol style="margin: 0; padding-left: 18px; text-align: justify;">
-                    <li style="margin-bottom: 2px;">{$pasalC1}</li>
-                    <li style="margin-bottom: 2px;">Pekerjaan dinyatakan selesai setelah serah terima pekerjaan yang dibuktikan dengan foto pekerjaan dan ditandatanganinya Berita Acara Serah Terima Pekerjaan kedua belah pihak yang diterbitkan oleh Pelaksana Pekerjaan (PIHAK KEDUA).</li>
+                    <li style="margin-bottom: 1px;">{$pasalC1}</li>
+                    <li style="margin-bottom: 1px;">Pekerjaan dinyatakan selesai setelah serah terima pekerjaan yang dibuktikan dengan foto pekerjaan dan ditandatanganinya Berita Acara Serah Terima Pekerjaan kedua belah pihak yang diterbitkan oleh Pelaksana Pekerjaan (PIHAK KEDUA).</li>
                 </ol>
             </div>
 
-            <div style="margin-bottom: 8px;">
-                <div style="font-weight: bold; text-decoration: underline; margin-bottom: 3px;">D. PEMBAYARAN</div>
+            <div style="margin-bottom: 5px;">
+                <div style="font-weight: bold; text-decoration: underline; margin-bottom: 2px;">D. PEMBAYARAN</div>
                 <ol style="margin: 0; padding-left: 18px; text-align: justify;">
-                    <li style="margin-bottom: 2px;">Penagihan dapat dilakukan Pelaksana Pekerjaan (PIHAK KEDUA) dengan mengirimkan dokumen penagihan sebagai berikut :
-                        <ol type="a" style="margin: 2px 0; padding-left: 16px; list-style-type: lower-alpha;">
+                    <li style="margin-bottom: 1px;">Penagihan dapat dilakukan Pelaksana Pekerjaan (PIHAK KEDUA) dengan mengirimkan dokumen penagihan sebagai berikut :
+                        <ol type="a" style="margin: 1px 0; padding-left: 16px; list-style-type: lower-alpha;">
                             <li style="margin-bottom: 1px;">Surat Permohonan Pembayaran ditujukan kepada Manager UP Kendari;</li>
                             <li style="margin-bottom: 1px;">{$docTagihanB}</li>
                             <li style="margin-bottom: 1px;">Invoice, 3 (tiga) rangkap</li>
@@ -443,16 +443,16 @@ class SpplDocumentTemplateSeeder extends Seeder
                             {$docTagihanExtra}
                         </ol>
                     </li>
-                    <li style="margin-bottom: 2px;">Pembayaran dari PIHAK PERTAMA kepada PIHAK KEDUA dilakukan dengan pemindahbukuan/transfer setiap hari kerja melalui :
+                    <li style="margin-bottom: 1px;">Pembayaran dari PIHAK PERTAMA kepada PIHAK KEDUA dilakukan dengan pemindahbukuan/transfer setiap hari kerja melalui :
                         <div style="padding-left: 12px; margin-top: 1px;">
                             <span style="display: inline-block; width: 130px;">a. Bank</span>: {{nama_bank}}<br>
                             <span style="display: inline-block; width: 130px;">b. Nomor Rekening</span>: {{nomor_rekening}}<br>
                             <span style="display: inline-block; width: 130px;">c. Atas Nama</span>: {{nama_pemilik_rekening}}
                         </div>
                     </li>
-                    <li style="margin-bottom: 2px;">{$dendaTelat}</li>
-                    <li style="margin-bottom: 2px;">{$invoiceDeadline}</li>
-                    <li style="margin-bottom: 2px;">Apabila PIHAK KEDUA terlambat menyerahkan dokumen pembayaran mengakibatkan PPN tidak bisa dikreditkan oleh PIHAK PERTAMA maka PIHAK KEDUA akan dikenakan sanksi denda keterlambatan sesuai dengan point 3 Surat Pesanan ini.</li>
+                    <li style="margin-bottom: 1px;">{$dendaTelat}</li>
+                    <li style="margin-bottom: 1px;">{$invoiceDeadline}</li>
+                    <li style="margin-bottom: 1px;">Apabila PIHAK KEDUA terlambat menyerahkan dokumen pembayaran mengakibatkan PPN tidak bisa dikreditkan oleh PIHAK PERTAMA maka PIHAK KEDUA akan dikenakan sanksi denda keterlambatan sesuai dengan point 3 Surat Pesanan ini.</li>
                 </ol>
             </div>
 

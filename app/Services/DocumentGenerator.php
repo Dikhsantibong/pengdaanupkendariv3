@@ -742,7 +742,7 @@ HTML;
             :root { color-scheme: only light; }
             html, body { background: #fff; }
             @page { size: A4 portrait; margin: 20mm 15mm; }
-            body { font-family: {$fontStack}; font-size: 11pt; color: #111; line-height: 1.45; text-align: justify; {$bodyBox} }
+            body { font-family: {$fontStack}; font-size: 10pt; color: #111; line-height: 1.45; text-align: justify; {$bodyBox} }
             @media print {
                 @page { size: A4 portrait; margin: 20mm 15mm; }
                 body { max-width: none; margin: 0; padding: 0; }
@@ -750,9 +750,9 @@ HTML;
             h1 { font-size: 14pt; text-align: center; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4pt; }
             h2 { font-size: 12pt; text-transform: uppercase; border-bottom: 1px solid #111; padding-bottom: 2pt; margin-top: 18pt; }
             h3 { font-size: 11pt; margin: 12pt 0 4pt; }
-            h4 { font-size: 11pt; margin: 10pt 0 4pt; }
+            h4 { font-size: 10pt; margin: 10pt 0 4pt; }
             p { margin: 4pt 0; }
-            table { width: 100%; max-width: 100%; border-collapse: collapse; margin: 8pt 0; font-size: 10.5pt; }
+            table { width: 100%; max-width: 100%; border-collapse: collapse; margin: 8pt 0; font-size: 10pt; }
             td, th { border: 1px solid #444; padding: 4pt 6pt; vertical-align: top; word-break: break-word; }
             th { background: #f0f0f0; text-align: left; }
             ol, ul { margin: 4pt 0 4pt 18pt; padding: 0; }

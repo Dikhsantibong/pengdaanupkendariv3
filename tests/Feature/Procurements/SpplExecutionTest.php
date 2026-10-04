@@ -12,6 +12,7 @@ use App\Models\Procurement;
 use App\Models\ProcurementChecklist;
 use App\Models\User;
 use App\Services\DocumentGenerator;
+use App\Services\DocumentPdfRenderer;
 use App\Services\ProcurementService;
 use Database\Seeders\MasterDataSeeder;
 use Database\Seeders\SpplDocumentTemplateSeeder;
@@ -463,6 +464,8 @@ HTML;
         $this->seed(SpplDocumentTemplateSeeder::class);
 
         $generator = app(DocumentGenerator::class);
+        $renderer = app(DocumentPdfRenderer::class);
+
         $procurement = Procurement::factory()->create([
             'number' => 'KDD999.SPPL/612/UPKD/2026',
         ]);
@@ -476,10 +479,19 @@ HTML;
             $template = DocumentTemplate::query()->where('document_type_id', $type->id)->firstOrFail();
             $rendered = $generator->render($template, $procurement);
 
+            // Template HTML contains logo for both page 1 and page 2
             $this->assertStringContainsString('/logo/sidebar-logo.png', $rendered);
-            $this->assertStringContainsString('NO. KONTRAK : KDD999.SPPL/612/UPKD/2026', $rendered);
-            $this->assertStringContainsString('PIHAK PERTAMA : ....................', $rendered);
-            $this->assertStringContainsString('PIHAK KEDUA : ....................', $rendered);
+            $this->assertGreaterThanOrEqual(2, substr_count($rendered, '/logo/sidebar-logo.png'));
+            $this->assertStringContainsString('page-break-before: always;', $rendered);
+
+            // Document renders to exactly 2 pages in PDF
+            $user = User::factory()->create();
+            $doc = $generator->generate($procurement, $type, $user);
+            $pdf = $renderer->render($doc);
+
+            $this->assertNotEmpty($pdf);
+            preg_match_all('/\/Type\s*\/Page\b/', $pdf, $matches);
+            $this->assertSame(2, count($matches[0]));
         }
     }
 
