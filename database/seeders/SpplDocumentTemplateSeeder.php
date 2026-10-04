@@ -375,18 +375,24 @@ class SpplDocumentTemplateSeeder extends Seeder
             : 'Penyerahan dokumen pembayaran dari PIHAK KEDUA kepada PIHAK PERTAMA paling lambat tanggal 15 (lima belas) setiap bulan berjalan dengan batas waktu tanggal invoice maksimal 3 (tiga) bulan terhitung sejak tanggal penerbitan Berita Acara Penyelesaian Pekerjaan / Bon Penerimaan Barang/Jasa.';
 
         return <<<HTML
-        <section style="font-family: Arial, Helvetica, sans-serif; font-size: 10pt; line-height: 1.35; color: #000;">
-            <table style="width: 100%; border: none; border-collapse: collapse; margin-bottom: 6px;">
-                <tr>
-                    <td style="border: none; padding: 0; vertical-align: top;">
-                        <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="height: 36px; width: auto; display: block;">
-                    </td>
-                </tr>
-            </table>
-
+        <style>
+            @page { size: A4 portrait; margin: 22mm 15mm 18mm 15mm; }
+            .header-logo {
+                position: fixed;
+                top: -16mm;
+                left: 0;
+                right: 0;
+                text-align: center;
+                height: 14mm;
+            }
+        </style>
+        <div class="header-logo">
+            <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="height: 38px; width: auto; display: inline-block;">
+        </div>
+        <section style="font-family: Arial, Helvetica, sans-serif; font-size: 10pt; line-height: 1.25; color: #000;">
             <div style="text-align: center; margin-bottom: 8px;">
                 <div style="font-weight: bold; font-size: 11pt; text-decoration: underline; letter-spacing: 0.5px;">SYARAT UMUM</div>
-                <div style="font-weight: bold; font-size: 10pt; margin-top: 2px;">Surat Pesanan (SP) Nomor {{nomor_pengadaan}} tanggal {{tanggal_dokumen}}</div>
+                <div style="font-weight: bold; font-size: 9.5pt; margin-top: 2px;">Surat Pesanan (SP) Nomor {{nomor_pengadaan}} tanggal {{tanggal_dokumen}}</div>
             </div>
 
             <div style="margin-bottom: 5px;">
@@ -454,16 +460,6 @@ class SpplDocumentTemplateSeeder extends Seeder
                     <li style="margin-bottom: 1px;">{$invoiceDeadline}</li>
                     <li style="margin-bottom: 1px;">Apabila PIHAK KEDUA terlambat menyerahkan dokumen pembayaran mengakibatkan PPN tidak bisa dikreditkan oleh PIHAK PERTAMA maka PIHAK KEDUA akan dikenakan sanksi denda keterlambatan sesuai dengan point 3 Surat Pesanan ini.</li>
                 </ol>
-            </div>
-
-            <div style="page-break-before: always; margin-top: 0;">
-                <table style="width: 100%; border: none; border-collapse: collapse; margin-bottom: 6px;">
-                    <tr>
-                        <td style="border: none; padding: 0; vertical-align: top;">
-                            <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="height: 38px; width: auto; display: block;">
-                        </td>
-                    </tr>
-                </table>
             </div>
 
             <div style="margin-bottom: 8px;">

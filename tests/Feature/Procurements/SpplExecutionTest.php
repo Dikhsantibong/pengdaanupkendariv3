@@ -479,10 +479,9 @@ HTML;
             $template = DocumentTemplate::query()->where('document_type_id', $type->id)->firstOrFail();
             $rendered = $generator->render($template, $procurement);
 
-            // Template HTML contains logo for both page 1 and page 2
+            // Template HTML contains centered header logo
             $this->assertStringContainsString('/logo/sidebar-logo.png', $rendered);
-            $this->assertGreaterThanOrEqual(2, substr_count($rendered, '/logo/sidebar-logo.png'));
-            $this->assertStringContainsString('page-break-before: always;', $rendered);
+            $this->assertStringContainsString('header-logo', $rendered);
 
             // Document renders to exactly 2 pages in PDF
             $user = User::factory()->create();
