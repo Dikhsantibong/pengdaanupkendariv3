@@ -27,7 +27,7 @@ export default function EditProcurement({
         <>
             <Head title={`Ubah ${procurement.number}`} />
 
-            <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-4 md:p-6">
+            <div className="flex w-full flex-col gap-6 p-4 md:p-6">
                 <PageHeader
                     eyebrow={procurement.number}
                     title="Ubah Data Pengadaan"

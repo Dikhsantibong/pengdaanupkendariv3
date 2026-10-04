@@ -260,6 +260,190 @@ class SpplExecutionTest extends TestCase
         $this->assertStringNotContainsString('class="page-break"', $template->body);
     }
 
+    public function test_surat_pesanan_renders_alamat_mitra_from_calon_mitra(): void
+    {
+        $this->seed(MasterDataSeeder::class);
+        $this->seed(SpplDocumentTemplateSeeder::class);
+
+        $type = DocumentType::query()->where('code', 'surat-pesanan')->firstOrFail();
+        $template = DocumentTemplate::query()->where('document_type_id', $type->id)->firstOrFail();
+
+        $this->assertStringContainsString('{{alamat_mitra}}', $template->body);
+
+        $procurement = Procurement::factory()->create([
+            'partner_name' => 'PT Maju Bersama',
+            'partner_director_name' => 'Budi Santoso',
+            'partner_address' => 'Jl. Chairil Anwar No. 10 Kendari',
+        ]);
+
+        $rendered = app(DocumentGenerator::class)->render($template, $procurement);
+        $this->assertStringContainsString('PT Maju Bersama', $rendered);
+        $this->assertStringContainsString('Jl. Chairil Anwar No. 10 Kendari', $rendered);
+    }
+
+    public function test_surat_pesanan_defaults_alamat_mitra_to_di_tempat_when_empty(): void
+    {
+        $this->seed(MasterDataSeeder::class);
+        $this->seed(SpplDocumentTemplateSeeder::class);
+
+        $type = DocumentType::query()->where('code', 'surat-pesanan')->firstOrFail();
+        $template = DocumentTemplate::query()->where('document_type_id', $type->id)->firstOrFail();
+
+        $procurement = Procurement::factory()->create([
+            'partner_name' => 'PT Maju Bersama',
+            'partner_address' => null,
+        ]);
+
+        $rendered = app(DocumentGenerator::class)->render($template, $procurement);
+        $this->assertStringContainsString('DI TEMPAT', $rendered);
+    }
+
+    public function test_ba_negosiasi_items_sync_to_surat_pesanan_on_save(): void
+    {
+        $this->seed(MasterDataSeeder::class);
+        $this->seed(SpplDocumentTemplateSeeder::class);
+
+        $generator = app(DocumentGenerator::class);
+        $user = User::factory()->create();
+
+        $procurement = Procurement::factory()->create([
+            'partner_name' => 'CV Sumber Makmur',
+            'partner_director_name' => 'Ahmad Dahlan',
+            'partner_address' => 'Jl. Pattimura No. 5',
+            'value_after_negotiation' => 100000000,
+        ]);
+
+        $baNegoType = DocumentType::query()->where('code', 'ba-negosiasi-sppl')->firstOrFail();
+        $suratPesananType = DocumentType::query()->where('code', 'surat-pesanan')->firstOrFail();
+
+        $baNegoDoc = $generator->generate($procurement, $baNegoType, $user);
+        $spDoc = $generator->generate($procurement, $suratPesananType, $user);
+
+        // Edit BA Negosiasi with 2 custom items
+        $customBaNegoHtml = <<<'HTML'
+        <table>
+            <thead>
+                <tr>
+                    <th colspan="2">HARGA SEBELUM NEGO</th>
+                    <th colspan="2">HARGA SETELAH NEGO</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>Laptop ThinkPad T14</td>
+                    <td>2</td>
+                    <td>Unit</td>
+                    <td>25.000.000</td>
+                    <td>50.000.000</td>
+                    <td>22.500.000</td>
+                    <td>45.000.000</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>Monitor Dell 27 Inch</td>
+                    <td>4</td>
+                    <td>Unit</td>
+                    <td>5.000.000</td>
+                    <td>20.000.000</td>
+                    <td>4.500.000</td>
+                    <td>18.000.000</td>
+                </tr>
+                <tr>
+                    <td colspan="4">TOTAL HARGA</td>
+                    <td colspan="2">70.000.000</td>
+                    <td colspan="2">63.000.000</td>
+                </tr>
+                <tr>
+                    <td colspan="4">DPP 11/12</td>
+                    <td colspan="2">64.166.667</td>
+                    <td colspan="2">57.750.000</td>
+                </tr>
+                <tr>
+                    <td colspan="4">PPN 12%</td>
+                    <td colspan="2">8.400.000</td>
+                    <td colspan="2">7.560.000</td>
+                </tr>
+                <tr>
+                    <td colspan="4">JUMLAH TOTAL</td>
+                    <td colspan="2">78.400.000</td>
+                    <td colspan="2">70.560.000</td>
+                </tr>
+            </tbody>
+        </table>
+HTML;
+
+        $generator->saveEdit($baNegoDoc, $user, $baNegoDoc->title, $customBaNegoHtml);
+
+        $procurement->refresh();
+        $this->assertEquals(63000000, (float) $procurement->value_after_negotiation);
+
+        $spDoc->refresh();
+        $this->assertStringContainsString('Laptop ThinkPad T14', $spDoc->rendered_body);
+        $this->assertStringContainsString('Monitor Dell 27 Inch', $spDoc->rendered_body);
+        $this->assertStringContainsString('Rp 22.500.000', $spDoc->rendered_body);
+        $this->assertStringContainsString('Rp 45.000.000', $spDoc->rendered_body);
+        $this->assertStringContainsString('Rp 4.500.000', $spDoc->rendered_body);
+        $this->assertStringContainsString('Rp 18.000.000', $spDoc->rendered_body);
+        $this->assertStringContainsString('Rp 63.000.000', $spDoc->rendered_body);
+    }
+
+    public function test_surat_pesanan_render_pulls_items_from_existing_ba_negosiasi(): void
+    {
+        $this->seed(MasterDataSeeder::class);
+        $this->seed(SpplDocumentTemplateSeeder::class);
+
+        $generator = app(DocumentGenerator::class);
+        $user = User::factory()->create();
+
+        $procurement = Procurement::factory()->create([
+            'partner_name' => 'CV Sumber Makmur',
+            'value_after_negotiation' => 100000000,
+        ]);
+
+        $baNegoType = DocumentType::query()->where('code', 'ba-negosiasi-sppl')->firstOrFail();
+        $suratPesananType = DocumentType::query()->where('code', 'surat-pesanan')->firstOrFail();
+        $spTemplate = DocumentTemplate::query()->where('document_type_id', $suratPesananType->id)->firstOrFail();
+
+        $baNegoDoc = $generator->generate($procurement, $baNegoType, $user);
+
+        // Edit BA Negosiasi with a specialized service item
+        $customBaNegoHtml = <<<'HTML'
+        <table>
+            <thead>
+                <tr>
+                    <th colspan="2">HARGA SEBELUM NEGO</th>
+                    <th colspan="2">HARGA SETELAH NEGO</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>Jasa Kalibrasi Sensor Turbin</td>
+                    <td>1</td>
+                    <td>Lot</td>
+                    <td>50.000.000</td>
+                    <td>50.000.000</td>
+                    <td>42.000.000</td>
+                    <td>42.000.000</td>
+                </tr>
+                <tr>
+                    <td colspan="4">TOTAL HARGA</td>
+                    <td colspan="2">50.000.000</td>
+                    <td colspan="2">42.000.000</td>
+                </tr>
+            </tbody>
+        </table>
+HTML;
+
+        $generator->saveEdit($baNegoDoc, $user, $baNegoDoc->title, $customBaNegoHtml);
+
+        // Now render Surat Pesanan template for this procurement
+        $rendered = $generator->render($spTemplate, $procurement);
+        $this->assertStringContainsString('Jasa Kalibrasi Sensor Turbin', $rendered);
+        $this->assertStringContainsString('Rp 42.000.000', $rendered);
+    }
+
     /**
      * The execution step names a format goes through, in order.
      *

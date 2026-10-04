@@ -30,6 +30,7 @@ class DocumentGenerator
             'nama_pengadaan' => 'Nama/judul pekerjaan',
             'nama_mitra' => 'Nama calon mitra / pelaksana pekerjaan',
             'nama_direktur' => 'Nama direktur calon mitra',
+            'alamat_mitra' => 'Alamat calon mitra / pelaksana (default: DI TEMPAT bila kosong)',
             'alamat_perusahaan' => 'Alamat perusahaan calon mitra',
             'direksi_pekerjaan' => 'Direksi pekerjaan',
             'unit_tujuan' => 'Unit tujuan (seluruh unit, dipisah koma)',
@@ -128,27 +129,32 @@ class DocumentGenerator
             ->first();
         $managerName = $activeManager?->name ?? 'MANAGER UP KENDARI';
 
+        $partnerAddress = ! empty(trim((string) $procurement->partner_address))
+            ? trim((string) $procurement->partner_address)
+            : null;
+
         return [
             'nomor_pengadaan' => $procurement->number,
             'nama_pengadaan' => $procurement->name,
             'nama_mitra' => $procurement->partner_name ?? '-',
             'nama_direktur' => $procurement->partner_director_name ?: ($procurement->bank_account_holder ?: '-'),
-            'alamat_perusahaan' => $procurement->partner_address ?: '-',
-            'direksi_pekerjaan' => $procurement->workDirector->name,
+            'alamat_mitra' => $partnerAddress ?? 'DI TEMPAT',
+            'alamat_perusahaan' => $partnerAddress ?? '-',
+            'direksi_pekerjaan' => $procurement->workDirector?->name ?? '-',
             'nama_manager' => $managerName,
             'unit_tujuan' => $procurement->targetUnitNames(),
             'metode_pengadaan' => $procurement->procurement_method_id === null
                 ? '-'
-                : $procurement->procurementMethod->name,
+                : ($procurement->procurementMethod?->name ?? '-'),
             'sumber_anggaran' => $procurement->budget_source_id === null
                 ? '-'
-                : $procurement->budgetSource->name,
+                : ($procurement->budgetSource?->name ?? '-'),
             'sumber_anggaran_keterangan' => $procurement->budget_source_id === null
                 ? '-'
-                : rtrim($procurement->budgetSource->description ?? $procurement->budgetSource->name, '.'),
+                : rtrim($procurement->budgetSource?->description ?? $procurement->budgetSource?->name ?? '-', '.'),
             'jenis_kontrak' => $procurement->contract_type_id === null
                 ? '-'
-                : $procurement->contractType->name,
+                : ($procurement->contractType?->name ?? '-'),
             'nomor_nota_dinas_manager' => $procurement->icc_memo_number ?? $procurement->proposal_memo_number ?? $procurement->manager_memo_number ?? '-',
             // Kept under its old key too, so templates written for PR/RO still fill in.
             'nomor_pr_ro' => $procurement->pr_po_number ?? '-',
@@ -241,11 +247,27 @@ class DocumentGenerator
     {
         $values = $this->placeholderValues($procurement);
 
-        return preg_replace_callback(
+        $body = preg_replace_callback(
             '/\{\{\s*([a-z0-9_]+)\s*\}\}/i',
             fn (array $matches): string => $values[strtolower($matches[1])] ?? $matches[0],
             $template->body,
         ) ?? $template->body;
+
+        $typeCode = $template->documentType?->code ?? $template->documentType()->value('code');
+        if (in_array($typeCode, ['purchase-order', 'surat-pesanan'])) {
+            $baNegoDoc = $procurement->documents()
+                ->whereHas('documentType', fn ($q) => $q->whereIn('code', ['ba-negosiasi-sppl', 'ba-negosiasi']))
+                ->first();
+
+            if ($baNegoDoc !== null) {
+                $items = $this->parseNegotiationItems($baNegoDoc->rendered_body);
+                if (! empty($items)) {
+                    $body = $this->syncItemsIntoSuratPesanan($body, $items, $procurement);
+                }
+            }
+        }
+
+        return $body;
     }
 
     /**
@@ -300,6 +322,11 @@ class DocumentGenerator
         $document->edited_at = now();
         $document->save();
 
+        $document->loadMissing('documentType');
+        if (in_array($document->documentType?->code, ['ba-negosiasi-sppl', 'ba-negosiasi'])) {
+            $this->syncNegotiationToProcurementAndSuratPesanan($document->procurement, $body);
+        }
+
         $this->procurements->recordActivity(
             $document->procurement,
             $editor,
@@ -309,6 +336,209 @@ class DocumentGenerator
         );
 
         return $document;
+    }
+
+    /**
+     * Synchronize negotiation items and totals from BA Negosiasi to the procurement
+     * and any existing Surat Pesanan document.
+     */
+    public function syncNegotiationToProcurementAndSuratPesanan(Procurement $procurement, string $baNegoBody): void
+    {
+        $items = $this->parseNegotiationItems($baNegoBody);
+        if (empty($items)) {
+            return;
+        }
+
+        $totalAfter = array_sum(array_column($items, 'total_after'));
+        if ($totalAfter > 0) {
+            $procurement->value_after_negotiation = $totalAfter;
+            $procurement->save();
+        }
+
+        $suratPesananDoc = $procurement->documents()
+            ->whereHas('documentType', fn ($q) => $q->whereIn('code', ['purchase-order', 'surat-pesanan']))
+            ->first();
+
+        if ($suratPesananDoc !== null) {
+            $updatedBody = $this->syncItemsIntoSuratPesanan($suratPesananDoc->rendered_body, $items, $procurement);
+            if ($updatedBody !== $suratPesananDoc->rendered_body) {
+                $suratPesananDoc->rendered_body = $updatedBody;
+                $suratPesananDoc->save();
+            }
+        }
+    }
+
+    /**
+     * Parse item rows from a BA Negosiasi rendered HTML body.
+     *
+     * @return array<int, array{no: int, name: string, volume: string, satuan: string, price_before: float, total_before: float, price_after: float, total_after: float}>
+     */
+    public function parseNegotiationItems(string $html): array
+    {
+        if (! str_contains($html, 'HARGA SEBELUM NEGO') && ! str_contains($html, 'TOTAL HARGA')) {
+            return [];
+        }
+
+        if (! preg_match_all('/<tr[^>]*>(.*?)<\/tr>/is', $html, $rowMatches)) {
+            return [];
+        }
+
+        $items = [];
+        $itemIndex = 1;
+
+        foreach ($rowMatches[1] as $rowContent) {
+            if (! preg_match_all('/<td([^>]*)>(.*?)<\/td>/is', $rowContent, $tdMatches)) {
+                continue;
+            }
+
+            $attrs = $tdMatches[1];
+            $cells = $tdMatches[2];
+
+            // Item rows have exactly 8 <td> elements and no colspan
+            if (count($cells) !== 8) {
+                continue;
+            }
+
+            $hasColspan = false;
+            foreach ($attrs as $attr) {
+                if (stripos($attr, 'colspan') !== false) {
+                    $hasColspan = true;
+                    break;
+                }
+            }
+
+            if ($hasColspan) {
+                continue;
+            }
+
+            $name = trim(html_entity_decode(strip_tags($cells[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+            $name = trim(str_replace("\xc2\xa0", ' ', $name));
+            if ($name === '' || $name === '&nbsp;') {
+                $name = 'Item Pengadaan '.$itemIndex;
+            }
+
+            $volRaw = trim(strip_tags($cells[2]));
+            $volDigits = preg_replace('/[^0-9.,]/', '', $volRaw);
+            $vol = (float) str_replace(',', '.', $volDigits);
+            if ($vol <= 0) {
+                $vol = 1.0;
+            }
+
+            $satuan = trim(html_entity_decode(strip_tags($cells[3]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+            $satuan = trim(str_replace("\xc2\xa0", ' ', $satuan));
+            if ($satuan === '' || $satuan === '&nbsp;') {
+                $satuan = 'Lot';
+            }
+
+            $priceBeforeDigits = preg_replace('/[^0-9]/', '', strip_tags($cells[4]));
+            $priceBefore = (float) ($priceBeforeDigits !== '' ? $priceBeforeDigits : 0);
+
+            $totalBeforeDigits = preg_replace('/[^0-9]/', '', strip_tags($cells[5]));
+            $totalBefore = (float) ($totalBeforeDigits !== '' ? $totalBeforeDigits : ($vol * $priceBefore));
+
+            $priceAfterDigits = preg_replace('/[^0-9]/', '', strip_tags($cells[6]));
+            $priceAfter = (float) ($priceAfterDigits !== '' ? $priceAfterDigits : 0);
+
+            $totalAfterDigits = preg_replace('/[^0-9]/', '', strip_tags($cells[7]));
+            $totalAfter = (float) ($totalAfterDigits !== '' ? $totalAfterDigits : ($vol * $priceAfter));
+
+            $items[] = [
+                'no' => $itemIndex++,
+                'name' => $name,
+                'volume' => $volRaw !== '' && $volRaw !== '&nbsp;' ? $volRaw : (string) $vol,
+                'satuan' => $satuan,
+                'price_before' => $priceBefore,
+                'total_before' => $totalBefore,
+                'price_after' => $priceAfter,
+                'total_after' => $totalAfter,
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * Generate the tbody HTML for Surat Pesanan item table with multiple items and totals.
+     *
+     * @param  array<int, array{no: int, name: string, volume: string, satuan: string, price_before: float, total_before: float, price_after: float, total_after: float}>  $items
+     */
+    public function generateSuratPesananTbody(array $items, Procurement $procurement, ?string $existingDeadline = null): string
+    {
+        $deadline = $existingDeadline ?: ($procurement->execution_start_date && $procurement->execution_duration_days
+            ? $procurement->execution_start_date->copy()->addDays($procurement->execution_duration_days - 1)->translatedFormat('d F Y')
+            : '{{tanggal_selesai_pelaksanaan}}');
+
+        $totalAfter = 0;
+        $itemRowsHtml = '';
+
+        foreach ($items as $item) {
+            $priceFormatted = number_format($item['price_after'], 0, ',', '.');
+            $totalFormatted = number_format($item['total_after'], 0, ',', '.');
+            $totalAfter += $item['total_after'];
+
+            $itemRowsHtml .= <<<HTML
+
+                    <tr>
+                        <td style="border: 1px solid #000; padding: 8px 4px; text-align: center; vertical-align: middle;">{$item['no']}</td>
+                        <td style="border: 1px solid #000; padding: 8px 6px; vertical-align: middle;">{$item['name']}</td>
+                        <td style="border: 1px solid #000; padding: 8px 4px; text-align: center; vertical-align: middle;">{$item['volume']}</td>
+                        <td style="border: 1px solid #000; padding: 8px 4px; text-align: center; vertical-align: middle;">{$item['satuan']}</td>
+                        <td style="border: 1px solid #000; padding: 8px 6px; text-align: right; vertical-align: middle;">Rp {$priceFormatted}</td>
+                        <td style="border: 1px solid #000; padding: 8px 6px; text-align: right; vertical-align: middle;">Rp {$totalFormatted}</td>
+                        <td style="border: 1px solid #000; padding: 8px 6px; text-align: center; vertical-align: middle; font-weight: bold;">{$deadline}</td>
+                    </tr>
+HTML;
+        }
+
+        $totalAfterFormatted = number_format($totalAfter, 0, ',', '.');
+        $terbilang = IndonesianNumber::spellRupiah($totalAfter);
+
+        return <<<HTML
+<tbody>{$itemRowsHtml}
+                    <tr>
+                        <td colspan="4" style="border: 1px solid #000; padding: 6px 8px; vertical-align: middle; font-size: 8pt; line-height: 1.35;">
+                            <b>PERHATIAN :</b><br>
+                            Harga adalah sebelum Pajak Pertambahan Nilai (PPN)
+                        </td>
+                        <td style="border: 1px solid #000; padding: 6px 8px; text-align: center; vertical-align: middle; font-weight: bold;">TOTAL</td>
+                        <td style="border: 1px solid #000; padding: 6px 8px; text-align: right; vertical-align: middle; font-weight: bold;">Rp {$totalAfterFormatted}</td>
+                        <td style="border: 1px solid #000; padding: 6px 8px; background-color: #fafafa;"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="7" style="border: 1px solid #000; padding: 6px 8px; font-weight: bold; font-size: 8.5pt;">
+                            Terbilang : <span style="font-weight: normal; font-style: italic;">{$terbilang}</span>
+                        </td>
+                    </tr>
+                </tbody>
+HTML;
+    }
+
+    /**
+     * Synchronize items into an existing or template Surat Pesanan document body.
+     *
+     * @param  array<int, array{no: int, name: string, volume: string, satuan: string, price_before: float, total_before: float, price_after: float, total_after: float}>  $items
+     */
+    public function syncItemsIntoSuratPesanan(string $suratPesananHtml, array $items, Procurement $procurement): string
+    {
+        if (empty($items)) {
+            return $suratPesananHtml;
+        }
+
+        // Try to extract existing deadline from the first item row if already formatted with date
+        $existingDeadline = null;
+        if (preg_match('/<td[^>]*font-weight:\s*bold;?[^>]*>\s*([0-9]{1,2}\s+[A-Za-z]+\s+[0-9]{4})\s*<\/td>/i', $suratPesananHtml, $m)) {
+            $existingDeadline = trim($m[1]);
+        }
+
+        $newTbody = $this->generateSuratPesananTbody($items, $procurement, $existingDeadline);
+
+        // Replace the tbody that contains PERHATIAN in Surat Pesanan
+        $pattern = '/<tbody>(?:(?!<\/tbody>).)*?PERHATIAN\s*:.*?<\/tbody>/is';
+        if (preg_match($pattern, $suratPesananHtml)) {
+            return preg_replace($pattern, $newTbody, $suratPesananHtml);
+        }
+
+        return $suratPesananHtml;
     }
 
     /**
@@ -363,6 +593,7 @@ class DocumentGenerator
      */
     public function syncDocumentsOnProcurementUpdate(Procurement $procurement, array $oldPlaceholders): void
     {
+        $procurement->refresh();
         $newPlaceholders = $this->placeholderValues($procurement);
         $documents = $procurement->documents()->with(['documentType', 'documentTemplate'])->get();
 
@@ -411,6 +642,15 @@ class DocumentGenerator
                 if ($old !== '' && $old !== '-' && $old !== $new && str_contains($newBody, $old)) {
                     $newBody = str_replace($old, $new, $newBody);
                 }
+            }
+
+            // If alamat_mitra is populated and document has legacy "DI TEMPAT" under KEPADA, replace it
+            if ($newPlaceholders['alamat_mitra'] !== 'DI TEMPAT' && str_contains($newBody, 'DI TEMPAT')) {
+                $newBody = preg_replace(
+                    '/(<div style="font-weight:\s*bold;">KEPADA<\/div>\s*<div[^>]*>.*?<\/div>\s*<div[^>]*>)DI TEMPAT(<\/div>)/is',
+                    '$1'.e($newPlaceholders['alamat_mitra']).'$2',
+                    $newBody,
+                );
             }
 
             if ($newBody !== $body) {

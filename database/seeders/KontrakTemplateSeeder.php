@@ -233,6 +233,9 @@ class KontrakTemplateSeeder extends Seeder
     {
         return <<<'HTML'
         <section>
+            <style>
+                @page { size: A4 landscape; margin: 15mm 20mm; }
+            </style>
             <table class="lampiran-head" style="width: 100%; margin-bottom: 14px; border: none; border-collapse: collapse;">
                 <tr>
                     <td style="vertical-align: middle; border: none; padding: 0;">

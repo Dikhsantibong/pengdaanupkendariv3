@@ -205,11 +205,20 @@ Form ini (menu **Buat Perencanaan Pengadaan**) diisi oleh **Team Leader Pengadaa
 |----|-------|-----------|------------|
 | 1 | Jenis No Kontrak & No Kontrak | Dropdown + Text | Format dari master Format No Kontrak (SPK, PJ, SPPL); nomor terisi otomatis berurutan dan dapat diubah |
 | 2 | Nama Pengadaan | Text | Nama/judul pekerjaan pengadaan |
-| 3 | Nama Mitra / Pelaksana | Text | Opsional; nama mitra/penyedia yang melaksanakan pekerjaan |
-| 4 | Direksi Pekerjaan | Dropdown (single select) | Diambil dari Master Data Direksi Pekerjaan |
-| 5 | Unit Tujuan | Checklist (multi select) | **Dapat lebih dari 1 unit**, minimal 1; diambil dari Master Data Unit Tujuan |
-| 6 | Metode Pengadaan | Dropdown | Diambil dari master Metode Pengadaan |
-| 7 | Sumber Anggaran | Dropdown | Diambil dari master Sumber Anggaran |
+| 3 | Direksi Pekerjaan | Dropdown (single select) | Diambil dari Master Data Direksi Pekerjaan |
+| 4 | Unit Tujuan | Checklist (multi select) | **Dapat lebih dari 1 unit**, minimal 1; diambil dari Master Data Unit Tujuan |
+| 5 | Metode Pengadaan | Dropdown | Diambil dari master Metode Pengadaan |
+| 6 | Sumber Anggaran | Dropdown | Diambil dari master Sumber Anggaran |
+
+### Bagian Calon Mitra
+
+| No | Field | Tipe Input | Keterangan |
+|----|-------|-----------|------------|
+| 1 | Nama Calon Mitra | Text | Opsional; nama mitra/penyedia yang melaksanakan pekerjaan (`partner_name`) |
+| 2 | No. Surat Penawaran | Text | Opsional; nomor surat penawaran dari penyedia (`quotation_number`) |
+| 3 | Tgl. Surat Penawaran | Date | Opsional; tanggal surat penawaran (`quotation_date`) |
+| 4 | Nama Direktur | Text | Opsional; nama direktur perusahaan mitra (`partner_director_name`) — dipanggil di template dengan `{{nama_direktur}}` |
+| 5 | Alamat Perusahaan | Textarea | Opsional; alamat perusahaan mitra (`partner_address`) — dipanggil di template dengan `{{alamat_perusahaan}}` atau `{{alamat_mitra}}` (otomatis terpanggil di kolom KEPADA pada dokumen Surat Pesanan) |
 
 ### Bagian Usulan Pekerjaan
 
@@ -221,15 +230,14 @@ Form ini (menu **Buat Perencanaan Pengadaan**) diisi oleh **Team Leader Pengadaa
 | 4 | No. WO | Text | Opsional |
 | 5 | No. Nodis Usulan & Tgl. Nodis Usulan | Text & Date | Nomor dan tanggal nota dinas usulan (`proposal_memo_date`) |
 | 6 | No. Nodis Manager & Tgl. Nodis Manager | Text & Date | Nomor dan tanggal nota dinas ke manager (`icc_memo_date`, sebelumnya Nota Dinas ICC) |
-| 7 | No. Surat Penawaran & Tgl. Surat Penawaran | Text & Date | Nomor dan tanggal surat penawaran dari penyedia (`quotation_number`, `quotation_date`) |
-| 8 | Nilai (Sebelum Nego) | Number (currency, Rupiah) | Nilai HPE / anggaran sebelum negosiasi |
-| 9 | Nilai Setelah Nego | Number (currency, Rupiah) | Opsional; hasil kesepakatan negosiasi harga |
-| 10 | Status Progres | Dropdown (single select) | Status progres tahapan pengadaan |
+| 7 | Nilai (Sebelum Nego) | Number (currency, Rupiah) | Nilai HPE / anggaran sebelum negosiasi |
+| 8 | Nilai Setelah Nego | Number (currency, Rupiah) | Opsional; hasil kesepakatan negosiasi harga |
+| 9 | Status Progres | Dropdown (single select) | Status progres tahapan pengadaan |
 
 > **Catatan Penyempurnaan Form:**
 > - Inputan nomor dan tanggal nota dinas disatukan di Edit Identitas Pengadaan.
 > - Form "Nota Dinas ke Manager" yang terpisah telah dihapus seluruh inputannya, dan field Nota Dinas ICC diganti namanya menjadi **Nota Dinas ke Manager** lengkap dengan tanggal suratnya (`icc_memo_date`).
-> - Ditambahkan inputan **No. Surat Penawaran** dan **Tgl. Surat Penawaran** yang terintegrasi dengan template Surat Pesanan (PO).
+> - Field **Nama Mitra**, **No. Surat Penawaran**, **Tgl. Surat Penawaran**, **Nama Direktur**, dan **Alamat Perusahaan** dipindahkan ke bagian tersendiri bernama **Calon Mitra**.
 > - Target Penyelesaian sudah dihapus dari form. Data lama yang sudah terisi tetap tersimpan.
 
 ### Daftar Pilihan Status Progres
@@ -361,7 +369,7 @@ Setelah dokumen perencanaan disetujui, **Team Leader Pengadaan** menunjuk **1 or
 | Penyusunan HPS | Unggah saja |
 | Proses SMART SCM | Unggah saja |
 | Berita Acara | **Generate** 6 dokumen (Aanwijzing, Lampiran BAPP, Evaluasi Teknis, Evaluasi Harga, Hasil Evaluasi, Klarifikasi) lalu unggah hasil TTD |
-| Purchase Order (PO) | Centang |
+| Surat Pesanan | Centang |
 | Jaminan Bank | Unggah saja |
 | Kontrak | **Generate** SPK, Lampiran SPK, BA Negosiasi lalu unggah hasil TTD |
 | Rentang Waktu | Centang |
@@ -376,10 +384,10 @@ Setelah dokumen perencanaan disetujui, **Team Leader Pengadaan** menunjuk **1 or
 | Tahapan | Cara penyelesaian |
 |---------|-------------------|
 | Evaluasi Dokumen | Centang |
-| BA Negosiasi | **Generate** Berita Acara Negosiasi (format SPPL) lalu unggah hasil TTD |
-| Purchase Order (PO) | Centang |
+| BA Negosiasi | **Generate** Berita Acara Negosiasi (format SPPL, Landscape) lalu unggah hasil TTD |
+| Surat Pesanan | **Generate** Surat Pesanan lalu unggah hasil TTD |
 | Rekening Pelaksana | **Isian**: nomor rekening, bank, dan nama pelaksana (pemilik rekening) |
-| Surat Pesanan | **Generate** Surat Pesanan + **pilih salah satu**: Lampiran SP Barang **atau** Lampiran SP Jasa; unggah hasil TTD |
+| Lampiran Surat Pesanan | **Pilih salah satu**: Lampiran SP Barang **atau** Lampiran SP Jasa; unggah hasil TTD |
 | Rentang Waktu Pelaksanaan | **Isian**: tanggal mulai + jumlah hari; **tanggal akhir dihitung otomatis** (tanggal mulai dihitung hari ke-1, mis. 1 Okt + 30 hari = 30 Okt) |
 | Masa Garansi | **Isian**: jumlah bulan (mis. 2 atau 3 bulan) — menggantikan Masa Pemeliharaan |
 
@@ -495,6 +503,10 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 ### 6. Penyederhanaan Halaman Edit Dokumen
 - Bagian daftar kartu **Data yang Terpanggil** di bagian bawah editor dokumen telah dihilangkan dari antarmuka halaman edit dokumen ([`document-editor.tsx`](file:///d:/PROJECT_GROUP/Pengadaanv3/resources/js/pages/procurements/document-editor.tsx)). Layar kini lebih bersih, fokus, dan langsung menampilkan lembar kerja Editor Visual dan Pratinjau Cetak.
 
+### 7. Integrasi Alamat Calon Mitra pada Dokumen Surat Pesanan
+- Bagian **KEPADA** pada dokumen Surat Pesanan kini memanggil alamat calon mitra secara dinamis menggunakan tag `{{alamat_mitra}}` (atau `{{alamat_perusahaan}}`) yang bersumber dari inputan **Alamat Perusahaan** pada form Calon Mitra.
+- Jika alamat belum diisi, sistem secara cerdas menampilkan teks default `"DI TEMPAT"`. Begitu alamat diisi pada Edit Identitas Pengadaan, dokumen Surat Pesanan yang telah digenerate otomatis tersinkronisasi tanpa harus menekan tombol muat ulang secara manual.
+
 ---
 
 # Fitur Utama
@@ -558,7 +570,7 @@ Tahap Pelaksanaan — SPK & PJ
 ├── Penyusunan HPS            (unggah)
 ├── Proses SMART SCM          (unggah)
 ├── Berita Acara              (generate 6 dokumen)
-├── Purchase Order
+├── Surat Pesanan
 ├── Jaminan Bank              (unggah)
 ├── Kontrak                   (generate SPK, Lampiran SPK, BA Nego)
 ├── Rentang Waktu
@@ -568,10 +580,10 @@ Tahap Pelaksanaan — SPK & PJ
 Tahap Pelaksanaan — SPPL
 │
 ├── Evaluasi Dokumen
-├── BA Negosiasi              (generate)
-├── Purchase Order
+├── BA Negosiasi              (generate, landscape)
+├── Surat Pesanan             (generate)
 ├── Rekening Pelaksana        (isian: no rekening, bank, nama)
-├── Surat Pesanan             (generate + pilih Lampiran SP Barang/Jasa)
+├── Lampiran Surat Pesanan    (pilih Lampiran SP Barang/Jasa)
 ├── Rentang Waktu Pelaksanaan (isian: tanggal mulai + hari → tanggal akhir otomatis)
 └── Masa Garansi              (isian: bulan)
             │
@@ -661,12 +673,12 @@ Menampilkan informasi:
 
 ---
 
-# Standar Orientasi Kertas Template Dokumen (Format Potret / Portrait)
+# Standar Orientasi Kertas Template Dokumen
 
-- Seluruh dokumen pengadaan dan berita acara, termasuk **Berita Acara Negosiasi (BA Negosiasi SPPL, SPK, dan Pelelangan/Tender)**, menggunakan format kertas **Potret (A4 Portrait)** secara konsisten.
-- Pengaturan cetak HTML dan PDF (`@page { size: A4 portrait; margin: 20mm 15mm; }`) mengunci orientasi kertas agar tidak pernah otomatis terbalik menjadi landscape saat dicetak melalui browser maupun Dompdf.
-- Tabel rincian hasil negosiasi menggunakan layout terstruktur (`table-layout: fixed; width: 100%; max-width: 100%; word-break: break-word;`) dengan proporsi persentase kolom yang pas, sehingga seluruh kolom muat dalam 1 halaman A4 potret tanpa terpotong atau melebar keluar batas halaman kertas.
-- Dialog pratinjau template dokumen pada Data Master dan editor visual membatasi bingkai tampilan pada ukuran kertas A4 potret (`max-w-[210mm]`).
+- **Hanya Berita Acara Negosiasi (BA Negosiasi SPPL dan Kontrak/SPK)** yang menggunakan format kertas **Lanskap (A4 Landscape)** (`@page { size: A4 landscape; margin: 15mm 20mm; }`).
+- **Seluruh dokumen lainnya** (TOR, RKS, HPE, UPB, Nota Dinas, Surat Pesanan, Lampiran Surat Pesanan, dsb.) secara konsisten menggunakan format kertas **Potret (A4 Portrait)** (`@page { size: A4 portrait; margin: 20mm 15mm; }`).
+- Pengaturan cetak HTML dan PDF secara otomatis mendeteksi konfigurasi `@page` pada dokumen sehingga orientasi kertas (landscape vs portrait) dan footer tercetak dengan koordinat yang presisi pada browser maupun Dompdf.
+- Dialog pratinjau template dokumen pada Data Master dan canvas editor visual menyesuaikan lebar bingkai secara dinamis (`max-w-[297mm]` untuk dokumen landscape dan `max-w-[210mm]` untuk dokumen portrait).
 
 ---
 

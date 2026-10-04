@@ -66,6 +66,10 @@ const ALL_METHODS = 'all';
 const SAMPLE_VALUES: Record<string, string> = {
     nomor_pengadaan: '001/PENG/612/UPKD/2026',
     nama_pengadaan: 'JASA PEMBUATAN WEB DIGITALISASI PLN NP UP KENDARI',
+    nama_mitra: 'PT KREATIF TEKNOLOGI MAJU BERSAMA',
+    nama_direktur: 'Budi Santoso',
+    alamat_mitra: 'Jl. Malaka No. 12, Kendari, Sulawesi Tenggara',
+    alamat_perusahaan: 'Jl. Malaka No. 12, Kendari, Sulawesi Tenggara',
     direksi_pekerjaan: 'Manager UPDK Kendari',
     unit_tujuan: 'PLN NP UP Kendari',
     metode_pengadaan: 'Pengadaan Langsung',

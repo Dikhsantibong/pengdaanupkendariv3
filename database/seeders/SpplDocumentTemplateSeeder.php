@@ -241,7 +241,7 @@ class SpplDocumentTemplateSeeder extends Seeder
                     <td style="border: 1px solid #000; padding: 6px 8px; vertical-align: top; line-height: 1.45;">
                         <div style="font-weight: bold;">KEPADA</div>
                         <div style="font-weight: bold; margin-top: 4px;">{{nama_mitra}}</div>
-                        <div>DI TEMPAT</div>
+                        <div>{{alamat_mitra}}</div>
                     </td>
                 </tr>
                 <tr>

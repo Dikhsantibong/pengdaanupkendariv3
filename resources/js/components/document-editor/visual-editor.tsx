@@ -1,12 +1,15 @@
 import {
     Bold,
+    Calculator,
     Columns3,
     Italic,
     List,
     ListOrdered,
     Minus,
     PenLine,
+    Plus,
     Redo2,
+    RotateCcw,
     Rows3,
     Scissors,
     SquareDashed,
@@ -39,6 +42,184 @@ const BLOCK_STYLES = [
     { value: 'h3', label: 'Sub Judul' },
     { value: 'h4', label: 'Sub Sub Judul' },
 ];
+
+function isNegotiationTable(table: HTMLTableElement): boolean {
+    const text = (table.innerText || '').toUpperCase();
+    return (
+        (text.includes('HARGA SEBELUM NEGO') || text.includes('SEBELUM NEGO')) &&
+        (text.includes('TOTAL HARGA') || text.includes('DPP'))
+    );
+}
+
+function parseNegoNumber(str: string): number {
+    const clean = str.replace(/[^0-9]/g, '');
+    return parseInt(clean, 10) || 0;
+}
+
+function parseNegoVolume(str: string): number {
+    const clean = str.replace(/[^0-9.,]/g, '').replace(',', '.');
+    return parseFloat(clean) || 1;
+}
+
+function formatRupiahDisplay(num: number): string {
+    return new Intl.NumberFormat('id-ID').format(Math.round(num));
+}
+
+function formatCellAsRupiahWithCaret(cell: HTMLElement) {
+    const raw = cell.innerText.replace(/[^0-9]/g, '');
+    if (!raw) {
+        return;
+    }
+    const num = parseInt(raw, 10);
+    const formatted = formatRupiahDisplay(num);
+    if (cell.innerText.trim() === formatted) {
+        return;
+    }
+
+    const sel = window.getSelection();
+    let digitsBefore = 0;
+    if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        if (cell.contains(range.startContainer)) {
+            const preRange = range.cloneRange();
+            preRange.selectNodeContents(cell);
+            preRange.setEnd(range.startContainer, range.startOffset);
+            digitsBefore = preRange.toString().replace(/[^0-9]/g, '').length;
+        }
+    }
+
+    cell.innerText = formatted;
+
+    if (sel) {
+        let count = 0;
+        let targetOffset = formatted.length;
+        for (let i = 0; i < formatted.length; i++) {
+            if (/[0-9]/.test(formatted[i])) {
+                count++;
+            }
+            if (count >= digitsBefore) {
+                targetOffset = i + 1;
+                break;
+            }
+        }
+
+        try {
+            const textNode = cell.firstChild;
+            if (textNode) {
+                const newRange = document.createRange();
+                const offset = Math.min(targetOffset, textNode.textContent?.length || 0);
+                newRange.setStart(textNode, offset);
+                newRange.collapse(true);
+                sel.removeAllRanges();
+                sel.addRange(newRange);
+            }
+        } catch {
+            // Keep going if range cannot be restored
+        }
+    }
+}
+
+function recalculateNegotiationTable(table: HTMLTableElement, activeCell?: HTMLElement | null) {
+    const tbody = table.querySelector('tbody') || table;
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    const itemRows: HTMLTableRowElement[] = [];
+    let rowTotal: HTMLTableRowElement | null = null;
+    let rowDpp: HTMLTableRowElement | null = null;
+    let rowPpn: HTMLTableRowElement | null = null;
+    let rowGrand: HTMLTableRowElement | null = null;
+
+    for (const r of rows) {
+        const text = r.innerText.toUpperCase();
+        if (text.includes('TOTAL HARGA')) {
+            rowTotal = r;
+        } else if (text.includes('DPP')) {
+            rowDpp = r;
+        } else if (text.includes('PPN')) {
+            rowPpn = r;
+        } else if (text.includes('JUMLAH TOTAL')) {
+            rowGrand = r;
+        } else if (r.cells.length === 8) {
+            itemRows.push(r);
+        }
+    }
+
+    if (itemRows.length === 0) return;
+
+    let sumTotalBefore = 0;
+    let sumTotalAfter = 0;
+
+    itemRows.forEach((row, idx) => {
+        const cells = row.cells;
+        if (cells.length < 8) return;
+
+        // Auto re-number NO
+        if (cells[0] !== activeCell) {
+            cells[0].innerText = String(idx + 1);
+        }
+
+        const vol = parseNegoVolume(cells[2].innerText);
+        const priceBefore = parseNegoNumber(cells[4].innerText);
+        const totalBefore = Math.round(vol * priceBefore);
+
+        const priceAfter = parseNegoNumber(cells[6].innerText);
+        const totalAfter = Math.round(vol * priceAfter);
+
+        // Update Jumlah Harga Sebelum (cell 5)
+        if (cells[5] !== activeCell) {
+            cells[5].innerText = totalBefore > 0 ? formatRupiahDisplay(totalBefore) : '0';
+        }
+
+        // Update Jumlah Harga Setelah (cell 7)
+        if (cells[7] !== activeCell) {
+            cells[7].innerText = totalAfter > 0 ? formatRupiahDisplay(totalAfter) : '0';
+        }
+
+        sumTotalBefore += totalBefore;
+        sumTotalAfter += totalAfter;
+    });
+
+    const dppBefore = Math.round(sumTotalBefore * 11 / 12);
+    const dppAfter = Math.round(sumTotalAfter * 11 / 12);
+
+    const ppnBefore = Math.round(sumTotalBefore * 0.12);
+    const ppnAfter = Math.round(sumTotalAfter * 0.12);
+
+    const grandBefore = sumTotalBefore + ppnBefore;
+    const grandAfter = sumTotalAfter + ppnAfter;
+
+    // Update TOTAL HARGA
+    if (rowTotal && rowTotal.cells.length >= 3) {
+        const cBefore = rowTotal.cells[rowTotal.cells.length - 2];
+        const cAfter = rowTotal.cells[rowTotal.cells.length - 1];
+        if (cBefore !== activeCell) cBefore.innerText = formatRupiahDisplay(sumTotalBefore);
+        if (cAfter !== activeCell) cAfter.innerText = formatRupiahDisplay(sumTotalAfter);
+    }
+
+    // Update DPP 11/12
+    if (rowDpp && rowDpp.cells.length >= 3) {
+        const cBefore = rowDpp.cells[rowDpp.cells.length - 2];
+        const cAfter = rowDpp.cells[rowDpp.cells.length - 1];
+        if (cBefore !== activeCell) cBefore.innerText = formatRupiahDisplay(dppBefore);
+        if (cAfter !== activeCell) cAfter.innerText = formatRupiahDisplay(dppAfter);
+    }
+
+    // Update PPN 12%
+    if (rowPpn && rowPpn.cells.length >= 3) {
+        const cBefore = rowPpn.cells[rowPpn.cells.length - 2];
+        const cAfter = rowPpn.cells[rowPpn.cells.length - 1];
+        if (cBefore !== activeCell) cBefore.innerText = formatRupiahDisplay(ppnBefore);
+        if (cAfter !== activeCell) cAfter.innerText = formatRupiahDisplay(ppnAfter);
+    }
+
+    // Update JUMLAH TOTAL
+    if (rowGrand && rowGrand.cells.length >= 3) {
+        const cBefore = rowGrand.cells[rowGrand.cells.length - 2];
+        const cAfter = rowGrand.cells[rowGrand.cells.length - 1];
+        if (cBefore !== activeCell) cBefore.innerText = formatRupiahDisplay(grandBefore);
+        if (cAfter !== activeCell) cAfter.innerText = formatRupiahDisplay(grandAfter);
+    }
+}
 
 /**
  * Edit a document the way it will be printed.
@@ -94,12 +275,41 @@ export function VisualEditor({
         top: number;
         left: number;
     } | null>(null);
+    const lastActiveCell = useRef<HTMLTableCellElement | null>(null);
 
     const emit = useCallback(() => {
-        if (area.current) {
-            lastEmitted.current = area.current.innerHTML;
-            onChange(lastEmitted.current);
+        if (!area.current) return;
+
+        // If the caret is in a negotiation table, handle price formatting & formula recalculation
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+            const node = sel.getRangeAt(0).startContainer;
+            const element = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement);
+            const cell = element?.closest('td, th') as HTMLTableCellElement | null;
+            const table = cell?.closest('table') as HTMLTableElement | null;
+
+            if (cell && table && isNegotiationTable(table)) {
+                const row = cell.closest('tr');
+                if (row && row.cells.length === 8) {
+                    const idx = cell.cellIndex;
+                    // Harga Satuan Sebelum (4) or Harga Satuan Setelah (6)
+                    if (idx === 4 || idx === 6) {
+                        formatCellAsRupiahWithCaret(cell);
+                        recalculateNegotiationTable(table, null);
+                    } else if (idx === 2) {
+                        // Volume
+                        recalculateNegotiationTable(table, cell);
+                    } else {
+                        recalculateNegotiationTable(table, cell);
+                    }
+                } else {
+                    recalculateNegotiationTable(table, cell);
+                }
+            }
         }
+
+        lastEmitted.current = area.current.innerHTML;
+        onChange(lastEmitted.current);
     }, [onChange]);
 
     /** The element the caret sits in, or null when it is outside the area. */
@@ -150,8 +360,34 @@ export function VisualEditor({
     useEffect(() => {
         const onSelectionChange = () => {
             const element = caretElement();
-            const isInTable =
-                element?.closest('td, th') !== null && element !== null;
+            const cell = (element?.closest('td, th') as HTMLTableCellElement) ?? null;
+            const isInTable = cell !== null;
+
+            // When navigating away from a cell in a negotiation table, ensure price/volume is formatted
+            if (lastActiveCell.current && lastActiveCell.current !== cell) {
+                const prevCell = lastActiveCell.current;
+                const prevTable = prevCell.closest('table') as HTMLTableElement | null;
+                if (prevTable && isNegotiationTable(prevTable)) {
+                    const row = prevCell.closest('tr');
+                    if (row && row.cells.length === 8) {
+                        const idx = prevCell.cellIndex;
+                        if (idx === 4 || idx === 6) {
+                            const raw = parseNegoNumber(prevCell.innerText);
+                            if (raw > 0) {
+                                prevCell.innerText = formatRupiahDisplay(raw);
+                            }
+                        } else if (idx === 2) {
+                            const vol = parseNegoVolume(prevCell.innerText);
+                            if (vol > 0) {
+                                prevCell.innerText = String(vol);
+                            }
+                        }
+                    }
+                    recalculateNegotiationTable(prevTable, null);
+                    emit();
+                }
+            }
+            lastActiveCell.current = cell;
 
             setInTable(isInTable);
 
@@ -172,7 +408,7 @@ export function VisualEditor({
             document.removeEventListener('selectionchange', onSelectionChange);
             window.removeEventListener('resize', updateTableMenuPosition);
         };
-    }, [caretElement, updateTableMenuPosition]);
+    }, [caretElement, emit, updateTableMenuPosition]);
 
     /** Run a built-in editing command against the current selection. */
     const run = (command: string, argument?: string) => {
@@ -222,11 +458,74 @@ export function VisualEditor({
     const addRow = () => {
         const cell = currentCell();
         const row = cell?.closest('tr');
+        const table = cell?.closest('table') as HTMLTableElement | null;
 
-        if (!row) {
+        if (!row || !table) {
             return;
         }
 
+        // Negotiation table: insert a fresh 8-cell item row above summary rows
+        if (isNegotiationTable(table)) {
+            const tbody = table.querySelector('tbody') || table;
+            const allRows = Array.from(tbody.querySelectorAll('tr'));
+
+            // Find the first summary row to insert before
+            let insertBefore: HTMLTableRowElement | null = null;
+            let itemCount = 0;
+            for (const r of allRows) {
+                const txt = r.innerText.toUpperCase();
+                if (
+                    txt.includes('TOTAL HARGA') ||
+                    txt.includes('DPP') ||
+                    txt.includes('PPN') ||
+                    txt.includes('JUMLAH TOTAL')
+                ) {
+                    if (!insertBefore) insertBefore = r;
+                } else if (r.cells.length === 8) {
+                    itemCount++;
+                }
+            }
+
+            // Build a clean item row with 8 cells
+            const fresh = document.createElement('tr');
+            for (let i = 0; i < 8; i++) {
+                const td = document.createElement('td');
+                td.style.border = '1px solid #000';
+                td.style.padding = '5px 3px';
+                if (i === 0) {
+                    td.style.textAlign = 'center';
+                    td.textContent = String(itemCount + 1);
+                } else if (i === 1) {
+                    td.style.textAlign = 'left';
+                    td.style.padding = '5px 4px';
+                    td.innerHTML = '&nbsp;';
+                } else if (i === 2) {
+                    td.style.textAlign = 'center';
+                    td.textContent = '1';
+                } else if (i === 3) {
+                    td.style.textAlign = 'center';
+                    td.textContent = 'Lot';
+                } else {
+                    td.style.textAlign = 'right';
+                    td.textContent = '0';
+                }
+                fresh.appendChild(td);
+            }
+
+            if (insertBefore) {
+                insertBefore.parentNode?.insertBefore(fresh, insertBefore);
+            } else {
+                tbody.appendChild(fresh);
+            }
+
+            // Recalculate numbering and totals
+            recalculateNegotiationTable(table, null);
+            emit();
+            setTimeout(updateTableMenuPosition, 10);
+            return;
+        }
+
+        // Default: clone current row for non-negotiation tables
         const fresh = row.cloneNode(true) as HTMLTableRowElement;
 
         fresh.querySelectorAll('td, th').forEach((clone) => {
@@ -240,10 +539,39 @@ export function VisualEditor({
 
     const removeRow = () => {
         const row = currentCell()?.closest('tr');
-        const table = row?.closest('table');
+        const table = (row?.closest('table') as HTMLTableElement | null) ?? null;
 
         // Never leave an empty table behind: removing the last row removes it.
         if (!row || !table) {
+            return;
+        }
+
+        if (isNegotiationTable(table)) {
+            // Guard: DO NOT allow deleting summary rows or header rows!
+            const txt = (row.innerText || '').toUpperCase();
+            if (
+                txt.includes('TOTAL HARGA') ||
+                txt.includes('DPP') ||
+                txt.includes('PPN') ||
+                txt.includes('JUMLAH TOTAL') ||
+                row.cells.length !== 8
+            ) {
+                return;
+            }
+
+            // Don't delete if it's the only item row
+            const tbody = table.querySelector('tbody') || table;
+            const itemRows = Array.from(tbody.querySelectorAll('tr')).filter(
+                (r) => r.cells.length === 8 && !r.innerText.toUpperCase().includes('TOTAL')
+            );
+            if (itemRows.length <= 1) {
+                return;
+            }
+
+            row.remove();
+            recalculateNegotiationTable(table, null);
+            emit();
+            setTimeout(updateTableMenuPosition, 10);
             return;
         }
 
@@ -310,6 +638,30 @@ export function VisualEditor({
         Array.from(table.rows).forEach((row) => row.cells[index]?.remove());
         emit();
         setTimeout(updateTableMenuPosition, 10);
+    };
+
+    /** Force-recalculate the negotiation table the caret is currently in. */
+    const recalculateCurrentTable = () => {
+        const cell = currentCell();
+        const table = cell?.closest('table') as HTMLTableElement | null;
+        if (!table || !isNegotiationTable(table)) return;
+
+        // Format all price cells as Rupiah first
+        const tbody = table.querySelector('tbody') || table;
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        for (const r of rows) {
+            if (r.cells.length !== 8) continue;
+            // Price columns: 4 (Harga Satuan Sebelum) and 6 (Harga Satuan Setelah)
+            for (const idx of [4, 6]) {
+                const raw = parseNegoNumber(r.cells[idx].innerText);
+                if (raw > 0) {
+                    r.cells[idx].innerText = formatRupiahDisplay(raw);
+                }
+            }
+        }
+
+        recalculateNegotiationTable(table, null);
+        emit();
     };
 
     return (
@@ -471,6 +823,19 @@ export function VisualEditor({
                             <Trash2 className="size-3.5 mr-1" />
                             Hapus Kolom
                         </Button>
+                        <Separator orientation="vertical" className="h-4 mx-1" />
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            className="h-7 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={recalculateCurrentTable}
+                            title="Format angka ke Rupiah dan hitung ulang seluruh rumus tabel otomatis"
+                        >
+                            <Calculator className="size-3.5 mr-1" />
+                            Hitung Ulang &amp; Format
+                        </Button>
                     </div>
                 )}
             </div>
@@ -539,6 +904,19 @@ export function VisualEditor({
                             <Trash2 className="size-3 mr-1" />
                             - Kolom
                         </Button>
+                        <Separator orientation="vertical" className="h-3.5 mx-0.5" />
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            className="h-6 px-2 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={recalculateCurrentTable}
+                            title="Format Rupiah dan hitung ulang rumus"
+                        >
+                            <Calculator className="size-3 mr-1" />
+                            Hitung
+                        </Button>
                     </div>
                 )}
 
@@ -556,7 +934,71 @@ export function VisualEditor({
                         aria-label="Isi dokumen"
                         spellCheck={false}
                         onInput={emit}
-                        onBlur={emit}
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                                const cell = currentCell();
+                                if (cell) {
+                                    event.preventDefault();
+                                    const nextCell = (cell.nextElementSibling as HTMLTableCellElement) ?? null;
+                                    if (nextCell) {
+                                        const range = document.createRange();
+                                        range.selectNodeContents(nextCell);
+                                        range.collapse(false);
+                                        const sel = window.getSelection();
+                                        sel?.removeAllRanges();
+                                        sel?.addRange(range);
+                                    }
+                                }
+                            } else if (event.key === 'Tab') {
+                                const cell = currentCell();
+                                if (cell) {
+                                    event.preventDefault();
+                                    const row = cell.closest('tr');
+                                    let targetCell: HTMLTableCellElement | null = null;
+                                    if (event.shiftKey) {
+                                        targetCell = (cell.previousElementSibling as HTMLTableCellElement) ?? null;
+                                        if (!targetCell && row?.previousElementSibling) {
+                                            const prevRowCells = (row.previousElementSibling as HTMLTableRowElement).cells;
+                                            targetCell = prevRowCells[prevRowCells.length - 1] ?? null;
+                                        }
+                                    } else {
+                                        targetCell = (cell.nextElementSibling as HTMLTableCellElement) ?? null;
+                                        if (!targetCell && row?.nextElementSibling) {
+                                            targetCell = (row.nextElementSibling as HTMLTableRowElement).cells[0] ?? null;
+                                        }
+                                    }
+                                    if (targetCell) {
+                                        const range = document.createRange();
+                                        range.selectNodeContents(targetCell);
+                                        range.collapse(false);
+                                        const sel = window.getSelection();
+                                        sel?.removeAllRanges();
+                                        sel?.addRange(range);
+                                    }
+                                }
+                            }
+                        }}
+                        onBlur={() => {
+                            if (lastActiveCell.current) {
+                                const prevCell = lastActiveCell.current;
+                                const prevTable = prevCell.closest('table') as HTMLTableElement | null;
+                                if (prevTable && isNegotiationTable(prevTable)) {
+                                    const row = prevCell.closest('tr');
+                                    if (row && row.cells.length === 8) {
+                                        const idx = prevCell.cellIndex;
+                                        if (idx === 4 || idx === 6) {
+                                            const raw = parseNegoNumber(prevCell.innerText);
+                                            if (raw > 0) {
+                                                prevCell.innerText = formatRupiahDisplay(raw);
+                                            }
+                                        }
+                                    }
+                                    recalculateNegotiationTable(prevTable, null);
+                                }
+                                lastActiveCell.current = null;
+                            }
+                            emit();
+                        }}
                         onPaste={(event) => {
                             event.preventDefault();
                             const text = event.clipboardData.getData('text/plain');
