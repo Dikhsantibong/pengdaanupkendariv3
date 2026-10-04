@@ -398,7 +398,7 @@ class SpplDocumentTemplateSeeder extends Seeder
             <div style="margin-bottom: 5px;">
                 <div style="font-weight: bold; text-decoration: underline; margin-bottom: 2px;">A. UMUM</div>
                 <ol style="margin: 0; padding-left: 18px; text-align: justify;">
-                    <li style="margin-bottom: 1px;">Pemberi Pekerjaan (PIHAK PERTAMA) adalah PT PLN NUSANTARA POWER UPDK KENDARI dan Pelaksana Pekerjaan (PIHAK KEDUA) adalah {{nama_mitra}}</li>
+                    <li style="margin-bottom: 1px;">Pemberi Pekerjaan (PIHAK PERTAMA) adalah PT PLN NUSANTARA POWER UP KENDARI dan Pelaksana Pekerjaan (PIHAK KEDUA) adalah {{nama_mitra}}</li>
                     <li style="margin-bottom: 1px;">Surat Pesanan (SP) ini berlaku sampai dengan batas waktu berakhir, kecuali ditentukan lain sesuai kesepakatan Pemberi Pekerjaan (PIHAK PERTAMA) dan Pelaksana Pekerjaan (PIHAK KEDUA).</li>
                     <li style="margin-bottom: 1px;">Pekerjaan yang dilaksanakan/barang yang dijual oleh Pelaksana Pekerjaan (PIHAK KEDUA) adalah pekerjaan/barang yang sah menurut hukum serta bebas dari tuntutan pihak lain dan penyitaan dari yang berwajib.</li>
                     <li style="margin-bottom: 1px;">Sebagai tanda persetujuan atas syarat pelaksanaan pekerjaan pada halaman ini, agar Pelaksana Pekerjaan (PIHAK KEDUA) menandatangani Surat Pesanan (SP) ini di atas materai Rp. 10.000,00 dan menyerahkan kembali kepada Pemberi Pekerjaan (PIHAK PERTAMA).</li>
