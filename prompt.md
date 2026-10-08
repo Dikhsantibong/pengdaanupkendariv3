@@ -281,6 +281,19 @@ Agar template standar ini nantinya dapat diganti dengan template resmi **tanpa m
 - Sistem harus mendukung penggantian template per jenis dokumen secara independen — mengganti template RKS, misalnya, tidak boleh memengaruhi template dokumen lain yang sudah berjalan.
 - Riwayat dokumen yang sudah pernah digenerate dengan template lama tetap tersimpan apa adanya (tidak berubah retroaktif saat template baru dipasang).
 
+### Editor Template (gaya Word, tanpa HTML)
+
+- Tambah/Ubah template membuka **halaman editor tersendiri** (`/master-data/document-templates/create` dan `/{id}/edit`), **bukan modal**. Setelah template baru disimpan, pengguna tetap berada di editornya.
+- Editor berupa lembar kertas A4 (potret/lanskap) yang tampil persis seperti hasil generate (memakai stylesheet dokumen yang sama, `DocumentGenerator::documentStylesheet()`).
+- Toolbar: urungkan/ulangi, gaya paragraf (Normal, Judul 1–4), ukuran huruf (pt), tebal/miring/garis bawah/coret, warna teks, hapus format, perataan (kiri/tengah/kanan/rata kiri-kanan), daftar berpoin/bernomor, indentasi, sisipkan tabel (pilih baris × kolom), atur tabel (tambah/hapus baris & kolom, tampil/sembunyikan garis, hapus tabel), sisipkan logo, blok tanda tangan, garis pemisah, pemisah halaman, dan orientasi kertas.
+- Panel **Data Otomatis** di kanan: placeholder ditampilkan sebagai label (chip) yang bisa dicari dan disisipkan dengan sekali klik — pengguna tidak pernah menulis `{{...}}` atau HTML. Saat disimpan, chip dikembalikan menjadi `{{placeholder}}` sehingga format penyimpanan & proses generate tidak berubah.
+- Tombol **Pratinjau** menampilkan template dengan contoh data pengadaan.
+
+### Detail Pengadaan
+
+- Halaman detail pengadaan hanya memiliki tab **Perencanaan**, **Pelaksanaan**, dan **Aktivitas**. Tab Dokumen dihapus: generate, preview, unduh, edit, dan unggah hasil TTD dilakukan langsung di baris checklist masing-masing.
+- Tombol Preview dokumen generate di checklist memakai gaya ringkas yang sama dengan tombol Preview berkas unggahan.
+
 ### Output
 
 - Dokumen hasil generate dapat diunduh dalam format standar (mis. Word/PDF sesuai jenis dokumen).
@@ -301,6 +314,13 @@ Team Leader Pengadaan mengisi **Form Input Awal Pembuatan Pengadaan** (lihat bag
 ### Penunjukan PIC Perencana
 
 Sebelum proses perencanaan dimulai, **Team Leader Pengadaan** wajib menunjuk **1 orang PIC Perencana** yang akan bertanggung jawab menyusun seluruh dokumen perencanaan.
+
+**Beban kerja PIC saat penunjukan.** Di setiap pilihan PIC (menu Penunjukan PIC, kartu Penunjukan PIC di detail pengadaan, dan form Buat Pengadaan) ditampilkan beban kerja kandidat agar penunjuk bisa membagi tugas secara merata:
+
+- PIC Perencana: jumlah **perencanaan berjalan** (sebagai PIC Perencana, belum disetujui) dan **pengadaan aktif** total.
+- PIC Pelaksana: jumlah **pelaksanaan berjalan** (sebagai PIC Pelaksana, perencanaan sudah disetujui) dan **pengadaan aktif** total.
+- Pengadaan aktif = belum selesai dan tidak batal; satu pengadaan dengan PIC yang sama di dua peran dihitung sekali.
+- Warna lencana: hijau (< 5 aktif), kuning (5–7), merah (≥ 8).
 
 ### Daftar PIC Perencana
 
@@ -670,6 +690,20 @@ Menampilkan informasi:
 - Progress Pengadaan (berdasarkan Status Progres)
 - Jadwal Pengadaan
 - Statistik Pengadaan
+
+### Perlu Tindakan Anda (daftar tugas per akun)
+
+Di bagian atas dashboard tampil daftar tugas sesuai akun yang login. Setiap baris bisa diklik dan langsung menuju halaman tempat tugas itu dikerjakan:
+
+| Kartu | Muncul untuk | Isi | Klik menuju |
+|---|---|---|---|
+| Menunggu Persetujuan Anda | Pemegang hak *Tinjau perencanaan* | Perencanaan berstatus Menunggu Persetujuan (terlama di atas) | Detail pengadaan (kartu Approval) |
+| Perlu Penunjukan PIC | Pemegang hak *Tunjuk PIC* | Pengadaan aktif yang belum punya PIC Perencana/Pelaksana | Penunjukan PIC (terfilter ke pengadaan tsb.) |
+| Tugas Perencanaan Anda | PIC Perencana yang ditunjuk | Perencanaan belum diajukan / dikembalikan untuk revisi (revisi di atas) | Detail pengadaan |
+| Tugas Pelaksanaan Anda | PIC Pelaksana yang ditunjuk | Pengadaan yang perencanaannya disetujui, beserta jumlah tahapan pelaksanaan yang belum selesai | Detail pengadaan |
+
+- Pengadaan selesai, batal, atau terhapus tidak dihitung. "Lihat semua" hanya tampil bila menu tujuannya diizinkan di Hak Akses.
+- Bila tidak ada tugas, tampil pesan "Tidak ada tugas yang menunggu Anda".
 
 ---
 

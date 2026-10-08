@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Enums\UserRole;
 use App\Models\BudgetSource;
@@ -96,38 +97,71 @@ class MasterDataOptions
     /**
      * Get the selectable planners (PIC Perencana or TL ICC).
      *
-     * @return array<int, array{value: int, label: string}>
+     * @return array<int, array{value: int, label: string, workload: array{planning: int, execution: int, active: int}}>
      */
     public static function planners(): array
     {
-        return User::query()
-            ->active()
-            ->withRole([
-                UserRole::PicPerencana,
-                UserRole::TeamLeaderIcc,
-            ])
-            ->orderBy('name')
-            ->get()
-            ->map(fn (User $user): array => ['value' => $user->id, 'label' => $user->name])
-            ->all();
+        return self::picOptions([
+            UserRole::PicPerencana,
+            UserRole::TeamLeaderIcc,
+        ]);
     }
 
     /**
      * Get the selectable executors (PIC Pelaksana or TL Pengadaan).
      *
-     * @return array<int, array{value: int, label: string}>
+     * @return array<int, array{value: int, label: string, workload: array{planning: int, execution: int, active: int}}>
      */
     public static function executors(): array
     {
+        return self::picOptions([
+            UserRole::PicPelaksana,
+            UserRole::TeamLeaderPengadaan,
+        ]);
+    }
+
+    /**
+     * Get the users of the given roles together with their current workload.
+     *
+     * The workload lets whoever assigns a PIC see how busy each candidate is:
+     * planning still under way as PIC Perencana, execution under way as PIC
+     * Pelaksana, and every unfinished procurement they hold in either role.
+     * All counts come from subqueries, so this stays a single query.
+     *
+     * @param  array<int, UserRole>  $roles
+     * @return array<int, array{value: int, label: string, workload: array{planning: int, execution: int, active: int}}>
+     */
+    protected static function picOptions(array $roles): array
+    {
         return User::query()
             ->active()
-            ->withRole([
-                UserRole::PicPelaksana,
-                UserRole::TeamLeaderPengadaan,
+            ->withRole($roles)
+            ->withCount([
+                'plannedProcurements as planning_workload' => fn ($query) => $query
+                    ->inProgress()
+                    ->where('planning_approval_state', '!=', PlanningApprovalState::Disetujui->value),
+                'executedProcurements as execution_workload' => fn ($query) => $query
+                    ->inProgress()
+                    ->where('planning_approval_state', PlanningApprovalState::Disetujui->value),
+            ])
+            ->addSelect(['active_workload' => Procurement::query()
+                ->inProgress()
+                ->selectRaw('count(*)')
+                ->where(fn ($query) => $query
+                    ->whereColumn('procurements.planner_id', 'users.id')
+                    ->orWhereColumn('procurements.executor_id', 'users.id')),
             ])
             ->orderBy('name')
             ->get()
-            ->map(fn (User $user): array => ['value' => $user->id, 'label' => $user->name])
+            ->map(fn (User $user): array => [
+                'value' => $user->id,
+                'label' => $user->name,
+                'workload' => [
+                    'planning' => (int) $user->getAttribute('planning_workload'),
+                    'execution' => (int) $user->getAttribute('execution_workload'),
+                    'active' => (int) $user->getAttribute('active_workload'),
+                ],
+            ])
             ->all();
     }
 

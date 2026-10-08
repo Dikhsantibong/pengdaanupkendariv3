@@ -31,7 +31,7 @@ Route::middleware(['auth', 'verified', 'can:manage-master-data'])
         Route::resource('progress-statuses', ProgressStatusController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('checklist-items', ChecklistItemController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('document-types', DocumentTypeController::class)->only(['index', 'store', 'update', 'destroy']);
-        Route::resource('document-templates', DocumentTemplateController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::resource('document-templates', DocumentTemplateController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
         Route::resource('assessment-aspects', AssessmentAspectController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('assessment-forms', AssessmentFormController::class)->only(['index', 'store', 'update', 'destroy']);
     });

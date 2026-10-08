@@ -4,7 +4,6 @@ import { PageHeader } from '@/components/page-header';
 import { ActivityTimeline } from '@/components/procurement/activity-timeline';
 import { ApprovalCard } from '@/components/procurement/approval-card';
 import { ChecklistPanel } from '@/components/procurement/checklist-panel';
-import { DocumentPanel } from '@/components/procurement/document-panel';
 import { PicAssignmentCard } from '@/components/procurement/pic-assignment-card';
 import { ContractTypePicker } from '@/components/procurement/planning-identity-fields';
 import { StatusCard } from '@/components/procurement/status-card';
@@ -18,7 +17,6 @@ import type {
     ChecklistRow,
     DocumentTypeOption,
     Option,
-    ProcurementDocumentRow,
     ProcurementRow,
     StatusOption,
 } from '@/types';
@@ -41,7 +39,6 @@ type ShowProps = {
         perencanaan: ChecklistRow[];
         pelaksanaan: ChecklistRow[];
     };
-    documents: ProcurementDocumentRow[];
     activities: ActivityRow[];
     options: {
         progressStatuses: StatusOption[];
@@ -69,7 +66,6 @@ export default function ShowProcurement({
     procurement,
     detail,
     checklists,
-    documents,
     activities,
     options,
     can,
@@ -320,9 +316,6 @@ export default function ShowProcurement({
                                 <TabsTrigger value="pelaksanaan">
                                     Pelaksanaan
                                 </TabsTrigger>
-                                <TabsTrigger value="dokumen">
-                                    Dokumen
-                                </TabsTrigger>
                                 <TabsTrigger value="aktivitas">
                                     Aktivitas
                                 </TabsTrigger>
@@ -359,15 +352,6 @@ export default function ShowProcurement({
                                             ? 'Tahap pelaksanaan terbuka setelah dokumen perencanaan disetujui.'
                                             : 'Anda tidak memiliki akses untuk mengubah checklist ini.'
                                     }
-                                />
-                            </TabsContent>
-
-                            <TabsContent value="dokumen">
-                                <DocumentPanel
-                                    procurementId={procurement.id}
-                                    documents={documents}
-                                    documentTypes={options.documentTypes}
-                                    canGenerate={can.generateDocument}
                                 />
                             </TabsContent>
 

@@ -266,12 +266,13 @@ function ChecklistDocumentActions({
                                 }
                                 target="_blank"
                                 rel="noopener noreferrer"
+                                title="Pratinjau PDF"
                             >
                                 <Eye className="size-3.5" />
                                 Preview PDF
                             </a>
                         </Button>
-                        <Button asChild size="sm" variant="ghost">
+                        <Button asChild size="sm" variant="outline">
                             <a
                                 href={
                                     procurements.documents.show({
@@ -285,7 +286,7 @@ function ChecklistDocumentActions({
                             </a>
                         </Button>
                         {canManage && (
-                            <Button asChild size="sm" variant="ghost">
+                            <Button asChild size="sm" variant="outline">
                                 <Link
                                     href={
                                         procurements.documents.edit({

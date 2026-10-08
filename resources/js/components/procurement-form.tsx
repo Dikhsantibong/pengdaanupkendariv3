@@ -2,6 +2,7 @@ import { useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import { CurrencyInput } from '@/components/currency-input';
 import InputError from '@/components/input-error';
+import { PicSelect } from '@/components/procurement/pic-select';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -14,7 +15,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import type { Option, StatusOption } from '@/types';
+import type { Option, PicOption, StatusOption } from '@/types';
 
 const NONE = 'none';
 
@@ -26,7 +27,7 @@ export type ProcurementFormOptions = {
     budgetSources: Option[];
     progressStatuses: StatusOption[];
     defaultProgressStatusId: number | null;
-    planners: Option[];
+    planners: PicOption[];
 };
 
 export type ProcurementFormValues = {
@@ -463,7 +464,9 @@ export function ProcurementForm({
                     />
 
                     <div className="grid gap-2 md:col-span-2">
-                        <Label htmlFor="partner_address">Alamat Perusahaan</Label>
+                        <Label htmlFor="partner_address">
+                            Alamat Perusahaan
+                        </Label>
                         <Textarea
                             id="partner_address"
                             value={data.partner_address}
@@ -628,40 +631,16 @@ export function ProcurementForm({
                     <div className="grid gap-4 md:grid-cols-2">
                         <div className="grid gap-2">
                             <Label htmlFor="planner_id">PIC Perencana</Label>
-                            <Select
-                                value={
-                                    data.planner_id === null ||
-                                    data.planner_id === undefined
-                                        ? NONE
-                                        : String(data.planner_id)
+                            <PicSelect
+                                id="planner_id"
+                                value={data.planner_id ?? null}
+                                options={options.planners}
+                                role="planner"
+                                emptyLabel="Tunjuk nanti"
+                                onChange={(value) =>
+                                    setData('planner_id', value)
                                 }
-                                onValueChange={(value) =>
-                                    setData(
-                                        'planner_id',
-                                        value === NONE ? null : Number(value),
-                                    )
-                                }
-                            >
-                                <SelectTrigger
-                                    id="planner_id"
-                                    className="w-full"
-                                >
-                                    <SelectValue placeholder="Tunjuk nanti" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value={NONE}>
-                                        Tunjuk nanti
-                                    </SelectItem>
-                                    {options.planners.map((option) => (
-                                        <SelectItem
-                                            key={option.value}
-                                            value={String(option.value)}
-                                        >
-                                            {option.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            />
                             <p className="text-xs text-muted-foreground">
                                 PIC yang ditunjuk langsung menerima notifikasi
                                 dan hanya dapat melihat pengadaan yang

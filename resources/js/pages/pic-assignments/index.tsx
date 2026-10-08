@@ -3,16 +3,11 @@ import { UserSquare2 } from 'lucide-react';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
+import { PicSelect, WorkloadBadge } from '@/components/procurement/pic-select';
+import type { PicRole } from '@/components/procurement/pic-select';
 import { ProcurementFilterBar } from '@/components/procurement-filter-bar';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import {
     Table,
     TableBody,
@@ -27,13 +22,11 @@ import picAssignments from '@/routes/pic-assignments';
 import procurements from '@/routes/procurements';
 import type {
     FilterOptions,
-    Option,
+    PicOption,
     Paginated,
     ProcurementFilters,
     ProcurementRow,
 } from '@/types';
-
-const NONE = 'none';
 
 type AssignmentFilters = ProcurementFilters & { unassigned: boolean };
 
@@ -44,7 +37,10 @@ export default function PicAssignmentIndex({
 }: {
     procurements: Paginated<ProcurementRow>;
     filters: AssignmentFilters;
-    options: FilterOptions & { planners: Option[]; executors: Option[] };
+    options: FilterOptions & {
+        planners: PicOption[];
+        executors: PicOption[];
+    };
 }) {
     return (
         <>
@@ -134,8 +130,8 @@ function AssignmentRow({
     executors,
 }: {
     row: ProcurementRow;
-    planners: Option[];
-    executors: Option[];
+    planners: PicOption[];
+    executors: PicOption[];
 }) {
     const form = useForm<{
         planner_id: number | null;
@@ -175,17 +171,19 @@ function AssignmentRow({
             </TableCell>
 
             <TableCell>
-                <PicSelect
+                <PicCell
                     value={form.data.planner_id}
                     options={planners}
+                    role="planner"
                     onChange={(value) => form.setData('planner_id', value)}
                 />
             </TableCell>
 
             <TableCell>
-                <PicSelect
+                <PicCell
                     value={form.data.executor_id}
                     options={executors}
+                    role="executor"
                     onChange={(value) => form.setData('executor_id', value)}
                 />
             </TableCell>
@@ -208,34 +206,39 @@ function AssignmentRow({
     );
 }
 
-function PicSelect({
+/**
+ * A PIC picker with the chosen person's current workload underneath.
+ */
+function PicCell({
     value,
     options,
+    role,
     onChange,
 }: {
     value: number | null;
-    options: Option[];
+    options: PicOption[];
+    role: PicRole;
     onChange: (value: number | null) => void;
 }) {
+    const workload = options.find((option) => option.value === value)?.workload;
+
     return (
-        <Select
-            value={value === null ? NONE : String(value)}
-            onValueChange={(next) =>
-                onChange(next === NONE ? null : Number(next))
-            }
-        >
-            <SelectTrigger className="w-full">
-                <SelectValue placeholder="Belum ditunjuk" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value={NONE}>Belum ditunjuk</SelectItem>
-                {options.map((option) => (
-                    <SelectItem key={option.value} value={String(option.value)}>
-                        {option.label}
-                    </SelectItem>
-                ))}
-            </SelectContent>
-        </Select>
+        <div className="grid gap-1">
+            <PicSelect
+                value={value}
+                options={options}
+                role={role}
+                onChange={onChange}
+                showSummary={false}
+            />
+            {workload && (
+                <WorkloadBadge
+                    workload={workload}
+                    role={role}
+                    className="justify-self-start"
+                />
+            )}
+        </div>
     );
 }
 

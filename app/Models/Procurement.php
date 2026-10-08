@@ -301,6 +301,22 @@ class Procurement extends Model
     }
 
     /**
+     * Limit the query to procurements still being worked on: neither
+     * finished nor cancelled.
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeInProgress(Builder $query): Builder
+    {
+        return $query->whereNull('completed_at')
+            ->whereHas('progressStatus', fn (Builder $status) => $status->whereNotIn('category', [
+                StatusCategory::Selesai->value,
+                StatusCategory::Batal->value,
+            ]));
+    }
+
+    /**
      * Limit the query to the procurements a given user is allowed to see.
      *
      * @param  Builder<static>  $query

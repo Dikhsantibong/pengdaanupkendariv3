@@ -734,6 +734,8 @@ HTML;
             ? 'margin: 0; padding: 0;'
             : 'max-width: 210mm; margin: 0 auto; padding: 16mm 14mm;';
 
+        $stylesheet = self::documentStylesheet($fontStack, $bodyBox);
+
         return <<<HTML
         <!doctype html>
         <html lang="id">
@@ -742,7 +744,24 @@ HTML;
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="color-scheme" content="light">
         <title>{$title}</title>
-        <style>
+        <style>{$stylesheet}</style>
+        </head>
+        <body>{$document->rendered_body}</body>
+        </html>
+        HTML;
+    }
+
+    /**
+     * The paper stylesheet shared by generated documents and the template editor.
+     *
+     * The template editor draws the same rules on its page so what the
+     * administrator lays out is what the generated document looks like.
+     */
+    public static function documentStylesheet(
+        string $fontStack = "'Times New Roman', Times, serif",
+        string $bodyBox = '',
+    ): string {
+        return <<<CSS
             /* The document is paper, never themed: force a light page so a
                browser in dark mode does not render dark text on dark. */
             :root { color-scheme: only light; }
@@ -792,11 +811,11 @@ HTML;
             .signature .name { font-weight: bold; text-decoration: underline; }
             .fill { letter-spacing: .5pt; }
             .note { font-size: 10pt; font-style: italic; }
-        </style>
-        </head>
-        <body>{$document->rendered_body}</body>
-        </html>
-        HTML;
+
+            /* Template editor blocks */
+            table.plain td, table.plain th { border: none; background: none; }
+            .page-break { page-break-after: always; height: 0; }
+        CSS;
     }
 
     /**

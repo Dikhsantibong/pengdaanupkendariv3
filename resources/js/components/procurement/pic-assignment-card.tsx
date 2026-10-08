@@ -1,18 +1,10 @@
 import { useForm } from '@inertiajs/react';
 import InputError from '@/components/input-error';
+import { PicSelect } from '@/components/procurement/pic-select';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import procurements from '@/routes/procurements';
-import type { Option, UserRef } from '@/types';
-
-const NONE = 'none';
+import type { PicOption, UserRef } from '@/types';
 
 export function PicAssignmentCard({
     procurementId,
@@ -25,8 +17,8 @@ export function PicAssignmentCard({
     procurementId: number;
     planner: UserRef | null;
     executor: UserRef | null;
-    planners: Option[];
-    executors: Option[];
+    planners: PicOption[];
+    executors: PicOption[];
     editable: boolean;
 }) {
     const form = useForm<{
@@ -73,67 +65,25 @@ export function PicAssignmentCard({
 
             <div className="grid gap-2">
                 <Label htmlFor="planner_id">PIC Perencana</Label>
-                <Select
-                    value={
-                        form.data.planner_id === null
-                            ? NONE
-                            : String(form.data.planner_id)
-                    }
-                    onValueChange={(value) =>
-                        form.setData(
-                            'planner_id',
-                            value === NONE ? null : Number(value),
-                        )
-                    }
-                >
-                    <SelectTrigger id="planner_id" className="w-full">
-                        <SelectValue placeholder="Belum ditunjuk" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value={NONE}>Belum ditunjuk</SelectItem>
-                        {planners.map((option) => (
-                            <SelectItem
-                                key={option.value}
-                                value={String(option.value)}
-                            >
-                                {option.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                <PicSelect
+                    id="planner_id"
+                    value={form.data.planner_id}
+                    options={planners}
+                    role="planner"
+                    onChange={(value) => form.setData('planner_id', value)}
+                />
                 <InputError message={form.errors.planner_id} />
             </div>
 
             <div className="grid gap-2">
                 <Label htmlFor="executor_id">PIC Pelaksana</Label>
-                <Select
-                    value={
-                        form.data.executor_id === null
-                            ? NONE
-                            : String(form.data.executor_id)
-                    }
-                    onValueChange={(value) =>
-                        form.setData(
-                            'executor_id',
-                            value === NONE ? null : Number(value),
-                        )
-                    }
-                >
-                    <SelectTrigger id="executor_id" className="w-full">
-                        <SelectValue placeholder="Belum ditunjuk" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value={NONE}>Belum ditunjuk</SelectItem>
-                        {executors.map((option) => (
-                            <SelectItem
-                                key={option.value}
-                                value={String(option.value)}
-                            >
-                                {option.label}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                <PicSelect
+                    id="executor_id"
+                    value={form.data.executor_id}
+                    options={executors}
+                    role="executor"
+                    onChange={(value) => form.setData('executor_id', value)}
+                />
                 <InputError message={form.errors.executor_id} />
             </div>
 

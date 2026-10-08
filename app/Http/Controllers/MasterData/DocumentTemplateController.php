@@ -21,17 +21,6 @@ class DocumentTemplateController extends Controller
     public function index(Request $request): Response
     {
         return Inertia::render('master-data/document-templates', [
-            'documentTypes' => DocumentType::query()->ordered()->get()
-                ->map(fn (DocumentType $type): array => [
-                    'value' => $type->id,
-                    'label' => $type->name,
-                    'stage' => $type->stage->value,
-                ])->all(),
-            'procurementMethods' => ProcurementMethod::query()->ordered()->get()
-                ->map(fn (ProcurementMethod $method): array => [
-                    'value' => $method->id,
-                    'label' => $method->name,
-                ])->all(),
             'templates' => DocumentTemplate::query()
                 ->with(['documentType', 'procurementMethod'])
                 ->withCount('procurementDocuments')
@@ -53,10 +42,42 @@ class DocumentTemplateController extends Controller
                     'usage_count' => $template->procurement_documents_count,
                     'updated_at' => $template->updated_at?->toDateTimeString(),
                 ])->all(),
-            'placeholderCatalog' => collect(DocumentGenerator::placeholderCatalog())
-                ->map(fn (string $label, string $key): array => ['key' => $key, 'label' => $label])
-                ->values()
-                ->all(),
+        ]);
+    }
+
+    /**
+     * Show the editor for a new template.
+     */
+    public function create(Request $request): Response
+    {
+        $documentTypeId = $request->integer('document_type_id') ?: null;
+
+        return Inertia::render('master-data/document-template-editor', [
+            ...$this->editorOptions(),
+            'template' => null,
+            'initialDocumentTypeId' => DocumentType::query()->whereKey($documentTypeId)->exists()
+                ? $documentTypeId
+                : null,
+        ]);
+    }
+
+    /**
+     * Show the editor for an existing template.
+     */
+    public function edit(DocumentTemplate $documentTemplate): Response
+    {
+        return Inertia::render('master-data/document-template-editor', [
+            ...$this->editorOptions(),
+            'template' => [
+                'id' => $documentTemplate->id,
+                'document_type_id' => $documentTemplate->document_type_id,
+                'procurement_method_id' => $documentTemplate->procurement_method_id,
+                'name' => $documentTemplate->name,
+                'version' => $documentTemplate->version,
+                'body' => $documentTemplate->body,
+                'is_active' => $documentTemplate->is_active,
+            ],
+            'initialDocumentTypeId' => null,
         ]);
     }
 
@@ -85,7 +106,7 @@ class DocumentTemplateController extends Controller
             'message' => "Template {$template->name} v{$template->version} ditambahkan.",
         ]);
 
-        return back();
+        return to_route('master-data.document-templates.edit', $template);
     }
 
     /**
@@ -119,6 +140,32 @@ class DocumentTemplateController extends Controller
         ]);
 
         return back();
+    }
+
+    /**
+     * The choices and reference data the template editor needs.
+     *
+     * @return array<string, mixed>
+     */
+    protected function editorOptions(): array
+    {
+        return [
+            'documentTypes' => DocumentType::query()->ordered()->get()
+                ->map(fn (DocumentType $type): array => [
+                    'value' => $type->id,
+                    'label' => $type->name,
+                ])->all(),
+            'procurementMethods' => ProcurementMethod::query()->ordered()->get()
+                ->map(fn (ProcurementMethod $method): array => [
+                    'value' => $method->id,
+                    'label' => $method->name,
+                ])->all(),
+            'placeholderCatalog' => collect(DocumentGenerator::placeholderCatalog())
+                ->map(fn (string $label, string $key): array => ['key' => $key, 'label' => $label])
+                ->values()
+                ->all(),
+            'documentStylesheet' => DocumentGenerator::documentStylesheet(),
+        ];
     }
 
     /**

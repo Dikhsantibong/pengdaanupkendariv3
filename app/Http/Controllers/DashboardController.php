@@ -7,6 +7,7 @@ use App\Enums\StatusCategory;
 use App\Http\Resources\ProcurementResource;
 use App\Models\Procurement;
 use App\Models\ProgressStatus;
+use App\Support\DashboardTasks;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -71,6 +72,7 @@ class DashboardController extends Controller
                     ->get(),
             )->resolve(),
             'statusOrder' => ProgressStatus::query()->active()->ordered()->pluck('name'),
+            'tasks' => DashboardTasks::for($user),
         ]);
     }
 

@@ -13,6 +13,18 @@ export type Option = {
 
 export type StatusOption = Option & { category: StatusCategory };
 
+/** How busy a PIC candidate currently is. */
+export type PicWorkload = {
+    /** Procurements still in planning with this user as PIC Perencana. */
+    planning: number;
+    /** Procurements in execution with this user as PIC Pelaksana. */
+    execution: number;
+    /** Every unfinished procurement held in either role. */
+    active: number;
+};
+
+export type PicOption = Option & { workload?: PicWorkload };
+
 export type DocumentTypeOption = Option & {
     stage: ProcurementStage;
     hasTemplate: boolean;

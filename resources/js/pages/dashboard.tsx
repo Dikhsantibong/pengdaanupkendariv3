@@ -3,12 +3,19 @@ import {
     BadgeCheck,
     Ban,
     CalendarClock,
+    ChevronRight,
     CircleDashed,
     CircleDot,
+    ClipboardCheck,
     FolderKanban,
+    ListChecks,
+    PartyPopper,
     RotateCcw,
+    UserPlus,
     Wallet,
+    Wrench,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
 import { StatCard } from '@/components/stat-card';
@@ -25,14 +32,35 @@ import {
     formatCompactCurrency,
     formatCurrency,
     formatDate,
+    formatDateTime,
 } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import approvals from '@/routes/approvals';
+import execution from '@/routes/execution';
+import picAssignments from '@/routes/pic-assignments';
 import planning from '@/routes/planning';
 import procurements from '@/routes/procurements';
 import type { Auth, ProcurementRow } from '@/types';
 
 type Breakdown = { label: string; total: number };
+
+type TaskItem = {
+    id: number;
+    number: string;
+    name: string;
+    note: string;
+    date: string | null;
+};
+
+type TaskList = { total: number; items: TaskItem[] };
+
+type DashboardTasks = {
+    approvals: TaskList | null;
+    assignments: TaskList | null;
+    planning: TaskList;
+    execution: TaskList;
+};
 
 type DashboardProps = {
     summary: {
@@ -54,6 +82,7 @@ type DashboardProps = {
     byExecutor: Breakdown[];
     recent: ProcurementRow[];
     upcoming: ProcurementRow[];
+    tasks: DashboardTasks;
 };
 
 export default function Dashboard({
@@ -67,6 +96,7 @@ export default function Dashboard({
     byExecutor,
     recent,
     upcoming,
+    tasks,
 }: DashboardProps) {
     const { auth } = usePage<{ auth: Auth }>().props;
 
@@ -84,6 +114,8 @@ export default function Dashboard({
                             : 'Ringkasan pengadaan yang ditugaskan kepada Anda.'
                     }
                 />
+
+                <TaskInbox tasks={tasks} menus={auth.permissions.menus} />
 
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     <StatCard
@@ -218,6 +250,221 @@ export default function Dashboard({
                     )}
             </div>
         </>
+    );
+}
+
+/**
+ * The work waiting on the signed-in user, each row linking to where it is done.
+ */
+function TaskInbox({
+    tasks,
+    menus,
+}: {
+    tasks: DashboardTasks;
+    menus: Auth['permissions']['menus'];
+}) {
+    const cards: Array<{
+        key: string;
+        title: string;
+        icon: LucideIcon;
+        list: TaskList;
+        emptyText: string;
+        itemHref: (item: TaskItem) => string;
+        dateLabel: (item: TaskItem) => string | null;
+        allHref: string | null;
+        tone: string;
+    }> = [];
+
+    if (tasks.approvals !== null) {
+        cards.push({
+            key: 'approvals',
+            title: 'Menunggu Persetujuan Anda',
+            icon: ClipboardCheck,
+            list: tasks.approvals,
+            emptyText: 'Tidak ada perencanaan yang menunggu persetujuan.',
+            itemHref: (item) => procurements.show(item.id).url,
+            dateLabel: (item) =>
+                item.date ? `Diajukan ${formatDateTime(item.date)}` : null,
+            allHref: menus.approvals ? approvals.index().url : null,
+            tone: 'bg-primary/10 text-primary',
+        });
+    }
+
+    if (tasks.assignments !== null) {
+        cards.push({
+            key: 'assignments',
+            title: 'Perlu Penunjukan PIC',
+            icon: UserPlus,
+            list: tasks.assignments,
+            emptyText: 'Semua pengadaan aktif sudah memiliki PIC.',
+            itemHref: (item) =>
+                picAssignments.index({
+                    query: { unassigned: 1, search: item.number },
+                }).url,
+            dateLabel: (item) =>
+                item.date ? `Dibuat ${formatDate(item.date)}` : null,
+            allHref: picAssignments.index({ query: { unassigned: 1 } }).url,
+            tone: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+        });
+    }
+
+    if (tasks.planning.total > 0) {
+        cards.push({
+            key: 'planning',
+            title: 'Tugas Perencanaan Anda',
+            icon: ListChecks,
+            list: tasks.planning,
+            emptyText: '',
+            itemHref: (item) => procurements.show(item.id).url,
+            dateLabel: (item) =>
+                item.date ? `Target ${formatDate(item.date)}` : null,
+            allHref: menus.planning ? planning.index().url : null,
+            tone: 'bg-sky-500/10 text-sky-700 dark:text-sky-400',
+        });
+    }
+
+    if (tasks.execution.total > 0) {
+        cards.push({
+            key: 'execution',
+            title: 'Tugas Pelaksanaan Anda',
+            icon: Wrench,
+            list: tasks.execution,
+            emptyText: '',
+            itemHref: (item) => procurements.show(item.id).url,
+            dateLabel: (item) =>
+                item.date ? `Target ${formatDate(item.date)}` : null,
+            allHref: menus.execution ? execution.index().url : null,
+            tone: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+        });
+    }
+
+    const pending = cards.reduce((sum, card) => sum + card.list.total, 0);
+
+    if (pending === 0) {
+        return (
+            <section className="flex items-center gap-3 rounded-md border border-border bg-card px-4 py-3">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
+                    <PartyPopper className="size-4" />
+                </span>
+                <div>
+                    <p className="text-sm font-semibold text-foreground">
+                        Tidak ada tugas yang menunggu Anda
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                        Approval, penunjukan PIC, dan tugas pengadaan Anda akan
+                        muncul di sini.
+                    </p>
+                </div>
+            </section>
+        );
+    }
+
+    return (
+        <section className="space-y-3">
+            <div className="flex items-baseline justify-between gap-3">
+                <h2 className="text-sm font-semibold text-foreground">
+                    Perlu Tindakan Anda
+                </h2>
+                <span className="tabular text-xs text-muted-foreground">
+                    {pending} tugas menunggu
+                </span>
+            </div>
+
+            <div
+                className={cn(
+                    'grid gap-4',
+                    cards.length > 1 && 'lg:grid-cols-2',
+                )}
+            >
+                {cards.map((card) => (
+                    <div
+                        key={card.key}
+                        className="flex flex-col overflow-hidden rounded-md border border-border bg-card"
+                    >
+                        <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+                            <div className="flex min-w-0 items-center gap-2.5">
+                                <span
+                                    className={cn(
+                                        'flex size-7 shrink-0 items-center justify-center rounded-md',
+                                        card.tone,
+                                    )}
+                                >
+                                    <card.icon className="size-4" />
+                                </span>
+                                <h3 className="truncate text-sm font-semibold text-foreground">
+                                    {card.title}
+                                </h3>
+                                <span
+                                    className={cn(
+                                        'tabular rounded-full px-2 py-0.5 text-xs font-semibold',
+                                        card.list.total > 0
+                                            ? card.tone
+                                            : 'bg-muted text-muted-foreground',
+                                    )}
+                                >
+                                    {card.list.total}
+                                </span>
+                            </div>
+                            {card.allHref !== null && card.list.total > 0 && (
+                                <Link
+                                    href={card.allHref}
+                                    className="shrink-0 text-xs font-medium text-primary hover:underline"
+                                >
+                                    Lihat semua
+                                </Link>
+                            )}
+                        </header>
+
+                        {card.list.items.length === 0 ? (
+                            <p className="px-4 py-6 text-center text-xs text-muted-foreground">
+                                {card.emptyText}
+                            </p>
+                        ) : (
+                            <ul className="divide-y divide-border">
+                                {card.list.items.map((item) => {
+                                    const date = card.dateLabel(item);
+
+                                    return (
+                                        <li key={item.id}>
+                                            <Link
+                                                href={card.itemHref(item)}
+                                                className="group flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-accent/40"
+                                            >
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="truncate text-sm font-medium text-foreground group-hover:text-primary">
+                                                        {item.name}
+                                                    </p>
+                                                    <p className="truncate text-xs text-muted-foreground">
+                                                        <span className="tabular">
+                                                            {item.number}
+                                                        </span>
+                                                        {' · '}
+                                                        {item.note}
+                                                    </p>
+                                                </div>
+                                                {date !== null && (
+                                                    <span className="tabular hidden shrink-0 text-xs text-muted-foreground sm:block">
+                                                        {date}
+                                                    </span>
+                                                )}
+                                                <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+                                            </Link>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+
+                        {card.list.total > card.list.items.length && (
+                            <p className="mt-auto border-t border-border px-4 py-2 text-xs text-muted-foreground">
+                                +{card.list.total - card.list.items.length}{' '}
+                                lainnya
+                            </p>
+                        )}
+                    </div>
+                ))}
+            </div>
+        </section>
     );
 }
 
