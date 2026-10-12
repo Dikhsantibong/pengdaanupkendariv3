@@ -247,11 +247,7 @@ class DocumentGenerator
     {
         $values = $this->placeholderValues($procurement);
 
-        $body = preg_replace_callback(
-            '/\{\{\s*([a-z0-9_]+)\s*\}\}/i',
-            fn (array $matches): string => $values[strtolower($matches[1])] ?? $matches[0],
-            $template->body,
-        ) ?? $template->body;
+        $body = $this->fillPlaceholders($template->body, $values);
 
         $typeCode = $template->documentType?->code ?? $template->documentType()->value('code');
         if (in_array($typeCode, ['purchase-order', 'surat-pesanan'])) {
@@ -411,6 +407,16 @@ class DocumentGenerator
                 continue;
             }
 
+            // A group heading ("A | Fabrikasi Material") or a blank spacer row
+            // has no volume and no prices: it is layout, not an item.
+            $isLayoutRow = collect([2, 4, 5, 6, 7])->every(
+                fn (int $index): bool => preg_replace('/[^0-9]/', '', strip_tags($cells[$index])) === '',
+            );
+
+            if ($isLayoutRow) {
+                continue;
+            }
+
             $name = trim(html_entity_decode(strip_tags($cells[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
             $name = trim(str_replace("\xc2\xa0", ' ', $name));
             if ($name === '' || $name === '&nbsp;') {
@@ -541,7 +547,7 @@ HTML;
 
         // Try to extract existing deadline from the first item row if already formatted with date
         $existingDeadline = null;
-        if (preg_match('/<td[^>]*font-weight:\s*bold;?[^>]*>\s*([0-9]{1,2}\s+[A-Za-z]+\s+[0-9]{4})\s*<\/td>/i', $suratPesananHtml, $m)) {
+        if (preg_match('/<td[^>]*font-weight:\s*bold;?[^>]*>\s*(?:<span[^>]*>)?\s*([0-9]{1,2}\s+[A-Za-z]+\s+[0-9]{4})\s*(?:<\/span>)?\s*<\/td>/i', $suratPesananHtml, $m)) {
             $existingDeadline = trim($m[1]);
         }
 

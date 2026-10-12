@@ -45,19 +45,23 @@ const BLOCK_STYLES = [
 
 function isNegotiationTable(table: HTMLTableElement): boolean {
     const text = (table.innerText || '').toUpperCase();
+
     return (
-        (text.includes('HARGA SEBELUM NEGO') || text.includes('SEBELUM NEGO')) &&
+        (text.includes('HARGA SEBELUM NEGO') ||
+            text.includes('SEBELUM NEGO')) &&
         (text.includes('TOTAL HARGA') || text.includes('DPP'))
     );
 }
 
 function parseNegoNumber(str: string): number {
     const clean = str.replace(/[^0-9]/g, '');
+
     return parseInt(clean, 10) || 0;
 }
 
 function parseNegoVolume(str: string): number {
     const clean = str.replace(/[^0-9.,]/g, '').replace(',', '.');
+
     return parseFloat(clean) || 1;
 }
 
@@ -67,19 +71,24 @@ function formatRupiahDisplay(num: number): string {
 
 function formatCellAsRupiahWithCaret(cell: HTMLElement) {
     const raw = cell.innerText.replace(/[^0-9]/g, '');
+
     if (!raw) {
         return;
     }
+
     const num = parseInt(raw, 10);
     const formatted = formatRupiahDisplay(num);
+
     if (cell.innerText.trim() === formatted) {
         return;
     }
 
     const sel = window.getSelection();
     let digitsBefore = 0;
+
     if (sel && sel.rangeCount > 0) {
         const range = sel.getRangeAt(0);
+
         if (cell.contains(range.startContainer)) {
             const preRange = range.cloneRange();
             preRange.selectNodeContents(cell);
@@ -93,10 +102,12 @@ function formatCellAsRupiahWithCaret(cell: HTMLElement) {
     if (sel) {
         let count = 0;
         let targetOffset = formatted.length;
+
         for (let i = 0; i < formatted.length; i++) {
             if (/[0-9]/.test(formatted[i])) {
                 count++;
             }
+
             if (count >= digitsBefore) {
                 targetOffset = i + 1;
                 break;
@@ -105,9 +116,13 @@ function formatCellAsRupiahWithCaret(cell: HTMLElement) {
 
         try {
             const textNode = cell.firstChild;
+
             if (textNode) {
                 const newRange = document.createRange();
-                const offset = Math.min(targetOffset, textNode.textContent?.length || 0);
+                const offset = Math.min(
+                    targetOffset,
+                    textNode.textContent?.length || 0,
+                );
                 newRange.setStart(textNode, offset);
                 newRange.collapse(true);
                 sel.removeAllRanges();
@@ -119,7 +134,21 @@ function formatCellAsRupiahWithCaret(cell: HTMLElement) {
     }
 }
 
-function recalculateNegotiationTable(table: HTMLTableElement, activeCell?: HTMLElement | null) {
+/**
+ * A group heading ("A | Fabrikasi Material") or blank spacer row: it has no
+ * volume and no prices, so it is neither numbered nor totalled.
+ */
+function isNegotiationLayoutRow(row: HTMLTableRowElement): boolean {
+    return [2, 4, 5, 6, 7].every(
+        (index) =>
+            (row.cells[index]?.innerText ?? '').replace(/[^0-9]/g, '') === '',
+    );
+}
+
+function recalculateNegotiationTable(
+    table: HTMLTableElement,
+    activeCell?: HTMLElement | null,
+) {
     const tbody = table.querySelector('tbody') || table;
     const rows = Array.from(tbody.querySelectorAll('tr'));
 
@@ -131,6 +160,7 @@ function recalculateNegotiationTable(table: HTMLTableElement, activeCell?: HTMLE
 
     for (const r of rows) {
         const text = r.innerText.toUpperCase();
+
         if (text.includes('TOTAL HARGA')) {
             rowTotal = r;
         } else if (text.includes('DPP')) {
@@ -139,19 +169,24 @@ function recalculateNegotiationTable(table: HTMLTableElement, activeCell?: HTMLE
             rowPpn = r;
         } else if (text.includes('JUMLAH TOTAL')) {
             rowGrand = r;
-        } else if (r.cells.length === 8) {
+        } else if (r.cells.length === 8 && !isNegotiationLayoutRow(r)) {
             itemRows.push(r);
         }
     }
 
-    if (itemRows.length === 0) return;
+    if (itemRows.length === 0) {
+        return;
+    }
 
     let sumTotalBefore = 0;
     let sumTotalAfter = 0;
 
     itemRows.forEach((row, idx) => {
         const cells = row.cells;
-        if (cells.length < 8) return;
+
+        if (cells.length < 8) {
+            return;
+        }
 
         // Auto re-number NO
         if (cells[0] !== activeCell) {
@@ -167,20 +202,22 @@ function recalculateNegotiationTable(table: HTMLTableElement, activeCell?: HTMLE
 
         // Update Jumlah Harga Sebelum (cell 5)
         if (cells[5] !== activeCell) {
-            cells[5].innerText = totalBefore > 0 ? formatRupiahDisplay(totalBefore) : '0';
+            cells[5].innerText =
+                totalBefore > 0 ? formatRupiahDisplay(totalBefore) : '0';
         }
 
         // Update Jumlah Harga Setelah (cell 7)
         if (cells[7] !== activeCell) {
-            cells[7].innerText = totalAfter > 0 ? formatRupiahDisplay(totalAfter) : '0';
+            cells[7].innerText =
+                totalAfter > 0 ? formatRupiahDisplay(totalAfter) : '0';
         }
 
         sumTotalBefore += totalBefore;
         sumTotalAfter += totalAfter;
     });
 
-    const dppBefore = Math.round(sumTotalBefore * 11 / 12);
-    const dppAfter = Math.round(sumTotalAfter * 11 / 12);
+    const dppBefore = Math.round((sumTotalBefore * 11) / 12);
+    const dppAfter = Math.round((sumTotalAfter * 11) / 12);
 
     const ppnBefore = Math.round(sumTotalBefore * 0.12);
     const ppnAfter = Math.round(sumTotalAfter * 0.12);
@@ -192,37 +229,62 @@ function recalculateNegotiationTable(table: HTMLTableElement, activeCell?: HTMLE
     if (rowTotal && rowTotal.cells.length >= 3) {
         const cBefore = rowTotal.cells[rowTotal.cells.length - 2];
         const cAfter = rowTotal.cells[rowTotal.cells.length - 1];
-        if (cBefore !== activeCell) cBefore.innerText = formatRupiahDisplay(sumTotalBefore);
-        if (cAfter !== activeCell) cAfter.innerText = formatRupiahDisplay(sumTotalAfter);
+
+        if (cBefore !== activeCell) {
+            cBefore.innerText = formatRupiahDisplay(sumTotalBefore);
+        }
+
+        if (cAfter !== activeCell) {
+            cAfter.innerText = formatRupiahDisplay(sumTotalAfter);
+        }
     }
 
     // Update DPP 11/12
     if (rowDpp && rowDpp.cells.length >= 3) {
         const cBefore = rowDpp.cells[rowDpp.cells.length - 2];
         const cAfter = rowDpp.cells[rowDpp.cells.length - 1];
-        if (cBefore !== activeCell) cBefore.innerText = formatRupiahDisplay(dppBefore);
-        if (cAfter !== activeCell) cAfter.innerText = formatRupiahDisplay(dppAfter);
+
+        if (cBefore !== activeCell) {
+            cBefore.innerText = formatRupiahDisplay(dppBefore);
+        }
+
+        if (cAfter !== activeCell) {
+            cAfter.innerText = formatRupiahDisplay(dppAfter);
+        }
     }
 
     // Update PPN 12%
     if (rowPpn && rowPpn.cells.length >= 3) {
         const cBefore = rowPpn.cells[rowPpn.cells.length - 2];
         const cAfter = rowPpn.cells[rowPpn.cells.length - 1];
-        if (cBefore !== activeCell) cBefore.innerText = formatRupiahDisplay(ppnBefore);
-        if (cAfter !== activeCell) cAfter.innerText = formatRupiahDisplay(ppnAfter);
+
+        if (cBefore !== activeCell) {
+            cBefore.innerText = formatRupiahDisplay(ppnBefore);
+        }
+
+        if (cAfter !== activeCell) {
+            cAfter.innerText = formatRupiahDisplay(ppnAfter);
+        }
     }
 
     // Update JUMLAH TOTAL
     if (rowGrand && rowGrand.cells.length >= 3) {
         const cBefore = rowGrand.cells[rowGrand.cells.length - 2];
         const cAfter = rowGrand.cells[rowGrand.cells.length - 1];
-        if (cBefore !== activeCell) cBefore.innerText = formatRupiahDisplay(grandBefore);
-        if (cAfter !== activeCell) cAfter.innerText = formatRupiahDisplay(grandAfter);
+
+        if (cBefore !== activeCell) {
+            cBefore.innerText = formatRupiahDisplay(grandBefore);
+        }
+
+        if (cAfter !== activeCell) {
+            cAfter.innerText = formatRupiahDisplay(grandAfter);
+        }
     }
 }
 
 function isSuratPesananTable(table: HTMLTableElement): boolean {
     const text = (table.innerText || '').toUpperCase();
+
     return (
         text.includes('BATAS WAKTU') &&
         (text.includes('PENYERAHAN') || text.includes('PENYELESAIAN')) &&
@@ -230,7 +292,10 @@ function isSuratPesananTable(table: HTMLTableElement): boolean {
     );
 }
 
-function recalculateSuratPesananTable(table: HTMLTableElement, activeCell?: HTMLElement | null) {
+function recalculateSuratPesananTable(
+    table: HTMLTableElement,
+    activeCell?: HTMLElement | null,
+) {
     const tbody = table.querySelector('tbody') || table;
     const rows = Array.from(tbody.querySelectorAll('tr'));
 
@@ -239,6 +304,7 @@ function recalculateSuratPesananTable(table: HTMLTableElement, activeCell?: HTML
 
     for (const r of rows) {
         const text = r.innerText.toUpperCase();
+
         if (text.includes('PERHATIAN') && text.includes('TOTAL')) {
             rowTotal = r;
         } else if (
@@ -248,22 +314,27 @@ function recalculateSuratPesananTable(table: HTMLTableElement, activeCell?: HTML
             !text.includes('TERBILANG')
         ) {
             let hasColspan = false;
+
             for (let i = 0; i < Math.min(6, r.cells.length); i++) {
                 if (r.cells[i].colSpan > 1) {
                     hasColspan = true;
                     break;
                 }
             }
+
             if (!hasColspan) {
                 itemRows.push(r);
             }
         }
     }
 
-    if (itemRows.length === 0) return;
+    if (itemRows.length === 0) {
+        return;
+    }
 
     // Ensure deadline column is merged across all item rows
     const firstRow = itemRows[0];
+
     if (firstRow) {
         // Remove redundant cell 6 on rows 1..N if they have 7 cells
         for (let k = 1; k < itemRows.length; k++) {
@@ -271,6 +342,7 @@ function recalculateSuratPesananTable(table: HTMLTableElement, activeCell?: HTML
                 itemRows[k].deleteCell(6);
             }
         }
+
         // Set rowspan on cell 6 of first row
         if (firstRow.cells.length >= 7) {
             if (itemRows.length > 1) {
@@ -285,7 +357,10 @@ function recalculateSuratPesananTable(table: HTMLTableElement, activeCell?: HTML
 
     itemRows.forEach((row, idx) => {
         const cells = row.cells;
-        if (cells.length < 6) return;
+
+        if (cells.length < 6) {
+            return;
+        }
 
         // Auto re-number NO
         if (cells[0] !== activeCell) {
@@ -305,6 +380,7 @@ function recalculateSuratPesananTable(table: HTMLTableElement, activeCell?: HTML
 
     if (rowTotal && sumTotal > 0) {
         const totalCell = rowTotal.cells.length >= 3 ? rowTotal.cells[2] : null;
+
         if (totalCell && totalCell !== activeCell) {
             totalCell.innerText = 'Rp ' + formatRupiahDisplay(sumTotal);
         }
@@ -368,20 +444,30 @@ export function VisualEditor({
     const lastActiveCell = useRef<HTMLTableCellElement | null>(null);
 
     const emit = useCallback(() => {
-        if (!area.current) return;
+        if (!area.current) {
+            return;
+        }
 
         // If the caret is in a negotiation table, handle price formatting & formula recalculation
         const sel = window.getSelection();
+
         if (sel && sel.rangeCount > 0) {
             const node = sel.getRangeAt(0).startContainer;
-            const element = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement);
-            const cell = element?.closest('td, th') as HTMLTableCellElement | null;
+            const element =
+                node.nodeType === Node.TEXT_NODE
+                    ? node.parentElement
+                    : (node as HTMLElement);
+            const cell = element?.closest(
+                'td, th',
+            ) as HTMLTableCellElement | null;
             const table = cell?.closest('table') as HTMLTableElement | null;
 
             if (cell && table && isNegotiationTable(table)) {
                 const row = cell.closest('tr');
+
                 if (row && row.cells.length === 8) {
                     const idx = cell.cellIndex;
+
                     // Harga Satuan Sebelum (4) or Harga Satuan Setelah (6)
                     if (idx === 4 || idx === 6) {
                         formatCellAsRupiahWithCaret(cell);
@@ -397,6 +483,7 @@ export function VisualEditor({
                 }
             } else if (cell && table && isSuratPesananTable(table)) {
                 const row = cell.closest('tr');
+
                 if (row && (row.cells.length === 7 || row.cells.length === 6)) {
                     recalculateSuratPesananTable(table, cell);
                 }
@@ -426,7 +513,8 @@ export function VisualEditor({
 
     const updateTableMenuPosition = useCallback(() => {
         const element = caretElement();
-        const cell = (element?.closest('td, th') as HTMLTableCellElement) ?? null;
+        const cell =
+            (element?.closest('td, th') as HTMLTableCellElement) ?? null;
         const container = scrollContainer.current;
 
         if (!cell || !container) {
@@ -455,33 +543,43 @@ export function VisualEditor({
     useEffect(() => {
         const onSelectionChange = () => {
             const element = caretElement();
-            const cell = (element?.closest('td, th') as HTMLTableCellElement) ?? null;
+            const cell =
+                (element?.closest('td, th') as HTMLTableCellElement) ?? null;
             const isInTable = cell !== null;
 
             // When navigating away from a cell in a negotiation table, ensure price/volume is formatted
             if (lastActiveCell.current && lastActiveCell.current !== cell) {
                 const prevCell = lastActiveCell.current;
-                const prevTable = prevCell.closest('table') as HTMLTableElement | null;
+                const prevTable = prevCell.closest(
+                    'table',
+                ) as HTMLTableElement | null;
+
                 if (prevTable && isNegotiationTable(prevTable)) {
                     const row = prevCell.closest('tr');
+
                     if (row && row.cells.length === 8) {
                         const idx = prevCell.cellIndex;
+
                         if (idx === 4 || idx === 6) {
                             const raw = parseNegoNumber(prevCell.innerText);
+
                             if (raw > 0) {
                                 prevCell.innerText = formatRupiahDisplay(raw);
                             }
                         } else if (idx === 2) {
                             const vol = parseNegoVolume(prevCell.innerText);
+
                             if (vol > 0) {
                                 prevCell.innerText = String(vol);
                             }
                         }
                     }
+
                     recalculateNegotiationTable(prevTable, null);
                     emit();
                 }
             }
+
             lastActiveCell.current = cell;
 
             setInTable(isInTable);
@@ -567,15 +665,19 @@ export function VisualEditor({
             // Find the first summary row to insert before
             let insertBefore: HTMLTableRowElement | null = null;
             let itemCount = 0;
+
             for (const r of allRows) {
                 const txt = r.innerText.toUpperCase();
+
                 if (
                     txt.includes('TOTAL HARGA') ||
                     txt.includes('DPP') ||
                     txt.includes('PPN') ||
                     txt.includes('JUMLAH TOTAL')
                 ) {
-                    if (!insertBefore) insertBefore = r;
+                    if (!insertBefore) {
+                        insertBefore = r;
+                    }
                 } else if (r.cells.length === 8) {
                     itemCount++;
                 }
@@ -583,10 +685,12 @@ export function VisualEditor({
 
             // Build a clean item row with 8 cells
             const fresh = document.createElement('tr');
+
             for (let i = 0; i < 8; i++) {
                 const td = document.createElement('td');
                 td.style.border = '1px solid #000';
                 td.style.padding = '5px 3px';
+
                 if (i === 0) {
                     td.style.textAlign = 'center';
                     td.textContent = String(itemCount + 1);
@@ -604,6 +708,7 @@ export function VisualEditor({
                     td.style.textAlign = 'right';
                     td.textContent = '0';
                 }
+
                 fresh.appendChild(td);
             }
 
@@ -617,6 +722,7 @@ export function VisualEditor({
             recalculateNegotiationTable(table, null);
             emit();
             setTimeout(updateTableMenuPosition, 10);
+
             return;
         }
 
@@ -632,23 +738,31 @@ export function VisualEditor({
 
             for (const r of allRows) {
                 const txt = r.innerText.toUpperCase();
+
                 if (
                     txt.includes('NOTE') ||
                     txt.includes('PERHATIAN') ||
                     txt.includes('TOTAL') ||
                     txt.includes('TERBILANG')
                 ) {
-                    if (!insertBefore) insertBefore = r;
+                    if (!insertBefore) {
+                        insertBefore = r;
+                    }
                 } else if (r.cells.length === 7 || r.cells.length === 6) {
                     itemCount++;
+
                     // Extract deadline date from cell 6 (BATAS WAKTU / PENYERAHAN BARANG / JASA) if present
                     if (r.cells.length >= 7) {
-                        const deadlineText = r.cells[6]?.innerText?.trim() || '';
+                        const deadlineText =
+                            r.cells[6]?.innerText?.trim() || '';
+
                         if (deadlineText && deadlineText !== '&nbsp;') {
                             prevDeadline = deadlineText;
                         }
                     }
+
                     const satuanText = r.cells[3]?.innerText?.trim() || '';
+
                     if (satuanText && satuanText !== '&nbsp;') {
                         prevSatuan = satuanText;
                     }
@@ -659,6 +773,7 @@ export function VisualEditor({
             // If itemCount === 0, create 7 cells. Otherwise 6 cells (deadline is merged with row 0).
             const cellCount = itemCount === 0 ? 7 : 6;
             const fresh = document.createElement('tr');
+
             for (let i = 0; i < cellCount; i++) {
                 const td = document.createElement('td');
                 td.style.border = '1px solid #000';
@@ -699,8 +814,10 @@ export function VisualEditor({
                     td.style.verticalAlign = 'middle';
                     td.style.fontWeight = 'bold';
                     // Muncul tanggal batas penyerahan yang sama seperti item sebelumnya!
-                    td.textContent = prevDeadline || '{{tanggal_selesai_pelaksanaan}}';
+                    td.textContent =
+                        prevDeadline || '{{tanggal_selesai_pelaksanaan}}';
                 }
+
                 fresh.appendChild(td);
             }
 
@@ -713,6 +830,7 @@ export function VisualEditor({
             recalculateSuratPesananTable(table, null);
             emit();
             setTimeout(updateTableMenuPosition, 10);
+
             return;
         }
 
@@ -730,7 +848,8 @@ export function VisualEditor({
 
     const removeRow = () => {
         const row = currentCell()?.closest('tr');
-        const table = (row?.closest('table') as HTMLTableElement | null) ?? null;
+        const table =
+            (row?.closest('table') as HTMLTableElement | null) ?? null;
 
         // Never leave an empty table behind: removing the last row removes it.
         if (!row || !table) {
@@ -740,6 +859,7 @@ export function VisualEditor({
         if (isNegotiationTable(table)) {
             // Guard: DO NOT allow deleting summary rows or header rows!
             const txt = (row.innerText || '').toUpperCase();
+
             if (
                 txt.includes('TOTAL HARGA') ||
                 txt.includes('DPP') ||
@@ -753,8 +873,11 @@ export function VisualEditor({
             // Don't delete if it's the only item row
             const tbody = table.querySelector('tbody') || table;
             const itemRows = Array.from(tbody.querySelectorAll('tr')).filter(
-                (r) => r.cells.length === 8 && !r.innerText.toUpperCase().includes('TOTAL')
+                (r) =>
+                    r.cells.length === 8 &&
+                    !r.innerText.toUpperCase().includes('TOTAL'),
             );
+
             if (itemRows.length <= 1) {
                 return;
             }
@@ -763,12 +886,14 @@ export function VisualEditor({
             recalculateNegotiationTable(table, null);
             emit();
             setTimeout(updateTableMenuPosition, 10);
+
             return;
         }
 
         if (isSuratPesananTable(table)) {
             // Guard: DO NOT allow deleting summary / note rows or header rows!
             const txt = (row.innerText || '').toUpperCase();
+
             if (
                 txt.includes('NOTE') ||
                 txt.includes('PERHATIAN') ||
@@ -789,6 +914,7 @@ export function VisualEditor({
                     !r.innerText.toUpperCase().includes('PERHATIAN') &&
                     !r.innerText.toUpperCase().includes('TERBILANG'),
             );
+
             if (itemRows.length <= 1) {
                 return;
             }
@@ -804,6 +930,7 @@ export function VisualEditor({
             recalculateSuratPesananTable(table, null);
             emit();
             setTimeout(updateTableMenuPosition, 10);
+
             return;
         }
 
@@ -876,17 +1003,25 @@ export function VisualEditor({
     const recalculateCurrentTable = () => {
         const cell = currentCell();
         const table = cell?.closest('table') as HTMLTableElement | null;
-        if (!table) return;
+
+        if (!table) {
+            return;
+        }
 
         if (isNegotiationTable(table)) {
             // Format all price cells as Rupiah first
             const tbody = table.querySelector('tbody') || table;
             const rows = Array.from(tbody.querySelectorAll('tr'));
+
             for (const r of rows) {
-                if (r.cells.length !== 8) continue;
+                if (r.cells.length !== 8) {
+                    continue;
+                }
+
                 // Price columns: 4 (Harga Satuan Sebelum) and 6 (Harga Satuan Setelah)
                 for (const idx of [4, 6]) {
                     const raw = parseNegoNumber(r.cells[idx].innerText);
+
                     if (raw > 0) {
                         r.cells[idx].innerText = formatRupiahDisplay(raw);
                     }
@@ -904,7 +1039,7 @@ export function VisualEditor({
     return (
         <div className="flex flex-col rounded-md border border-border bg-card shadow-sm">
             {/* Toolbar header: pinned at the top */}
-            <div className="sticky top-0 z-30 flex flex-col gap-1.5 border-b border-border bg-card/95 backdrop-blur px-3 py-2">
+            <div className="sticky top-0 z-30 flex flex-col gap-1.5 border-b border-border bg-card/95 px-3 py-2 backdrop-blur">
                 <div className="flex flex-wrap items-center gap-1">
                     <Select
                         value={blockStyle}
@@ -915,7 +1050,10 @@ export function VisualEditor({
                         </SelectTrigger>
                         <SelectContent>
                             {BLOCK_STYLES.map((style) => (
-                                <SelectItem key={style.value} value={style.value}>
+                                <SelectItem
+                                    key={style.value}
+                                    value={style.value}
+                                >
                                     {style.label}
                                 </SelectItem>
                             ))}
@@ -1010,8 +1148,8 @@ export function VisualEditor({
                 </div>
 
                 {inTable && (
-                    <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1.5 shadow-sm animate-in fade-in slide-in-from-top-1">
-                        <span className="mr-1 text-xs font-semibold text-primary flex items-center gap-1">
+                    <div className="flex animate-in flex-wrap items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1.5 shadow-sm fade-in slide-in-from-top-1">
+                        <span className="mr-1 flex items-center gap-1 text-xs font-semibold text-primary">
                             <TableIcon className="size-3.5" />
                             Aksi Tabel:
                         </span>
@@ -1023,7 +1161,7 @@ export function VisualEditor({
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={addRow}
                         >
-                            <Rows3 className="size-3.5 mr-1 text-primary" />
+                            <Rows3 className="mr-1 size-3.5 text-primary" />
                             Tambah Baris
                         </Button>
                         <Button
@@ -1034,10 +1172,13 @@ export function VisualEditor({
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={addColumn}
                         >
-                            <Columns3 className="size-3.5 mr-1 text-primary" />
+                            <Columns3 className="mr-1 size-3.5 text-primary" />
                             Tambah Kolom
                         </Button>
-                        <Separator orientation="vertical" className="h-4 mx-1" />
+                        <Separator
+                            orientation="vertical"
+                            className="mx-1 h-4"
+                        />
                         <Button
                             type="button"
                             size="sm"
@@ -1046,7 +1187,7 @@ export function VisualEditor({
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={removeRow}
                         >
-                            <Trash2 className="size-3.5 mr-1" />
+                            <Trash2 className="mr-1 size-3.5" />
                             Hapus Baris
                         </Button>
                         <Button
@@ -1057,20 +1198,23 @@ export function VisualEditor({
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={removeColumn}
                         >
-                            <Trash2 className="size-3.5 mr-1" />
+                            <Trash2 className="mr-1 size-3.5" />
                             Hapus Kolom
                         </Button>
-                        <Separator orientation="vertical" className="h-4 mx-1" />
+                        <Separator
+                            orientation="vertical"
+                            className="mx-1 h-4"
+                        />
                         <Button
                             type="button"
                             size="sm"
                             variant="secondary"
-                            className="h-7 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                            className="h-7 border border-emerald-300 bg-emerald-50 text-xs font-medium text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={recalculateCurrentTable}
                             title="Format angka ke Rupiah dan hitung ulang seluruh rumus tabel otomatis"
                         >
-                            <Calculator className="size-3.5 mr-1" />
+                            <Calculator className="mr-1 size-3.5" />
                             Hitung Ulang &amp; Format
                         </Button>
                     </div>
@@ -1090,9 +1234,9 @@ export function VisualEditor({
                             top: `${tableMenuPos.top}px`,
                             left: `${tableMenuPos.left}px`,
                         }}
-                        className="absolute z-20 flex items-center gap-1 rounded-lg border border-primary/40 bg-card/95 backdrop-blur px-2 py-1 shadow-lg animate-in fade-in zoom-in-95 text-xs ring-1 ring-black/5"
+                        className="absolute z-20 flex animate-in items-center gap-1 rounded-lg border border-primary/40 bg-card/95 px-2 py-1 text-xs shadow-lg ring-1 ring-black/5 backdrop-blur zoom-in-95 fade-in"
                     >
-                        <span className="font-semibold text-primary px-1 text-xs flex items-center gap-1">
+                        <span className="flex items-center gap-1 px-1 text-xs font-semibold text-primary">
                             <TableIcon className="size-3.5" />
                             Tabel:
                         </span>
@@ -1104,8 +1248,8 @@ export function VisualEditor({
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={addRow}
                         >
-                            <Rows3 className="size-3 mr-1 text-primary" />
-                            + Baris
+                            <Rows3 className="mr-1 size-3 text-primary" />+
+                            Baris
                         </Button>
                         <Button
                             type="button"
@@ -1115,10 +1259,13 @@ export function VisualEditor({
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={addColumn}
                         >
-                            <Columns3 className="size-3 mr-1 text-primary" />
-                            + Kolom
+                            <Columns3 className="mr-1 size-3 text-primary" />+
+                            Kolom
                         </Button>
-                        <Separator orientation="vertical" className="h-3.5 mx-0.5" />
+                        <Separator
+                            orientation="vertical"
+                            className="mx-0.5 h-3.5"
+                        />
                         <Button
                             type="button"
                             size="sm"
@@ -1127,8 +1274,7 @@ export function VisualEditor({
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={removeRow}
                         >
-                            <Trash2 className="size-3 mr-1" />
-                            - Baris
+                            <Trash2 className="mr-1 size-3" />- Baris
                         </Button>
                         <Button
                             type="button"
@@ -1138,20 +1284,22 @@ export function VisualEditor({
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={removeColumn}
                         >
-                            <Trash2 className="size-3 mr-1" />
-                            - Kolom
+                            <Trash2 className="mr-1 size-3" />- Kolom
                         </Button>
-                        <Separator orientation="vertical" className="h-3.5 mx-0.5" />
+                        <Separator
+                            orientation="vertical"
+                            className="mx-0.5 h-3.5"
+                        />
                         <Button
                             type="button"
                             size="sm"
                             variant="secondary"
-                            className="h-6 px-2 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300"
+                            className="h-6 bg-emerald-50 px-2 text-xs font-medium text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300"
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={recalculateCurrentTable}
                             title="Format Rupiah dan hitung ulang rumus"
                         >
-                            <Calculator className="size-3 mr-1" />
+                            <Calculator className="mr-1 size-3" />
                             Hitung
                         </Button>
                     </div>
@@ -1160,7 +1308,7 @@ export function VisualEditor({
                 {/* Paper Canvas */}
                 <div
                     ref={paperContainer}
-                    className={`relative mx-auto w-full ${isLandscape ? 'max-w-[297mm]' : 'max-w-[210mm]'} min-h-[65vh] rounded-sm border border-border bg-white p-6 sm:p-12 shadow-sm focus-within:ring-2 focus-within:ring-primary/40`}
+                    className={`relative mx-auto w-full ${isLandscape ? 'max-w-[297mm]' : 'max-w-[210mm]'} min-h-[65vh] rounded-sm border border-border bg-white p-6 shadow-sm focus-within:ring-2 focus-within:ring-primary/40 sm:p-12`}
                 >
                     <div
                         ref={area}
@@ -1174,9 +1322,13 @@ export function VisualEditor({
                         onKeyDown={(event) => {
                             if (event.key === 'Enter') {
                                 const cell = currentCell();
+
                                 if (cell) {
                                     event.preventDefault();
-                                    const nextCell = (cell.nextElementSibling as HTMLTableCellElement) ?? null;
+                                    const nextCell =
+                                        (cell.nextElementSibling as HTMLTableCellElement) ??
+                                        null;
+
                                     if (nextCell) {
                                         const range = document.createRange();
                                         range.selectNodeContents(nextCell);
@@ -1188,22 +1340,46 @@ export function VisualEditor({
                                 }
                             } else if (event.key === 'Tab') {
                                 const cell = currentCell();
+
                                 if (cell) {
                                     event.preventDefault();
                                     const row = cell.closest('tr');
-                                    let targetCell: HTMLTableCellElement | null = null;
+                                    let targetCell: HTMLTableCellElement | null =
+                                        null;
+
                                     if (event.shiftKey) {
-                                        targetCell = (cell.previousElementSibling as HTMLTableCellElement) ?? null;
-                                        if (!targetCell && row?.previousElementSibling) {
-                                            const prevRowCells = (row.previousElementSibling as HTMLTableRowElement).cells;
-                                            targetCell = prevRowCells[prevRowCells.length - 1] ?? null;
+                                        targetCell =
+                                            (cell.previousElementSibling as HTMLTableCellElement) ??
+                                            null;
+
+                                        if (
+                                            !targetCell &&
+                                            row?.previousElementSibling
+                                        ) {
+                                            const prevRowCells = (
+                                                row.previousElementSibling as HTMLTableRowElement
+                                            ).cells;
+                                            targetCell =
+                                                prevRowCells[
+                                                    prevRowCells.length - 1
+                                                ] ?? null;
                                         }
                                     } else {
-                                        targetCell = (cell.nextElementSibling as HTMLTableCellElement) ?? null;
-                                        if (!targetCell && row?.nextElementSibling) {
-                                            targetCell = (row.nextElementSibling as HTMLTableRowElement).cells[0] ?? null;
+                                        targetCell =
+                                            (cell.nextElementSibling as HTMLTableCellElement) ??
+                                            null;
+
+                                        if (
+                                            !targetCell &&
+                                            row?.nextElementSibling
+                                        ) {
+                                            targetCell =
+                                                (
+                                                    row.nextElementSibling as HTMLTableRowElement
+                                                ).cells[0] ?? null;
                                         }
                                     }
+
                                     if (targetCell) {
                                         const range = document.createRange();
                                         range.selectNodeContents(targetCell);
@@ -1218,39 +1394,76 @@ export function VisualEditor({
                         onBlur={() => {
                             if (lastActiveCell.current) {
                                 const prevCell = lastActiveCell.current;
-                                const prevTable = prevCell.closest('table') as HTMLTableElement | null;
-                                if (prevTable && isNegotiationTable(prevTable)) {
+                                const prevTable = prevCell.closest(
+                                    'table',
+                                ) as HTMLTableElement | null;
+
+                                if (
+                                    prevTable &&
+                                    isNegotiationTable(prevTable)
+                                ) {
                                     const row = prevCell.closest('tr');
+
                                     if (row && row.cells.length === 8) {
                                         const idx = prevCell.cellIndex;
+
                                         if (idx === 4 || idx === 6) {
-                                            const raw = parseNegoNumber(prevCell.innerText);
+                                            const raw = parseNegoNumber(
+                                                prevCell.innerText,
+                                            );
+
                                             if (raw > 0) {
-                                                prevCell.innerText = formatRupiahDisplay(raw);
+                                                prevCell.innerText =
+                                                    formatRupiahDisplay(raw);
                                             }
                                         }
                                     }
-                                    recalculateNegotiationTable(prevTable, null);
-                                } else if (prevTable && isSuratPesananTable(prevTable)) {
+
+                                    recalculateNegotiationTable(
+                                        prevTable,
+                                        null,
+                                    );
+                                } else if (
+                                    prevTable &&
+                                    isSuratPesananTable(prevTable)
+                                ) {
                                     const row = prevCell.closest('tr');
-                                    if (row && (row.cells.length === 7 || row.cells.length === 6)) {
+
+                                    if (
+                                        row &&
+                                        (row.cells.length === 7 ||
+                                            row.cells.length === 6)
+                                    ) {
                                         const idx = prevCell.cellIndex;
+
                                         if (idx === 4) {
-                                            const raw = parseNegoNumber(prevCell.innerText);
+                                            const raw = parseNegoNumber(
+                                                prevCell.innerText,
+                                            );
+
                                             if (raw > 0) {
-                                                prevCell.innerText = 'Rp ' + formatRupiahDisplay(raw);
+                                                prevCell.innerText =
+                                                    'Rp ' +
+                                                    formatRupiahDisplay(raw);
                                             }
                                         }
                                     }
-                                    recalculateSuratPesananTable(prevTable, null);
+
+                                    recalculateSuratPesananTable(
+                                        prevTable,
+                                        null,
+                                    );
                                 }
+
                                 lastActiveCell.current = null;
                             }
+
                             emit();
                         }}
                         onPaste={(event) => {
                             event.preventDefault();
-                            const text = event.clipboardData.getData('text/plain');
+                            const text =
+                                event.clipboardData.getData('text/plain');
                             document.execCommand('insertText', false, text);
                             emit();
                         }}

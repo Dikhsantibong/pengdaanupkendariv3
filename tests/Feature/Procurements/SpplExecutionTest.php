@@ -254,9 +254,11 @@ class SpplExecutionTest extends TestCase
         $this->assertStringContainsString('/logo/sidebar-logo.png', $template->body);
         $this->assertStringContainsString('UP KENDARI', $template->body);
         $this->assertStringContainsString('TOTAL HARGA', $template->body);
-        $this->assertStringContainsString('DPP 11/12', $template->body);
-        $this->assertStringContainsString('PPN 12%', $template->body);
-        $this->assertStringContainsString('JUMLAH TOTAL', $template->body);
+        // Prices are shown before tax: no DPP/PPN rows, just a note under the table.
+        $this->assertStringNotContainsString('DPP 11/12', $template->body);
+        $this->assertStringNotContainsString('PPN 12%', $template->body);
+        $this->assertStringNotContainsString('JUMLAH TOTAL', $template->body);
+        $this->assertStringContainsString('*Harga belum termasuk PPN', $template->body);
         $this->assertStringContainsString('TL PELAKSANA PENGADAAN', $template->body);
         $this->assertStringNotContainsString('class="page-break"', $template->body);
     }
@@ -456,6 +458,88 @@ HTML;
         $rendered = $generator->render($spTemplate, $procurement);
         $this->assertStringContainsString('Jasa Kalibrasi Sensor Turbin', $rendered);
         $this->assertStringContainsString('Rp 42.000.000', $rendered);
+    }
+
+    public function test_group_headings_and_blank_rows_in_ba_negosiasi_are_not_items(): void
+    {
+        $html = <<<'HTML'
+        <table>
+            <tr><th colspan="2">HARGA SEBELUM NEGO</th><th colspan="2">HARGA SETELAH NEGO</th></tr>
+            <tr><td>A</td><td>Fabrikasi Material</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>1</td><td>Thrust Bearing</td><td>40</td><td>Bh</td><td>1.050.000</td><td>42.000.000</td><td>1.029.000</td><td>41.160.000</td></tr>
+            <tr><td>2</td><td>Ring Per Thrust Bearing</td><td>40</td><td>Bh</td><td>85.000</td><td>3.400.000</td><td>83.300</td><td>3.332.000</td></tr>
+            <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+            <tr><td colspan="4">TOTAL HARGA</td><td colspan="2">45.400.000</td><td colspan="2">44.492.000</td></tr>
+        </table>
+        HTML;
+
+        $items = app(DocumentGenerator::class)->parseNegotiationItems($html);
+
+        $this->assertSame(['Thrust Bearing', 'Ring Per Thrust Bearing'], array_column($items, 'name'));
+        $this->assertSame(44492000.0, array_sum(array_column($items, 'total_after')));
+    }
+
+    public function test_ba_and_surat_pesanan_letterheads_carry_the_company_address_but_attachments_do_not(): void
+    {
+        $this->seed(MasterDataSeeder::class);
+        $this->seed(SpplDocumentTemplateSeeder::class);
+
+        $generator = app(DocumentGenerator::class);
+        $renderer = app(DocumentPdfRenderer::class);
+        $user = User::factory()->create();
+        $procurement = Procurement::factory()->create();
+        $address = 'Jl. Chairil Anwar No.2, Mataiwoi, Kec. Wua-Wua, Kota Kendari, Sulawesi Tenggara 93117';
+
+        foreach (['ba-negosiasi-sppl' => true, 'surat-pesanan' => true, 'lampiran-sp-barang' => false, 'lampiran-sp-jasa' => false] as $code => $hasHeading) {
+            $type = DocumentType::query()->where('code', $code)->firstOrFail();
+            $document = $generator->generate($procurement, $type, $user);
+
+            if ($hasHeading) {
+                $this->assertStringContainsString('PT. PLN Nusantara Power UP Kendari', $document->rendered_body, $code);
+                $this->assertStringContainsString($address, $document->rendered_body, $code);
+
+                // The heading sits beside the logo, so the sheet stays one page.
+                preg_match_all('/\/Type\s*\/Page\b/', $renderer->render($document), $pages);
+                $this->assertCount(1, $pages[0], $code);
+            } else {
+                $this->assertStringNotContainsString($address, $document->rendered_body, $code);
+            }
+        }
+    }
+
+    public function test_lampiran_surat_pesanan_follows_the_syarat_umum_form(): void
+    {
+        $this->seed(MasterDataSeeder::class);
+        $this->seed(SpplDocumentTemplateSeeder::class);
+
+        $procurement = Procurement::factory()->create([
+            'partner_name' => 'PT. MULTI FAKTORIAL',
+            'bank_name' => 'BANK MANDIRI',
+            'bank_account_number' => '1300013209310',
+            'bank_account_holder' => 'PT. MULTI FAKTORIAL',
+        ]);
+
+        foreach (['lampiran-sp-barang', 'lampiran-sp-jasa'] as $code) {
+            $type = DocumentType::query()->where('code', $code)->firstOrFail();
+            $template = DocumentTemplate::query()->where('document_type_id', $type->id)->firstOrFail();
+            $rendered = app(DocumentGenerator::class)->render($template, $procurement);
+
+            foreach ([
+                'A. UMUM',
+                'B. PENERIMAAN BARANG / PEKERJAAN',
+                'C. PEMERIKSAAN BARANG / PEKERJAAN',
+                'D. PEMBAYARAN',
+                'E. SANKSI KETERLAMBATAN',
+                'F. KEPATUHAN TERHADAP PERATURAN DAN KEBIJAKAN ANTI PENYUAPAN',
+                'G. LAIN-LAIN',
+                'adalah PT. MULTI FAKTORIAL',
+                'pukul 09.00 s/d 15.00 WIB',
+                'BANK MANDIRI',
+                '1300013209310',
+            ] as $expected) {
+                $this->assertStringContainsString($expected, $rendered, "{$code}: {$expected}");
+            }
+        }
     }
 
     public function test_lampiran_surat_pesanan_has_logo_and_paraf_footer(): void

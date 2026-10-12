@@ -840,7 +840,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-3fOsixe4.css",
+    "file": "assets/app-DWspgWRq.css",
     "name": "app",
     "names": [
       "app.css"
@@ -849,7 +849,7 @@
     "isEntry": true
   },
   "resources/js/app.tsx": {
-    "file": "assets/app-BJtFeMvq.js",
+    "file": "assets/app-D9_1nJzV.js",
     "name": "app",
     "src": "resources/js/app.tsx",
     "isEntry": true,
@@ -1485,7 +1485,7 @@
     ]
   },
   "resources/js/pages/procurements/document-editor.tsx": {
-    "file": "assets/document-editor-CZz556kW.js",
+    "file": "assets/document-editor-Dm_bzhmm.js",
     "name": "document-editor",
     "src": "resources/js/pages/procurements/document-editor.tsx",
     "isDynamicEntry": true,
