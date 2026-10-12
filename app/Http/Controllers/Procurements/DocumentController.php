@@ -80,6 +80,10 @@ class DocumentController extends Controller
             ]);
         }
 
+        // Data changed elsewhere (a renamed master record, say) still reaches
+        // the download: untouched fields are brought up to date first.
+        $this->generator->refreshDocument($document);
+
         if ($request->string('format')->value() === 'html') {
             return response($this->generator->printableHtml($document), 200, [
                 'Content-Type' => 'text/html; charset=UTF-8',
@@ -115,6 +119,10 @@ class DocumentController extends Controller
         abort_if($document->documentType->upload_only, 404);
 
         $values = $this->generator->placeholderValues($procurement);
+
+        // The editor polls this page, so every reload pulls the latest
+        // procurement data into the document before it is shown.
+        $this->generator->refreshDocument($document, $values);
 
         return Inertia::render('procurements/document-editor', [
             'procurement' => [

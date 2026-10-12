@@ -100,7 +100,7 @@ class MethodSpecificTemplateTest extends TestCase
 
         $document = ProcurementDocument::query()->firstOrFail();
 
-        $this->assertStringContainsString('Template khusus SPK', $document->rendered_body);
+        $this->assertStringContainsString('Template khusus SPK', strip_tags($document->rendered_body));
         $this->assertStringNotContainsString('Template umum', $document->rendered_body);
     }
 

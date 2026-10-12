@@ -267,6 +267,162 @@ class DocumentGenerator
     }
 
     /**
+     * Placeholders frozen at generation: the issue date and year of a document
+     * must not move on every day it is reopened.
+     */
+    protected const FROZEN_FIELDS = ['tanggal_dokumen', 'tahun'];
+
+    /**
+     * Fill the placeholders of a template body.
+     *
+     * In running text each value is wrapped in a live field
+     * (<span data-field data-value>) so the document can follow later changes
+     * to the procurement while keeping every hand edit around it. Values
+     * inside tags, <style>/<title> blocks, multi-line markup and the frozen
+     * fields are written plainly.
+     *
+     * @param  array<string, string>  $values
+     */
+    public function fillPlaceholders(string $body, array $values): string
+    {
+        $parts = preg_split('/(<[^>]*>)/', $body, -1, PREG_SPLIT_DELIM_CAPTURE);
+
+        if ($parts === false) {
+            return $body;
+        }
+
+        $rawBlock = null;
+        $filled = '';
+
+        foreach ($parts as $part) {
+            $isTag = str_starts_with($part, '<');
+
+            if ($isTag && $rawBlock === null && preg_match('/^<(style|script|title|textarea)\b/i', $part, $open)) {
+                $rawBlock = strtolower($open[1]);
+            } elseif ($isTag && $rawBlock !== null && preg_match('/^<\/'.$rawBlock.'\s*>/i', $part)) {
+                $rawBlock = null;
+            }
+
+            $live = ! $isTag && $rawBlock === null;
+
+            $filled .= preg_replace_callback(
+                '/\{\{\s*([a-z0-9_]+)\s*\}\}/i',
+                function (array $matches) use ($values, $live): string {
+                    $key = strtolower($matches[1]);
+
+                    if (! array_key_exists($key, $values)) {
+                        return $matches[0];
+                    }
+
+                    $value = (string) $values[$key];
+
+                    if (! $live || in_array($key, self::FROZEN_FIELDS, true) || str_contains($value, '<')) {
+                        return $value;
+                    }
+
+                    return $this->liveField($key, $value);
+                },
+                $part,
+            ) ?? $part;
+        }
+
+        return $filled;
+    }
+
+    /**
+     * Bring the live fields of a document body up to date.
+     *
+     * A field is only rewritten while it still reads exactly what the system
+     * put there; once someone has typed over it, the hand edit wins.
+     *
+     * @param  array<string, string>  $values
+     */
+    public function refreshLiveFields(string $body, array $values): string
+    {
+        if (! str_contains($body, 'data-field=')) {
+            return $body;
+        }
+
+        return preg_replace_callback(
+            '/<span\b([^>]*\bdata-field="([a-z0-9_]+)"[^>]*)>(.*?)<\/span>/is',
+            function (array $matches) use ($values): string {
+                [$whole, $attributes, $key, $content] = $matches;
+
+                if (! array_key_exists($key, $values)
+                    || ! preg_match('/\bdata-value="([^"]*)"/', $attributes, $stored)) {
+                    return $whole;
+                }
+
+                $value = (string) $values[$key];
+
+                if ($this->plainText($content) !== $this->plainText($stored[1])
+                    || $this->plainText($content) === $this->plainText($value)) {
+                    return $whole;
+                }
+
+                return $this->liveField($key, $value);
+            },
+            $body,
+        ) ?? $body;
+    }
+
+    /**
+     * Bring one archived document up to date with the procurement data.
+     *
+     * An unedited document is simply rendered again from its template; an
+     * edited one only has its untouched live fields refreshed. Returns
+     * whether the stored body changed.
+     *
+     * @param  array<string, string>|null  $values
+     */
+    public function refreshDocument(ProcurementDocument $document, ?array $values = null): bool
+    {
+        if ($document->document_template_id === null) {
+            return false;
+        }
+
+        $document->loadMissing(['procurement', 'documentTemplate']);
+
+        if ((int) $document->revision === 0 && $document->documentTemplate !== null) {
+            $body = $this->render($document->documentTemplate, $document->procurement);
+        } else {
+            $body = $this->refreshLiveFields(
+                $document->rendered_body,
+                $values ?? $this->placeholderValues($document->procurement),
+            );
+        }
+
+        if ($body === $document->rendered_body) {
+            return false;
+        }
+
+        $document->rendered_body = $body;
+        $document->save();
+
+        return true;
+    }
+
+    /**
+     * The markup of one live field.
+     */
+    protected function liveField(string $key, string $value): string
+    {
+        $stored = htmlspecialchars($this->plainText($value), ENT_QUOTES, 'UTF-8');
+
+        return '<span data-field="'.$key.'" data-value="'.$stored.'">'.$value.'</span>';
+    }
+
+    /**
+     * The visible text of a fragment, for comparing field contents.
+     */
+    protected function plainText(string $html): string
+    {
+        $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        return trim((string) preg_replace('/\s+/u', ' ', str_replace("\xc2\xa0", ' ', $text)));
+    }
+
+    /**
      * Generate and archive a document for a procurement.
      */
     public function generate(Procurement $procurement, DocumentType $documentType, User $author): ProcurementDocument
@@ -675,7 +831,16 @@ HTML;
                 }
             }
 
-            // 2. Expand any unexpanded placeholders like {{key}}
+            // 2. Documents with live fields refresh exactly those fields and
+            // nothing else; the text-matching fallback below is only for
+            // documents generated before live fields existed.
+            if (str_contains($body, 'data-field=')) {
+                $this->refreshDocument($document, $newPlaceholders);
+
+                continue;
+            }
+
+            // 3. Expand any unexpanded placeholders like {{key}}
             foreach ($newPlaceholders as $key => $val) {
                 $pattern = '/\{\{\s*'.preg_quote($key, '/').'\s*\}\}/i';
                 if (preg_match($pattern, $newBody)) {
@@ -683,7 +848,7 @@ HTML;
                 }
             }
 
-            // 3. For any changed placeholders, replace old values if old was non-trivial
+            // 4. For any changed placeholders, replace old values if old was non-trivial
             foreach ($changed as $key => $diff) {
                 $old = trim($diff['old']);
                 $new = trim($diff['new']);

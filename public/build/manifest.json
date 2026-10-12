@@ -849,7 +849,7 @@
     "isEntry": true
   },
   "resources/js/app.tsx": {
-    "file": "assets/app-D9_1nJzV.js",
+    "file": "assets/app-BzHMUw1B.js",
     "name": "app",
     "src": "resources/js/app.tsx",
     "isEntry": true,
@@ -1485,7 +1485,7 @@
     ]
   },
   "resources/js/pages/procurements/document-editor.tsx": {
-    "file": "assets/document-editor-Dm_bzhmm.js",
+    "file": "assets/document-editor-DpT_0TqR.js",
     "name": "document-editor",
     "src": "resources/js/pages/procurements/document-editor.tsx",
     "isDynamicEntry": true,

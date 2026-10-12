@@ -522,7 +522,7 @@ HTML;
         foreach (['lampiran-sp-barang', 'lampiran-sp-jasa'] as $code) {
             $type = DocumentType::query()->where('code', $code)->firstOrFail();
             $template = DocumentTemplate::query()->where('document_type_id', $type->id)->firstOrFail();
-            $rendered = app(DocumentGenerator::class)->render($template, $procurement);
+            $rendered = strip_tags(app(DocumentGenerator::class)->render($template, $procurement));
 
             foreach ([
                 'A. UMUM',

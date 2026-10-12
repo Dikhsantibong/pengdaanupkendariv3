@@ -6,9 +6,11 @@ use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Enums\StatusCategory;
+use App\Observers\ProcurementDocumentObserver;
 use Carbon\CarbonImmutable;
 use Database\Factories\ProcurementFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -69,6 +71,7 @@ use Illuminate\Support\Collection;
  * @property-read \Illuminate\Database\Eloquent\Collection<int, TargetUnit> $targetUnits
  * @property-read ProgressStatus $progressStatus
  */
+#[ObservedBy(ProcurementDocumentObserver::class)]
 #[Fillable([
     'name',
     'partner_name',

@@ -1,13 +1,14 @@
-import { Head, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePoll } from '@inertiajs/react';
 import {
     ArrowLeft,
     Download,
     Eye,
     PenLine,
+    RefreshCw,
     RotateCcw,
     Save,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PdfPreview } from '@/components/document-editor/pdf-preview';
 import { VisualEditor } from '@/components/document-editor/visual-editor';
 import InputError from '@/components/input-error';
@@ -49,9 +50,57 @@ type PlaceholderRow = {
 
 type ViewMode = 'visual' | 'preview';
 
+/** How often the editor pulls the latest procurement data, in ms. */
+const LIVE_REFRESH_INTERVAL = 4000;
+
+/**
+ * Bring the untouched live fields of a draft up to date.
+ *
+ * A field generated as <span data-field data-value> is only rewritten while
+ * its text still equals what the system put there, so anything the author
+ * typed over is left alone. Full HTML documents are refreshed on the server.
+ */
+function refreshLiveFields(
+    body: string,
+    values: Record<string, string>,
+): string {
+    if (!body.includes('data-field=') || /<html[\s>]/i.test(body)) {
+        return body;
+    }
+
+    const normalise = (text: string) =>
+        text.replace(/\s+/g, ' ').trim();
+    const holder = document.createElement('template');
+    holder.innerHTML = body;
+    let changed = false;
+
+    holder.content
+        .querySelectorAll<HTMLElement>('span[data-field]')
+        .forEach((field) => {
+            const key = field.dataset.field ?? '';
+            const next = values[key];
+            const stored = field.dataset.value ?? '';
+
+            if (
+                next === undefined ||
+                normalise(field.textContent ?? '') !== normalise(stored) ||
+                normalise(next) === normalise(stored)
+            ) {
+                return;
+            }
+
+            field.textContent = next;
+            field.dataset.value = normalise(next);
+            changed = true;
+        });
+
+    return changed ? holder.innerHTML : body;
+}
+
 export default function DocumentEditor({
     procurement,
     document: doc,
+    placeholders = [],
 }: {
     procurement: { id: number; number: string; name: string };
     document: EditorDocument;
@@ -62,6 +111,50 @@ export default function DocumentEditor({
     const [confirmReload, setConfirmReload] = useState(false);
 
     const dirty = form.data.title !== doc.title || form.data.body !== doc.body;
+
+    // Keep the document in step with the procurement while it is open: data
+    // changed on another screen (or by a colleague) shows up here without
+    // leaving the page.
+    usePoll(LIVE_REFRESH_INTERVAL, { only: ['document', 'placeholders'] });
+
+    const [liveNotice, setLiveNotice] = useState(false);
+    const previousBody = useRef(doc.body);
+
+    useEffect(() => {
+        const before = previousBody.current;
+        previousBody.current = doc.body;
+
+        if (doc.body === before) {
+            return;
+        }
+
+        const values = Object.fromEntries(
+            placeholders.map((row) => [row.key, row.value]),
+        );
+
+        // Untouched draft: take the refreshed document as it is. A draft
+        // with unsaved edits keeps them and only its live fields move.
+        const next =
+            form.data.body === before
+                ? doc.body
+                : refreshLiveFields(form.data.body, values);
+
+        if (next !== form.data.body) {
+            form.setData('body', next);
+            setLiveNotice(true);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [doc.body]);
+
+    useEffect(() => {
+        if (!liveNotice) {
+            return;
+        }
+
+        const timer = window.setTimeout(() => setLiveNotice(false), 4000);
+
+        return () => window.clearTimeout(timer);
+    }, [liveNotice]);
 
     const stats = useMemo(() => {
         const text = form.data.body.replace(/<[^>]*>/g, ' ');
@@ -212,8 +305,29 @@ export default function DocumentEditor({
                             </TabsTrigger>
                         </TabsList>
 
-                        <span className="tabular text-xs text-muted-foreground">
-                            {stats.words} kata · {stats.characters} karakter
+                        <span className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span
+                                className={
+                                    liveNotice
+                                        ? 'flex items-center gap-1 font-medium text-primary'
+                                        : 'flex items-center gap-1'
+                                }
+                                title="Data pengadaan diperbarui otomatis saat berubah"
+                            >
+                                <RefreshCw
+                                    className={
+                                        liveNotice
+                                            ? 'size-3 animate-spin'
+                                            : 'size-3'
+                                    }
+                                />
+                                {liveNotice
+                                    ? 'Data terbaru dimuat'
+                                    : 'Sinkron otomatis'}
+                            </span>
+                            <span className="tabular">
+                                {stats.words} kata · {stats.characters} karakter
+                            </span>
                         </span>
                     </div>
 
