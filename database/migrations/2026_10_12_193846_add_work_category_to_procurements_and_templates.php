@@ -1,6 +1,5 @@
 <?php
 
-use Database\Seeders\KontrakTemplateSeeder;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -51,21 +50,7 @@ return new class extends Migration
             ->whereNull('deleted_at')
             ->update(['work_category' => 'jasa']);
 
-        $body = (new KontrakTemplateSeeder)->spk('barang');
-        preg_match_all('/\{\{\s*([a-z0-9_]+)\s*\}\}/i', $body, $matches);
-
-        DB::table('document_templates')->insert([
-            'document_type_id' => $spkTypeId,
-            'procurement_method_id' => null,
-            'work_category' => 'barang',
-            'name' => 'SPK (Surat Perintah Kerja) Barang - Template Standar UP Kendari',
-            'version' => 1,
-            'body' => $body,
-            'placeholders' => json_encode(array_values(array_unique(array_map('strtolower', $matches[1])))),
-            'is_active' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        // The goods SPK comes from the template library (kontrak.spk-barang).
     }
 
     /**

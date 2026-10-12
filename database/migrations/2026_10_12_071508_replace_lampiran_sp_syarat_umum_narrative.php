@@ -1,55 +1,25 @@
 <?php
 
-use Database\Seeders\SpplDocumentTemplateSeeder;
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
 
 /**
- * Replace the Syarat Umum narrative of the Lampiran SP Barang / Jasa
- * templates with the UP Kendari paper form (sections A to G). Documents
- * already generated keep the wording they were issued with.
+ * Formerly: Lampiran SP Syarat Umum narrative replaced (sections A to G).
+ *
+ * Superseded by the document template library: default template wording now
+ * lives in resources/document-templates and is installed or refreshed by
+ * DocumentTemplateLibrary (`php artisan templates:sync`). This migration
+ * used to write template text from seeder code; databases that already ran
+ * it keep its result, and a fresh install gets the current wording from the
+ * library instead. The original version is in the git history.
  */
 return new class extends Migration
 {
-    /**
-     * The document types carrying the Syarat Umum, with their kind.
-     *
-     * @var array<string, string>
-     */
-    private const TYPES = [
-        'lampiran-sp-barang' => 'BARANG',
-        'lampiran-sp-jasa' => 'JASA',
-        'surat-pesanan-barang' => 'BARANG',
-        'surat-pesanan-jasa' => 'JASA',
-    ];
-
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-        $seeder = new SpplDocumentTemplateSeeder;
-
-        foreach (self::TYPES as $code => $kind) {
-            $typeId = DB::table('document_types')->where('code', $code)->value('id');
-
-            if ($typeId === null) {
-                continue;
-            }
-
-            $body = $seeder->syaratUmum($kind);
-            preg_match_all('/\{\{\s*([a-z0-9_]+)\s*\}\}/i', $body, $matches);
-
-            DB::table('document_templates')
-                ->where('document_type_id', $typeId)
-                ->whereNull('procurement_method_id')
-                ->whereNull('deleted_at')
-                ->update([
-                    'body' => $body,
-                    'placeholders' => json_encode(array_values(array_unique(array_map('strtolower', $matches[1])))),
-                    'updated_at' => now(),
-                ]);
-        }
+        //
     }
 
     /**

@@ -86,6 +86,25 @@ class LiveDocumentFieldsTest extends TestCase
         $this->assertSame(1, $document->revision);
     }
 
+    public function test_a_signed_document_no_longer_follows_the_data(): void
+    {
+        [$procurement, $document] = $this->generate('<p>Mitra {{nama_mitra}}</p>', ['partner_name' => 'PT Lama']);
+
+        $document->signedUploads()->create([
+            'path' => 'signed/ttd.pdf',
+            'file_name' => 'ttd.pdf',
+            'mime' => 'application/pdf',
+            'size' => 1024,
+            'uploaded_by' => User::factory()->create()->id,
+        ]);
+
+        $procurement->update(['partner_name' => 'PT Baru']);
+        app(DocumentGenerator::class)->refreshDocument($document->refresh());
+
+        $this->assertStringContainsString('PT Lama', $document->refresh()->rendered_body);
+        $this->assertStringNotContainsString('PT Baru', $document->rendered_body);
+    }
+
     public function test_the_editor_always_opens_with_the_latest_data(): void
     {
         [$procurement, $document] = $this->generate('<p>{{nama_mitra}}</p>', ['partner_name' => 'PT Lama']);

@@ -1,8 +1,6 @@
 <?php
 
 use App\Models\ProcurementDocument;
-use Database\Seeders\KontrakTemplateSeeder;
-use Database\Seeders\SpplDocumentTemplateSeeder;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\Storage;
 
@@ -45,12 +43,8 @@ return new class extends Migration
             ->where('code', 'purchase-order')
             ->update(['name' => 'Surat Pesanan', 'updated_at' => $now]);
 
-        // 2. Re-seed the SPPL and Kontrak document templates
-        $spplSeeder = new SpplDocumentTemplateSeeder;
-        $spplSeeder->run();
-
-        $kontrakSeeder = new KontrakTemplateSeeder;
-        $kontrakSeeder->run();
+        // 2. The SPPL and Kontrak templates come from the template library
+        //    (templates:sync) rather than from seeder code.
 
         // 3. Update existing generated documents for ba-negosiasi-sppl and ba-negosiasi to landscape
         $baSpplType = DB::table('document_types')->where('code', 'ba-negosiasi-sppl')->first();

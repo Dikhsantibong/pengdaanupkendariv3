@@ -1,6 +1,5 @@
 <?php
 
-use Database\Seeders\PjTemplateSeeder;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -24,7 +23,7 @@ return new class extends Migration
                 ->nullOnDelete();
         });
 
-        (new PjTemplateSeeder)->run();
+        // The PJ templates come from the template library (group pj).
     }
 
     /**

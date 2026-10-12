@@ -1,6 +1,5 @@
 <?php
 
-use Database\Seeders\SpplDocumentTemplateSeeder;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -79,7 +78,7 @@ return new class extends Migration
 
         $this->addSpplSteps();
 
-        (new SpplDocumentTemplateSeeder)->run();
+        // The SPPL templates come from the template library (templates:sync).
     }
 
     public function down(): void

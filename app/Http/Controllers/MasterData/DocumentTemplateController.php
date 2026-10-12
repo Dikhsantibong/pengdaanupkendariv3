@@ -9,6 +9,7 @@ use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
 use App\Models\ProcurementMethod;
 use App\Services\DocumentGenerator;
+use App\Services\DocumentTemplateLibrary;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -20,7 +21,7 @@ class DocumentTemplateController extends Controller
     /**
      * Show the document template management screen.
      */
-    public function index(Request $request): Response
+    public function index(Request $request, DocumentTemplateLibrary $library): Response
     {
         return Inertia::render('master-data/document-templates', [
             // Bodies are large (an RKS is 100+ KB), so the list ships without
@@ -52,6 +53,10 @@ class DocumentTemplateController extends Controller
                     'name' => $template->name,
                     'version' => $template->version,
                     'placeholders' => $template->placeholders ?? [],
+                    // Shipped default, default changed here, or written here.
+                    'origin' => $template->library_key === null
+                        ? 'custom'
+                        : ($library->checksum($template->body) === $template->library_checksum ? 'default' : 'modified'),
                     'is_active' => $template->is_active,
                     'usage_count' => $template->procurement_documents_count,
                     'updated_at' => $template->updated_at?->toDateTimeString(),

@@ -28,6 +28,8 @@ type TemplateRow = {
     name: string;
     version: number;
     placeholders: string[];
+    /** default: shipped wording; modified: shipped then edited; custom: written here. */
+    origin?: 'default' | 'modified' | 'custom';
     is_active: boolean;
     usage_count: number;
     updated_at: string | null;
@@ -139,6 +141,36 @@ export default function DocumentTemplates({
                                             {template.procurement_method ?? (
                                                 <span className="text-muted-foreground">
                                                     Semua metode
+                                                </span>
+                                            )}
+                                            {template.origin && (
+                                                <span
+                                                    className={
+                                                        template.origin ===
+                                                        'custom'
+                                                            ? 'ml-1.5 inline-flex items-center rounded-sm bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400'
+                                                            : template.origin ===
+                                                                'modified'
+                                                              ? 'ml-1.5 inline-flex items-center rounded-sm bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400'
+                                                              : 'ml-1.5 inline-flex items-center rounded-sm bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground'
+                                                    }
+                                                    title={
+                                                        template.origin ===
+                                                        'custom'
+                                                            ? 'Dibuat di aplikasi'
+                                                            : template.origin ===
+                                                                'modified'
+                                                              ? 'Template bawaan yang sudah diubah; tidak ditimpa saat pembaruan'
+                                                              : 'Template bawaan sistem; ikut diperbarui saat ada versi baru'
+                                                    }
+                                                >
+                                                    {template.origin ===
+                                                    'custom'
+                                                        ? 'Kustom'
+                                                        : template.origin ===
+                                                            'modified'
+                                                          ? 'Bawaan · diubah'
+                                                          : 'Bawaan'}
                                                 </span>
                                             )}
                                             {template.contract_number_format && (

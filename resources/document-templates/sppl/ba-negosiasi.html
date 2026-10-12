@@ -1,0 +1,85 @@
+<section style="font-family: Arial, Helvetica, sans-serif; font-size: 9.5pt; line-height: 1.35; color: #000;">
+    <style>
+        @page { size: A4 landscape; margin: 15mm 20mm; }
+    </style>
+    <table style="width: 100%; max-width: 100%; border: none; border-collapse: collapse; margin-bottom: 12px;">
+        <tr>
+            <td style="width: 50%; border: none; padding: 0; vertical-align: top;">
+                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="height: 38px; width: auto; display: block;">
+                <div style="font-weight: bold; font-size: 10.5pt; margin-top: 6px; letter-spacing: 0.5px;">UP KENDARI</div>
+            </td>
+            <td style="width: 50%; border: none; padding: 0; vertical-align: top; text-align: right;">
+                <div style="font-weight: bold; font-size: 13pt; line-height: 1.2;">PT. PLN Nusantara Power UP Kendari</div><div style="font-size: 8pt; margin-top: 2px;">Jl. Chairil Anwar No.2, Mataiwoi, Kec. Wua-Wua, Kota Kendari, Sulawesi Tenggara 93117</div>
+                <table style="display: inline-table; margin-top: 6px; width: auto; border: none; border-collapse: collapse; font-size: 9pt; text-align: left;">
+                    <tr>
+                        <td style="border: none; padding: 2px 4px 2px 0;">Tanggal</td>
+                        <td style="border: none; padding: 2px 4px;">:</td>
+                        <td style="border: none; padding: 2px 0;">{{tanggal_mulai_pelaksanaan}}</td>
+                    </tr>
+                    <tr>
+                        <td style="border: none; padding: 2px 4px 2px 0;">Perusahaan</td>
+                        <td style="border: none; padding: 2px 4px;">:</td>
+                        <td style="border: none; padding: 2px 0; font-weight: bold;">{{nama_mitra}}</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <div style="text-align: center; margin: 14px 0 12px 0;">
+        <h2 style="font-size: 11.5pt; font-weight: bold; margin: 0; text-transform: uppercase; border: none; letter-spacing: 0.5px;">HARGA PEMBAYARAN LANGSUNG</h2>
+    </div>
+
+    <table style="width: 100%; max-width: 100%; table-layout: fixed; border-collapse: collapse; margin-bottom: 20px; font-size: 8pt; border: 1px solid #000; word-break: break-word;">
+        <thead>
+            <tr style="text-align: center; font-weight: bold;">
+                <th rowspan="2" style="border: 1px solid #000; padding: 5px 2px; width: 5%; vertical-align: middle; text-align: center;">NO</th>
+                <th rowspan="2" style="border: 1px solid #000; padding: 5px 4px; width: 27%; vertical-align: middle; text-align: center;">NAMA BARANG/JASA</th>
+                <th rowspan="2" style="border: 1px solid #000; padding: 5px 2px; width: 6%; vertical-align: middle; text-align: center;">VOLUME</th>
+                <th rowspan="2" style="border: 1px solid #000; padding: 5px 2px; width: 6%; vertical-align: middle; text-align: center;">SATUAN</th>
+                <th colspan="2" style="border: 1px solid #000; padding: 5px 3px; width: 28%; vertical-align: middle; text-align: center;">HARGA SEBELUM NEGO</th>
+                <th colspan="2" style="border: 1px solid #000; padding: 5px 3px; width: 28%; vertical-align: middle; text-align: center;">HARGA SETELAH NEGO</th>
+            </tr>
+            <tr style="text-align: center; font-weight: bold;">
+                <th style="border: 1px solid #000; padding: 4px 2px; width: 14%; vertical-align: middle; text-align: center; font-size: 7.5pt;">HARGA SATUAN</th>
+                <th style="border: 1px solid #000; padding: 4px 2px; width: 14%; vertical-align: middle; text-align: center; font-size: 7.5pt;">JUMLAH HARGA</th>
+                <th style="border: 1px solid #000; padding: 4px 2px; width: 14%; vertical-align: middle; text-align: center; font-size: 7.5pt;">HARGA SATUAN</th>
+                <th style="border: 1px solid #000; padding: 4px 2px; width: 14%; vertical-align: middle; text-align: center; font-size: 7.5pt;">JUMLAH HARGA</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="border: 1px solid #000; padding: 5px 2px; text-align: center;">1</td>
+                <td style="border: 1px solid #000; padding: 5px 4px;">{{nama_pengadaan}}</td>
+                <td style="border: 1px solid #000; padding: 5px 2px; text-align: center;">1</td>
+                <td style="border: 1px solid #000; padding: 5px 2px; text-align: center;">Lot</td>
+                <td style="border: 1px solid #000; padding: 5px 3px; text-align: right;">{{nilai_hpe_angka}}</td>
+                <td style="border: 1px solid #000; padding: 5px 3px; text-align: right;">{{nilai_hpe_angka}}</td>
+                <td style="border: 1px solid #000; padding: 5px 3px; text-align: right;">{{nilai_setelah_nego_angka}}</td>
+                <td style="border: 1px solid #000; padding: 5px 3px; text-align: right;">{{nilai_setelah_nego_angka}}</td>
+            </tr>
+            <tr>
+                <td colspan="4" style="border: 1px solid #000; padding: 4px 4px; text-align: center;">TOTAL HARGA</td>
+                <td colspan="2" style="border: 1px solid #000; padding: 4px 4px; text-align: center;">{{nilai_hpe_angka}}</td>
+                <td colspan="2" style="border: 1px solid #000; padding: 4px 4px; text-align: center;">{{nilai_setelah_nego_angka}}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <p style="margin: -14px 0 0 0; font-size: 8pt;">*Harga belum termasuk PPN</p>
+
+    <table style="width: 100%; max-width: 100%; border: none; border-collapse: collapse; margin-top: 32px; font-size: 9.5pt; page-break-inside: avoid;">
+        <tr>
+            <td style="width: 50%; border: none; text-align: center; vertical-align: top;">
+                {{nama_mitra}}<br>
+                DIREKTUR<br><br><br><br><br><br>
+                {{nama_direktur}}
+            </td>
+            <td style="width: 50%; border: none; text-align: center; vertical-align: top;">
+                PLN NP UP KENDARI<br>
+                TL PELAKSANA PENGADAAN<br><br><br><br><br><br>
+                {{pic_pelaksana}}
+            </td>
+        </tr>
+    </table>
+</section>

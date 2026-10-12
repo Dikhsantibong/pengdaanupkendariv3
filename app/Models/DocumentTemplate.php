@@ -19,6 +19,8 @@ use Illuminate\Support\Carbon;
  * @property int|null $procurement_method_id
  * @property int|null $contract_number_format_id
  * @property WorkCategory|null $work_category
+ * @property string|null $library_key
+ * @property string|null $library_checksum
  * @property string $name
  * @property int $version
  * @property string $body
@@ -32,7 +34,7 @@ use Illuminate\Support\Carbon;
  * @property-read ContractNumberFormat|null $contractNumberFormat
  * @property-read int|null $procurement_documents_count
  */
-#[Fillable(['document_type_id', 'procurement_method_id', 'contract_number_format_id', 'work_category', 'name', 'version', 'body', 'placeholders', 'is_active'])]
+#[Fillable(['document_type_id', 'procurement_method_id', 'contract_number_format_id', 'work_category', 'library_key', 'library_checksum', 'name', 'version', 'body', 'placeholders', 'is_active'])]
 class DocumentTemplate extends Model
 {
     /** @use HasFactory<DocumentTemplateFactory> */

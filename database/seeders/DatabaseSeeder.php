@@ -16,14 +16,8 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             MasterDataSeeder::class,
-            DocumentTemplateSeeder::class,
-            RksSpkTemplateSeeder::class,
-            RksTenderTemplateSeeder::class,
-            BeritaAcaraTemplateSeeder::class,
-            KontrakTemplateSeeder::class,
-            PjTemplateSeeder::class,
-            StandardDocumentTemplateSeeder::class,
-            SpplDocumentTemplateSeeder::class,
+            // Every default template, from resources/document-templates.
+            DocumentTemplateLibrarySeeder::class,
             VendorAssessmentSeeder::class,
             UserSeeder::class,
         ]);

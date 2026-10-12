@@ -281,6 +281,29 @@ Agar template standar ini nantinya dapat diganti dengan template resmi **tanpa m
 - Sistem harus mendukung penggantian template per jenis dokumen secara independen — mengganti template RKS, misalnya, tidak boleh memengaruhi template dokumen lain yang sudah berjalan.
 - Riwayat dokumen yang sudah pernah digenerate dengan template lama tetap tersimpan apa adanya (tidak berubah retroaktif saat template baru dipasang).
 
+### Arsitektur Template Bawaan (Library)
+
+- **Sumber kebenaran template = database** (`document_templates`), dikelola dari Data Master → Template Dokumen, berversi.
+- **Teks template bawaan TIDAK ditulis di kode PHP** (seeder/migrasi). Teks bawaan disimpan sebagai file HTML biasa di `resources/document-templates/<grup>/<nama>.html`, dideskripsikan oleh `resources/document-templates/manifest.php` (kunci, grup, file, kode jenis dokumen, metode, format kontrak, kategori, nama).
+- `App\Services\DocumentTemplateLibrary` memasang/menyegarkan template bawaan; setiap template mencatat asalnya di kolom `library_key` dan `library_checksum`.
+- Aturan sinkron (`php artisan templates:sync [kunci…] [--group=…] [--force] [--dry-run]`):
+  - Belum terpasang → dipasang & diaktifkan (kecuali admin sudah punya template sendiri untuk cakupan yang sama).
+  - Terpasang & belum diubah admin → bila file berubah, dipasang sebagai **versi baru** (versi lama tetap ada untuk riwayat dokumen).
+  - Sudah diubah admin / diganti template buatan admin → **tidak ditimpa** (kecuali `--force`, tetap sebagai versi baru).
+- Daftar Template Dokumen menampilkan asal: **Bawaan**, **Bawaan · diubah**, atau **Kustom**.
+- Seeder template (`DocumentTemplateSeeder`, `KontrakTemplateSeeder`, `SpplDocumentTemplateSeeder`, `PjTemplateSeeder`, dst.) hanya pembungkus tipis yang menyebut grup library; `DatabaseSeeder` memakai `DocumentTemplateLibrarySeeder` (semua grup).
+- Migrasi lama yang dulu menulis teks template dari kode seeder dikosongkan (hasilnya sudah ada di database lama; instalasi baru mendapat teks terbaru dari library). Riwayatnya ada di git.
+- **Mengubah teks bawaan**: edit file HTML di `resources/document-templates`, commit, lalu jalankan `php artisan templates:sync` di server. **Menambah template bawaan**: tambah file + entri di `manifest.php`, lalu `templates:sync`.
+
+### Langkah Deploy Production
+
+1. `git pull` (pastikan folder `resources/document-templates` ikut).
+2. `composer install --no-dev --optimize-autoloader`
+3. `npm ci && npm run build` (ada perubahan frontend).
+4. `php artisan migrate --force` (kolom kategori barang/jasa, format kontrak pada template, asal library, langkah rekening/garansi SPK/PJ, dll.; migrasi library sekaligus memasang template bawaan yang belum ada).
+5. `php artisan templates:sync --dry-run` lalu `php artisan templates:sync` — lihat laporan; template yang sudah disesuaikan admin dilewati.
+6. `php artisan optimize:clear` lalu `php artisan optimize` (config/route/view cache), dan `php artisan queue:restart` bila memakai queue worker.
+
 ### Editor Template (gaya Word, tanpa HTML)
 
 - Tambah/Ubah template membuka **halaman editor tersendiri** (`/master-data/document-templates/create` dan `/{id}/edit`), **bukan modal**. Setelah template baru disimpan, pengguna tetap berada di editornya.

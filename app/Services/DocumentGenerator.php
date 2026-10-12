@@ -404,7 +404,7 @@ class DocumentGenerator
      */
     public function refreshDocument(ProcurementDocument $document, ?array $values = null): bool
     {
-        if ($document->document_template_id === null) {
+        if ($document->document_template_id === null || $this->isFrozen($document)) {
             return false;
         }
 
@@ -447,6 +447,19 @@ class DocumentGenerator
         Cache::put($cacheKey, $fingerprint(), now()->addDay());
 
         return $changed;
+    }
+
+    /**
+     * Whether a document must no longer follow data or template changes.
+     *
+     * Once its signed copy has been uploaded, the stored body has to keep
+     * matching the paper that was signed.
+     */
+    public function isFrozen(ProcurementDocument $document): bool
+    {
+        return $document->relationLoaded('signedUploads')
+            ? $document->signedUploads->isNotEmpty()
+            : $document->signedUploads()->exists();
     }
 
     /**
@@ -911,6 +924,11 @@ HTML;
         }
 
         foreach ($documents as $document) {
+            // A signed document is a record of what was signed: it stays put.
+            if ($this->isFrozen($document)) {
+                continue;
+            }
+
             $body = $document->rendered_body;
             $newBody = $body;
 

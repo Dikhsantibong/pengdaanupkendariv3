@@ -1,11 +1,16 @@
 <?php
 
-use Database\Seeders\PjTemplateSeeder;
 use Illuminate\Database\Migrations\Migration;
 
 /**
- * Install the RKS used by PJ contracts for services (penunjukan langsung).
- * The seeder only creates or refreshes its own PJ templates.
+ * Formerly: RKS PJ Jasa template installed.
+ *
+ * Superseded by the document template library: default template wording now
+ * lives in resources/document-templates and is installed or refreshed by
+ * DocumentTemplateLibrary (`php artisan templates:sync`). This migration
+ * used to write template text from seeder code; databases that already ran
+ * it keep its result, and a fresh install gets the current wording from the
+ * library instead. The original version is in the git history.
  */
 return new class extends Migration
 {
@@ -14,7 +19,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        (new PjTemplateSeeder)->run();
+        //
     }
 
     /**
