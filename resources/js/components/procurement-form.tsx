@@ -19,8 +19,14 @@ import type { Option, PicOption, StatusOption } from '@/types';
 
 const NONE = 'none';
 
+/** A contract number format, and whether it asks for barang or jasa. */
+export type ContractFormatOption = Option & { usesWorkCategory?: boolean };
+
+export type WorkCategory = 'barang' | 'jasa';
+
 export type ProcurementFormOptions = {
-    contractNumberFormats: Option[];
+    contractNumberFormats: ContractFormatOption[];
+    workCategories?: { value: WorkCategory; label: string }[];
     workDirectors: Option[];
     targetUnits: Option[];
     procurementMethods: Option[];
@@ -32,6 +38,7 @@ export type ProcurementFormOptions = {
 
 export type ProcurementFormValues = {
     contract_number_format_id: number | null;
+    work_category: WorkCategory | null;
     number: string;
     name: string;
     partner_name: string;
@@ -90,6 +97,7 @@ export function ProcurementForm({
             ? { planner_id: initialValues?.planner_id ?? null }
             : {}),
         contract_number_format_id: startingFormatId,
+        work_category: initialValues?.work_category ?? null,
         number:
             initialValues?.number ??
             (startingFormatId === null
@@ -164,12 +172,26 @@ export function ProcurementForm({
      * already numbered — it is left alone, and the author can pull the running
      * number in deliberately with the link beside the field.
      */
+    const usesWorkCategory = (formatId: number | null): boolean =>
+        options.contractNumberFormats.find(
+            (option) => option.value === formatId,
+        )?.usesWorkCategory === true;
+
+    const workCategories = options.workCategories ?? [
+        { value: 'barang' as const, label: 'Barang' },
+        { value: 'jasa' as const, label: 'Jasa' },
+    ];
+
     const chooseFormat = (formatId: number | null) => {
         const untouched = Object.values(nextNumbers).includes(data.number);
 
         setData((current) => ({
             ...current,
             contract_number_format_id: formatId,
+            // Barang/jasa only belongs to the formats that ask for it.
+            work_category: usesWorkCategory(formatId)
+                ? current.work_category
+                : null,
             number:
                 untouched || current.number === ''
                     ? formatId === null
@@ -259,6 +281,63 @@ export function ProcurementForm({
                         <InputError message={errors.number} />
                     </div>
                 </div>
+
+                {usesWorkCategory(data.contract_number_format_id) && (
+                    <div className="grid gap-2">
+                        <Label id="work_category_label">
+                            Kategori{' '}
+                            {options.contractNumberFormats.find(
+                                (option) =>
+                                    option.value ===
+                                    data.contract_number_format_id,
+                            )?.label ?? ''}
+                        </Label>
+                        <div
+                            role="radiogroup"
+                            aria-labelledby="work_category_label"
+                            className="grid gap-2 sm:max-w-md sm:grid-cols-2"
+                        >
+                            {workCategories.map((category) => {
+                                const selected =
+                                    data.work_category === category.value;
+
+                                return (
+                                    <button
+                                        key={category.value}
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={selected}
+                                        onClick={() =>
+                                            setData(
+                                                'work_category',
+                                                category.value,
+                                            )
+                                        }
+                                        className={
+                                            selected
+                                                ? 'flex items-center gap-2.5 rounded-md border border-primary bg-primary/5 px-3 py-2.5 text-left text-sm font-medium text-primary ring-1 ring-primary'
+                                                : 'flex items-center gap-2.5 rounded-md border border-border bg-card px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-muted'
+                                        }
+                                    >
+                                        <span
+                                            className={
+                                                selected
+                                                    ? 'flex size-4 items-center justify-center rounded-full border-4 border-primary'
+                                                    : 'size-4 rounded-full border border-muted-foreground/50'
+                                            }
+                                        />
+                                        {category.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Menentukan format dokumen kontrak yang digenerate
+                            (mis. SPK Barang atau SPK Jasa).
+                        </p>
+                        <InputError message={errors.work_category} />
+                    </div>
+                )}
 
                 <div className="grid gap-2">
                     <Label htmlFor="name">Nama Pengadaan</Label>

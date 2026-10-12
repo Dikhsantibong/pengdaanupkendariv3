@@ -24,6 +24,8 @@ type EditableTemplate = {
     id: number;
     document_type_id: number;
     procurement_method_id: number | null;
+    contract_number_format_id: number | null;
+    work_category: string | null;
     name: string;
     version: number;
     body: string;
@@ -33,6 +35,8 @@ type EditableTemplate = {
 type TemplateFormValues = {
     document_type_id: number | null;
     procurement_method_id: number | null;
+    contract_number_format_id: number | null;
+    work_category: string | null;
     name: string;
     body: string;
     is_active: boolean;
@@ -40,6 +44,12 @@ type TemplateFormValues = {
 
 /** Sentinel for "berlaku untuk semua metode pengadaan". */
 const ALL_METHODS = 'all';
+
+/** Sentinel for "berlaku untuk barang maupun jasa". */
+const ALL_CATEGORIES = 'all';
+
+/** Sentinel for "berlaku untuk semua format no kontrak". */
+const ALL_FORMATS = 'all';
 
 const STARTER_BODY =
     '<h1>Judul Dokumen</h1><p>Nomor: {{nomor_pengadaan}}</p><p>Pekerjaan {{nama_pengadaan}} …</p>';
@@ -49,6 +59,8 @@ export default function DocumentTemplateEditor({
     initialDocumentTypeId,
     documentTypes,
     procurementMethods,
+    contractNumberFormats = [],
+    workCategories = [],
     placeholderCatalog,
     documentStylesheet,
 }: {
@@ -56,6 +68,8 @@ export default function DocumentTemplateEditor({
     initialDocumentTypeId: number | null;
     documentTypes: Option[];
     procurementMethods: Option[];
+    contractNumberFormats?: Option[];
+    workCategories?: { value: string; label: string }[];
     placeholderCatalog: { key: string; label: string }[];
     documentStylesheet: string;
 }) {
@@ -70,6 +84,8 @@ export default function DocumentTemplateEditor({
             documentTypes[0]?.value ??
             null,
         procurement_method_id: template?.procurement_method_id ?? null,
+        contract_number_format_id: template?.contract_number_format_id ?? null,
+        work_category: template?.work_category ?? null,
         name: template?.name ?? '',
         body: template?.body ?? STARTER_BODY,
         is_active: template?.is_active ?? true,
@@ -164,7 +180,7 @@ export default function DocumentTemplateEditor({
                     </div>
                 </div>
 
-                <div className="grid gap-3 rounded-md border border-border bg-card p-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_auto] xl:items-start">
+                <div className="grid gap-3 rounded-md border border-border bg-card p-3 sm:grid-cols-2 lg:grid-cols-3 xl:items-start 2xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.7fr)_minmax(0,0.8fr)_auto]">
                     <div className="grid gap-1.5">
                         <Label htmlFor="template-name">Nama Template</Label>
                         <Input
@@ -256,7 +272,89 @@ export default function DocumentTemplateEditor({
                         />
                     </div>
 
-                    <div className="flex h-full items-center gap-3 rounded-md border border-border px-3 py-2 sm:col-span-2 xl:col-span-1 xl:mt-[1.375rem] xl:h-9 xl:py-0">
+                    <div className="grid gap-1.5">
+                        <Label htmlFor="contract_number_format_id">
+                            Berlaku Untuk Format
+                        </Label>
+                        <Select
+                            value={
+                                form.data.contract_number_format_id === null
+                                    ? ALL_FORMATS
+                                    : String(
+                                          form.data.contract_number_format_id,
+                                      )
+                            }
+                            onValueChange={(value) =>
+                                form.setData(
+                                    'contract_number_format_id',
+                                    value === ALL_FORMATS
+                                        ? null
+                                        : Number(value),
+                                )
+                            }
+                        >
+                            <SelectTrigger
+                                id="contract_number_format_id"
+                                className="w-full"
+                            >
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value={ALL_FORMATS}>
+                                    Semua format
+                                </SelectItem>
+                                {contractNumberFormats.map((format) => (
+                                    <SelectItem
+                                        key={format.value}
+                                        value={String(format.value)}
+                                    >
+                                        {format.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <InputError
+                            message={form.errors.contract_number_format_id}
+                        />
+                    </div>
+
+                    <div className="grid gap-1.5">
+                        <Label htmlFor="work_category">
+                            Berlaku Untuk Kategori
+                        </Label>
+                        <Select
+                            value={form.data.work_category ?? ALL_CATEGORIES}
+                            onValueChange={(value) =>
+                                form.setData(
+                                    'work_category',
+                                    value === ALL_CATEGORIES ? null : value,
+                                )
+                            }
+                        >
+                            <SelectTrigger
+                                id="work_category"
+                                className="w-full"
+                            >
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value={ALL_CATEGORIES}>
+                                    Barang &amp; Jasa
+                                </SelectItem>
+                                {workCategories.map((category) => (
+                                    <SelectItem
+                                        key={category.value}
+                                        value={category.value}
+                                    >
+                                        Khusus {category.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <InputError message={form.errors.work_category} />
+                    </div>
+
+                    <div className="flex h-full items-center gap-3 rounded-md border border-border px-3 py-2 sm:col-span-2 lg:col-span-1 lg:mt-[1.375rem] lg:h-9 lg:py-0">
                         <Switch
                             id="template-active"
                             checked={form.data.is_active}

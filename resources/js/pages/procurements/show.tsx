@@ -90,6 +90,14 @@ export default function ShowProcurement({
             value: procurement.contract_type ?? '—',
             field: 'contract_type' as const,
         },
+        ...(procurement.work_category
+            ? [
+                  {
+                      label: 'Kategori Barang/Jasa',
+                      value: procurement.work_category,
+                  },
+              ]
+            : []),
         // Sembunyikan sementara sesuai permintaan user:
         // { label: 'Dibuat Oleh', value: detail.created_by ?? '—' },
         // { label: 'Tanggal Dibuat', value: formatDate(procurement.created_at) },

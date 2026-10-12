@@ -1,0 +1,1288 @@
+<?php
+
+namespace Database\Seeders;
+
+use App\Models\ContractNumberFormat;
+use App\Models\DocumentTemplate;
+use App\Models\DocumentType;
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Database\Seeder;
+
+/**
+ * Templates used only by PJ contracts.
+ *
+ * A template limited to a contract number format (and, where it matters, to
+ * goods or services) wins over the general one, so a PJ for goods prints its
+ * own HPE while every other procurement keeps the standard HPE.
+ */
+class PjTemplateSeeder extends Seeder
+{
+    use WithoutModelEvents;
+
+    /**
+     * Seed the PJ templates.
+     */
+    public function run(): void
+    {
+        $this->seedTemplate('hpe', null, 'HPE PJ (Barang / Jasa)', $this->hpeBarang());
+        $this->seedTemplate('rks', 'jasa', 'RKS PJ Jasa (Penunjukan Langsung)', $this->rksJasa());
+        $this->seedTemplate('upb', null, 'UPB PJ (Usulan Pengadaan Barang / Jasa)', $this->upb());
+    }
+
+    /**
+     * Install or refresh one PJ template.
+     *
+     * A null category serves both barang and jasa.
+     */
+    public function seedTemplate(string $code, ?string $category, string $name, string $body): void
+    {
+        $format = ContractNumberFormat::query()->where('code', 'PJ')->first();
+        $type = DocumentType::query()->where('code', $code)->first();
+
+        if ($format === null || $type === null) {
+            return;
+        }
+
+        DocumentTemplate::query()->updateOrCreate(
+            [
+                'document_type_id' => $type->id,
+                'procurement_method_id' => null,
+                'contract_number_format_id' => $format->id,
+                'work_category' => $category,
+                'version' => 1,
+            ],
+            [
+                'name' => $name.' - Template Standar UP Kendari',
+                'body' => $body,
+                'placeholders' => $this->placeholdersIn($body),
+                'is_active' => true,
+            ],
+        );
+    }
+
+    /**
+     * Usulan Pengadaan Barang / Jasa for a PJ.
+     *
+     * One sheet: letterhead, number, budget, purpose and basis, the item
+     * table (stock code, goods and specification, requisition and WO
+     * numbers, WO description, quantity, unit, date needed, remarks) and the
+     * three signatures. Items beyond the first are typed in the editor.
+     */
+    public function upb(): string
+    {
+        $blankRow = '<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
+        $blankRows = str_repeat($blankRow, 3);
+
+        return <<<HTML
+        <section class="upb">
+            <style>
+                @page { size: A4 portrait; margin: 15mm 12mm 18mm 12mm; }
+                .upb { font-family: Arial, Helvetica, sans-serif; font-size: 9pt; line-height: 1.35; color: #000; }
+                .upb table { border-collapse: collapse; width: 100%; margin: 0; }
+                .upb .head td, .upb .meta td, .upb .sign td { border: none; padding: 1px 0; vertical-align: top; }
+                .upb .head .company { font-weight: bold; font-size: 11pt; line-height: 1.3; padding-left: 8px; vertical-align: middle; }
+                .upb .title { text-align: center; font-weight: bold; font-size: 11pt; text-decoration: underline; margin: 6px 0 12px; }
+                .upb .meta td.label { width: 120px; }
+                .upb .meta td.colon { width: 12px; }
+                .upb table.items { margin-top: 10px; border: 1px solid #000; font-size: 8pt; }
+                .upb table.items th { border: 1px solid #000; background: #c9c9c9; font-weight: bold; text-align: center; vertical-align: middle; padding: 4px 3px; }
+                .upb table.items td { border-left: 1px solid #000; border-right: 1px solid #000; border-top: none; border-bottom: none; padding: 2px 3px; vertical-align: top; }
+                .upb table.items tr:last-child td { border-bottom: 1px solid #000; }
+                .upb .upper { text-transform: uppercase; }
+                .upb .center { text-align: center; }
+                .upb .sign { margin-top: 30px; page-break-inside: avoid; }
+                .upb .sign td { text-align: center; width: 50%; }
+                .upb .sign .name { font-weight: bold; padding-top: 50px; }
+            </style>
+
+            <table class="head">
+                <tr>
+                    <td style="width: 112px;"><img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 36px; width: auto;"></td>
+                    <td class="company">PT PLN Nusantara Power<br>UP Kendari</td>
+                </tr>
+            </table>
+
+            <div class="title">USULAN PENGADAAN BARANG / JASA</div>
+
+            <table class="meta">
+                <tr><td class="label">Nomor</td><td class="colon">:</td><td>{{nomor_nota_dinas_usulan}}</td></tr>
+                <tr><td class="label">Sumber Dana</td><td class="colon">:</td><td>{{sumber_anggaran}}-{{tahun}}</td></tr>
+                <tr><td class="label">Peruntukan</td><td class="colon">:</td><td class="upper">{{nama_pengadaan}}</td></tr>
+                <tr><td class="label">Dasar Usulan</td><td class="colon">:</td><td>NOTA DINAS {{nomor_nota_dinas_icc}}</td></tr>
+            </table>
+
+            <table class="items">
+                <tr>
+                    <th style="width: 4%;">No.</th>
+                    <th style="width: 9%;">Stock Code</th>
+                    <th>Nama Barang dan Spesifikasi</th>
+                    <th style="width: 9%;">No. Requisisi</th>
+                    <th style="width: 8%;">No. WO</th>
+                    <th style="width: 12%;">WO Description</th>
+                    <th style="width: 5%;">Qty</th>
+                    <th style="width: 7%;">Satuan</th>
+                    <th style="width: 10%;">Tgl Dibutuhkan</th>
+                    <th style="width: 11%;">Keterangan</th>
+                </tr>
+                <tr>
+                    <td class="center">1</td>
+                    <td></td>
+                    <td>{{nama_pengadaan}}</td>
+                    <td>{{nomor_pr_po}}</td>
+                    <td>{{nomor_wo}}</td>
+                    <td></td>
+                    <td class="center">1</td>
+                    <td class="center">LOT</td>
+                    <td class="center">{{target_penyelesaian}}</td>
+                    <td></td>
+                </tr>
+                {$blankRows}
+            </table>
+
+            <table class="sign">
+                <tr>
+                    <td></td>
+                    <td>Kendari, {{tanggal_dokumen}}</td>
+                </tr>
+                <tr>
+                    <td>TL INVENTORI KONTROL &amp; GUDANG</td>
+                    <td>OFFICER INVENTORI KONTROL</td>
+                </tr>
+                <tr>
+                    <td class="name"><span class="fill">....................</span></td>
+                    <td class="name upper">{{pic_perencana}}</td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="padding-top: 22px;">Menyetujui<br><span class="upper">{{direksi_pekerjaan}}</span></td>
+                </tr>
+                <tr>
+                    <td colspan="2" class="name"><span class="fill">....................</span></td>
+                </tr>
+            </table>
+        </section>
+        HTML;
+    }
+
+    /**
+     * Harga Perkiraan Enjiniring for a PJ buying goods.
+     *
+     * One sheet: letterhead, number and basis, the item table (stock code,
+     * goods and specification, quantity, unit, HPE price, remarks) and the
+     * three signatures. Items beyond the first are typed in the editor.
+     */
+    public function hpeBarang(): string
+    {
+        $blankRow = '<tr class="blank"><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
+        $blankRows = str_repeat($blankRow, 3);
+
+        return <<<HTML
+        <section class="hpe">
+            <style>
+                @page { size: A4 portrait; margin: 15mm 15mm 18mm 15mm; }
+                .hpe { font-family: Arial, Helvetica, sans-serif; font-size: 9.5pt; line-height: 1.35; color: #000; }
+                .hpe table { border-collapse: collapse; width: 100%; margin: 0; }
+                .hpe .head td, .hpe .meta td, .hpe .sign td { border: none; padding: 1px 0; vertical-align: top; }
+                .hpe .head .company { font-weight: bold; font-size: 12pt; line-height: 1.3; padding-left: 10px; vertical-align: middle; }
+                .hpe .title { text-align: center; font-weight: bold; font-size: 10.5pt; margin: 22px 0 10px; }
+                .hpe .meta td.label { width: 110px; }
+                .hpe .meta td.colon { width: 14px; }
+                .hpe table.items { margin-top: 18px; border: 1px solid #000; }
+                .hpe table.items th { border: 1px solid #000; background: #c9c9c9; font-weight: bold; text-align: center; vertical-align: middle; padding: 5px 4px; }
+                .hpe table.items td { border-left: 1px solid #000; border-right: 1px solid #000; border-top: none; border-bottom: none; padding: 2px 4px; vertical-align: top; }
+                .hpe table.items tr.total td { border: 1px solid #000; font-weight: bold; padding: 4px; }
+                .hpe .upper { text-transform: uppercase; }
+                .hpe .center { text-align: center; }
+                .hpe .right { text-align: right; }
+                .hpe .sign { margin-top: 36px; page-break-inside: avoid; }
+                .hpe .sign td { text-align: center; width: 50%; }
+                .hpe .sign .name { font-weight: bold; padding-top: 52px; }
+            </style>
+
+            <table class="head">
+                <tr>
+                    <td style="width: 112px;"><img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 38px; width: auto;"></td>
+                    <td class="company">PT PLN Nusantara Power<br>UP Kendari</td>
+                </tr>
+            </table>
+
+            <div class="title">Harga Perkiraan Enjiniring</div>
+
+            <table class="meta">
+                <tr><td class="label">Nomor</td><td class="colon">:</td><td>{{nomor_nota_dinas_usulan}}-HPE(A)</td></tr>
+                <tr><td class="label">Dasar Usulan</td><td class="colon">:</td><td>{{nomor_nota_dinas_usulan}}</td></tr>
+            </table>
+
+            <table class="items">
+                <tr>
+                    <th style="width: 6%;">No.</th>
+                    <th style="width: 12%;">Stock Code</th>
+                    <th>Nama Barang dan Spesifikasi</th>
+                    <th style="width: 7%;">Qty</th>
+                    <th style="width: 7%;">Stn</th>
+                    <th style="width: 15%;">Harga HPE<br>(Rp.)</th>
+                    <th style="width: 18%;">Keterangan</th>
+                </tr>
+                <tr>
+                    <td class="center">1</td>
+                    <td></td>
+                    <td>{{nama_pengadaan}}</td>
+                    <td class="center">1</td>
+                    <td class="center">LOT</td>
+                    <td class="right">{{nilai_hpe_angka}},00</td>
+                    <td></td>
+                </tr>
+                {$blankRows}
+                <tr class="total">
+                    <td colspan="5" class="right">Jumlah</td>
+                    <td class="right">{{nilai_hpe_angka}},00</td>
+                    <td></td>
+                </tr>
+            </table>
+
+            <table class="sign">
+                <tr>
+                    <td></td>
+                    <td>Kendari, {{tanggal_dokumen}}</td>
+                </tr>
+                <tr>
+                    <td class="upper">{{direksi_pekerjaan}}</td>
+                    <td>TL INVENTORI KONTROL &amp; GUDANG</td>
+                </tr>
+                <tr>
+                    <td class="name"><span class="fill">....................</span></td>
+                    <td class="name"><span class="fill">....................</span></td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="padding-top: 22px;">Mengesahkan<br>MANAGER UP KENDARI</td>
+                </tr>
+                <tr>
+                    <td colspan="2" class="name">{{nama_manager}}</td>
+                </tr>
+            </table>
+        </section>
+        HTML;
+    }
+
+    /**
+     * Rencana Kerja dan Syarat-Syarat for a PJ (penunjukan langsung) buying
+     * services: cover, table of contents, BAB I to IV, signatures and
+     * Lampiran 1 to 13, following the UP Kendari RKS. Package specifics
+     * (name, number, dates, budget, period) come from placeholders; the
+     * contract-specific clauses are written as standard text to adjust.
+     */
+    public function rksJasa(): string
+    {
+        $lampiran = fn (int $number, string $title): string => '<table class="lampiran-head rks-lamp">'
+            .'<tr><td style="width: 26%;"><b>Lampiran '.$number.'</b></td><td style="width: 4%;"><b>:</b></td><td><b>'.$title.'</b></td></tr>'
+            .'<tr><td><b>RKS No.</b></td><td><b>:</b></td><td><b>{{nomor_rks}}</b></td></tr>'
+            .'<tr><td><b>Tanggal</b></td><td><b>:</b></td><td><b>{{tanggal_dokumen}}</b></td></tr>'
+            .'</table>';
+
+        $l = [];
+        foreach ([
+            1 => 'Spesifikasi Barang/Jasa yang Dimintakan Penawaran',
+            2 => 'Spesifikasi Barang/Jasa yang Ditawarkan',
+            3 => 'Contoh Surat Penawaran',
+            4 => 'Contoh Daftar Rincian Harga',
+            5 => 'Contoh Surat Pernyataan',
+            6 => 'Contoh Pakta Integritas',
+            7 => 'Contoh Daftar Referensi Pengalaman Pekerjaan',
+            8 => 'Ketentuan Blacklist',
+            9 => 'Contoh Surat Pernyataan Minat',
+            10 => 'Contoh Surat Pernyataan Kesanggupan Memenuhi Persyaratan Teknis / TOR',
+            11 => 'Contoh Surat Pernyataan Mematuhi Aturan K3L',
+            12 => 'Term of Reference (TOR)',
+            13 => 'Cara Pemakaian Aplikasi VICON PLN NP',
+        ] as $number => $title) {
+            $l[$number] = $lampiran($number, $title);
+        }
+
+        $toc = [
+            ['BAB I UMUM', ['A. Dasar Hukum', 'B. Pengertian dan Istilah', 'C. Undangan kepada Calon Penyedia Barang/Jasa']],
+            ['BAB II INSTRUKSI KEPADA PESERTA PELELANGAN', [
+                'A. Umum', 'B. Rencana Kerja dan Syarat-Syarat (RKS)', 'C. Penyiapan Dokumen Penawaran',
+                'D. Pemasukan Dokumen Penawaran', 'E. Pembukaan dan Evaluasi Penawaran', 'F. Negosiasi Penawaran dan Klarifikasi',
+                'G. Penetapan Pemenang', 'H. Masa Sanggah dan Jaminan Sanggah', 'I. Penunjukan Pemenang',
+                'J. Jaminan Pelaksanaan (Performance Bond)', 'K. Penghentian Proses Pengadaan Barang/Jasa',
+                'L. Pengadaan Barang/Jasa Gagal', 'M. Syarat-Syarat Perjanjian',
+            ]],
+            ['BAB III KEPATUHAN TERHADAP HUKUM DAN ANTI PENYUAPAN', []],
+            ['BAB IV PENUTUP', []],
+        ];
+        $tocHtml = '';
+        foreach ($toc as [$bab, $items]) {
+            $tocHtml .= '<li><b>'.$bab.'</b>'.($items === [] ? '' : '<ul><li>'.implode('</li><li>', $items).'</li></ul>').'</li>';
+        }
+
+        return <<<HTML
+        <section class="rks">
+            <style>
+                @page { size: A4 portrait; margin: 20mm 18mm 22mm 22mm; }
+                .rks { font-family: Arial, Helvetica, sans-serif; font-size: 10pt; line-height: 1.45; color: #000; text-align: justify; }
+                .rks .cover { border: 5px double #1f2f6b; padding: 34px 24px 0; height: 238mm; text-align: center; font-weight: bold; }
+                .rks .cover .org { font-size: 15pt; margin-top: 48px; line-height: 1.5; }
+                .rks .cover .doc { font-size: 11.5pt; margin-top: 70px; line-height: 1.5; }
+                .rks .cover .meta { margin: 56px auto 0; width: auto; }
+                .rks .cover .meta td { border: none; padding: 4px 6px; text-align: left; font-size: 11pt; }
+                .rks .cover .for { margin-top: 100px; font-size: 11.5pt; }
+                .rks .cover .job { font-size: 12pt; margin-top: 8px; line-height: 1.5; text-transform: uppercase; }
+                .rks .cover .foot { margin-top: 150px; font-size: 15pt; line-height: 1.5; }
+                .rks h1.bab-title { font-size: 12pt; text-align: center; text-transform: uppercase; border: none; margin: 0 0 12px; }
+                .rks h2 { font-size: 10.5pt; text-transform: uppercase; border: none; margin: 14px 0 4px; padding: 0; }
+                .rks h3 { font-size: 10pt; margin: 10px 0 3px; }
+                .rks p { margin: 4px 0; }
+                .rks ol, .rks ul { margin: 2px 0 2px 20px; padding: 0; }
+                .rks li { margin: 2px 0; }
+                .rks ol.alpha { list-style-type: lower-alpha; }
+                .rks ol.roman { list-style-type: lower-roman; }
+                .rks .toc { list-style: none; margin-left: 0; }
+                .rks .toc ul { list-style: none; margin-left: 18px; }
+                .rks table.grid { width: 100%; border-collapse: collapse; margin: 6px 0; }
+                .rks table.grid th, .rks table.grid td { border: 1px solid #000; padding: 3px 5px; vertical-align: top; }
+                .rks table.grid th { background: #f0f0f0; text-align: center; }
+                .rks table.plain td { border: none; padding: 1px 4px 1px 0; vertical-align: top; }
+                .rks .rks-lamp { width: 70%; margin-bottom: 14px; }
+                .rks .lamp-title { text-align: center; font-weight: bold; text-decoration: underline; margin: 10px 0; }
+                .rks .sign { width: 100%; margin-top: 18px; page-break-inside: avoid; }
+                .rks .sign td { border: none; width: 50%; text-align: center; vertical-align: top; padding: 4px; }
+                .rks .sign .space { height: 60px; }
+                .rks .upper { text-transform: uppercase; }
+                .rks .box { border: 1px solid #000; padding: 6px 8px; }
+            </style>
+
+            <div class="cover">
+                <img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 56px; width: auto;">
+                <div class="org">PT PLN NUSANTARA POWER<br>UP KENDARI</div>
+                <div class="doc">DOKUMEN RENCANA KERJA DAN SYARAT-SYARAT (RKS)<br>PENUNJUKAN LANGSUNG</div>
+                <table class="meta">
+                    <tr><td>NOMOR</td><td>: {{nomor_rks}}</td></tr>
+                    <tr><td>TANGGAL</td><td class="upper">: {{tanggal_dokumen}}</td></tr>
+                </table>
+                <div class="for">UNTUK</div>
+                <div class="job">{{nama_pengadaan}}</div>
+                <div class="foot">UP KENDARI<br>{{tahun}}</div>
+            </div>
+
+            <h1 class="bab-title">DAFTAR ISI</h1>
+            <ul class="toc">{$tocHtml}<li><b>LAMPIRAN 1 &ndash; 13</b></li></ul>
+
+            <div class="bab">
+                <h1 class="bab-title">BAB I<br>UMUM</h1>
+
+                <h2>A. Dasar Hukum</h2>
+                <p>Dokumen Rencana Kerja dan Syarat-Syarat ini disusun berdasarkan:</p>
+                <ol>
+                    <li>Peraturan Direksi PT PLN NUSANTARA POWER Nomor 0034.P/DIR/2025 tanggal 14 November 2025 tentang Kebijakan Strategis Pengadaan Barang/Jasa PT PLN Nusantara Power.</li>
+                    <li>Peraturan Direksi PT PLN NUSANTARA POWER Nomor 0035.P/DIR/2025 tanggal 14 November 2025 tentang Kebijakan Pelaksana Pengadaan Barang/Jasa Lainnya PT PLN Nusantara Power.</li>
+                    <li>Keputusan Direksi PT Pembangkitan Jawa-Bali Nomor 0002.K/010/DIR/2021 tanggal 22 Juni 2021 tentang Aplikasi Smart Digital Supply Chain PT Pembangkitan Jawa-Bali.</li>
+                    <li>Peraturan Direksi PT PLN Nusantara Power Nomor 0009.P/019/DIR/2023 tanggal 28 April 2023 tentang Batasan Kewenangan Pengambilan Keputusan PT PLN Nusantara Power.</li>
+                </ol>
+
+                <h2>B. Pengertian dan Istilah</h2>
+                <p>Dalam dokumen ini dipergunakan pengertian, istilah dan singkatan sebagai berikut:</p>
+                <ol>
+                    <li><b>PT PLN NP</b> adalah Perusahaan perseroan PT PLN Nusantara Power yang dalam hal ini sebagai Pengguna Barang/Jasa.</li>
+                    <li><b>APLN</b> adalah Anggaran PT PLN NP yang ditetapkan dalam Rencana Kerja dan Anggaran Perusahaan (RKAP) yang telah disahkan oleh RUPS, termasuk anggaran untuk pekerjaan mendesak atau keadaan Darurat (<i>Emergency</i>) yang belum ditetapkan dalam RKAP.</li>
+                    <li><b>Barang</b> adalah benda dalam berbagai bentuk dan uraian, meliputi antara lain bahan baku, barang setengah jadi, barang jadi/peralatan yang spesifikasinya ditetapkan oleh Pengguna Barang/Jasa.</li>
+                    <li><b>Daftar Hitam (<i>Blacklist</i>)</b> adalah sanksi yang diberikan PT PLN NP kepada Penyedia Barang/Jasa berupa tidak diperbolehkannya Penyedia Barang/Jasa tersebut mengikuti pengadaan Barang/Jasa di wilayah kerja PT PLN NP Group, dalam jangka waktu tertentu, sebagai akibat dari Wanprestasi atas Perjanjian yang dibuat sebelumnya.</li>
+                    <li><b>Dokumen Penawaran</b> adalah surat penawaran beserta seluruh dokumen lampirannya yang disiapkan oleh Penyedia Barang/Jasa.</li>
+                    <li><b><i>Due Diligence</i></b> adalah bagian dari Penilaian Kualifikasi untuk melakukan verifikasi langsung, lebih detail, dan komprehensif atas dokumen kualifikasi, kompetensi dan kemampuan usaha Penyedia Barang/Jasa yang memasukkan aplikasi untuk kategori <i>Leverage</i>, <i>Critical/Bottleneck</i>, dan Strategis.</li>
+                    <li><b><i>e-Procurement</i> PLN NP</b> adalah aplikasi berbasis website yang menyediakan akses bagi perusahaan calon Penyedia Barang/Jasa PT PLN Nusantara Power untuk melakukan transaksi pengadaan barang/jasa secara daring/<i>on-line</i> melalui alamat website https://smartscm.plnnusantarapower.co.id</li>
+                    <li><b>Harga Perkiraan Sendiri/HPS</b> adalah perhitungan harga perkiraan dari suatu Barang/Jasa yang dihitung berdasarkan biaya pokok produksi atau estimasi biaya pokok pekerjaan yang disesuaikan dengan kondisi ekonomi terkini dan faktor-faktor lain yang berfungsi untuk melihat kewajaran harga penawaran.</li>
+                    <li><b>Jadwal Pengadaan</b> adalah rincian waktu proses pengadaan Barang/Jasa.</li>
+                    <li><b>Klarifikasi</b> adalah kegiatan meminta penjelasan oleh Pejabat Pelaksana Pengadaan kepada Penyedia Barang/Jasa atas substansi penawaran yang kurang jelas dalam rangka evaluasi penawaran, dengan syarat tidak boleh mengubah harga maupun substansi penawaran.</li>
+                    <li><b>Negosiasi</b> adalah kegiatan untuk pembahasan aspek teknis, harga dan waktu pelaksanaan antara Fungsi Pelaksana Pengadaan dengan Penyedia Barang/Jasa.</li>
+                    <li><b>Pakta Integritas</b> adalah surat Pernyataan yang berisi ikrar untuk mencegah dan tidak melakukan persekongkolan baik vertikal maupun horizontal, bertindak dengan penuh kehati-hatian sesuai dengan ketentuan peraturan yang berlaku dalam pelaksanaan Pengadaan Barang/Jasa.</li>
+                    <li><b>Pejabat Pelaksana Pengadaan</b> adalah pejabat struktural yang bertugas dan bertanggung jawab dalam pelaksanaan Pengadaan Barang/Jasa.</li>
+                    <li><b>Pejabat Perencana Pengadaan</b> adalah pejabat struktural yang bertugas dan bertanggung jawab dalam perencanaan Pengadaan Barang/Jasa.</li>
+                    <li><b>Pejabat Pengadaan Berwenang</b> adalah Direksi, Pejabat Struktural satu tingkat di bawah Direksi dan General Manager / Kepala Badan yang mempunyai kewenangan sebagaimana diatur lebih lanjut dalam Peraturan Direksi tentang Kewenangan Pengadaan Barang/Jasa.</li>
+                    <li><b>Pengguna Barang/Jasa</b> adalah bagian yang berwenang menggunakan, mengelola dan memelihara aset perusahaan agar senantiasa dapat dipergunakan dan dimanfaatkan dengan sebaik-baiknya guna menunjang aktifitas perusahaan, dalam hal ini Direksi, General Manajer, Pejabat yang diberi kuasa sebagai pemberi tugas kepada pelaksana pengadaan Barang/Jasa untuk melaksanakan pengadaan yang dibutuhkan perusahaan, yang menggunakan dan/atau menerima manfaat baik langsung maupun tidak langsung dari Barang/Jasa yang dihasilkan dari proses pengadaan Barang/Jasa.</li>
+                    <li><b>Penyedia Barang/Jasa</b> adalah badan usaha yang berbentuk Perseroan Terbatas (PT), Badan Usaha Milik Negara (BUMN), atau badan hukum publik lainnya, Badan Usaha Milik Daerah (BUMD), Lembaga, Konsorsium, <i>Joint Operation</i>, Koperasi, Firma, <i>Commanditaire Vennootschap</i> (CV), persekutuan perdata (<i>Maatschap</i>), badan usaha luar negeri dan/atau perorangan yang kegiatan usahanya menyediakan Barang/Jasa.</li>
+                    <li><b>Perjanjian/Kontrak</b> adalah perikatan dalam bentuk tertulis antara Pengguna Barang/Jasa dengan Penyedia Barang/Jasa.</li>
+                    <li><b>Vendor <i>Management System</i> (VMS)</b> adalah aplikasi <i>website</i> yang menyediakan akses bagi Calon Penyedia untuk melakukan registrasi sebagai Daftar Penyedia Perusahaan (DPP), Daftar Penyedia Terseleksi (DPT) dan melakukan pembaharuan data Perusahaan.</li>
+                </ol>
+
+                <h2>C. Undangan kepada Calon Penyedia Barang/Jasa</h2>
+                <p>PT PLN NP dengan ini bermaksud mengundang Calon Penyedia Barang/Jasa yang berkompeten dalam pelaksanaan <b class="upper">{{nama_pengadaan}}</b> untuk berpartisipasi dalam <b>Tender Penunjukan Langsung</b>.</p>
+                <p>Peserta Pelelangan wajib menyampaikan Dokumen Penawaran sesuai dengan ketentuan yang tercantum dalam Rencana Kerja dan Syarat-syarat (RKS).</p>
+                <p>Dokumen Penawaran yang tidak memenuhi syarat dan ketentuan tersebut maka tidak dapat diikutsertakan dalam proses Pelelangan selanjutnya.</p>
+            </div>
+
+            <div class="bab">
+                <h1 class="bab-title">BAB II<br>INSTRUKSI KEPADA PESERTA PELELANGAN</h1>
+
+                <h2>A. UMUM</h2>
+                <h3>1. Lingkup Pekerjaan</h3>
+                <p>Lingkup Pekerjaan meliputi {{nama_pengadaan}} dengan detail spesifikasi dan persyaratan teknis yang harus dipenuhi sebagaimana diatur dalam <i>Term of Reference (TOR)</i>, lampiran-12.</p>
+                <h3>2. Sumber Dana</h3>
+                <p>Sumber dana untuk keperluan pelaksanaan {{nama_pengadaan}} adalah menggunakan {{sumber_anggaran_keterangan}} ({{sumber_anggaran}}) PT PLN Nusantara Power.</p>
+                <h3>3. Etika Pengadaan</h3>
+                <ol class="alpha">
+                    <li>Melaksanakan tugas secara tertib, disertai rasa tanggungjawab untuk mencapai sasaran kelancaran dan ketepatan tercapainya tujuan Pengadaan Barang/Jasa.</li>
+                    <li>Bekerja secara profesional dan mandiri atas dasar kejujuran serta menjaga kerahasiaan Dokumen Rencana Kerja dan Syarat-Syarat yang seharusnya dirahasiakan untuk mencegah terjadinya penyimpangan dalam proses Pengadaan Barang/Jasa.</li>
+                    <li>Tidak saling mempengaruhi baik langsung maupun tidak langsung untuk mencegah dan menghindari terjadinya persaingan tidak sehat.</li>
+                    <li>Menerima dan bertanggungjawab atas segala keputusan yang ditetapkan sesuai dengan kesepakatan para pihak.</li>
+                    <li>Menghindari dan mencegah terjadinya pertentangan kepentingan (<i>conflict of interest</i>) para pihak yang terkait dalam proses Pengadaan Barang/Jasa baik langsung maupun tidak langsung yang merugikan kepentingan Pengguna Barang/Jasa.</li>
+                    <li>Menghindari dan mencegah terjadinya pemborosan dan kebocoran keuangan perusahaan dalam Pengadaan Barang/Jasa.</li>
+                    <li>Menghindari dan mencegah penyalahgunaan wewenang dan atau kolusi dengan tujuan untuk kepentingan pribadi, golongan atau pihak lain yang secara langsung atau tidak langsung merugikan perusahaan.</li>
+                    <li>Tidak menerima, tidak menawarkan dan tidak menjanjikan untuk memberi atau menerima hadiah, imbalan berupa apa saja kepada siapapun yang diketahui atau patut diduga berkaitan dengan Pengadaan Barang/Jasa.</li>
+                </ol>
+                <h3>4. Syarat Peserta Pelelangan</h3>
+                <ol class="alpha">
+                    <li>Peserta merupakan Perusahaan Badan Usaha termasuk Badan Usaha Milik Negara (BUMN) atau Badan Usaha Milik Daerah (BUMD) atau Badan Usaha Milik Swasta atau Badan Hukum, atau Instansi Pemerintah/Badan Layanan Umum yang kegiatan usahanya menyediakan barang/jasa.</li>
+                    <li>Peserta adalah Penyedia Barang/Jasa yang tidak sedang menjalani sanksi <i>Blacklist</i> di lingkungan PT PLN NP dan PT PLN (Persero) Group.</li>
+                    <li>Calon Peserta tidak dalam pengawasan pengadilan, tidak bangkrut, kegiatan usahanya tidak sedang dihentikan dan/atau Direksi yang bertindak untuk dan atas nama perusahaan tidak sedang menjalani sanksi pidana.</li>
+                    <li>Calon Peserta telah memenuhi kewajiban perpajakan tahun terakhir.</li>
+                    <li>Bersedia untuk menandatangani Pakta Integritas.</li>
+                </ol>
+                <h3>5. Dilarang Ikut Sebagai Peserta Pelelangan</h3>
+                <ol class="alpha">
+                    <li>Mereka yang dinyatakan pailit.</li>
+                    <li>Mereka yang keikutsertaannya akan bertentangan dengan kepentingan tugasnya (<i>Conflict of Interest</i>).</li>
+                    <li>Mereka yang keikutsertaannya dalam satu pelelangan berada dalam satu kesatuan pengaruh pemilik modal dan atau kepengurusan dengan Peserta Lelang yang lain (kecuali BUMN/BUMD) sehingga dapat diperkirakan akan dapat terjadi pengaturan/kerjasama di antara para Peserta Lelang atau terjadinya persaingan yang tidak wajar/sehat.</li>
+                </ol>
+                <h3>6. Pemenuhan Tingkat Komponen Dalam Negeri (TKDN)</h3>
+                <p>Peserta wajib semaksimal mungkin untuk memenuhi Tingkat Komponen Dalam Negeri (TKDN) sebagaimana diatur di dalam Peraturan Menteri Perindustrian Republik Indonesia Nomor 05/M-IND/PER/2/2017 tentang Perubahan Atas Peraturan Menteri Perindustrian Nomor 54/M-IND/PER/3/2012 Tentang Pedoman Penggunaan Produk Dalam Negeri untuk pembangunan infrastruktur Ketenagalistrikan.</p>
+
+                <h2>B. RENCANA KERJA DAN SYARAT-SYARAT (RKS)</h2>
+                <h3>1. Isi Dokumen Rencana Kerja dan Syarat-Syarat</h3>
+                <ol class="alpha">
+                    <li>Dokumen Rencana kerja dan syarat-syarat terdiri dari :
+                        <ol><li>Instruksi kepada Peserta.</li><li>Persiapan Penawaran.</li><li>Syarat-syarat Perjanjian.</li><li>Jaminan Penawaran dan Jaminan Pelaksanaan.</li><li>Lampiran-lampiran.</li></ol>
+                    </li>
+                    <li>Peserta berkewajiban memeriksa keseluruhan isi Dokumen Rencana Kerja dan Syarat-Syarat (RKS). Kelalaian menyampaikan Dokumen Penawaran yang tidak memenuhi persyaratan yang ditetapkan dalam Dokumen Rencana Kerja dan Syarat-Syarat (RKS) ini sepenuhnya merupakan risiko Peserta Pelelangan.</li>
+                </ol>
+                <h3>2. Bahasa Rencana Kerja dan Syarat-Syarat (RKS)</h3>
+                <p>Dokumen Rencana Kerja dan Syarat-Syarat (RKS) beserta seluruh korespondensi tertulis dalam proses pengadaan menggunakan Bahasa Indonesia.</p>
+                <h3>3. Waktu dan Tempat Pendaftaran Peserta dan Pengambilan Rencana Kerja dan Syarat-Syarat (RKS)</h3>
+                <table class="plain">
+                    <tr><td style="width: 120px;">Hari/Tanggal</td><td>: Sesuai Jadwal</td></tr>
+                    <tr><td>Waktu</td><td>: Sesuai Jadwal</td></tr>
+                    <tr><td>Tempat</td><td>: melalui website e-procurement PT PLN NP</td></tr>
+                </table>
+                <p><i>Catatan :</i></p>
+                <ol class="roman">
+                    <li>Dokumen Pelelangan terlampir pada website <b><i>https://smartscm.plnnusantarapower.co.id</i></b></li>
+                    <li>Jangka Waktu Pendaftaran lelang hingga H-1 dari tanggal Pemasukan Dokumen Penawaran</li>
+                </ol>
+                <h3>4. Pemberian Penjelasan Rencana Kerja dan Syarat-Syarat (RKS) (<i>Aanwijzing</i>)</h3>
+                <ol class="alpha">
+                    <li>Penjelasan Rencana Kerja Dan Syarat-Syarat (RKS) dihadiri oleh peserta Pelelangan pada :
+                        <table class="plain">
+                            <tr><td style="width: 120px;">Hari/Tanggal</td><td>: Sesuai Jadwal</td></tr>
+                            <tr><td>Waktu</td><td>: Sesuai Jadwal</td></tr>
+                            <tr><td>Cara Penjelasan</td><td>: Menggunakan aplikasi vicon PLN NP (Lampiran 13)</td></tr>
+                        </table>
+                        <ol>
+                            <li>Peserta (pendaftar atau wakilnya berdasarkan surat kuasa bermeterai cukup) yang mengikuti penjelasan harus mengirimkan <i>Softcopy</i> surat kuasa/tugas dan <i>copy</i> tanda pengenal kepada pejabat pelaksana pengadaan.</li>
+                            <li>Semua permintaan penjelasan terhadap isi Dokumen Rencana Kerja dan Syarat-Syarat/RKS hanya dapat dilakukan dalam forum Penjelasan Pelelangan (<i>Aanwijzing</i>).</li>
+                            <li>Ketidakhadiran Peserta Pelelangan pada saat forum Penjelasan Pelelangan (<i>Aanwijzing</i>) tidak dijadikan dasar untuk menggugurkan penawaran.</li>
+                            <li>Peserta Pelelangan yang tidak hadir pada forum Penjelasan Pelelangan (<i>Aanwijzing</i>) dianggap mengetahui dan menyetujui semua hasil yang telah ditetapkan dalam Berita Acara Penjelasan (BAP).</li>
+                            <li>Hasil pemberian penjelasan dituangkan dalam Berita Acara Penjelasan (BAP) yang ditandatangani Pejabat Pelaksana Pengadaan dan minimal 1 (satu) wakil dari Peserta Pelelangan yang hadir/online.</li>
+                            <li>Semua perubahan dalam Dokumen Rencana Kerja dan Syarat-Syarat/RKS sebagai hasil penjelasan dan atau jawaban atas pertanyaan Penyedia Barang/Jasa harus dituangkan dalam Addendum RKS.</li>
+                            <li>Berita Acara Penjelasan (BAP) merupakan bagian tidak terpisah dari Dokumen Rencana Kerja dan Syarat-Syarat.</li>
+                        </ol>
+                    </li>
+                </ol>
+
+                <h2>C. PENYIAPAN DOKUMEN PENAWARAN</h2>
+                <h3>1. Biaya dalam Penyiapan Dokumen Penawaran</h3>
+                <ol class="alpha">
+                    <li>Peserta Pelelangan menanggung semua biaya dalam penyiapan dan penyampaian Dokumen Penawaran.</li>
+                    <li>PT PLN NP tidak bertanggungjawab atas kerugian apapun yang ditanggung oleh Peserta Pelelangan.</li>
+                </ol>
+                <h3>2. Bahasa Dokumen Penawaran</h3>
+                <ol class="alpha">
+                    <li>Semua Dokumen Penawaran harus menggunakan Bahasa Indonesia.</li>
+                    <li>Dokumen Penunjang yang terkait dengan Dokumen Penawaran dapat menggunakan Bahasa Indonesia atau Bahasa Asing.</li>
+                    <li>Dokumen Penunjang yang berbahasa asing perlu disertai penjelasan dalam Bahasa Indonesia. Dalam hal terjadi perbedaan penafsiran maka yang berlaku adalah penjelasan dalam Bahasa Indonesia.</li>
+                </ol>
+                <h3>3. Dokumen Penawaran</h3>
+                <ol class="alpha">
+                    <li>Calon Penyedia Barang/Jasa menyampaikan Dokumen Penawaran berupa <i>Softcopy</i> diunggah di website <b><i>https://smartscm.plnnusantarapower.co.id</i></b> (nama file disesuaikan dengan judul dokumen) dan <i>Hardcopy</i> yang dikirim ke alamat PT PLN NUSANTARA POWER UP KENDARI Jalan Chairil Anwar No. 2, Kel. Mataiwoi, Kec. Wua-Wua, Kendari, Sulawesi Tenggara - 93118.</li>
+                    <li>Informasi yang tercantum dalam penawaran Peserta Pelelangan bersifat rahasia.</li>
+                    <li>Dokumen Penawaran yang memerlukan pengesahan maka harus ditandatangani setidaknya oleh Pejabat Eksekutif Perusahaan yang berwenang diatas materai.</li>
+                    <li>Metode penawaran dilakukan dengan sistem <b>Satu Tahap Satu Sampul</b>, Peserta Pelelangan harus menyerahkan syarat Administrasi, Keuangan, Teknis dan Penawaran Harga dalam satu sampul.</li>
+                    <li>Dokumen Syarat Administrasi, Keuangan, Teknis, dan Penawaran Harga sebagaimana dimaksud pada butir d. diatas meliputi:
+                        <ol>
+                            <li>Syarat Administrasi terdiri dari:
+                                <ol class="alpha">
+                                    <li>Surat Pernyataan Minat Untuk Mengikuti Pengadaan (sesuai Lampiran 9).</li>
+                                    <li>Pakta Integritas (sesuai Lampiran 6).</li>
+                                    <li>Asli Surat Pernyataan diantaranya :
+                                        <ol class="roman">
+                                            <li>Kesanggupan Mematuhi dan Memenuhi Semua Ketentuan yang ditetapkan dalam Dokumen Rencana Kerja dan Syarat-Syarat (RKS);</li>
+                                            <li>Perusahaan yang di pimpin tidak dalam keadaan bangkrut, Direktur perusahaan tidak dalam pengawasan pengadilan dan tidak sedang menjalani sanksi pidana;</li>
+                                            <li>Tidak akan menuntut ganti rugi dalam bentuk apapun jika proses Pengadaan Barang/Jasa dilakukan penghentian atau Pengadaan Barang/Jasa dinyatakan Gagal atau Pemutusan Perjanjian/Kontrak oleh Pengguna Barang/Jasa (sesuai Lampiran 5).</li>
+                                        </ol>
+                                    </li>
+                                    <li><i>Copy</i> Nomor Induk Berusaha (NIB) dengan kode KBLI yang sesuai dan masih berlaku efektif;</li>
+                                    <li>Terdaftar sebagai Daftar Penyedia Perusahaan (DPP) PT PLN NP dibuktikan dengan melampirkan copy sertifikat DPP.</li>
+                                    <li>Surat keterangan domisili kantor yang berkedudukan di kota Kendari atau sekitarnya yang diterbitkan oleh pemerintah setempat.</li>
+                                </ol>
+                            </li>
+                            <li>Syarat Keuangan terdiri dari:
+                                <ol class="alpha"><li>Laporan keuangan tahun terakhir yang telah diaudit oleh auditor independen/akuntan publik atau hasil rating/pemeringkatan keuangan dari lembaga pemeringkat keuangan yang kredibel.</li></ol>
+                            </li>
+                            <li>Syarat Teknis terdiri dari:
+                                <ol class="alpha">
+                                    <li>Asli Dokumen Spesifikasi Barang/Jasa yang ditawarkan (sesuai Lampiran 2), sesuai dengan spesifikasi barang/jasa yang dimintakan penawaran (sesuai Lampiran 1);</li>
+                                    <li>Copy sertifikat CSMS yang diterbitkan oleh PLN Nusantara Power dengan kriteria level risiko minimal <span class="fill">..........</span>;</li>
+                                    <li>Daftar pengalaman pelaksanaan pekerjaan sejenis beserta deskripsi pekerjaan yang pernah/sedang dilaksanakan (sesuai Lampiran 7).</li>
+                                </ol>
+                            </li>
+                            <li>Dokumen Penawaran terdiri dari :
+                                <ol class="alpha">
+                                    <li>Surat Penawaran Harga dan total harga penawaran (sesuai Lampiran 3);</li>
+                                    <li>Daftar rincian harga penawaran (sesuai Lampiran 4).</li>
+                                </ol>
+                            </li>
+                        </ol>
+                    </li>
+                </ol>
+                <p><b>Catatan :</b></p>
+                <ol class="alpha">
+                    <li>Apabila ada hal-hal yang kurang jelas dan/atau meragukan terhadap surat-surat/data-data administrasi yang bersangkutan maka Pelaksana Pengadaan dapat melakukan klarifikasi/konfirmasi dengan pihak terkait/institusi yang menerbitkannya terkait ketentuan yang dipersyaratkan.</li>
+                    <li>Bila diperlukan, PT PLN NP UP Kendari akan melakukan <i>Due Diligence</i> terkait ketentuan yang dipersyaratkan bagi Peserta Pelelangan meliputi keabsahan dokumen, kesiapan peralatan, fabrikasi peralatan dan hal-hal lain yang terkait. Adapun biaya yang timbul menjadi tanggung jawab PT PLN NP.</li>
+                </ol>
+                <h3>4. Harga Penawaran</h3>
+                <ol class="alpha">
+                    <li>Harga penawaran adalah harga Pengadaan Barang/Jasa pada site Unit Pengguna Barang/Jasa.</li>
+                    <li>Surat Penawaran harus ditandatangani oleh Pimpinan Perusahaan atau penerima kuasa dari Pimpinan Perusahaan, atau Kepala Cabang Perusahaan yang diangkat oleh Kantor Pusat dan dibuktikan dengan dokumen otentik, bertanggal, bermaterai Rp 10.000,- (sepuluh ribu rupiah).</li>
+                    <li>Harga penawaran ditulis dalam angka dan huruf, apabila terdapat perbedaan antara penulisan nilai dalam angka dan huruf maka nilai penawaran yang diakui adalah nilai dalam tulisan huruf.</li>
+                    <li>Peserta mencantumkan harga satuan Barang/Jasa untuk tiap pembayaran dalam Daftar Kuantitas dan Harga.</li>
+                    <li>Harga penawaran sudah termasuk pajak-pajak yang berlaku.</li>
+                </ol>
+                <h3>5. Mata Uang Penawaran dan Cara Pembayaran</h3>
+                <ol class="alpha">
+                    <li>Semua harga dalam penawaran harus dalam bentuk mata uang Rupiah (IDR).</li>
+                    <li>Cara Pembayaran atas pelaksanaan pengadaan Barang/Jasa akan diuraikan sesuai ketentuan dalam RKS ini.</li>
+                </ol>
+                <h3>6. Dokumen Penawaran Tidak Sah atau Gugur</h3>
+                <ol class="alpha">
+                    <li>Pada saat Pembukaan Penawaran, tidak memenuhi persyaratan administrasi, keuangan dan teknis yang ditentukan sesuai dengan Dokumen Rencana Kerja dan Syarat-Syarat ini.</li>
+                    <li><i>Softcopy</i> dan <i>Hardcopy</i> harga penawaran tidak ditandatangani oleh peserta Pelelangan diatas materai Rp 10.000,- dan tidak diberi cap perusahaan.</li>
+                    <li><i>Softcopy</i> jaminan penawaran tidak diunggah pada <i>website</i> <b><i>https://smartscm.plnnusantarapower.co.id</i></b> dan/atau tidak menyerahkan asli jaminan penawaran sesuai batasan waktu yang telah ditetapkan pada RKS ini (apabila dipersyaratkan).</li>
+                    <li>Masa berlaku jaminan penawaran tidak sesuai dengan persyaratan yang telah ditetapkan pada RKS ini (apabila dipersyaratkan).</li>
+                    <li>Dokumen Penawaran yang belum bermaterai cukup, belum bertanggal, belum ditandatangani dan belum diberi cap perusahaan, akan dianggap sah apabila kekurangannya dapat dipenuhi sebelum batas waktu pemasukan dokumen penawaran. Bila kekurangan tersebut tidak dapat dipenuhi sebelum batas waktu pemasukan dokumen penawaran, maka dokumen penawaran tersebut dinyatakan tidak sah.</li>
+                </ol>
+                <h3>7. Masa Berlaku Penawaran</h3>
+                <p>Masa berlaku penawaran adalah selama <b>90 (sembilan puluh) hari kalender</b>.</p>
+                <h3>8. Jaminan Penawaran (Bid Bond)</h3>
+                <p>Jaminan Penawaran tidak dipersyaratkan untuk Perusahaan BUMN/PT PLN (Persero)/Anak Perusahaan PT PLN (Persero)/Perusahaan Terafiliasi PT PLN (Persero)/Anak Perusahaan PT PLN Nusantara Power/Perusahaan Terafiliasi PT PLN Nusantara Power/Pengadaan yang menggunakan Metode Penunjukan Langsung/<i>Repeat Order</i>.</p>
+
+                <h2>D. PEMASUKAN DOKUMEN PENAWARAN</h2>
+                <h3>1. Penyampaian Dokumen Penawaran</h3>
+                <ol class="alpha">
+                    <li>Pemasukan penawaran
+                        <ol>
+                            <li>Peserta Pelelangan menyampaikan Dokumen Penawaran yang dilengkapi dengan Nomor dan Tanggal Surat Penawaran.</li>
+                            <li>Tanggal Surat Penawaran harus dalam rentang waktu pemasukan penawaran.</li>
+                            <li>Surat Penawaran harus ditandatangani oleh Pimpinan Perusahaan atau penerima kuasa dari Pimpinan Perusahaan atau Kepala Cabang Perusahaan yang diangkat oleh Kantor Pusat dan dibuktikan dengan dokumen otentik, bertanggal, bermaterai Rp 10.000,- (Sepuluh ribu rupiah), dan distempel.</li>
+                        </ol>
+                    </li>
+                    <li>Penyampaian dokumen penawaran dilakukan dengan diunggah ke <i>website</i> <b><i>https://smartscm.plnnusantarapower.co.id</i></b> pada paket pengadaan {{nama_pengadaan}}, serta mengirimkan dokumen <i>Hardcopy</i> ke alamat PT PLN NUSANTARA POWER UP KENDARI Jalan Chairil Anwar No. 2, Kelurahan Mataiwoi, Kecamatan Wua-Wua, Kota Kendari, Provinsi Sulawesi Tenggara - Kode Pos 93118, hingga batas waktu penyampaian dokumen penawaran.</li>
+                </ol>
+                <h3>2. Batas Waktu Penyampaian Dokumen Penawaran</h3>
+                <table class="plain">
+                    <tr><td style="width: 120px;">Hari/Tanggal</td><td>: Sesuai Jadwal</td></tr>
+                    <tr><td>Waktu</td><td>: Sesuai Jadwal</td></tr>
+                </table>
+                <h3>3. Perubahan dan Keterlambatan Dokumen Penawaran</h3>
+                <ol class="alpha">
+                    <li>Perubahan penawaran dapat dilakukan sebelum batas akhir waktu pemasukan penawaran.</li>
+                    <li>Penarikan penawaran tidak dapat dilakukan setelah batas akhir waktu pemasukan penawaran, apabila dilakukan maka Jaminan Penawaran dicairkan dan menjadi milik PT PLN NP.</li>
+                    <li>Dokumen Penawaran yang diterima setelah batas waktu pemasukan penawaran tidak diikutsertakan.</li>
+                    <li>Peserta Pelelangan yang mendaftar untuk ikut Pelelangan namun tidak memasukkan Dokumen Penawaran tanpa alasan profesional dikenakan sanksi.</li>
+                    <li>PT PLN NP tidak memberikan ganti rugi kepada Peserta Pelelangan bila penawarannya ditolak atau proses penunjukan dinyatakan gagal/batal.</li>
+                </ol>
+
+                <h2>E. PEMBUKAAN DAN EVALUASI PENAWARAN</h2>
+                <h3>1. Pembukaan Penawaran</h3>
+                <ol class="alpha">
+                    <li>Waktu Pelaksanaan Pembukaan Penawaran :
+                        <table class="plain">
+                            <tr><td style="width: 150px;">Hari/Tanggal/Waktu</td><td>: Sesuai Jadwal</td></tr>
+                            <tr><td>Tempat</td><td>: Kantor PLN NP UP Kendari</td></tr>
+                        </table>
+                    </li>
+                    <li>Pembukaan penawaran dengan Metode Satu Tahap Satu Sampul :
+                        <ol>
+                            <li>Pejabat Pengadaan memeriksa kelengkapan (ADA/TIDAK) dokumen penawaran yang terunggah pada website dan dokumen <i>hardcopy</i> yang dikirimkan, yang kemudian akan dihasilkan keputusan LENGKAP/TIDAK LENGKAP nya dokumen penawaran tersebut.</li>
+                            <li>Apabila terdapat persyaratan dokumen penawaran yang tidak dapat diakses atau dibuka pada saat pembukaan dokumen penawaran (<i>corrupt</i>) maka dokumen <i>hardcopy</i> dapat menjadi acuan pembukaan dokumen.</li>
+                            <li>Apabila persyaratan Dokumen Penawaran tersebut dinilai TIDAK LENGKAP, maka penawaran tersebut tidak dilanjutkan ke tahap evaluasi atau dinyatakan GUGUR.</li>
+                            <li>Pembukaan Penawaran dilakukan dengan menggunakan website <b><i>https://smartscm.plnnusantarapower.co.id</i></b> dan aplikasi vicon PT PLN NP (jika diperlukan).</li>
+                            <li>Pembukaan Penawaran dilakukan di hadapan Calon Penyedia Barang/Jasa yang hadir/<i>online</i> serta disaksikan minimal 2 (dua) orang saksi dari wakil Calon Penyedia Barang/Jasa, untuk selanjutnya dibacakan serta dicatat dan dijadikan lampiran Berita Acara Pembukaan Penawaran.</li>
+                            <li>Membuat Berita Acara Pembukaan Penawaran (BAPP) yang berisikan hal-hal dan data-data pokok yang penting termasuk informasi yang diperoleh pada saat pembukaan penawaran.</li>
+                            <li>Pelaksana Pengadaan Menandatangani Berita Acara Pembukaan Penawaran (BAPP) dan disepakati minimal bersama 2 (dua) orang saksi dari Calon Penyedia Barang/Jasa yang hadir/online.</li>
+                            <li>Dalam hal saksi dari wakil Calon Penyedia Barang/Jasa tidak ada, Pejabat Pelaksana Pengadaan dapat menunjuk saksi diluar dari Pejabat Pelaksana Pengadaan untuk menandatangani Berita Acara Pembukaan Penawaran.</li>
+                        </ol>
+                    </li>
+                </ol>
+                <h3>2. Evaluasi Dokumen Penawaran</h3>
+                <ol class="alpha">
+                    <li>Dalam proses Pengadaan dengan Metode <b>Satu Tahap Satu Sampul</b> ini, Evaluasi Dokumen Penawaran sesuai urutan (Administrasi, Keuangan, Teknis dan Penawaran).</li>
+                    <li>Evaluasi terhadap masing-masing persyaratan pada point a. diatas dilakukan dengan menggunakan metode SISTEM GUGUR. Penilaian menghasilkan dua kesimpulan yaitu <b>memenuhi kualifikasi (LULUS)</b> atau <b>tidak memenuhi kualifikasi (GUGUR)</b>.</li>
+                    <li>Evaluasi dilakukan berdasarkan data dan informasi yang ada dalam Dokumen Penawaran (<i>softfile</i> dan <i>hardcopy</i>) yang telah diunggah dan dikirimkan oleh Peserta Pelelangan. Apabila terdapat persyaratan dokumen penawaran yang tidak dapat diakses atau dibuka pada saat evaluasi dokumen penawaran (<i>corrupt</i>) maka dokumen <i>hardcopy</i> yang menjadi acuan evaluasi.</li>
+                    <li>Apabila terdapat perbedaan dokumen antara <i>softfile</i> dan <i>hardcopy</i> maka persyaratan tersebut dinilai tidak memenuhi (GUGUR).</li>
+                    <li>Tahapan Evaluasi Dokumen Penawaran meliputi :
+                        <ol>
+                            <li>Evaluasi Syarat Administrasi :
+                                <ol class="alpha">
+                                    <li>Evaluasi Administrasi menghasilkan 2 (dua) kesimpulan, yaitu <b>Memenuhi Syarat Administrasi</b> atau <b>Tidak Memenuhi Syarat Administrasi</b>.</li>
+                                    <li>Syarat Administrasi dinyatakan GUGUR apabila :
+                                        <ol class="roman">
+                                            <li>Tidak menyampaikan kelengkapan dokumen yang dipersyaratkan dalam Syarat Administrasi sebagaimana dimaksud dalam RKS ini <b>[butir C.3.e.1)]</b>;</li>
+                                            <li>Tidak bisa membuktikan keabsahan dokumen yang disampaikan;</li>
+                                            <li>Pemilik modal atau pengurus suatu perusahaan Calon Penyedia Barang menjadi pemilik modal dan/atau pengurus perusahaan lain sesama Calon Penyedia Barang/Jasa;</li>
+                                            <li>Dokumen penawaran dan Surat Pernyataan tidak ditandatangani oleh pejabat yang berwenang.</li>
+                                        </ol>
+                                    </li>
+                                </ol>
+                            </li>
+                            <li>Evaluasi Syarat Keuangan :
+                                <ol class="alpha">
+                                    <li>Evaluasi Keuangan dilakukan apabila penawaran Memenuhi/Lulus Syarat Administrasi.</li>
+                                    <li>Evaluasi Keuangan menghasilkan 2 (dua) kesimpulan, yaitu <b>Memenuhi Syarat Keuangan</b> atau <b>Tidak Memenuhi Syarat Keuangan</b>.</li>
+                                    <li>Syarat Keuangan dinyatakan GUGUR apabila :
+                                        <ol class="roman">
+                                            <li>Tidak menyampaikan kelengkapan dokumen yang dipersyaratkan dalam Syarat Keuangan sebagaimana dimaksud dalam RKS ini <b>[butir C.3.e.2)]</b>.</li>
+                                            <li>Tidak bisa membuktikan keabsahan dokumen yang disampaikan.</li>
+                                        </ol>
+                                    </li>
+                                </ol>
+                            </li>
+                            <li>Evaluasi Syarat Teknis :
+                                <ol class="alpha">
+                                    <li>Evaluasi Teknis dilakukan apabila penawaran dinyatakan Memenuhi/Lulus syarat Administrasi dan Keuangan.</li>
+                                    <li>Faktor-faktor yang dievaluasi pada Evaluasi Teknis antara lain spesifikasi teknis, jumlah, waktu penyerahan, jenis pekerjaan dan syarat-syarat teknik sesuai dengan dokumen teknik.</li>
+                                    <li>Evaluasi Teknis menghasilkan 2 (dua) kesimpulan, yaitu <b>Memenuhi Syarat Teknik</b> atau <b>Tidak Memenuhi Syarat Teknik</b>.</li>
+                                    <li>Syarat Teknis dinyatakan GUGUR apabila :
+                                        <ol class="roman">
+                                            <li>Tidak menyampaikan atau kelengkapan dokumen tidak memenuhi sesuai yang dipersyaratkan dalam Syarat Teknis sebagaimana dimaksud dalam RKS ini <b>[butir C.3.e.3)]</b>.</li>
+                                            <li>Tidak bersedia menandatangani surat pernyataan teknis.</li>
+                                            <li>Spesifikasi Teknis yang ditawarkan tidak memenuhi/tidak sesuai dengan yang dipersyaratkan dalam TOR.</li>
+                                            <li>Waktu Penyerahan barang/jasa melebihi dari waktu yang telah ditentukan pada RKS.</li>
+                                            <li>Tidak bisa membuktikan keabsahan dokumen yang disampaikan pada saat klarifikasi/<i>due diligence</i>.</li>
+                                        </ol>
+                                    </li>
+                                </ol>
+                            </li>
+                            <li>Evaluasi Penawaran Harga :
+                                <ol class="alpha">
+                                    <li>Evaluasi Penawaran Harga dilakukan terhadap peserta yang dinyatakan memenuhi/lulus syarat Administrasi, Keuangan dan Teknis. Evaluasi penawaran harga menghasilkan 2 (dua) kesimpulan, yaitu <b>Memenuhi</b> atau <b>Tidak Memenuhi</b>.</li>
+                                    <li>Penawaran yang dinyatakan tidak memenuhi persyaratan penawaran atau dinyatakan Gugur apabila :
+                                        <ol class="roman">
+                                            <li>Tidak menyampaikan kelengkapan dokumen yang dipersyaratkan dalam Syarat Penawaran Harga sebagaimana dimaksud dalam RKS ini <b>[butir C.3.e.4)]</b>.</li>
+                                            <li>Jangka waktu berlakunya surat penawaran kurang dari 90 (sembilan puluh) hari.</li>
+                                            <li>Jaminan Penawaran (apabila dipersyaratkan) tidak memenuhi persyaratan apabila: (1) tidak diterbitkan oleh Bank Mandiri, BNI, atau BRI; (2) memiliki masa berlaku kurang dari 120 (seratus dua puluh) hari kalender terhitung sejak tanggal pembukaan penawaran; (3) nama dan alamat penyedia barang/jasa tidak sesuai dengan surat keterangan domisili perusahaan; (4) nilai jaminan kurang dari 1% dari nilai penawaran; (5) besar jumlahnya jaminan dalam angka dan huruf tidak sama; (6) nama dan alamat jelas pemberi pekerjaan tidak sesuai dengan yang telah ditentukan; (7) nama paket pekerjaan yang dijamin tidak sesuai dengan yang telah ditentukan.</li>
+                                        </ol>
+                                    </li>
+                                    <li>Dalam hal terjadi perbedaan antara harga penawaran yang tercantum dalam Surat Penawaran dengan Rincian Penawaran, maka yang berlaku adalah harga penawaran yang tercantum pada Surat Penawaran bermeterai cukup.</li>
+                                    <li>Harga penawaran ditulis dalam angka dan huruf apabila terdapat perbedaan antara penulisan nilai dalam angka dan huruf maka nilai penawaran yang diakui adalah nilai dalam tulisan huruf.</li>
+                                    <li>Evaluasi penawaran harga dilakukan dengan metode Sistem Gugur, penawaran harga akan dibandingkan dengan HPS yang telah ditetapkan. Penawaran harga yang diatas HPS tidak menggugurkan dan tetap akan dievaluasi.</li>
+                                </ol>
+                            </li>
+                        </ol>
+                    </li>
+                    <li>Proses pengadaan dapat dilanjutkan dengan Klarifikasi dan Negosiasi sesuai ketentuan dalam RKS ini.</li>
+                    <li>Bilamana dipandang perlu, PT PLN NP dapat meminta Calon Penyedia Barang/Jasa untuk melengkapi data isian formulir kualifikasi tambahan, apabila tidak dipenuhi maka menjadi resiko Calon Penyedia Barang/Jasa.</li>
+                    <li>Apabila ditemui data/keterangan yang disampaikan tidak benar dan ada pemalsuan, maka Calon Penyedia Barang/Jasa digugurkan dan dimasukkan dalam daftar hitam (<i>Blacklist</i>) dan tidak diperkenankan ikut serta dalam Pengadaan Barang/Jasa di lingkungan PT PLN NP Group selama 24 (dua puluh empat) bulan.</li>
+                </ol>
+
+                <h2>F. NEGOSIASI PENAWARAN DAN KLARIFIKASI</h2>
+                <h3>1. Negosiasi Penawaran</h3>
+                <ol class="alpha">
+                    <li>Klarifikasi dan negosiasi penawaran dilakukan melalui <i>website</i> <b><i>https://smartscm.plnnusantarapower.co.id</i></b></li>
+                    <li>Negosiasi dilakukan untuk mencapai kesepakatan antara PT PLN NP dengan penyedia Barang/Jasa dalam teknis, waktu pelaksanaan, dan harga terbaik, dengan Negosiasi dimulai dari urutan Peserta Pelelangan dengan Penawaran Harga terendah.</li>
+                    <li>Negosiasi dilakukan oleh Pelaksana Pengadaan dengan Direktur Utama/pimpinan perusahaan; penerima kuasa dari Direktur Utama/pimpinan perusahaan atau Kepala Cabang perusahaan yang diangkat oleh kantor pusat yang dibuktikan dengan <i>Softcopy</i> dokumen otentik yang dikirimkan kepada email pejabat pelaksana pengadaan.</li>
+                    <li>Negosiasi dilakukan dengan ketentuan sebagai berikut :
+                        <ol>
+                            <li>Dalam hal ketika dilakukan Evaluasi Dokumen Penawaran dan semua penawaran Peserta Pelelangan diatas HPS, maka proses dilanjutkan dengan Negosiasi, dengan urutan Negosiasi dimulai dari Peserta Pelelangan dengan Penawaran Harga terendah yang telah dinyatakan MEMENUHI persyaratan Administrasi, Keuangan, dan Teknik;</li>
+                            <li>Apabila proses negosiasi sebagaimana dimaksud butir 1) diatas tidak mencapai kesepakatan/tetap diatas HPS, maka Calon Penyedia Barang/Jasa dengan Penawaran Harga terendah tersebut dinyatakan TIDAK MEMENUHI, selanjutnya akan dilakukan Evaluasi terhadap Peserta Lelang dengan Harga Penawaran terendah Kedua dengan ketentuan telah dinyatakan MEMENUHI persyaratan Administrasi, Keuangan, dan Teknik.</li>
+                            <li>Tahapan kondisi diatas juga berlaku untuk Peserta Lelang dengan Harga Penawaran terendah Ketiga, Keempat, dst.</li>
+                            <li>Apabila proses negosiasi kepada seluruh Peserta Pelelangan tidak mencapai kesepakatan, maka pengadaan dinyatakan GAGAL.</li>
+                            <li>Dalam hal ketika dilakukan Evaluasi Dokumen Penawaran, semua atau sebagian penawaran Peserta Pelelangan dibawah HPS, maka tetap dilakukan Negosiasi kepada Peserta Pelelangan dengan Penawaran Harga terendah yang telah dinyatakan MEMENUHI persyaratan Administrasi, Keuangan, dan Teknik.</li>
+                        </ol>
+                    </li>
+                    <li>Terhadap harga penawaran yang telah dilakukan Negosiasi dan telah memenuhi ketentuan pada butir d) diatas, disebut sebagai Harga Akhir dan akan menjadi Harga Kontrak.</li>
+                </ol>
+                <h3>2. Dilakukan Klarifikasi apabila</h3>
+                <ol class="alpha">
+                    <li>Dalam hal penawaran di bawah 80% (delapan puluh persen) dari HPS, maka harus dilakukan klarifikasi secara tertulis kepada Peserta Pelelangan. Apabila Peserta Pelelangan pengadaan tersebut ditunjuk sebagai pemenang pengadaan maka Peserta Pelelangan dapat diminta untuk menaikkan Jaminan Pelaksanaan menjadi sebesar presentase Jaminan Pelaksanaan (yang diatur dalam Dokumen Pelelangan/RKS) terhadap HPS.</li>
+                    <li>Hasil pelaksanaan Klarifikasi dan Negosiasi dituangkan dalam Berita Acara Klarifikasi dan Negosiasi yang ditanda tangani fungsi pelaksana pengadaan dan disepakati oleh calon penyedia barang/jasa.</li>
+                </ol>
+
+                <h2>G. PENETAPAN PEMENANG</h2>
+                <h3>1. Penetapan Pemenang</h3>
+                <ol class="alpha">
+                    <li>Pemenang dalam Pelelangan ini adalah Peserta Pelelangan yang lolos Evaluasi dan menyetujui Harga Akhir.</li>
+                    <li>PT PLN NP menetapkan Pemenang pengadaan dan mengeluarkan Surat Penetapan Penyedia Barang/Jasa.</li>
+                    <li>Apabila terjadi keterlambatan dalam menetapkan Pemenang pengadaan dan mengakibatkan Penawaran habis masa berlakunya, maka diminta kepada Peserta Pelelangan untuk memperpanjang masa berlaku Surat Penawaran.</li>
+                </ol>
+                <h3>2. Pengumuman Pemenang</h3>
+                <p>Hasil penetapan Pemenang Pelelangan akan diumumkan secara parsial kepada Peserta Pelelangan yang telah memasukkan Penawaran.</p>
+
+                <h2>H. MASA SANGGAH DAN JAMINAN SANGGAH</h2>
+                <ol>
+                    <li>Peserta Pelelangan yang berkeberatan atas penetapan Calon Pemenang, diberikan kesempatan untuk mengajukan Sanggahan secara tertulis yang berkaitan dengan kesesuaian pelaksanaan pengadaan dengan prosedur atau tata cara pengadaan dalam Dokumen Rencana Kerja dan Syarat-Syarat/RKS.</li>
+                    <li>Sanggahan ditujukan kepada Pejabat yang Berwenang dalam hal ini Kepala Divisi Supply Chain Management PT PLN NP Kantor Pusat dengan tembusan kepada Kepala Satuan Pengawasan Intern (KSPI).</li>
+                    <li>Sanggahan yang disampaikan pihak lain diluar peserta tidak akan dijawab dan Peserta Pelelangan yang menggunakan pihak lain untuk menyampaikan sanggahan dan/atau mempengaruhi pihak PT PLN NP, akan menjadi catatan itikad tidak baik atas Penyedia Barang/Jasa tersebut.</li>
+                    <li>Jangka waktu penyampaian sanggahan maksimal 2 (dua) hari kerja sejak diumumkannya Pemenang Pengadaan.</li>
+                    <li>Pejabat yang Berwenang wajib memberikan jawaban secara tertulis atas substansi masalah yang disanggah disertai bukti-bukti secara proporsional sesuai dengan masalahnya selambat-lambatnya dalam 7 (tujuh) hari kerja sejak tanggal diterimanya pengajuan sanggah.</li>
+                    <li>Dalam hal sanggahan ditolak oleh Pejabat yang Berwenang, maka Penyedia Barang/Jasa dapat mengajukan Sanggah Banding kepada Direktur Utama PT PLN NP, dengan tembusan kepada Kepala Satuan Pengawasan Intern (Ka SPI), selambat-lambatnya dalam waktu 3 (tiga) hari kerja sejak diterimanya jawaban sanggah, dengan disertai bukti-bukti terjadinya penyimpangan terhadap ketentuan-ketentuan pengadaan.</li>
+                    <li>Pejabat yang Berwenang wajib memberikan jawaban tertulis atas Sanggah Banding selambat-lambatnya 7 (tujuh) hari kerja sejak tanggal pengajuan sanggah banding diterima.</li>
+                    <li>Sanggah/Sanggah Banding hanya diberikan 1 (satu) kali dan jawaban atas Sanggah Banding bersifat final dan mengikat.</li>
+                    <li>Apabila isi dari Sanggah/Sanggah Banding dinyatakan benar, maka akan dilakukan penilaian kembali atau dilakukan pengumuman pelelangan ulang. Pelaksana Pengadaan wajib mengembalikan Jaminan Sanggah.</li>
+                    <li>Apabila isi dari Sanggah/Sanggah Banding dinyatakan tidak benar dan cenderung mengada-ada, maka kepada yang bersangkutan tidak diikutsertakan pada proses pelelangan, Jaminan Sanggah akan dicairkan dan sepenuhnya menjadi milik PT PLN NP. Kepada Penyedia Barang/Jasa tersebut dikenakan sanksi Blacklist selama 12 (dua belas) bulan.</li>
+                    <li>Peserta Pelelangan yang keberatan dan tidak mengajukan sanggahan secara tertulis tetapi justru menyebarkan ke publik dapat dikenakan sanksi Blacklist selama 24 (dua puluh empat) bulan, dan apabila ternyata mengada-ada, maka dikenakan sanksi Blacklist selama 60 (enam puluh) bulan.</li>
+                </ol>
+
+                <h2>I. PENUNJUKAN PEMENANG</h2>
+                <h3>1. Penunjukan Penyedia Barang/Jasa</h3>
+                <ol class="alpha">
+                    <li>Pejabat yang Berwenang akan menerbitkan Surat Penunjukan Penyedia Barang/Jasa (SPPBJ), dengan ketentuan:
+                        <ol><li>Setelah tidak ada sanggah/sanggah banding dari Peserta Pelelangan;</li><li>Sanggah/sanggah banding yang diterima dalam masa sanggah terbukti tidak benar;</li><li>Masa Sanggah berakhir.</li></ol>
+                    </li>
+                    <li>Peserta Pelelangan yang ditunjuk sebagai Penyedia Barang/Jasa wajib menerima keputusan tersebut. Apabila yang bersangkutan mengundurkan diri maka Jaminan Penawaran yang bersangkutan akan dicairkan dan menjadi milik PT PLN NP, serta akan diberikan sanksi <i>Blacklist</i> selama 60 (enam puluh) bulan.</li>
+                    <li>Apabila Peserta Pelelangan yang ditunjuk sebagai Penyedia Barang/Jasa mengundurkan diri dan/atau tidak bersedia, maka akan ditetapkan sebagai Penyedia Barang/Jasa kepada Peserta Pelelangan dengan harga Penawaran terendah Kedua (bila ada) mengacu pada harga pemenang pelelangan urutan pertama dengan ketentuan:
+                        <ol>
+                            <li>Peserta Pelelangan dengan harga Penawaran terendah Kedua telah dinyatakan MEMENUHI persyaratan Administrasi, Keuangan, dan Teknik;</li>
+                            <li>Penetapan pemenang Pelelangan urutan kedua tersebut telah mendapat persetujuan/penetapan dari Pengguna Barang/Jasa;</li>
+                            <li>Masa berlaku Penawaran dan Jaminan Penawaran Peserta Pelelangan dengan harga Penawaran terendah Kedua masih berlaku atau sudah diperpanjang masa berlakunya atau;</li>
+                            <li>Apabila Penawaran dan Jaminan Penawaran sudah habis masa berlakunya, maka Peserta Pelelangan dengan harga Penawaran terendah Kedua tersebut terlebih dahulu melakukan perpanjangan masa berlaku penawaran dan menyerahkan Jaminan Penawaran yang baru.</li>
+                        </ol>
+                    </li>
+                    <li>Apabila Peserta Pelelangan dengan harga Penawaran terendah Kedua tidak bersedia atas Penunjukan yang dilakukan, maka akan ditetapkan sebagai Penyedia Barang/Jasa kepada Peserta Pelelangan dengan harga Penawaran terendah Ketiga dst sesuai dengan harga pemenang pelelangan urutan pertama dan sesuai dengan ketentuan butir c. diatas.</li>
+                </ol>
+                <h3>2. BAHP, Berita Acara Lainnya dan Kerahasiaan Proses</h3>
+                <p>Evaluasi penawaran yang disimpulkan dalam Berita Acara Hasil Pelelangan (BAHP) oleh Pejabat Pelaksana Pengadaan bersifat rahasia sampai dengan saat pengumuman pemenang.</p>
+
+                <h2>J. JAMINAN PELAKSANAAN (<i>PERFORMANCE BOND</i>)</h2>
+                <ol><li>Jaminan Pelaksanaan tidak dipersyaratkan untuk PT PLN (Persero)/Anak Perusahaan PT PLN (Persero)/Perusahaan Terafiliasi PT PLN (Persero)/Anak Perusahaan PT PLN Nusantara Power/Perusahaan Terafiliasi PT PLN Nusantara Power.</li></ol>
+
+                <h2>K. PENGHENTIAN PROSES PENGADAAN BARANG/JASA</h2>
+                <ol>
+                    <li>Penghentian Proses Pengadaan Barang/Jasa dapat dilakukan oleh Pengguna Barang/Jasa antara lain :
+                        <ol class="alpha">
+                            <li>Adanya perubahan kebijakan Pemerintah terkait dengan pelaksanaan Pengadaan Barang/Jasa atau;</li>
+                            <li>Adanya gangguan/kerusakan sistem yang menyebabkan terhambatnya proses pengadaan Barang/Jasa;</li>
+                            <li>Adanya perubahan kebijakan strategis Perusahaan atau;</li>
+                            <li>Alokasi pendanaan Pengadaan Barang/Jasa tidak mencukupi atau;</li>
+                            <li>Terjadi indikasi adanya persekongkolan vertikal atau horizontal atau;</li>
+                            <li>Berdasarkan pertimbangan tidak menguntungkan Perusahaan atau tidak memenuhi prinsip <i>Good Corporate Governance</i> (GCG) atau;</li>
+                            <li>Setelah dilakukan pengadaan ulang masih tetap tidak ada penawaran yang memenuhi persyaratan.</li>
+                        </ol>
+                    </li>
+                    <li>PT PLN NP berhak menghentikan proses Pengadaan secara sepihak dan/atau berhak melakukan Proses Pengadaan dengan metode yang sama atau berbeda.</li>
+                </ol>
+
+                <h2>L. PENGADAAN BARANG/JASA GAGAL</h2>
+                <ol>
+                    <li>Pengguna Barang/Jasa menyatakan Pelelangan Gagal, dalam hal :
+                        <ol class="alpha">
+                            <li>Terjadi perubahan rencana kerja dan mengakibatkan perubahan kebutuhan Barang/Jasa, atau;</li>
+                            <li>Tidak ada penawaran yang memenuhi persyaratan dalam RKS, atau;</li>
+                            <li>Tidak ada Peserta Pelelangan yang memasukkan penawaran;</li>
+                            <li>Negosiasi yang dilakukan tidak berhasil mencapai kesepakatan, atau;</li>
+                            <li>Adanya indikasi kuat terjadinya persaingan usaha yang tidak sehat, atau;</li>
+                            <li>Adanya indikasi terjadinya Korupsi, Kolusi dan Nepotisme (KKN), atau;</li>
+                            <li>Sanggahan dari Peserta Pelelangan ternyata benar atau;</li>
+                            <li>Berdasarkan rekomendasi dari <i>Value for Money Committee</i> atas usulan Pejabat Pelaksana Pengadaan, Pengguna Barang/Jasa, atau Pejabat lain yang terkait, atau;</li>
+                            <li>Akibat adanya penetapan pengadilan.</li>
+                        </ol>
+                    </li>
+                    <li>Dalam hal Pelelangan gagal maka Pejabat Pelaksana Pengadaan melakukan :
+                        <ol class="alpha">
+                            <li>Menyampaikan pemberitahuan Pengadaan Gagal kepada Peserta Pelelangan.</li>
+                            <li>Melakukan pengadaan ulang, dengan atau tanpa revisi Dokumen Rencana Kerja dan Syarat-Syarat/RKS untuk disesuaikan dengan penyebab Pengadaan Gagal.</li>
+                        </ol>
+                    </li>
+                    <li>Dalam hal terjadi revisi Dokumen Rencana Kerja dan Syarat-Syarat/RKS, maka revisi Dokumen Rencana Kerja dan Syarat-Syarat/RKS dilakukan oleh Pejabat Perencana Pengadaan.</li>
+                    <li>Pengguna Barang/Jasa tidak memberikan ganti rugi kepada Peserta Pelelangan apabila penawarannya ditolak atau pengadaan dinyatakan gagal.</li>
+                    <li>Dalam hal Peserta Pelelangan tidak memasukkan dokumen penawaran maka Pejabat Pelaksana Pengadaan menyatakan Pengadaan Gagal dan melaporkannya kepada Pengguna Barang/Jasa.</li>
+                </ol>
+
+                <h2>M. SYARAT-SYARAT PERJANJIAN</h2>
+                <h3>1. Penandatanganan Perjanjian</h3>
+                <p>Perjanjian/Kontrak diterbitkan oleh PT PLN NP yang ditandatangani oleh Pengguna Barang/Jasa dan memuat kesepakatan harga satuan Barang/Jasa tertentu dalam kurun waktu tertentu dan spesifikasi tertentu dengan mengacu pada syarat-syarat dan ketentuan dalam Perjanjian/Kontrak yang diterbitkan dan ditandatangani oleh Pengguna Barang/Jasa, dengan ketentuan sebagai berikut :</p>
+                <ol class="alpha">
+                    <li>Penandatanganan Perjanjian dilakukan setelah Penyedia Barang/Jasa menyerahkan Jaminan Pelaksanaan dengan ketentuan sebagaimana dimaksud dalam RKS ini (apabila dipersyaratkan).</li>
+                    <li>Pengguna dan Penyedia Barang/Jasa wajib memeriksa konsep Perjanjian meliputi substansi, bahasa/redaksional, angka, dan huruf serta membubuhkan paraf pada lembar demi lembar dokumen Perjanjian.</li>
+                    <li>Banyaknya rangkap Perjanjian dibuat sesuai kebutuhan sekurang-kurangnya 2 (dua) Perjanjian asli, Perjanjian asli pertama untuk Pengguna Barang/Jasa dibubuhi materai pada bagian yang ditandatangani oleh Penyedia Barang/Jasa, dan Perjanjian asli kedua untuk Penyedia Barang/Jasa dibubuhi materai pada bagian yang ditandatangani oleh Pengguna Barang/Jasa.</li>
+                    <li>Dalam hal terjadi penghentian dan pemutusan perjanjian terhadap Penyedia Barang/Jasa, maka Pengguna Barang/Jasa berhak dan berwenang sepenuhnya untuk mengalihkan pekerjaan kepada Penyedia Barang/Jasa lainnya berdasarkan urutan pemenang Pelelangan.</li>
+                </ol>
+                <h3>2. Definisi</h3>
+                <ol class="alpha">
+                    <li><b>Barang/Jasa</b> adalah Pekerjaan dengan detail spesifikasi teknik pada <i>Term of Reference</i> (TOR).</li>
+                    <li><b>Berita Acara Pemeriksaan Barang</b> adalah Berita Acara yang memuat hasil pemeriksaan dan/atau pengujian yang dilaksanakan oleh Panitia Pemeriksa Kualitas Barang/Jasa terhadap barang/material yang diserahkan Penyedia Barang/Jasa. Berita Acara Pemeriksaan Barang ini diterbitkan dan ditandatangani oleh Panitia Pemeriksa Kualitas Barang/Jasa dan disetujui Pengguna Barang/Jasa.</li>
+                    <li><b>Berita Acara Penyelesaian Pekerjaan</b> adalah berita acara yang memuat hasil pemeriksaan dan/atau pengujian yang dilaksanakan oleh Panitia Pemeriksa Kualitas Barang/Jasa terhadap hasil Jasa yang telah dilakukan penyelesaian oleh Penyedia Barang/Jasa. Berita Acara Penyelesaian Pekerjaan ini diterbitkan dan ditandatangani oleh Panitia Pemeriksa Kualitas Barang/Jasa dan disetujui Pengguna Barang/Jasa.</li>
+                    <li><b>Hari Kalender</b> adalah semua hari dalam sebulan termasuk akhir pekan dan hari libur nasional yang ditetapkan oleh Pemerintah Indonesia.</li>
+                    <li><b>Hari Kerja</b> adalah hari Senin sampai dengan Jumat dikurangi hari libur nasional yang ditetapkan oleh Pemerintah Indonesia.</li>
+                    <li><b>Direksi Pekerjaan</b> adalah {{direksi_pekerjaan}} Pengguna Barang/Jasa.</li>
+                    <li><b><i>Site</i></b> adalah area kerja Pengguna Barang/Jasa atau tempat yang ditunjuk Pengguna Barang/Jasa.</li>
+                    <li><b>Panitia Pemeriksa Kualitas Barang/Jasa</b> adalah satuan kerja dari PENGGUNA BARANG/JASA yang bertugas untuk memeriksa kualitas barang dan/atau Barang/Jasa yang telah dikirim/diserahkan oleh PENYEDIA BARANG/JASA kepada PENGGUNA BARANG/JASA.</li>
+                    <li><b>(N/A)</b> adalah <i>Not Available</i> (Tidak ada/Tidak dipersyaratkan).</li>
+                    <li><b>Perjanjian</b> adalah Perjanjian ini termasuk perubahan-perubahan, tambahan-tambahan dan lampiran-lampirannya.</li>
+                </ol>
+                <h3>3. Harga</h3>
+                <ol class="alpha">
+                    <li>Harga kontrak adalah harga penawaran setelah dilakukan negosiasi dimana harga tersebut sudah mencakup pajak-pajak dan beban biaya atas persyaratan yang telah ditentukan dalam perjanjian.</li>
+                    <li>Harga satuan pekerjaan adalah tetap atau tidak berubah (<i>fixed price</i>) sampai dengan PENGGUNA BARANG/JASA dan PENYEDIA BARANG/JASA selesai melaksanakan hak dan kewajibannya berdasarkan Perjanjian ini.</li>
+                    <li>PENYEDIA BARANG/JASA tidak dapat menuntut perubahan harga Pekerjaan dan/atau tambahan biaya, walaupun terjadi kenaikan harga yang berhubungan dengan pelaksanaan Perjanjian ini, kecuali atas penetapan Pemerintah.</li>
+                </ol>
+                <h3>4. Waktu Pelaksanaan</h3>
+                <ol class="alpha">
+                    <li>Jangka waktu pelaksanaan Kontrak/Perjanjian ditetapkan selama {{jangka_waktu_hari}} ({{jangka_waktu_hari_terbilang}}) hari kalender terhitung tanggal {{tanggal_mulai_pelaksanaan}} sampai dengan {{tanggal_selesai_pelaksanaan}}.</li>
+                    <li>Kriteria diterimanya {{nama_pengadaan}} sesuai dengan <b><i>Quality Acceptance</i></b> pada <i>Term of Reference</i> (TOR), lampiran-12.</li>
+                    <li>Pada saat penyerahan pekerjaan harus dilakukan dengan penerbitan Berita Acara Serah Terima Pekerjaan (BASTP), sebagai pelengkap penyedia barang/jasa wajib menyampaikan dokumen-dokumen sebagai berikut :
+                        <ol>
+                            <li>Laporan Hasil Pekerjaan berupa <i>hardcopy</i> sebanyak 2 buah dan <i>softcopy</i> file dalam flashdisk;</li>
+                            <li>Berita Acara dan SLA (<i>Service Level Agreement</i>);</li>
+                            <li><i>Copy</i> dokumen Kontrak/Perjanjian dan amandemennya (jika ada);</li>
+                            <li>Melampirkan penilaian vendor yang ditandatangani oleh PT PLN NP UP Kendari.</li>
+                        </ol>
+                    </li>
+                </ol>
+                <h3>5. Dokumen Pelaksanaan Pekerjaan</h3>
+                <ol class="alpha">
+                    <li>Dalam pelaksanaan pekerjaan, Penyedia Barang/Jasa diwajibkan membuat Laporan Hasil Pekerjaan yang selanjutnya diserahkan kepada Pengguna Barang/Jasa, untuk mendapatkan persetujuan.</li>
+                    <li>Dokumen Laporan Hasil Pekerjaan sebagaimana dimaksud butir a. diatas disesuaikan dengan lingkup pekerjaan pada <i>Term of Reference</i> (TOR), antara lain:
+                        <ol>
+                            <li>Laporan Tenaga Kerja Bulanan;</li>
+                            <li>Laporan Pelaksanaan Pekerjaan;</li>
+                            <li>Laporan Monitoring dan Evaluasi;</li>
+                            <li>Laporan K3L.</li>
+                        </ol>
+                    </li>
+                </ol>
+                <h3>6. Cara Pembayaran</h3>
+                <ol class="alpha">
+                    <li>Pembayaran akan dilakukan setelah Penyedia Barang/Jasa menyerahkan dengan baik seluruh Pekerjaan beserta dokumen penyerahannya dan dinyatakan diterima oleh Panitia Pemeriksa Barang/Jasa yang dibuktikan dengan diterbitkannya Berita Acara Penyelesaian Pekerjaan/Berita Acara Serah Terima Pekerjaan.</li>
+                    <li>Permintaan pembayaran ditujukan kepada PT PLN Nusantara Power UP Kendari.</li>
+                    <li>Pembayaran dilakukan dengan ditransfer ke Nomor Rekening Bank yang ditunjuk oleh Penyedia Barang/Jasa.</li>
+                    <li>Tahapan dan persentase pembayaran atas {{nama_pengadaan}} beserta dokumen permohonan pembayarannya diatur sebagai berikut : <span class="fill">..............................................................</span></li>
+                    <li>Biaya-biaya yang timbul pada Bank yang ditunjuk oleh Penyedia Barang/Jasa sehubungan dengan transaksi pembayaran yang dilakukan oleh PT PLN NP kepada Penyedia Barang/Jasa menjadi beban dan tanggung jawab Penyedia Barang/Jasa.</li>
+                </ol>
+                <h3>7. Masa Garansi dan Jaminan Masa Garansi</h3>
+                <ol class="alpha"><li>Dalam pelaksanaan {{nama_pengadaan}}, Penyedia Barang/Jasa tidak disyaratkan Jaminan Garansi.</li></ol>
+                <h3>8. Sanksi</h3>
+                <ol class="alpha">
+                    <li>Sanksi denda merupakan sanksi financial yang dikenakan kepada PENYEDIA BARANG/JASA karena terjadinya cidera janji (<i>wanprestatie</i>) yang tercantum dalam perjanjian.</li>
+                    <li>Sanksi denda berlaku untuk masing-masing judul pengadaan dan tidak terikat satu sama lain.</li>
+                    <li>Dalam hal terjadi keterlambatan penyerahan Barang/Jasa berikut dokumen penyerahannya secara lengkap untuk masing-masing pengadaan melampaui batas waktu yang ditentukan dalam Dokumen Rencana Kerja dan Syarat-Syarat (RKS) ini <b>[butir M.4.a]</b>, maka Penyedia Barang/Jasa dikenakan sanksi berupa denda keterlambatan sebesar 1&permil; (satu per mil) dari nilai Surat Perjanjian/Kontrak untuk setiap hari keterlambatan dengan maksimum 5% (lima persen) dari nilai Perjanjian, kecuali bila keterlambatan dimaksud disebabkan oleh <i>Force Majeure</i> atau alasan yang berhubungan dengan kesalahan Pengguna Barang/Jasa.</li>
+                    <li>Denda keterlambatan atas penyerahan barang/jasa akan langsung dikenakan pada saat pelaksanaan pembayaran.</li>
+                    <li>Apabila sampai dengan batas akhir waktu penyerahan, Penyedia Barang/Jasa belum melakukan penyerahan barang/jasa beserta kelengkapan dokumen penyerahannya sesuai waktu yang telah ditentukan dalam Dokumen Rencana Kerja dan Syarat-Syarat (RKS) ini <b>[butir M.4.a]</b> maka :
+                        <ol>
+                            <li>Pengguna Barang/Jasa akan memberikan Surat Peringatan Pertama kepada Penyedia Barang/Jasa. Dan apabila dalam 7 (tujuh) hari kalender setelah surat peringatan pertama Penyedia Barang/Jasa tidak memberikan respons/jawaban secara tertulis maka Pengguna Barang/Jasa akan memberikan Surat Peringatan Kedua sekaligus yang terakhir kepada Penyedia Barang/Jasa.</li>
+                            <li>Dan apabila dalam jangka waktu 7 (tujuh) hari kalender setelah diterimanya surat peringatan kedua Penyedia Barang/Jasa tidak memberikan respons/jawaban secara tertulis maka:
+                                <ol class="alpha">
+                                    <li>Pengguna Barang/Jasa berhak memutus partial atas item pekerjaan yang belum diserahkan tersebut secara sepihak berdasarkan ketentuan dalam Perjanjian (Pemutusan dengan peringatan tertulis), apabila penyedia barang/jasa belum menyelesaikan pekerjaan secara partial, atau; Pengguna barang/jasa berhak memutus perjanjian/kontrak secara sepihak berdasarkan ketentuan dalam Perjanjian (Pemutusan dengan peringatan tertulis), apabila penyedia barang/jasa belum menyelesaikan secara keseluruhan;</li>
+                                    <li>Pengguna Barang/Jasa berhak melakukan penjatuhan sanksi Blacklist kepada Penyedia Barang/Jasa selama 24 (dua puluh empat) bulan terhitung sejak tanggal penerbitan sanksi tersebut.</li>
+                                </ol>
+                            </li>
+                        </ol>
+                    </li>
+                    <li>Namun apabila Penyedia Barang/Jasa masih menyatakan kesanggupan untuk memenuhi kewajibannya walaupun telah melebihi jangka waktu penyerahan sebagaimana diatur dalam Perjanjian dan Pengguna Barang/Jasa menyetujui, maka Penyedia Barang/Jasa tetap diperkenankan untuk melanjutkan proses penyerahan dimaksud dengan konsekuensi Penyedia Barang/Jasa tetap dikenakan denda keterlambatan.</li>
+                    <li>Apabila setelah mendapatkan persetujuan dari Pengguna Barang/Jasa, Penyedia Barang/Jasa belum dapat melakukan penyerahan sebagaimana dimaksud butir f. diatas atau keterlambatan Penyedia Barang/Jasa melebihi batas waktu maksimum denda keterlambatan (50 hari kalender), maka :
+                        <ol>
+                            <li>Pengguna Barang/Jasa berhak melakukan pemutusan Perjanjian secara sepihak tanpa Surat Peringatan;</li>
+                            <li>Pengguna Barang/Jasa berhak melakukan penjatuhan sanksi <i>Blacklist</i> kepada Penyedia Barang/Jasa selama minimum 24 (dua puluh empat) bulan terhitung sejak tanggal dijatuhkannya sanksi tersebut.</li>
+                        </ol>
+                    </li>
+                </ol>
+                <h3>9. Pengakhiran dan Pemutusan Perjanjian/Kontrak</h3>
+                <ol class="alpha">
+                    <li>Pengakhiran Perjanjian ini dapat terjadi apabila:
+                        <ol>
+                            <li>Berakhirnya jangka waktu penyerahan pekerjaan sebagaimana ditentukan dalam Perjanjian dengan terpenuhinya hak dan kewajiban PARA PIHAK.</li>
+                            <li>Diakhiri berdasarkan kesepakatan PARA PIHAK karena adanya peristiwa <i>Force Majeure</i>.</li>
+                            <li>Diakhiri berdasarkan kesepakatan PARA PIHAK dengan adanya pemberitahuan dalam waktu paling lambat 30 (tiga puluh) hari kalender sebelumnya dengan adanya kesepakatan kompensasi ganti rugi dan pelunasan kewajiban dari PARA PIHAK.</li>
+                        </ol>
+                    </li>
+                    <li>Apabila terjadi pengakhiran Perjanjian sebagaimana dimaksud dalam butir a. diatas, maka Jaminan Pelaksanaan akan dikembalikan oleh PT PLN NP UP Kendari kepada Penyedia Barang/Jasa.</li>
+                    <li>Pemutusan Perjanjian Tanpa Peringatan Tertulis<br>PT PLN NP UP Kendari dapat memutus Perjanjian secara sepihak, baik sebagian atau seluruhnya, tanpa disertai atau didahului Surat Peringatan kepada PENYEDIA BARANG/JASA, apabila PENYEDIA BARANG/JASA terdapat atau melakukan beberapa kondisi sebagai berikut:
+                        <ol>
+                            <li>Mengundurkan diri setelah penandatanganan Perjanjian; dan/atau</li>
+                            <li>Telah dinyatakan pailit oleh Pengadilan Niaga; dan/atau</li>
+                            <li>Terbukti melakukan pelanggaran atas hak paten, merek terdaftar, desain, hak cipta, atau hak atas kekayaan intelektual (HAKI) lainnya; dan/atau</li>
+                            <li>Apabila sanksi/denda keterlambatan PENYEDIA BARANG/JASA sudah melampaui besarnya Jaminan Pelaksanaan atau maksimum denda keterlambatan atau setelah berakhirnya kesempatan perpanjangan jangka waktu penyerahan Barang dan penyelesaian pekerjaan Jasa (jika ada) yang diberikan oleh PENGGUNA BARANG/JASA kepada PENYEDIA BARANG/JASA;</li>
+                            <li>Terbukti melakukan tindakan-tindakan yang mengakibatkan terjadinya ketidakwajaran dalam pelaksanaan Perjanjian ini termasuk namun tidak terbatas pada tindakan Penipuan, Persekongkolan, Penyuapan, Korupsi, Kecurangan, Pemalsuan dan tindakan lain yang bertentangan dengan peraturan yang berlaku dan tidak sesuai dengan etika bisnis yang baik;</li>
+                            <li>Melakukan pengalihan pekerjaan kepada Pihak lain tanpa persetujuan PENGGUNA BARANG/JASA; dan/atau</li>
+                            <li>Apabila PENYEDIA BARANG/JASA tidak bersedia melakukan perpanjangan masa berlaku/penggantian Jaminan Pelaksanaan yang akan/telah berakhir masa berlakunya.</li>
+                        </ol>
+                    </li>
+                    <li>Pemutusan Perjanjian Dengan Peringatan Tertulis
+                        <ol>
+                            <li>Apabila PENYEDIA BARANG/JASA tidak dapat menyerahkan Barang dan/atau menyelesaikan pekerjaan Jasa berikut dokumen penyerahannya secara lengkap dan benar dalam batas waktu penyerahan sebagaimana ditentukan dalam Perjanjian ini, dan/atau tidak memenuhi ketentuan keselamatan dan kesehatan kerja (K3), dan/atau tidak dapat memenuhi ketentuan-ketentuan dalam Perjanjian ini, maka PENGGUNA BARANG/JASA akan memberikan peringatan tertulis kepada PENYEDIA BARANG/JASA sebagai Surat Peringatan Pertama (SP-1).</li>
+                            <li>Apabila dalam jangka waktu 7 (tujuh) hari kalender setelah tanggal diterimanya Surat Peringatan Pertama (SP-1) oleh PENYEDIA BARANG/JASA sebagaimana dimaksud pada butir 1) diatas, PENYEDIA BARANG/JASA tidak memberikan respon/jawaban secara tertulis, dan/atau tidak dapat memenuhi ketentuan-ketentuan dalam Perjanjian maka PENGGUNA BARANG/JASA akan memberikan Surat Peringatan Kedua (SP-2) sekaligus Surat Peringatan terakhir.</li>
+                            <li>Apabila dalam jangka waktu 7 (tujuh) hari kalender setelah tanggal diterimanya Surat Peringatan Kedua (SP-2) sebagaimana dimaksud dalam butir 2) diatas PENYEDIA BARANG/JASA tidak memberikan respon/jawaban secara tertulis, dan/atau tidak dapat memenuhi ketentuan-ketentuan dalam Perjanjian maka PENGGUNA BARANG/JASA berhak menerbitkan Usulan Pemutusan Perjanjian dan menyampaikan Usulan Penjatuhan Sanksi Blacklist terhadap PENYEDIA BARANG/JASA kepada Kepala Divisi Supply Chain Management PT PLN NP Kantor Pusat.</li>
+                        </ol>
+                    </li>
+                    <li>Apabila terjadi pemutusan Perjanjian secara sepihak sebagaimana dimaksud diatas, maka:
+                        <ol>
+                            <li>PT PLN NP UP Kendari berhak melakukan pencairan Jaminan Pelaksanaan dan sepenuhnya menjadi milik PT PLN NP;</li>
+                            <li>PT PLN NP berhak melakukan penjatuhan sanksi Blacklist kepada PENYEDIA BARANG/JASA selama minimum 24 (dua puluh empat) bulan terhitung sejak tanggal penerbitan sanksi tersebut atau selama minimum jangka waktu yang ditentukan lain dalam Perjanjian ini untuk jenis-jenis pelanggaran tertentu yang dilakukan oleh PENYEDIA BARANG/JASA.</li>
+                        </ol>
+                    </li>
+                    <li>Dalam hal terjadi pemutusan Perjanjian sebagaimana dimaksud diatas, maka PARA PIHAK sepakat untuk tidak memberlakukan ketentuan-ketentuan Pasal 1266 dan Pasal 1267 Kitab Undang-Undang Hukum Perdata.</li>
+                </ol>
+                <h3>10. Kewajiban Perpajakan</h3>
+                <ol class="alpha">
+                    <li>Pajak-pajak yang menjadi kewajiban Penyedia Barang/Jasa sehubungan dengan Pekerjaan ini wajib ditanggung oleh Penyedia Barang/Jasa dan Penyedia Barang/Jasa bertanggungjawab sepenuhnya atas pelunasan pajak-pajak dimaksud.</li>
+                    <li>Penyedia Barang/Jasa wajib menyimpan segala dokumen permintaan pembayaran seperti tagihan, faktur pajak, faktur pajak pengganti (jika ada penggantian faktur pajak), bukti faktur pajak batal dan pelaporannya (jika diperlukan penerbitan faktur pajak baru) yang diterbitkan untuk PT PLN NP, serta bukti pembayaran pajak yang dilakukan oleh Penyedia Barang/Jasa.</li>
+                    <li>Penyedia Barang/Jasa berkewajiban untuk menerbitkan faktur pajak sebagai syarat pembayaran secara benar, dan apabila terdapat kerusakan dan/atau salah pengisian dan/atau salah penulisan, sehingga tidak memuat keterangan yang lengkap, jelas, dan benar, maka Penyedia Barang/Jasa wajib menerbitkan faktur pajak pengganti atau faktur pajak baru (jika diperlukan) serta melakukan pembatalan atas faktur pajak yang diterbitkan sebelumnya dan melakukan pelaporan pembatalannya dengan Pembetulan SPT kepada Kantor Pelayanan Pajak sesuai dengan ketentuan yang berlaku.</li>
+                    <li>Apabila terdapat data atau informasi dari Kantor Pelayanan Pajak mengenai transaksi PT PLN NP UP Kendari dengan Penyedia Barang/Jasa, maka PT PLN NP UP Kendari berhak meminta klarifikasi dan Penyedia Barang/Jasa wajib memberikan keterangan tertulis dan pembuktian dengan menyampaikan dokumen tagihan, faktur pajak, faktur pajak pengganti (jika ada penggantian), bukti pembatalan faktur pajak dan bukti pelaporan pembatalannya (jika diperlukan penerbitan faktur pajak baru), serta bukti pembayaran pajak yang dilakukan oleh Penyedia Barang/Jasa sebagaimana diatur dalam huruf (b) paling lama 7 (tujuh) hari kalender setelah diterbitkan Surat Permintaan Klarifikasi dari PT PLN NP UP Kendari yang dibuktikan dengan resi atau tanggal pengiriman email.</li>
+                    <li>Apabila PT PLN NP UP Kendari menerima ketetapan dan/atau tagihan pajak yang menyebabkan kerugian berupa kewajiban pembayaran pajak maupun denda yang disebabkan oleh kelalaian/kesalahan/kekeliruan administrasi perpajakan Penyedia Barang/Jasa sebagaimana disebutkan dalam huruf (c) dan (d) di atas, maka kerugian tersebut akan menjadi beban dan tanggung jawab Penyedia Barang/Jasa.</li>
+                    <li>Mekanisme penagihan/pemotongan atas kerugian yang timbul sebagai akibat kelalaian/kesalahan Penyedia Barang/Jasa sehingga terbit ketetapan/tagihan pajak bagi PT PLN NP UP Kendari (<i>charge back</i>) sebagaimana dimaksud dalam huruf (e) di atas, akan disepakati kemudian oleh PARA PIHAK.</li>
+                </ol>
+                <h3>11. Risiko dan Tanggung Jawab</h3>
+                <p>Semua risiko terhadap kerusakan atau kehilangan Barang tetap berada pada Penyedia Barang/Jasa dan tidak akan beralih kepada Pemberi Kerja sampai dengan Tempat Tujuan Pengiriman dan dilakukan serah terima yang dibuktikan dengan diterbitkannya Berita Acara Pemeriksaan Barang.</p>
+                <h3>12. Pengalihan Pekerjaan Kepada Pihak Lain</h3>
+                <ol class="alpha">
+                    <li>PENYEDIA BARANG/JASA tidak diperbolehkan untuk mengalihkan sebagian maupun seluruh hak dan kewajibannya berdasarkan Perjanjian ini kepada pihak lain tanpa persetujuan tertulis terlebih dahulu dari PEMBERI KERJA.</li>
+                    <li>Dalam hal PENYEDIA BARANG/JASA akan mengalihkan sebagian maupun seluruh hak dan kewajibannya berdasarkan Perjanjian ini kepada pihak lain berdasarkan persetujuan tertulis dari PEMBERI KERJA, maka seluruh kerugian yang timbul sebagai akibat pengalihan pekerjaan dimaksud menjadi beban dan tanggung jawab PENYEDIA BARANG/JASA.</li>
+                </ol>
+                <h3>13. Penundaan Penyelesaian Pekerjaan</h3>
+                <ol class="alpha">
+                    <li>PEMBERI KERJA mempunyai hak memerintahkan untuk melakukan penundaan dan memulai kembali seluruh atau sebagian dari pelaksanaan Pekerjaan sebagaimana dimaksud dalam Perjanjian ini tanpa membatalkan ketentuan-ketentuan yang ada dalam Perjanjian.</li>
+                    <li>Perintah untuk melakukan penundaan dan memulai kembali pelaksanaan Pekerjaan sebagaimana dimaksud, akan dikeluarkan secara tertulis oleh PEMBERI KERJA kepada PENYEDIA BARANG/JASA.</li>
+                    <li>Waktu penyelesaian Pekerjaan sebagaimana dimaksud dalam Perjanjian ini akan ditambah sesuai dengan waktu yang hilang akibat penundaan pelaksanaan Pekerjaan (<i>Suspend</i>), yang dibuktikan dengan dokumen yang dapat dipertanggungjawabkan.</li>
+                </ol>
+                <h3>14. Keselamatan dan Kesehatan Kerja (K3), Keamanan dan Kebersihan Lingkungan</h3>
+                <ol class="alpha">
+                    <li>Penyedia Barang/Jasa harus memenuhi persyaratan Keselamatan dan Kesehatan Kerja (K3) yang diatur oleh Menteri Tenaga Kerja RI.</li>
+                    <li>Penyedia Barang/Jasa wajib mematuhi kebijakan dan prosedur Sistem Manajemen Keselamatan dan Kesehatan Kerja (SMK3) dan Sistem Manajemen Lingkungan (SML) yang telah ditetapkan di area kerja PLN NP UP Kendari.</li>
+                    <li>Penyedia Barang/Jasa wajib mengasuransikan semua pekerjanya yang akan melaksanakan Pekerjaan di area kerja. Selama pelaksanaan Pekerjaan, Pengguna Barang/Jasa tidak bertanggung jawab terhadap kejadian kecelakaan kerja yang terjadi pada pekerja Penyedia Barang/Jasa.</li>
+                    <li>Penyedia Barang/Jasa wajib untuk mengganti kerusakan-kerusakan peralatan dalam area kerja yang diakibatkan oleh pelaksanaan Pekerjaan sebagaimana dimaksud dalam Perjanjian ini.</li>
+                    <li>Penyedia Barang/Jasa wajib mematuhi point-point Aspek K3L dan Keamanan sebagaimana diatur pada <i>Term of Reference</i> (TOR), lampiran-12.</li>
+                    <li>Apabila Penyedia Barang/Jasa terbukti tidak memenuhi ketentuan sebagaimana dimaksud dalam Pasal ini, maka Pengguna Barang/Jasa akan memutus Perjanjian secara sepihak berdasarkan ketentuan dalam Perjanjian dan Penyedia Barang/Jasa dikenakan sanksi Blacklist selama minimum 24 (dua puluh empat) bulan sejak tanggal penjatuhan sanksi Blacklist oleh PENGGUNA BARANG/JASA.</li>
+                </ol>
+                <h3>15. Keadaan Kahar (<i>Force Majeure</i>)</h3>
+                <ol class="alpha">
+                    <li>Keadaan Kahar (<i>Force Majeure</i>) adalah setiap keadaan yang berada di luar kontrol yang wajar, langsung dari pihak yang terkena (termasuk tetapi tidak terbatas pada kerusuhan, perang, bencana alam, bencana non-alam, bencana sosial, endemik, epidemik, pandemik, pemogokan nasional, terorisme, embargo), tetapi jika hanya dan sejauh bahwa:
+                        <ol>
+                            <li>Situasi tersebut, walaupun telah dilakukan upaya keras yang pantas, tidak dapat dicegah, dihindari atau dipindahkan oleh pihak tersebut;</li>
+                            <li>Kejadian tersebut mempengaruhi secara materiil kemampuan pihak yang terkena untuk melaksanakan kewajiban berdasarkan perjanjian ini dan pihak yang terkena telah melakukan seluruh tindakan pencegahan yang pantas, kehati-hatian dan tindakan alternatif yang pantas untuk menghindari akibat dari kejadian tersebut terhadap kemampuan pihak yang terkena tersebut untuk melaksanakan kewajiban berdasarkan perjanjian ini dan untuk mengurangi konsekuensi-konsekuensinya;</li>
+                            <li>Kejadian tersebut bukan akibat langsung atau tidak langsung kegagalan salah satu pihak untuk melaksanakan setiap kewajiban-kewajibannya berdasarkan perjanjian ini; dan</li>
+                            <li>Pihak yang terkena tersebut telah mengirim kepada pihak lainnya pemberitahuan seketika yang menjelaskan kejadian tersebut dan akibat yang terjadi dan tindakan-tindakan yang telah dilakukan untuk memenuhi ketentuan ini dengan ketentuan Keadaan Kahar tidak termasuk pemogokan, penutupan atau tindakan industri lainnya oleh personel dari pihak yang terkena atau agen-agennya.</li>
+                        </ol>
+                    </li>
+                    <li>Dalam hal terjadi Force Majeure, maka pihak yang terkena Force Majeure tersebut wajib memberitahukan secara tertulis kepada pihak lainnya di dalam Perjanjian selambat-lambatnya 7 (tujuh) hari kalender terhitung sejak terjadinya peristiwa Force Majeure.</li>
+                    <li>Apabila dalam jangka waktu sebagaimana dimaksud dalam butir b. pihak yang terkena Force Majeure tidak memberikan pemberitahuan tertulis dan apabila hal tersebut berdampak pada terjadinya keterlambatan terhadap penyerahan hasil Pekerjaan, maka keterlambatan dimaksud dianggap bukan sebagai akibat dari Force Majeure.</li>
+                    <li>Pemberitahuan mengenai Force Majeure harus disertai dengan keterangan dari pihak yang berwenang menginformasikan/memberikan data mengenai peristiwa tersebut, sekaligus pihak yang terkena Force Majeure dapat mengajukan permohonan perpanjangan waktu penyelesaian Pekerjaan kepada pihak yang tidak terkena di dalam Perjanjian.</li>
+                    <li>Pihak yang tidak terkena Force Majeure dalam waktu 7 (tujuh) hari kalender terhitung sejak diterimanya pemberitahuan dan permohonan perpanjangan waktu sebagaimana dimaksud dalam butir b. dan d. akan memberikan jawaban secara tertulis kepada pihak yang terkena Force Majeure.</li>
+                    <li>Apabila pemberitahuan <i>Force Majeure</i> disetujui oleh pihak yang tidak terkena <i>Force Majeure</i>, maka PARA PIHAK akan merundingkan kembali kewajiban-kewajiban dalam Perjanjian ini serta hal-hal lain yang dianggap penting dalam pelaksanaan Perjanjian ini.</li>
+                    <li>Namun apabila permohonan <i>Force Majeure</i> <b>ditolak</b> maka PARA PIHAK akan meneruskan kewajiban sesuai dengan ketentuan-ketentuan di dalam Perjanjian ini.</li>
+                    <li>Apabila dalam jangka waktu sebagaimana dimaksud dalam butir e. pihak yang tidak terkena Force Majeure tidak memberikan jawaban terhadap permohonan perpanjangan waktu dari pihak yang terkena Force Majeure, maka pihak yang tidak terkena dianggap telah memberikan persetujuan terhadap permohonan perpanjangan waktu dimaksud.</li>
+                    <li>Apabila pihak yang terkena Force Majeure adalah PENYEDIA BARANG/JASA, maka PENYEDIA BARANG/JASA tidak dapat dikenakan sanksi atas keterlambatan penyelesaian Pekerjaan yang diakibatkan oleh Force Majeure.</li>
+                    <li>Tindakan yang diambil untuk mengatasi terjadinya Force Majeure akan dilakukan sesuai dengan kesepakatan PARA PIHAK.</li>
+                    <li>Apabila <i>Force Majeure</i> sebagaimana yang disepakati oleh PARA PIHAK tersebut berlanjut sampai dengan waktu 180 (seratus delapan puluh) hari kalender, maka salah satu pihak berhak untuk mengakhiri Perjanjian ini dengan menyampaikan terlebih dahulu pemberitahuan secara tertulis dan efektif berlaku sejak 14 (empat belas) hari kerja setelah tanggal pemberitahuan pengakhiran tersebut. Namun apabila peristiwa <i>Force Majeure</i> tersebut berakhir dalam waktu atau sebelum 14 (empat belas) hari kerja sejak diterimanya pemberitahuan pengakhiran Perjanjian tersebut, maka PARA PIHAK dapat melakukan kesepakatan untuk melanjutkan atau mengakhiri Perjanjian ini.</li>
+                    <li>Dalam hal terjadi Pengakhiran Perjanjian yang telah disepakati oleh PARA PIHAK, maka PARA PIHAK tidak dapat mengajukan tuntutan hukum dan memberikan sanksi/denda keterlambatan maupun sanksi <i>Blacklist</i> serta kewajiban PARA PIHAK dalam Perjanjian ini ditangguhkan kecuali kewajiban untuk melakukan pembayaran yang menjadi hak dan kewajiban PARA PIHAK atas dasar pekerjaan yang telah dilaksanakan sampai sebelum terjadinya <i>Force Majeure</i>.</li>
+                </ol>
+                <h3>16. Penyelesaian Perselisihan</h3>
+                <ol class="alpha">
+                    <li>Apabila timbul perselisihan dalam rangka pelaksanaan Perjanjian ini, PARA PIHAK sepakat untuk menyelesaikan dengan musyawarah.</li>
+                    <li>Perjanjian ini tunduk pada Peraturan Perundang-undangan Republik Indonesia.</li>
+                    <li>Segala sengketa, pertentangan atau perselisihan yang timbul dari atau sehubungan dengan Perjanjian ini, atau pelanggarannya yang tidak dapat diselesaikan dengan musyawarah (dengan jalan damai), akan diselesaikan melalui Badan Arbitrase Nasional Indonesia (BANI) di Jakarta sesuai dengan prosedur dan tata cara penyelesaian perselisihan yang berlaku di BANI (Badan Arbitrase Nasional Indonesia).</li>
+                    <li>Keputusan Badan Arbitrase Nasional Indonesia (BANI) tidak dapat diganggu gugat dan bersifat terakhir. Keputusan tersebut segera diserahkan kepada pengadilan yang mempunyai wewenang hukum (yurisdiksi) untuk melaksanakannya. PARA PIHAK tidak akan mengajukan banding kepada pengadilan atas keputusan tersebut.</li>
+                    <li>Sambil menunggu penyelesaian atas suatu sengketa sebagaimana dimaksud dalam Pasal ini, PARA PIHAK akan tetap memenuhi kewajibannya berdasarkan Perjanjian ini.</li>
+                </ol>
+                <h3>17. Pekerjaan Tambah dan Pekerjaan Kurang</h3>
+                <ol class="alpha">
+                    <li>Pekerjaan tambah dan/atau pekerjaan kurang hanya dianggap sah apabila ada perintah secara tertulis dari Pengguna Barang/Jasa.</li>
+                    <li>Perubahan nilai perjanjian akibat pekerjaan tambah mengacu kepada ketentuan Petunjuk Teknis Pengadaan Barang dan Jasa Pengguna Barang/Jasa.</li>
+                    <li>Perubahan nilai Perjanjian atas pekerjaan tambah dan/atau pekerjaan kurang sebagaimana dimaksud pada butir a) dan b) diatas, akan dituangkan dalam Addendum Perjanjian.</li>
+                    <li>Addendum Perjanjian sebagaimana dimaksud pada butir c) diatas dibuat dengan ketentuan sebagai berikut :
+                        <ol class="roman">
+                            <li>Lingkup pekerjaan tambah/kurang yang sudah diatur dalam Perjanjian, perhitungannya menggunakan harga satuan sebagaimana tercantum dalam Perjanjian.</li>
+                            <li>Lingkup pekerjaan tambah/kurang yang belum diatur dalam Perjanjian, maka harga satuan ditentukan berdasarkan kesepakatan Para Pihak.</li>
+                        </ol>
+                    </li>
+                    <li>Addendum Perjanjian sebagaimana dimaksud dalam butir c) diatas tidak dapat dijadikan dasar perubahan waktu penyerahan barang dan jasa, kecuali ada persetujuan dari PT PLN NP UP Kendari secara tertulis.</li>
+                    <li>Apabila pekerjaan kurang mengakibatkan pengurangan volume pekerjaan dari volume pekerjaan yang telah ditentukan dalam Perjanjian ini, maka pengurangan dimaksud tidak dapat dipakai oleh Penyedia Barang/Jasa sebagai dasar tuntutan ganti rugi atau tuntutan hilangnya keuntungan yang disebabkan oleh pengurangan volume pekerjaan dimaksud.</li>
+                </ol>
+                <h3>18. Perubahan &ndash; Perubahan</h3>
+                <ol class="alpha">
+                    <li>PARA PIHAK sepakat bahwa setiap perubahan dalam Perjanjian ini hanya dapat dilakukan atas persetujuan bersama.</li>
+                    <li>Usulan perubahan sebagaimana dimaksud dalam butir a. harus diajukan secara tertulis oleh pihak yang berkepentingan kepada pihak lainnya sebelum berlakunya perubahan yang diusulkan.</li>
+                    <li>Perubahan sebagaimana dimaksud dalam butir b. setelah disepakati dan ditandatangani oleh PARA PIHAK dituangkan ke dalam Addendum dan merupakan bagian yang tidak terpisahkan dari Perjanjian.</li>
+                </ol>
+                <h3>19. Syarat Lainnya</h3>
+                <p>Persyaratan lain akan diuraikan dalam Perjanjian/Kontrak yang menjadi bagian tak terpisahkan dari Dokumen Rencana Kerja dan Syarat-Syarat.</p>
+            </div>
+
+            <div class="bab">
+                <h1 class="bab-title">BAB III<br>KEPATUHAN TERHADAP HUKUM DAN ANTI PENYUAPAN</h1>
+                <ol>
+                    <li>PARA PIHAK menyepakati bahwa pada saat melaksanakan Perjanjian ini berdasarkan pada prinsip itikad baik, tidak saling mempengaruhi baik langsung maupun tidak langsung, menerima serta bertanggungjawab atas segala keputusan yang ditetapkan sesuai dengan kesepakatan PARA PIHAK, menghindari serta mencegah terjadinya pertentangan kepentingan (<i>conflict of interest</i>), menghindari serta mencegah penyalahgunaan wewenang dan/atau kolusi dengan tujuan untuk keuntungan pribadi-golongan-atau pihak lain, dan tidak menerima, tidak menawarkan atau tidak menjanjikan untuk memberi atau menerima hadiah, imbalan berupa apa saja kepada siapapun yang diketahui atau patut diduga berkaitan dengan pelaksanaan perjanjian ini.</li>
+                    <li>PARA PIHAK menyepakati bahwa dalam pelaksanaan Perjanjian ini wajib patuh dan selalu mengambil tindakan yang cukup untuk memastikan subkontraktor, agen, atau pihak lain yang menjadi subjek kendali agar patuh terhadap setiap hukum Indonesia yang berlaku, tidak terbatas pada Undang-Undang Nomor 31 Tahun 1999 <i>Juncto</i> Undang-Undang Nomor 20 Tahun 2001 tentang Pemberantasan Tindak Pidana Korupsi dan Undang-Undang Nomor 8 Tahun 2010 Tentang Pencegahan dan Pemberantasan Tindak Pidana Pencucian Uang.</li>
+                    <li>PARA PIHAK dengan ini menjamin untuk tidak akan membayar, menawarkan, menjanjikan atau setuju untuk membayar, menyebabkan dibayarnya, ditawarkannya, dijanjikannya, persetujuan untuk membayar, secara langsung atau tidak langsung, sehubungan dengan pelaksanaan Perjanjian ini atau setiap potensi proyek, setiap kontribusi, biaya, komisi politik, atau pembayaran yang tidak semestinya atau manfaat lain kepada pegawai atau perwakilan pemerintah atau perseorangan swasta yang mengakibatkan timbulnya pembayaran yang tidak semestinya.</li>
+                    <li>PARA PIHAK selanjutnya menjamin untuk tidak, secara langsung atau tidak langsung, sehubungan dengan Perjanjian ini dan bisnis yang timbul karenanya, menawarkan, membayar, berjanji untuk membayar, atau mengizinkan pemberian uang atau hal lainnya yang bernilai kepada pegawai atau perwakilan pemerintah atau pihak manapun, dengan mengetahui atau sadar bahwa uang atau hal lainnya yang bernilai tersebut akan ditawarkan, diberikan atau dijanjikan, secara langsung atau tidak langsung, kepada pegawai atau perwakilan pemerintah, dengan tujuan:
+                        <ol class="alpha">
+                            <li>Mempengaruhi tindakan atau keputusan dari pegawai tersebut dalam kapasitasnya, termasuk keputusan untuk tidak melaksanakan tugas kedinasannya;</li>
+                            <li>Mendorong pegawai tersebut untuk menggunakan pengaruhnya kepada institusi pemerintah untuk mempengaruhi tindakan atau keputusan apapun dari institusi pemerintah tersebut, untuk membantu PIHAK manapun untuk mendapatkan atau mempertahankan bisnis atau mengarahkan suatu bisnis kepada pihak ketiga.</li>
+                        </ol>
+                    </li>
+                    <li>PARA PIHAK menyepakati bahwa tidak akan melakukan tindakan-tindakan yang mengakibatkan terjadinya ketidakwajaran dalam pelaksanaan Perjanjian ini termasuk namun tidak terbatas pada tindakan Penipuan, Persekongkolan, Penyuapan, Korupsi, Kecurangan, Pemalsuan dan tindakan lain yang bertentangan dengan peraturan yang berlaku dan tidak sesuai dengan etika bisnis yang baik.</li>
+                </ol>
+                <p>Apabila PENYEDIA BARANG/JASA terbukti tidak memenuhi ketentuan sebagaimana dimaksud dalam Pasal ini, maka PENGGUNA BARANG/JASA berhak memutus Perjanjian ini secara sepihak. Jaminan Garansi berupa Bank Garansi (apabila terjadi saat masa Garansi) akan dicairkan dan sepenuhnya menjadi milik PENGGUNA BARANG/JASA, serta PENYEDIA BARANG/JASA dikenakan sanksi Blacklist selama minimum 24 (dua puluh empat) bulan sejak tanggal penjatuhan sanksi Blacklist oleh PENGGUNA BARANG/JASA.</p>
+            </div>
+
+            <div class="bab">
+                <h1 class="bab-title">BAB IV<br>PENUTUP</h1>
+                <p>Perubahan atau penambahan atas hal-hal lain yang belum tercakup dalam RKS ini, akan dicantumkan dalam Berita Acara Penjelasan Pelelangan (<i>Aanwijzing</i>) dan Addendum RKS yang akan merupakan bagian yang tidak terpisahkan dari RKS ini.</p>
+                <p style="text-align: center; margin-top: 18px;">Kendari, {{tanggal_dokumen}}<br><b>PT PLN NUSANTARA POWER UP KENDARI</b></p>
+                <table class="sign">
+                    <tr><td>Diperiksa Oleh<br>TL Inventori Kontrol &amp; Gudang</td><td>Dibuat Oleh<br>Officer Inventori Kontrol</td></tr>
+                    <tr><td class="space"></td><td class="space"></td></tr>
+                    <tr><td><b><span class="fill">....................</span></b></td><td><b class="upper">{{pic_perencana}}</b></td></tr>
+                    <tr><td style="padding-top: 18px;">Mengesahkan<br>Manager UP Kendari</td><td style="padding-top: 18px;">Disetujui<br><span class="upper">{{direksi_pekerjaan}}</span></td></tr>
+                    <tr><td class="space"></td><td class="space"></td></tr>
+                    <tr><td><b class="upper">{{nama_manager}}</b></td><td><b><span class="fill">....................</span></b></td></tr>
+                </table>
+            </div>
+
+            <div class="lampiran">
+                {$l[1]}
+                <div class="lamp-title">SPESIFIKASI BARANG/JASA YANG DIMINTAKAN PENAWARAN</div>
+                <table class="grid">
+                    <tr><th style="width: 7%;">No.</th><th>Nama Barang dan Spesifikasi</th><th style="width: 10%;">Qty</th><th style="width: 10%;">Stn</th></tr>
+                    <tr><td style="text-align: center;">1</td><td>{{nama_pengadaan}}</td><td style="text-align: center;">1</td><td style="text-align: center;">LOT</td></tr>
+                    <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
+                </table>
+            </div>
+
+            <div class="lampiran">
+                {$l[2]}
+                <div class="lamp-title">SPESIFIKASI BARANG/JASA YANG DITAWARKAN</div>
+                <table class="grid">
+                    <tr><th style="width: 7%;">NO</th><th>NAMA PEKERJAAN</th><th style="width: 13%;">JUMLAH</th><th style="width: 20%;">WAKTU PELAKSANAAN PEKERJAAN</th></tr>
+                    <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
+                    <tr><td>&nbsp;</td><td></td><td></td><td></td></tr>
+                </table>
+                <p><i>Keterangan :</i> Penawaran yang disampaikan harus mencantumkan detail spesifikasi pekerjaan.</p>
+            </div>
+
+            <div class="lampiran">
+                {$l[3]}
+                <table class="plain" style="width: 100%;">
+                    <tr><td style="width: 90px;">Nomor</td><td>: ....................</td><td style="text-align: right;">Tanggal ....................</td></tr>
+                    <tr><td>Lampiran</td><td colspan="2">: ....................</td></tr>
+                </table>
+                <p>Kepada<br>DIVISI SUPPLY CHAIN MANAGEMENT<br>PT PLN NUSANTARA POWER UP KENDARI<br>Jalan Chairil Anwar No 2 Wua-Wua Kendari</p>
+                <p>Perihal : Penawaran Administrasi, Keuangan, Teknis, dan Harga</p>
+                <table class="plain" style="width: 100%;">
+                    <tr><td style="width: 210px;">Yang bertanda tangan dibawah ini</td><td>: .................................................. A)</td></tr>
+                    <tr><td>Dalam hal ini diwakili oleh</td><td>: .................................................. B)</td></tr>
+                    <tr><td>Jabatan dalam perusahaan</td><td>: .................................................. C)</td></tr>
+                </table>
+                <p>Dengan ini menyatakan :</p>
+                <ol>
+                    <li>Tunduk pada ketentuan-ketentuan pengadaan yang berlaku di PT PLN NP.</li>
+                    <li>Bersedia melaksanakan pekerjaan pengadaan ........... sesuai dengan syarat-syarat yang tercantum dalam :
+                        <ol class="alpha">
+                            <li>RKS Nomor : .................... Tanggal : .................... Tentang : ....................</li>
+                            <li>Berita Acara Penjelasan Nomor : .................... Tanggal : ....................</li>
+                        </ol>
+                    </li>
+                    <li>Waktu penyerahan adalah ....... (....................) bulan, terhitung sejak tanggal Surat Penunjukan.</li>
+                    <li>Harga Penawaran<br>Harga Barang/Jasa : ....................<br>Pajak Pertambahan Nilai (PPN) : ....................<br>Jumlah penawaran : ....................<br>(Terbilang : ........................................)</li>
+                    <li>Rincian penawaran harga setiap Barang/Jasa, seperti terlampir.</li>
+                    <li>Asli Jaminan Penawaran dari Bank .................... (apabila dipersyaratkan).</li>
+                    <li>Penawaran tersebut mengikat dalam jangka waktu 90 (sembilan puluh) hari kalender terhitung sejak tanggal pembukaan surat penawaran dan dapat diperpanjang lagi bila diperlukan.</li>
+                    <li>Terlampir kami sampaikan data kelengkapan dokumen penawaran.</li>
+                </ol>
+                <p>Demikian penawaran ini, atas perhatiannya kami ucapkan terima kasih.</p>
+                <p style="margin-left: 55%;">PT .................... D)<br><br><br><br><u>( Nama Jelas )</u> E)</p>
+                <p><u>Keterangan :</u><br>A = Nama dan Alamat Perusahaan; B = Nama yang mewakili Perusahaan; C = Jabatan yang mewakili Perusahaan; D = Tanda tangan penawar dan stempel perusahaan (asli di atas meterai Rp 10.000,00); E = Jabatan.<br>NOTE : butir B &ndash; E adalah pejabat yang diatur kewenangannya berdasarkan Akta Pendirian Perusahaan dan perubahannya.</p>
+            </div>
+
+            <div class="lampiran">
+                {$l[4]}
+                <div class="lamp-title">DAFTAR RINCIAN HARGA PENAWARAN</div>
+                <table class="grid">
+                    <tr><th style="width: 6%;">No</th><th>NAMA BARANG/JASA</th><th style="width: 10%;">JUMLAH</th><th style="width: 10%;">SATUAN</th><th style="width: 14%;">HARGA SATUAN</th><th style="width: 14%;">JUMLAH (Rp)</th><th style="width: 14%;">WAKTU PENYERAHAN</th></tr>
+                    <tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                    <tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                    <tr><td colspan="5"><b>SUB TOTAL</b></td><td></td><td></td></tr>
+                    <tr><td colspan="5"><b>PPN .......%</b></td><td></td><td></td></tr>
+                    <tr><td colspan="5"><b>TOTAL HARGA PENAWARAN</b></td><td></td><td></td></tr>
+                    <tr><td colspan="7"><b>TERBILANG :</b></td></tr>
+                </table>
+                <p style="margin-left: 60%; margin-top: 24px;">Paraf dan Stempel Perusahaan</p>
+            </div>
+
+            <div class="lampiran">
+                {$l[5]}
+                <p style="text-align: right;">Tanggal ....................</p>
+                <p>Kepada<br>PELAKSANA PENGADAAN/MANAJER PELAKSANA PENGADAAN BARANG/JASA PEMBANGKIT<br>DIV. SUPPLY CHAIN MANAGEMENT<br>PT PLN Nusantara Power UP Kendari<br>Jl. Chairil Anwar No.2, Wua-Wua, Kendari</p>
+                <p>Perihal : Surat Pernyataan</p>
+                <table class="plain"><tr><td style="width: 90px;">Nama</td><td>: ..................................................</td></tr><tr><td>Mewakili</td><td>: PT ..................................................</td></tr><tr><td>Jabatan</td><td>: ..................................................</td></tr></table>
+                <p>Sehubungan dengan Pelelangan sesuai RKS No. {{nomor_rks}} dengan ini kami menyatakan hal-hal sebagai berikut:</p>
+                <ol>
+                    <li>Bahwa Perusahaan kami sanggup mematuhi dan memenuhi Semua Ketentuan yang ditetapkan dalam Dokumen Rencana Kerja dan Syarat-Syarat.</li>
+                    <li>Bahwa Perusahaan Kami Sanggup Memenuhi Persyaratan Teknis/<i>Term of Reference</i> (TOR).</li>
+                    <li>Bahwa Perusahaan Kami tidak dalam keadaan bangkrut.</li>
+                    <li>Bahwa Direktur Perusahaan Kami tidak dalam pengawasan pengadilan dan tidak sedang menjalani sanksi pidana.</li>
+                    <li>Perusahaan kami tidak akan menuntut ganti rugi dalam bentuk apapun jika Pelelangan ini dinyatakan batal atau penawaran di tolak.</li>
+                    <li>Barang/Jasa yang akan diserahkan sesuai dengan spesifikasi teknik yang diminta dan tidak cacat baik yang terlihat maupun yang tersembunyi.</li>
+                    <li>Hasil pekerjaan yang diserahkan dijamin dapat berfungsi/beroperasi dengan baik.</li>
+                    <li>Perusahaan kami yang sedang mengikuti Pelelangan ini tidak mempunyai hubungan/sangkut paut dengan perusahaan lain yang sedang bermasalah dengan PT PLN NP.</li>
+                    <li>Apabila data/pernyataan yang kami sampaikan dalam penawaran ternyata ada yang palsu, maka kami bersedia dikenakan sanksi tidak diperkenankan untuk mengikuti pengadaan Barang/Jasa di lingkungan PT PLN NP Group selama 24 (dua puluh empat) bulan.</li>
+                    <li>Bertanggung jawab penuh dan sekaligus membebaskan PT PLN NP dari segala tuntutan atas pelanggaran Hak Kekayaan Intelektual (HKI), hak paten, merek terdaftar, desain, hak cipta atau hak atas kekayaan intelektual lainnya.</li>
+                    <li>Perusahaan kami tidak sedang menjalani sanksi Blacklist di lingkungan PT PLN NP Group.</li>
+                </ol>
+                <p>Demikian Surat Pernyataan ini dibuat dengan sebenarnya, untuk digunakan sebagaimana mestinya.</p>
+                <p style="margin-left: 55%;">Kendari, .................... {{tahun}}<br><b>Nama Penyedia Barang/Jasa (Nama PT)</b><br><small>Tanda tangan dan stempel perusahaan (asli di atas meterai Rp 10.000,00)</small><br><br><br><b><u>(Nama Jelas)</u></b><br>Jabatan</p>
+            </div>
+
+            <div class="lampiran">
+                {$l[6]}
+                <div class="lamp-title">PAKTA INTEGRITAS</div>
+                <p>Saya yang bertanda tangan dibawah ini menyatakan :</p>
+                <ol>
+                    <li>Tidak akan melakukan praktek KKN;</li>
+                    <li>Akan melakukan praktek persaingan yang sehat dalam proses pengadaan;</li>
+                    <li>Akan melaporkan kepada pihak yang berwajib / berwenang apabila mengetahui ada indikasi KKN dan atau praktek persaingan yang tidak sehat dalam proses pengadaan;</li>
+                    <li>Dalam proses pengadaan ini, berjanji akan melaksanakan secara bersih, transparan, dan profesional dalam arti akan mengerahkan segala kemampuan dan sumber daya secara optimal untuk memberikan hasil kerja terbaik mulai dari penawaran, pelaksanaan dan penyelesaian pekerjaan/kegiatan ini;</li>
+                    <li>Meningkatkan penggunaan produksi dalam negeri dengan memperbesar TKDN sesuai ketentuan yang berlaku dan menggunakan produk berstandar;</li>
+                    <li>Dalam keadaan tertentu akan mengikutsertakan usaha mikro, usaha kecil dan koperasi kecil sesuai kompetensi teknis yang dimiliki untuk bagian pekerjaan yang bukan pekerjaan utama;</li>
+                    <li>Dalam melakukan pengadaan akan selalu berpegang pada konsep ramah lingkungan.</li>
+                    <li>Apabila saya melanggar hal-hal yang telah saya nyatakan dalam PAKTA INTEGRITAS ini, saya bersedia dikenakan sanksi moral, sanksi administrasi serta dituntut ganti rugi dan pidana sesuai dengan ketentuan peraturan perundang-undangan yang berlaku.</li>
+                </ol>
+                <p style="margin-left: 50%;">.................. (nama kota), ............... (tanggal) .......... (bulan) ............ (tahun)<br><b>Nama Penyedia Barang/Jasa</b><br><b>Jabatan</b><br><small>Tanda tangan dan stempel perusahaan (asli di atas meterai Rp 10.000,00)</small><br><br><br>Nama</p>
+            </div>
+
+            <div class="lampiran">
+                {$l[7]}
+                <div class="lamp-title">DAFTAR REFERENSI PENGALAMAN/PEKERJAAN SEJENIS</div>
+                <table class="grid">
+                    <tr><th style="width: 6%;">No</th><th>URAIAN</th><th>DATA TEKNIK<br><small>Jenis/Type, Kapasitas, Dsb</small></th><th>DATA PEMAKAI<br><small>Nama Pemakai, Alamat, Kontak Person, Dsb</small></th><th>KONTRAK<br><small>Nomor, Tanggal, Tahun Operasi, Dsb</small></th><th style="width: 9%;">KET</th></tr>
+                    <tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>
+                    <tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td></tr>
+                </table>
+            </div>
+
+            <div class="lampiran">
+                {$l[8]}
+                <div class="lamp-title">KETENTUAN BLACK LIST</div>
+                <p>Hal-hal yang dapat menyebabkan Penyedia Barang/Jasa masuk dalam Blacklist atau daftar hitam perusahaan adalah:</p>
+                <h3>Selama 6 bulan</h3>
+                <ol>
+                    <li>Tidak memperbaharui persyaratan sebagai Penyedia yang telah habis masa berlakunya lebih dari 1 bulan.</li>
+                    <li>Penyedia yang mendaftar untuk ikut Pelelangan namun tidak memasukkan Dokumen Penawaran tanpa alasan yang profesional.</li>
+                    <li>Penyedia yang terdaftar dalam DPP, tidak memberikan respon atau merespon dengan alasan yang tidak profesional pada saat diundang untuk mengikuti Pelelangan selama 3 (tiga) kali tidak berturut-turut.</li>
+                </ol>
+                <h3>Selama 12 bulan</h3>
+                <ol>
+                    <li>Pelanggaran ketiga dikenakan sanksi atas alasan sebagaimana dikenakan sanksi 6 (enam) bulan.</li>
+                    <li>Apabila sanggahan tidak benar dan cenderung mengada-ada.</li>
+                    <li>Peserta yang lulus kualifikasi dan diundang untuk memasukkan penawaran namun tidak memasukkan Dokumen Penawaran.</li>
+                    <li>Peserta Pengadaan menyatakan tidak mampu melaksanakan pengadaan sesuai Dokumen Pengadaan atau tidak bersedia menambah nilai jaminan pelaksanaannya.</li>
+                </ol>
+                <h3>Selama 24 bulan</h3>
+                <ol>
+                    <li>Pelanggaran keempat dikenakan sanksi atas alasan sebagaimana dikenakan sanksi 6 (enam) bulan.</li>
+                    <li>Pelanggaran kedua dikenakan sanksi atas alasan sebagaimana dikenakan sanksi 12 (dua belas) bulan.</li>
+                    <li>Melakukan kecurangan pada saat pengumuman lelang, misalnya dengan menghalangi tersebarnya pengumuman.</li>
+                    <li>Melakukan kecurangan dalam proses Pelelangan, termasuk melakukan persekongkolan (konspirasi) dengan pihak lain atau menghalang-halangi pihak lain terlibat dalam pengadaan.</li>
+                    <li>Berusaha mempengaruhi Pejabat Pengadaan/Pelaksana Pengadaan/Pejabat yang Berwenang dalam bentuk dan cara apapun, baik langsung maupun tidak langsung guna memenuhi keinginannya yang bertentangan dengan ketentuan dan prosedur yang telah ditetapkan dalam Dokumen Pengadaan/Kontrak, dan/atau ketentuan peraturan perundang-undangan.</li>
+                    <li>Memalsukan persyaratan sebagai Penyedia.</li>
+                    <li>Penyedia Barang/Jasa yang berada dalam satu kekuatan pengaruh pemilik modal dan/atau kepengurusan, sehingga mengurangi/menghambat/memperkecil dan/atau meniadakan persaingan yang sehat dan/atau merugikan orang lain.</li>
+                    <li>Penyedia Barang/Jasa yang keberatan atas proses Pelelangan dan tidak mengajukan sanggahan secara tertulis tetapi menyebarkan ke publik dan ternyata informasi tersebut benar.</li>
+                    <li>Penyedia memalsukan data tingkat komponen dalam negeri atau Standarisasi Produk.</li>
+                    <li>Tidak mengutamakan Usaha Mikro, Usaha Kecil atau Koperasi Kecil sebagaimana disyaratkan dalam Kontrak.</li>
+                    <li>Mengundurkan diri pada saat akan ditetapkan sebagai pemenang lelang atau tidak mau ditunjuk sebagai pemenang atau tidak bersedia menandatangani kontrak dengan alasan yang profesional.</li>
+                    <li>Penyedia Barang/Jasa yang lalai/tidak bersedia memperbaiki cacat mutu/kerusakan karena mutu pada masa pemeliharaan/garansi.</li>
+                    <li>Mensubkontrakkan sebagian pekerjaan spesialis kepada yang bukan spesialis.</li>
+                    <li>Penyedia Barang/Jasa lalai atau tidak menyelesaikan kontrak, atau lalai tidak memenuhi ketentuan dalam kontrak sehingga dikenai sanksi pemutusan kontrak.</li>
+                </ol>
+                <h3>Selama 60 bulan</h3>
+                <ol>
+                    <li>Pelanggaran kelima dikenakan sanksi atas alasan sebagaimana dikenakan sanksi 6 (enam) bulan.</li>
+                    <li>Pelanggaran ketiga dikenakan sanksi atas alasan sebagaimana dikenakan sanksi 12 (dua belas) bulan.</li>
+                    <li>Pelanggaran kedua dikenakan sanksi atas alasan sebagaimana dikenakan sanksi 24 (dua puluh empat) bulan.</li>
+                    <li>Calon Pemenang dan 2 (dua) Peserta Lelang dengan Penawaran Harga terendah Kedua, Ketiga, dst. melakukan penipuan atau pemalsuan informasi kualifikasi, maupun pemalsuan dokumen-dokumen kelengkapan penawaran.</li>
+                    <li>Mengundurkan diri pada saat akan ditetapkan sebagai pemenang lelang I/II/III atau tidak mau ditunjuk sebagai pemenang atau tidak bersedia menandatangani kontrak dengan alasan yang tidak profesional.</li>
+                    <li>Penyedia Barang/Jasa yang keberatan atas proses Pelelangan dan tidak mengajukan sanggahan secara tertulis tetapi menyebarkan ke publik dan ternyata informasi tersebut tidak benar atau mengada-ada.</li>
+                    <li>Penyedia melanggar Hak Kekayaan Intelektual.</li>
+                    <li>Mensubkontrakkan seluruh pekerjaan.</li>
+                </ol>
+                <p>Ketentuan Blacklist diatas tidak berlaku apabila:</p>
+                <ol><li>Kesalahan, kelalaian Penyedia disebabkan oleh Perusahaan.</li><li>Bertentangan dengan Keputusan Pengadilan.</li></ol>
+            </div>
+
+            <div class="lampiran">
+                {$l[9]}
+                <div class="lamp-title">SURAT PERNYATAAN MINAT UNTUK MENGIKUTI PENGADAAN<br><span class="upper">{{nama_pengadaan}}</span></div>
+                <p>Yang bertanda tangan di bawah ini :</p>
+                <table class="plain">
+                    <tr><td style="width: 110px;">Nama</td><td>: ..................................................</td></tr>
+                    <tr><td>Jabatan</td><td>: ..................................................</td></tr>
+                    <tr><td>Mewakili</td><td>: PT ..................................................</td></tr>
+                    <tr><td>Alamat</td><td>: ..................................................</td></tr>
+                    <tr><td>Telepon / Fax</td><td>: ..................................................</td></tr>
+                    <tr><td>Email</td><td>: ..................................................</td></tr>
+                </table>
+                <p>Menyatakan dengan sebenarnya bahwa setelah mengetahui pengadaan yang akan dilaksanakan oleh PT PLN NP UP Kendari, Tahun Anggaran {{tahun}}, maka dengan ini saya menyatakan berminat untuk mengikuti proses <b>Pengadaan {{nama_pengadaan}}</b> sampai selesai.</p>
+                <p>Demikian pernyataan ini dibuat dengan penuh kesadaran dan tanggung jawab.</p>
+                <p style="margin-left: 55%;">Kendari, .................... {{tahun}}<br><b>Nama Penyedia Barang/Jasa</b><br><small>Materai Rp. 10.000,- / Tanda tangan / Cap Perusahaan</small><br><br><br><b><u>(Nama Jelas)</u></b><br>Jabatan</p>
+            </div>
+
+            <div class="lampiran">
+                {$l[10]}
+                <p style="text-align: right;">Tanggal ....................</p>
+                <p>Kepada<br>PELAKSANA PENGADAAN/MANAJER PELAKSANA PENGADAAN<br>PT PLN Nusantara Power UP Kendari<br>Jl. Chairil Anwar No.2, Wua-Wua, Kendari</p>
+                <p>Perihal : Surat Pernyataan Kesanggupan Memenuhi Persyaratan Teknis/TOR</p>
+                <table class="plain"><tr><td style="width: 90px;">Nama</td><td>: ..................................................</td></tr><tr><td>Mewakili</td><td>: PT ..................................................</td></tr><tr><td>Jabatan</td><td>: ..................................................</td></tr></table>
+                <p>Sehubungan dengan Pelelangan sesuai RKS No. {{nomor_rks}} dengan ini kami menyatakan bahwa kami sanggup memenuhi Persyaratan Teknis/<i>Term of Reference</i> (TOR).</p>
+                <p>Demikian Surat Pernyataan ini dibuat dengan sebenarnya, untuk digunakan sebagaimana mestinya.</p>
+                <p style="margin-left: 55%;">PT ....................<br><small>Tanda tangan dan stempel perusahaan (asli di atas materai Rp 10.000,00)</small><br><br><br>Nama<br>Jabatan</p>
+            </div>
+
+            <div class="lampiran">
+                {$l[11]}
+                <p style="text-align: right;">Tanggal ....................</p>
+                <p>Kepada<br>PELAKSANA PENGADAAN/MANAJER PELAKSANA PENGADAAN BARANG/JASA PEMBANGKIT<br>PT PLN Nusantara Power UP Kendari<br>Jl. Chairil Anwar No.2, Wua-Wua, Kendari</p>
+                <p>Perihal : Surat Pernyataan</p>
+                <table class="plain"><tr><td style="width: 90px;">Nama</td><td>: ..................................................</td></tr><tr><td>Mewakili</td><td>: PT ..................................................</td></tr><tr><td>Jabatan</td><td>: ..................................................</td></tr></table>
+                <p>Sehubungan dengan Pelelangan sesuai RKS No. {{nomor_rks}} dengan ini kami menyatakan akan mematuhi segala aturan Keselamatan, Keamanan Kerja dan Lingkungan (K3L) yang ada di lingkungan PT PLN Nusantara Power UP Kendari Unit ..........</p>
+                <p>Demikian Surat Pernyataan ini dibuat dengan sebenarnya, untuk digunakan sebagaimana mestinya.</p>
+                <p style="margin-left: 55%;">Kendari, .................... {{tahun}}<br><b>Nama Penyedia Barang/Jasa (Nama PT)</b><br><small>Materai Rp. 10.000,- / Tanda tangan</small><br><br><br><b><u>(Nama Jelas)</u></b><br>Jabatan</p>
+            </div>
+
+            <div class="lampiran">
+                {$l[12]}
+                <div style="text-align: center; margin-top: 200px; font-size: 18pt; font-weight: bold;">Term of Reference (TOR)</div>
+                <p style="text-align: center;" class="note">Lampirkan dokumen TOR pekerjaan ini.</p>
+            </div>
+
+            <div class="lampiran">
+                {$l[13]}
+                <ol>
+                    <li>Buka web browser, kemudian isikan alamat <u>https://zoom.us</u>.</li>
+                    <li>Kemudian pilih atau klik pada tombol &ldquo;<i>Join a Meeting</i>&rdquo;.</li>
+                    <li>Masukkan Meeting ID yang sudah dibagikan kemudian klik pada tombol &ldquo;Join&rdquo;.</li>
+                    <li>Masukkan password untuk meeting pada kolom <i>Meeting Password</i> dan nama anda pada kolom <i>Your Name</i> kemudian klik tombol &ldquo;<i>Join</i>&rdquo;.</li>
+                    <li>Setelah berhasil join, klik pada icon headphone di kiri bawah &ldquo;<i>Join Audio</i>&rdquo; kemudian klik pada tombol &ldquo;<i>Join Audio by Computer</i>&rdquo;.</li>
+                    <li>Dari setting browser dapat diklik ke &ldquo;<i>Allow</i>&rdquo; saat diminta akses <i>Microphone</i> dan <i>Camera</i>.</li>
+                    <li>Untuk <i>setting audio</i> (<i>Mic &amp; Speaker</i>), dapat klik tombol panah ke atas di bagian kiri layar dan pilih <i>microphone</i> dan <i>speaker</i> yang ingin digunakan.</li>
+                </ol>
+            </div>
+        </section>
+        HTML;
+    }
+
+    /**
+     * Read the placeholders referenced by a template body.
+     *
+     * @return array<int, string>
+     */
+    protected function placeholdersIn(string $body): array
+    {
+        preg_match_all('/\{\{\s*([a-z0-9_]+)\s*\}\}/i', $body, $matches);
+
+        return array_values(array_unique(array_map('strtolower', $matches[1])));
+    }
+}

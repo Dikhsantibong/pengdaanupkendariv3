@@ -8,7 +8,7 @@ import {
     RotateCcw,
     Save,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { PdfPreview } from '@/components/document-editor/pdf-preview';
 import { VisualEditor } from '@/components/document-editor/visual-editor';
 import InputError from '@/components/input-error';
@@ -68,8 +68,7 @@ function refreshLiveFields(
         return body;
     }
 
-    const normalise = (text: string) =>
-        text.replace(/\s+/g, ' ').trim();
+    const normalise = (text: string) => text.replace(/\s+/g, ' ').trim();
     const holder = document.createElement('template');
     holder.innerHTML = body;
     let changed = false;
@@ -101,10 +100,13 @@ export default function DocumentEditor({
     procurement,
     document: doc,
     placeholders = [],
+    liveVersion,
 }: {
     procurement: { id: number; number: string; name: string };
     document: EditorDocument;
     placeholders?: PlaceholderRow[];
+    /** Fingerprint of the stored body, polled instead of the body itself. */
+    liveVersion?: string;
 }) {
     const form = useForm({ title: doc.title, body: doc.body });
     const [mode, setMode] = useState<ViewMode>('visual');
@@ -115,7 +117,20 @@ export default function DocumentEditor({
     // Keep the document in step with the procurement while it is open: data
     // changed on another screen (or by a colleague) shows up here without
     // leaving the page.
-    usePoll(LIVE_REFRESH_INTERVAL, { only: ['document', 'placeholders'] });
+    // Only a fingerprint travels on each poll; the (possibly 40-page) body
+    // is fetched again only when that fingerprint moves.
+    usePoll(LIVE_REFRESH_INTERVAL, { only: ['liveVersion'] });
+
+    const knownVersion = useRef(liveVersion);
+
+    useEffect(() => {
+        if (liveVersion === undefined || liveVersion === knownVersion.current) {
+            return;
+        }
+
+        knownVersion.current = liveVersion;
+        router.reload({ only: ['document', 'placeholders'] });
+    }, [liveVersion]);
 
     const [liveNotice, setLiveNotice] = useState(false);
     const previousBody = useRef(doc.body);
@@ -156,12 +171,16 @@ export default function DocumentEditor({
         return () => window.clearTimeout(timer);
     }, [liveNotice]);
 
+    // Counting words over a long document on every keystroke is wasted
+    // work; the counter may trail the typing by a frame.
+    const deferredBody = useDeferredValue(form.data.body);
+
     const stats = useMemo(() => {
-        const text = form.data.body.replace(/<[^>]*>/g, ' ');
+        const text = deferredBody.replace(/<[^>]*>/g, ' ');
         const words = text.split(/\s+/).filter(Boolean).length;
 
-        return { words, characters: form.data.body.length };
-    }, [form.data.body]);
+        return { words, characters: deferredBody.length };
+    }, [deferredBody]);
 
     const showUrl = procurements.documents.show({
         procurement: procurement.id,

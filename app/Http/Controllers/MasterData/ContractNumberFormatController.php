@@ -74,6 +74,7 @@ class ContractNumberFormatController extends MasterDataController
                 'unit_segment' => $record->unit_segment,
                 'sequence_length' => $record->sequence_length,
                 'starting_sequence' => $record->starting_sequence,
+                'uses_work_category' => $record->uses_work_category,
                 'description' => $record->description,
                 'sample' => $record->sample(),
                 'sort_order' => $record->sort_order,
@@ -113,6 +114,8 @@ class ContractNumberFormatController extends MasterDataController
             'unit_segment' => ['required', 'string', 'max:50', 'regex:/^[A-Za-z0-9\/.-]+$/'],
             'sequence_length' => ['required', 'integer', 'min:1', 'max:8'],
             'starting_sequence' => ['required', 'integer', 'min:1', 'max:99999999'],
+            // Whether procurements on this format choose barang or jasa.
+            'uses_work_category' => ['sometimes', 'boolean'],
             'description' => ['nullable', 'string', 'max:255'],
             'sort_order' => ['required', 'integer', 'min:0', 'max:999'],
             'is_active' => ['required', 'boolean'],

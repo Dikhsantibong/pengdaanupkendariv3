@@ -2,6 +2,8 @@
 
 namespace App\Concerns;
 
+use App\Enums\WorkCategory;
+use App\Models\ContractNumberFormat;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rule;
 
@@ -24,6 +26,13 @@ trait ProcurementValidationRules
             'contract_number_format_id' => [
                 'nullable',
                 Rule::exists('contract_number_formats', 'id')->whereNull('deleted_at'),
+            ],
+            // Barang or jasa, asked for by the formats set up to need it
+            // (SPK and PJ); it picks the matching contract template.
+            'work_category' => [
+                Rule::requiredIf(fn (): bool => $this->formatUsesWorkCategory()),
+                'nullable',
+                Rule::enum(WorkCategory::class),
             ],
             'number' => [
                 'nullable', 'string', 'max:100',
@@ -62,6 +71,29 @@ trait ProcurementValidationRules
     }
 
     /**
+     * Whether the chosen contract number format asks for barang or jasa.
+     */
+    protected function formatUsesWorkCategory(): bool
+    {
+        $formatId = $this->input('contract_number_format_id');
+
+        return $formatId !== null && ContractNumberFormat::query()
+            ->whereKey($formatId)
+            ->where('uses_work_category', true)
+            ->exists();
+    }
+
+    /**
+     * Drop a category sent along with a format that does not use one.
+     */
+    protected function normaliseWorkCategory(): void
+    {
+        if (! $this->formatUsesWorkCategory()) {
+            $this->merge(['work_category' => null]);
+        }
+    }
+
+    /**
      * Accept a single `target_unit_id` from callers that predate the unit list.
      *
      * The form sends `target_unit_ids`; an older caller sending one unit is
@@ -86,6 +118,7 @@ trait ProcurementValidationRules
         return [
             'contract_number_format_id' => 'jenis no kontrak',
             'number' => 'no kontrak',
+            'work_category' => 'kategori barang/jasa',
             'name' => 'nama pengadaan',
             'partner_name' => 'nama calon mitra',
             'partner_director_name' => 'nama direktur',

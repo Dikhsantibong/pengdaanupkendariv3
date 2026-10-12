@@ -6,6 +6,7 @@ use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Enums\StatusCategory;
+use App\Enums\WorkCategory;
 use App\Observers\ProcurementDocumentObserver;
 use Carbon\CarbonImmutable;
 use Database\Factories\ProcurementFactory;
@@ -33,6 +34,7 @@ use Illuminate\Support\Collection;
  * @property int|null $procurement_method_id
  * @property int|null $budget_source_id
  * @property int|null $contract_type_id
+ * @property WorkCategory|null $work_category
  * @property string|null $manager_memo_number
  * @property string|null $pr_po_number
  * @property string|null $prk_number
@@ -83,6 +85,7 @@ use Illuminate\Support\Collection;
     'budget_source_id',
     'contract_type_id',
     'contract_number_format_id',
+    'work_category',
     'manager_memo_number',
     'pr_po_number',
     'prk_number',
@@ -460,6 +463,7 @@ class Procurement extends Model
             'execution_start_date' => 'date',
             'execution_duration_days' => 'integer',
             'warranty_months' => 'integer',
+            'work_category' => WorkCategory::class,
         ];
     }
 

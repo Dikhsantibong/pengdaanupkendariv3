@@ -193,12 +193,13 @@ class MasterDataSeeder extends Seeder
     protected function seedContractNumberFormats(): void
     {
         $formats = [
-            ['SPK', 'Surat Perintah Kerja', 75],
-            ['PJ', 'Perjanjian', 20],
-            ['SPPL', 'SPPL', 1],
+            // [code, name, starting sequence, asks for barang/jasa]
+            ['SPK', 'Surat Perintah Kerja', 75, true],
+            ['PJ', 'Perjanjian', 20, true],
+            ['SPPL', 'SPPL', 1, false],
         ];
 
-        foreach ($formats as $index => [$code, $name, $startsAt]) {
+        foreach ($formats as $index => [$code, $name, $startsAt, $usesWorkCategory]) {
             ContractNumberFormat::query()->updateOrCreate(
                 ['code' => $code],
                 [
@@ -207,6 +208,7 @@ class MasterDataSeeder extends Seeder
                     'unit_segment' => '612/UPKD',
                     'sequence_length' => 3,
                     'starting_sequence' => $startsAt,
+                    'uses_work_category' => $usesWorkCategory,
                     'description' => null,
                     'sort_order' => $index + 1,
                     'is_active' => true,
@@ -508,10 +510,11 @@ class MasterDataSeeder extends Seeder
             ], [$formats['SPPL']]);
         }
 
-        // The SPPL execution steps are not part of SPK or PJ.
+        // The SPPL execution steps are not part of SPK or PJ, except the bank
+        // account and warranty the SPK also states (Pasal 5 and Pasal 9).
         $skip(
             ProcurementStage::Pelaksanaan,
-            ['BA Negosiasi', 'Lampiran Surat Pesanan', 'Rekening Pelaksana', 'Rentang Waktu Pelaksanaan', 'Masa Garansi'],
+            ['BA Negosiasi', 'Lampiran Surat Pesanan', 'Rentang Waktu Pelaksanaan'],
             array_values(array_filter([$formats['SPK'] ?? null, $formats['PJ'] ?? null])),
         );
     }

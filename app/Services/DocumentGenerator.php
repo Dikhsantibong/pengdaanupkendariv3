@@ -11,6 +11,8 @@ use App\Models\ProcurementDocument;
 use App\Models\UnitManager;
 use App\Models\User;
 use App\Support\IndonesianNumber;
+use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -38,6 +40,8 @@ class DocumentGenerator
             'sumber_anggaran' => 'Sumber anggaran (kode, mis. AO)',
             'sumber_anggaran_keterangan' => 'Kepanjangan sumber anggaran, mis. Anggaran Operasi',
             'jenis_kontrak' => 'Jenis kontrak, mis. KHS atau Lumsum',
+            'kategori_pekerjaan' => 'Kategori kontrak: Barang atau Jasa',
+            'nomor_rks' => 'Nomor RKS dari No Kontrak, mis. 017.RKS-PJ/612/UPKD/2026',
             'nama_manager' => 'Nama Manager UP Kendari',
             'nomor_surat_penawaran' => 'Nomor surat penawaran',
             'tanggal_surat_penawaran' => 'Tanggal surat penawaran',
@@ -98,8 +102,12 @@ class DocumentGenerator
      *
      * @return array<string, string>
      */
-    public function placeholderValues(Procurement $procurement): array
+    public function placeholderValues(Procurement $procurement, ?CarbonInterface $issuedAt = null): array
     {
+        // The issue date of a document stays the day it was generated, even
+        // when the document is later rebuilt to follow changed data.
+        $issuedAt ??= now();
+
         $procurement->loadMissing([
             'workDirector',
             'targetUnit',
@@ -152,6 +160,8 @@ class DocumentGenerator
             'sumber_anggaran_keterangan' => $procurement->budget_source_id === null
                 ? '-'
                 : rtrim($procurement->budgetSource?->description ?? $procurement->budgetSource?->name ?? '-', '.'),
+            'kategori_pekerjaan' => $procurement->work_category?->label() ?? '-',
+            'nomor_rks' => $this->rksNumber($procurement->number),
             'jenis_kontrak' => $procurement->contract_type_id === null
                 ? '-'
                 : ($procurement->contractType?->name ?? '-'),
@@ -233,8 +243,8 @@ class DocumentGenerator
             'target_penyelesaian' => $procurement->target_completion_date === null
                 ? '-'
                 : $procurement->target_completion_date->translatedFormat('d F Y'),
-            'tanggal_dokumen' => now()->translatedFormat('d F Y'),
-            'tahun' => now()->format('Y'),
+            'tanggal_dokumen' => $issuedAt->translatedFormat('d F Y'),
+            'tahun' => $issuedAt->format('Y'),
             'checklist_perencanaan' => $this->checklistMarkup($procurement, ProcurementStage::Perencanaan),
             'checklist_pelaksanaan' => $this->checklistMarkup($procurement, ProcurementStage::Pelaksanaan),
         ];
@@ -243,9 +253,9 @@ class DocumentGenerator
     /**
      * Render a template body against a procurement without persisting it.
      */
-    public function render(DocumentTemplate $template, Procurement $procurement): string
+    public function render(DocumentTemplate $template, Procurement $procurement, ?CarbonInterface $issuedAt = null): string
     {
-        $values = $this->placeholderValues($procurement);
+        $values = $this->placeholderValues($procurement, $issuedAt);
 
         $body = $this->fillPlaceholders($template->body, $values);
 
@@ -264,6 +274,23 @@ class DocumentGenerator
         }
 
         return $body;
+    }
+
+    /**
+     * The RKS number derived from a contract number.
+     *
+     * KDD017.PJ/612/UPKD/2026 becomes 017.RKS-PJ/612/UPKD/2026; a number of
+     * another shape is used as it is.
+     */
+    public function rksNumber(?string $contractNumber): string
+    {
+        $number = trim((string) $contractNumber);
+
+        if (preg_match('/^[A-Za-z]*(\d+)\.([A-Za-z]+)\/(.+)$/', $number, $parts)) {
+            return $parts[1].'.RKS-'.strtoupper($parts[2]).'/'.$parts[3];
+        }
+
+        return $number !== '' ? $number : '-';
     }
 
     /**
@@ -383,23 +410,83 @@ class DocumentGenerator
 
         $document->loadMissing(['procurement', 'documentTemplate']);
 
-        if ((int) $document->revision === 0 && $document->documentTemplate !== null) {
-            $body = $this->render($document->documentTemplate, $document->procurement);
-        } else {
-            $body = $this->refreshLiveFields(
-                $document->rendered_body,
-                $values ?? $this->placeholderValues($document->procurement),
-            );
-        }
+        $values ??= $this->placeholderValues($document->procurement);
+        $unedited = (int) $document->revision === 0;
+        $template = $unedited ? $this->currentTemplateFor($document) : $document->documentTemplate;
 
-        if ($body === $document->rendered_body) {
+        // A long document (an RKS runs to 40+ pages) is not rebuilt on every
+        // look: the editor polls, so the work is skipped while the data, the
+        // template and the document itself are unchanged since the last pass.
+        $cacheKey = 'document-live:'.$document->getKey();
+        $fingerprint = fn (): string => sha1(implode('|', [
+            json_encode($values),
+            $template?->getKey(),
+            $template?->updated_at?->getTimestamp(),
+            $document->updated_at?->getTimestamp(),
+            $document->revision,
+            strlen($document->rendered_body),
+        ]));
+
+        if (Cache::get($cacheKey) === $fingerprint()) {
             return false;
         }
 
-        $document->rendered_body = $body;
-        $document->save();
+        if ($unedited && $template !== null) {
+            $body = $this->render($template, $document->procurement, $document->generated_at);
+        } else {
+            $body = $this->refreshLiveFields($document->rendered_body, $values);
+        }
 
-        return true;
+        $switched = $unedited && $template !== null && $template->getKey() !== $document->document_template_id;
+        $changed = $body !== $document->rendered_body || $switched;
+
+        if ($changed) {
+            $this->storeRebuilt($document, $body, $switched ? $template : null);
+        }
+
+        Cache::put($cacheKey, $fingerprint(), now()->addDay());
+
+        return $changed;
+    }
+
+    /**
+     * The template an unedited document should be built from right now.
+     *
+     * Nobody has touched an unedited document, so it follows whichever
+     * template now fits the procurement best (a newly installed PJ or goods
+     * template, say), falling back to the one it was generated with.
+     */
+    protected function currentTemplateFor(ProcurementDocument $document): ?DocumentTemplate
+    {
+        // An uploaded document was never built from a template.
+        if ($document->document_template_id === null) {
+            return null;
+        }
+
+        $procurement = $document->procurement;
+
+        return DocumentTemplate::resolveFor(
+            $document->document_type_id,
+            $procurement->procurement_method_id,
+            $procurement->work_category,
+            $procurement->contract_number_format_id,
+        ) ?? $document->documentTemplate;
+    }
+
+    /**
+     * Store a rebuilt body, moving the document onto a new template if given.
+     */
+    protected function storeRebuilt(ProcurementDocument $document, string $body, ?DocumentTemplate $template): void
+    {
+        $document->rendered_body = $body;
+
+        if ($template !== null) {
+            $document->document_template_id = $template->id;
+            $document->template_version = $template->version;
+            $document->setRelation('documentTemplate', $template);
+        }
+
+        $document->save();
     }
 
     /**
@@ -427,7 +514,12 @@ class DocumentGenerator
      */
     public function generate(Procurement $procurement, DocumentType $documentType, User $author): ProcurementDocument
     {
-        $template = DocumentTemplate::resolveFor($documentType->id, $procurement->procurement_method_id);
+        $template = DocumentTemplate::resolveFor(
+            $documentType->id,
+            $procurement->procurement_method_id,
+            $procurement->work_category,
+            $procurement->contract_number_format_id,
+        );
 
         if ($template === null) {
             throw new RuntimeException("Template aktif untuk dokumen {$documentType->name} belum tersedia.");
@@ -760,6 +852,8 @@ HTML;
         $template = DocumentTemplate::resolveFor(
             $document->document_type_id,
             $document->procurement->procurement_method_id,
+            $document->procurement->work_category,
+            $document->procurement->contract_number_format_id,
         );
 
         if ($template === null) {
@@ -821,11 +915,14 @@ HTML;
             $newBody = $body;
 
             // 1. If unedited revision (revision === 0) and template is available, re-render cleanly
-            if ($document->revision === 0 && $document->documentTemplate !== null) {
-                $candidate = $this->render($document->documentTemplate, $procurement);
-                if ($candidate !== $body) {
-                    $document->rendered_body = $candidate;
-                    $document->save();
+            $template = (int) $document->revision === 0 ? $this->currentTemplateFor($document) : null;
+
+            if ($template !== null) {
+                $candidate = $this->render($template, $procurement, $document->generated_at);
+                $switched = $template->getKey() !== $document->document_template_id;
+
+                if ($candidate !== $body || $switched) {
+                    $this->storeRebuilt($document, $candidate, $switched ? $template : null);
 
                     continue;
                 }

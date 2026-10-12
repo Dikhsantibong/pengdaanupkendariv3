@@ -13,7 +13,9 @@ import{n as e,t}from"./jsx-runtime-CTQSNLil.js";import{t as n}from"./button-HA4f
               background: #e8ebf0; color: #475569; font: 600 10px system-ui, sans-serif; padding: 1px 8px; border-radius: 8px; }
         .signature td, .lampiran-head td, table.plain td, table.plain th { outline: 1px dashed #cbd5e1; outline-offset: -1px; }
         td:focus-within, th:focus-within { background-color: #f5f9ff; }
-        img { max-width: 100%; }`}function g(e){return e.replace(/&/g,`&amp;`).replace(/</g,`&lt;`).replace(/>/g,`&gt;`).replace(/"/g,`&quot;`)}function _(e,t){let n=t.get(e);return`<span class="${n===void 0?`ph is-unknown`:`ph`}" contenteditable="false" data-ph="${g(e)}" title="{{${g(e)}}}">${g(n??e)}</span>`}function v(e,t){let n=p(e),r=`<style ${d} id="editor-page">${h(m(e),n)}</style>`;return n?/<\/head>/i.test(e)?e.replace(/<\/head>/i,`${r}</head>`):e.replace(/<html([^>]*)>/i,`<html$1><head>${r}</head>`):`<!DOCTYPE html>
+        img { max-width: 100%; }
+        /* Off-screen chapters of long documents are not laid out until seen. */
+        .cover, .bab, .lampiran { content-visibility: auto; contain-intrinsic-size: auto 1100px; }`}function g(e){return e.replace(/&/g,`&amp;`).replace(/</g,`&lt;`).replace(/>/g,`&gt;`).replace(/"/g,`&quot;`)}function _(e,t){let n=t.get(e);return`<span class="${n===void 0?`ph is-unknown`:`ph`}" contenteditable="false" data-ph="${g(e)}" title="{{${g(e)}}}">${g(n??e)}</span>`}function v(e,t){let n=p(e),r=`<style ${d} id="editor-page">${h(m(e),n)}</style>`;return n?/<\/head>/i.test(e)?e.replace(/<\/head>/i,`${r}</head>`):e.replace(/<html([^>]*)>/i,`<html$1><head>${r}</head>`):`<!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="utf-8">

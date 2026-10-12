@@ -371,6 +371,8 @@ class ContractNumberTest extends TestCase
 
         return [
             'name' => 'Pengadaan Jasa Angkut BBM',
+            // SPK and PJ ask for barang or jasa; other formats ignore it.
+            'work_category' => 'jasa',
             'work_director_id' => $procurement->work_director_id,
             'target_unit_id' => $procurement->target_unit_id,
             'procurement_method_id' => $procurement->procurement_method_id,

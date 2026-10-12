@@ -509,8 +509,8 @@
       "_label-Bu9P0MGx.js"
     ]
   },
-  "_procurement-form-BeI-ZXzO.js": {
-    "file": "assets/procurement-form-BeI-ZXzO.js",
+  "_procurement-form-B2yrVhVc.js": {
+    "file": "assets/procurement-form-B2yrVhVc.js",
     "name": "procurement-form",
     "imports": [
       "_jsx-runtime-CTQSNLil.js",
@@ -725,8 +725,8 @@
       "_utils-BNhDZxi-.js"
     ]
   },
-  "_template-preview-dialog-Chmn_2Wg.js": {
-    "file": "assets/template-preview-dialog-Chmn_2Wg.js",
+  "_template-preview-dialog-DQOJC0hP.js": {
+    "file": "assets/template-preview-dialog-DQOJC0hP.js",
     "name": "template-preview-dialog",
     "imports": [
       "_jsx-runtime-CTQSNLil.js",
@@ -840,7 +840,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-DWspgWRq.css",
+    "file": "assets/app-YGg4NvNt.css",
     "name": "app",
     "names": [
       "app.css"
@@ -849,7 +849,7 @@
     "isEntry": true
   },
   "resources/js/app.tsx": {
-    "file": "assets/app-BzHMUw1B.js",
+    "file": "assets/app-DQ73uTlh.js",
     "name": "app",
     "src": "resources/js/app.tsx",
     "isEntry": true,
@@ -1245,7 +1245,7 @@
     ]
   },
   "resources/js/pages/master-data/contract-number-formats.tsx": {
-    "file": "assets/contract-number-formats-DC1QgJOg.js",
+    "file": "assets/contract-number-formats-CFXtu5iT.js",
     "name": "contract-number-formats",
     "src": "resources/js/pages/master-data/contract-number-formats.tsx",
     "isDynamicEntry": true,
@@ -1269,7 +1269,7 @@
     ]
   },
   "resources/js/pages/master-data/document-template-editor.tsx": {
-    "file": "assets/document-template-editor-Bvu78UJ4.js",
+    "file": "assets/document-template-editor-DqiHnv_l.js",
     "name": "document-template-editor",
     "src": "resources/js/pages/master-data/document-template-editor.tsx",
     "isDynamicEntry": true,
@@ -1296,11 +1296,11 @@
       "_input-error-Bvn9tGnL.js",
       "_label-Bu9P0MGx.js",
       "_switch-t1yTFxMH.js",
-      "_template-preview-dialog-Chmn_2Wg.js"
+      "_template-preview-dialog-DQOJC0hP.js"
     ]
   },
   "resources/js/pages/master-data/document-templates.tsx": {
-    "file": "assets/document-templates-D_AwKOl7.js",
+    "file": "assets/document-templates-DwAiJk9V.js",
     "name": "document-templates",
     "src": "resources/js/pages/master-data/document-templates.tsx",
     "isDynamicEntry": true,
@@ -1319,7 +1319,7 @@
       "_table-gAxWPNMk.js",
       "_empty-state-B18HRF0w.js",
       "_format-CO100DCA.js",
-      "_template-preview-dialog-Chmn_2Wg.js"
+      "_template-preview-dialog-DQOJC0hP.js"
     ]
   },
   "resources/js/pages/master-data/document-types.tsx": {
@@ -1470,7 +1470,7 @@
     ]
   },
   "resources/js/pages/procurements/create.tsx": {
-    "file": "assets/create-BDkvoQtJ.js",
+    "file": "assets/create-Im7gybl9.js",
     "name": "create",
     "src": "resources/js/pages/procurements/create.tsx",
     "isDynamicEntry": true,
@@ -1481,11 +1481,11 @@
       "_routes-Btsr50jI.js",
       "_procurements-CWeW7p3n.js",
       "_page-header-aeF00bxt.js",
-      "_procurement-form-BeI-ZXzO.js"
+      "_procurement-form-B2yrVhVc.js"
     ]
   },
   "resources/js/pages/procurements/document-editor.tsx": {
-    "file": "assets/document-editor-DpT_0TqR.js",
+    "file": "assets/document-editor-S6SLthRU.js",
     "name": "document-editor",
     "src": "resources/js/pages/procurements/document-editor.tsx",
     "isDynamicEntry": true,
@@ -1520,7 +1520,7 @@
     ]
   },
   "resources/js/pages/procurements/edit.tsx": {
-    "file": "assets/edit-DUzZRSmK.js",
+    "file": "assets/edit-BG6MlfEa.js",
     "name": "edit",
     "src": "resources/js/pages/procurements/edit.tsx",
     "isDynamicEntry": true,
@@ -1531,7 +1531,7 @@
       "_routes-Btsr50jI.js",
       "_procurements-CWeW7p3n.js",
       "_page-header-aeF00bxt.js",
-      "_procurement-form-BeI-ZXzO.js"
+      "_procurement-form-B2yrVhVc.js"
     ]
   },
   "resources/js/pages/procurements/index.tsx": {
@@ -1552,7 +1552,7 @@
     ]
   },
   "resources/js/pages/procurements/show.tsx": {
-    "file": "assets/show-CEfzbsU1.js",
+    "file": "assets/show-BVrNRZE2.js",
     "name": "show",
     "src": "resources/js/pages/procurements/show.tsx",
     "isDynamicEntry": true,

@@ -10,6 +10,7 @@ type ContractNumberFormat = MasterRecord & {
     unit_segment: string;
     sequence_length: number;
     starting_sequence: number;
+    uses_work_category: boolean;
     description: string | null;
     sample: string;
     sort_order: number;
@@ -81,6 +82,12 @@ export default function ContractNumberFormats({
                     hint: 'Nomor pertama yang dikeluarkan sistem. Isi dengan nomor lanjutan dari kontrak terakhir yang sudah terbit, misalnya 75 untuk SPK dan 20 untuk PJ. Setel ulang tiap awal tahun.',
                 },
                 {
+                    name: 'uses_work_category',
+                    label: 'Pilih Barang / Jasa',
+                    type: 'switch',
+                    hint: 'Saat format ini dipilih, form pengadaan meminta kategori Barang atau Jasa. Kategori menentukan template dokumen yang dipakai (mis. SPK Barang / SPK Jasa).',
+                },
+                {
                     name: 'description',
                     label: 'Catatan',
                     type: 'text',
@@ -101,6 +108,7 @@ export default function ContractNumberFormats({
                 unit_segment: '612/UPKD',
                 sequence_length: 3,
                 starting_sequence: 1,
+                uses_work_category: false,
                 description: '',
                 sort_order: 0,
                 is_active: true,

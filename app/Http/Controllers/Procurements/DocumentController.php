@@ -130,7 +130,10 @@ class DocumentController extends Controller
                 'number' => $procurement->number,
                 'name' => $procurement->name,
             ],
-            'document' => [
+            // Polled every few seconds: only this fingerprint is sent each
+            // time, and the full body is fetched again only when it moves.
+            'liveVersion' => sha1($document->revision.'|'.$document->rendered_body),
+            'document' => fn (): array => [
                 'id' => $document->id,
                 'title' => $document->title,
                 'body' => $document->rendered_body,
@@ -145,7 +148,7 @@ class DocumentController extends Controller
             // The values the template pulled in, so whoever checks the document
             // can see at a glance which data landed in it and correct the
             // procurement instead of patching the text.
-            'placeholders' => collect(DocumentGenerator::placeholderCatalog())
+            'placeholders' => fn (): array => collect(DocumentGenerator::placeholderCatalog())
                 ->map(fn (string $label, string $key): array => [
                     'key' => $key,
                     'label' => $label,
@@ -206,7 +209,7 @@ class DocumentController extends Controller
             'rendered_body' => $request->string('body')->value(),
         ]);
 
-        return response($this->pdf->render($draft), 200, [
+        return response($this->pdf->previewBytes($draft), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="pratinjau-'.$this->pdf->fileName($document).'"',
             'Cache-Control' => 'no-store, max-age=0',

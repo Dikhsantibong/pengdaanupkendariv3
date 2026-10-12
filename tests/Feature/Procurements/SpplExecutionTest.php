@@ -49,11 +49,14 @@ class SpplExecutionTest extends TestCase
             'Proses SMART SCM',
             'Berita Acara',
             'Surat Pesanan',
+            // The SPK states the partner's bank account and the warranty too.
+            'Rekening Pelaksana',
             'Jaminan Bank',
             'Kontrak',
             'Rentang Waktu',
             'Amandemen',
             'Masa Pemeliharaan',
+            'Masa Garansi',
         ];
 
         $this->assertSame($expected, $this->executionSteps('SPK'));

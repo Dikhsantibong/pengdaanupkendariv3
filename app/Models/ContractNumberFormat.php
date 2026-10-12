@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $unit_segment
  * @property int $sequence_length
  * @property int $starting_sequence
+ * @property bool $uses_work_category
  * @property string|null $description
  * @property int $sort_order
  * @property bool $is_active
@@ -36,6 +37,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'unit_segment',
     'sequence_length',
     'starting_sequence',
+    'uses_work_category',
     'description',
     'sort_order',
     'is_active',
@@ -101,6 +103,7 @@ class ContractNumberFormat extends Model
             'is_active' => 'boolean',
             'sequence_length' => 'integer',
             'starting_sequence' => 'integer',
+            'uses_work_category' => 'boolean',
         ];
     }
 }

@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Enums\UserRole;
+use App\Enums\WorkCategory;
 use App\Models\BudgetSource;
 use App\Models\ContractNumberFormat;
 use App\Models\ContractType;
@@ -35,7 +36,9 @@ class MasterDataOptions
                     'value' => $format->id,
                     'label' => $format->code,
                     'description' => $format->name,
+                    'usesWorkCategory' => $format->uses_work_category,
                 ])->all(),
+            'workCategories' => WorkCategory::options(),
             'workDirectors' => self::workDirectors(true),
             'targetUnits' => self::targetUnits(true),
             'procurementMethods' => self::procurementMethods(true),
@@ -74,6 +77,8 @@ class MasterDataOptions
         // them are resolved in one query rather than one query per type.
         $resolvable = DocumentTemplate::documentTypeIdsResolvableFor(
             $procurement->procurement_method_id,
+            $procurement->work_category,
+            $procurement->contract_number_format_id,
         );
 
         return [

@@ -50,7 +50,9 @@ function editorStylesheet(landscape: boolean, fullDocument: boolean): string {
               background: #e8ebf0; color: #475569; font: 600 10px system-ui, sans-serif; padding: 1px 8px; border-radius: 8px; }
         .signature td, .lampiran-head td, table.plain td, table.plain th { outline: 1px dashed #cbd5e1; outline-offset: -1px; }
         td:focus-within, th:focus-within { background-color: #f5f9ff; }
-        img { max-width: 100%; }`;
+        img { max-width: 100%; }
+        /* Off-screen chapters of long documents are not laid out until seen. */
+        .cover, .bab, .lampiran { content-visibility: auto; contain-intrinsic-size: auto 1100px; }`;
 }
 
 function escapeHtml(value: string): string {

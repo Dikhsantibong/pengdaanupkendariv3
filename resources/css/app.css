@@ -569,3 +569,16 @@
         display: none !important;
     }
 }
+
+/*
+ * Long documents (an RKS runs to 40+ pages): the browser skips layout and
+ * paint for chapters and attachments that are off screen, and lays each one
+ * out the moment it scrolls into view. `auto` remembers the real height once
+ * a block has been seen, so the scrollbar settles after the first pass.
+ */
+.document-preview .cover,
+.document-preview .bab,
+.document-preview .lampiran {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 1100px;
+}

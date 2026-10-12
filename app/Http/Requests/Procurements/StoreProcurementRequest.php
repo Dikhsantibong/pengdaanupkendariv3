@@ -18,6 +18,7 @@ class StoreProcurementRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->normaliseTargetUnits();
+        $this->normaliseWorkCategory();
     }
 
     /**

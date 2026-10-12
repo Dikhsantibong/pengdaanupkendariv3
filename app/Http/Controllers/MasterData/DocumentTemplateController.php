@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Enums\WorkCategory;
 use App\Http\Controllers\Controller;
+use App\Models\ContractNumberFormat;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
 use App\Models\ProcurementMethod;
@@ -21,8 +23,19 @@ class DocumentTemplateController extends Controller
     public function index(Request $request): Response
     {
         return Inertia::render('master-data/document-templates', [
+            // Bodies are large (an RKS is 100+ KB), so the list ships without
+            // them and the preview pulls the one it shows on demand.
+            'preview' => Inertia::optional(function () use ($request): ?array {
+                $template = DocumentTemplate::query()->find($request->integer('preview'));
+
+                return $template === null ? null : [
+                    'id' => $template->id,
+                    'title' => "{$template->name} v{$template->version}",
+                    'body' => $template->body,
+                ];
+            }),
             'templates' => DocumentTemplate::query()
-                ->with(['documentType', 'procurementMethod'])
+                ->with(['documentType', 'procurementMethod', 'contractNumberFormat'])
                 ->withCount('procurementDocuments')
                 ->orderBy('document_type_id')
                 ->orderBy('procurement_method_id')
@@ -34,9 +47,10 @@ class DocumentTemplateController extends Controller
                     'document_type' => $template->documentType->name,
                     'procurement_method_id' => $template->procurement_method_id,
                     'procurement_method' => $template->procurementMethod?->name,
+                    'contract_number_format' => $template->contractNumberFormat?->code,
+                    'work_category' => $template->work_category?->label(),
                     'name' => $template->name,
                     'version' => $template->version,
-                    'body' => $template->body,
                     'placeholders' => $template->placeholders ?? [],
                     'is_active' => $template->is_active,
                     'usage_count' => $template->procurement_documents_count,
@@ -72,6 +86,8 @@ class DocumentTemplateController extends Controller
                 'id' => $documentTemplate->id,
                 'document_type_id' => $documentTemplate->document_type_id,
                 'procurement_method_id' => $documentTemplate->procurement_method_id,
+                'contract_number_format_id' => $documentTemplate->contract_number_format_id,
+                'work_category' => $documentTemplate->work_category?->value,
                 'name' => $documentTemplate->name,
                 'version' => $documentTemplate->version,
                 'body' => $documentTemplate->body,
@@ -92,6 +108,8 @@ class DocumentTemplateController extends Controller
         $nextVersion = (int) DocumentTemplate::query()
             ->where('document_type_id', $validated['document_type_id'])
             ->where('procurement_method_id', $validated['procurement_method_id'] ?? null)
+            ->where('contract_number_format_id', $validated['contract_number_format_id'] ?? null)
+            ->where('work_category', $validated['work_category'] ?? null)
             ->max('version') + 1;
 
         $template = new DocumentTemplate($validated);
@@ -164,6 +182,12 @@ class DocumentTemplateController extends Controller
                 ->map(fn (string $label, string $key): array => ['key' => $key, 'label' => $label])
                 ->values()
                 ->all(),
+            'contractNumberFormats' => ContractNumberFormat::query()->ordered()->get()
+                ->map(fn (ContractNumberFormat $format): array => [
+                    'value' => $format->id,
+                    'label' => $format->code,
+                ])->all(),
+            'workCategories' => WorkCategory::options(),
             'documentStylesheet' => DocumentGenerator::documentStylesheet(),
         ];
     }
@@ -184,6 +208,11 @@ class DocumentTemplateController extends Controller
                 'nullable',
                 Rule::exists('procurement_methods', 'id')->whereNull('deleted_at'),
             ],
+            'contract_number_format_id' => [
+                'nullable',
+                Rule::exists('contract_number_formats', 'id')->whereNull('deleted_at'),
+            ],
+            'work_category' => ['nullable', Rule::enum(WorkCategory::class)],
             'name' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string', 'max:200000'],
             'is_active' => ['required', 'boolean'],
@@ -205,6 +234,8 @@ class DocumentTemplateController extends Controller
         DocumentTemplate::query()
             ->where('document_type_id', $template->document_type_id)
             ->where('procurement_method_id', $template->procurement_method_id)
+            ->where('contract_number_format_id', $template->contract_number_format_id)
+            ->where('work_category', $template->work_category?->value)
             ->whereKeyNot($template->getKey())
             ->update(['is_active' => false]);
     }

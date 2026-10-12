@@ -17,6 +17,7 @@ class UpdateProcurementRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->normaliseTargetUnits();
+        $this->normaliseWorkCategory();
     }
 
     /**

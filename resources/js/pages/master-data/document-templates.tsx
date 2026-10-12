@@ -23,24 +23,52 @@ type TemplateRow = {
     document_type: string;
     procurement_method_id: number | null;
     procurement_method: string | null;
+    contract_number_format: string | null;
+    work_category: string | null;
     name: string;
     version: number;
-    body: string;
     placeholders: string[];
     is_active: boolean;
     usage_count: number;
     updated_at: string | null;
 };
 
+type TemplatePreview = { id: number; title: string; body: string };
+
 export default function DocumentTemplates({
     templates,
+    preview: loadedPreview,
 }: {
     templates: TemplateRow[];
+    /** Loaded on demand: the list itself ships without template bodies. */
+    preview?: TemplatePreview | null;
 }) {
-    const [preview, setPreview] = useState<{
-        title: string;
-        body: string;
-    } | null>(null);
+    const [preview, setPreview] = useState<TemplatePreview | null>(null);
+    const [loadingId, setLoadingId] = useState<number | null>(null);
+
+    const openPreview = (template: TemplateRow) => {
+        if (loadedPreview?.id === template.id) {
+            setPreview(loadedPreview);
+
+            return;
+        }
+
+        setLoadingId(template.id);
+        router.reload({
+            only: ['preview'],
+            data: { preview: template.id },
+            onSuccess: (page) => {
+                const loaded = (
+                    page.props as { preview?: TemplatePreview | null }
+                ).preview;
+
+                if (loaded) {
+                    setPreview(loaded);
+                }
+            },
+            onFinish: () => setLoadingId(null),
+        });
+    };
 
     return (
         <>
@@ -113,6 +141,18 @@ export default function DocumentTemplates({
                                                     Semua metode
                                                 </span>
                                             )}
+                                            {template.contract_number_format && (
+                                                <span className="ml-1.5 inline-flex items-center rounded-sm bg-muted px-1.5 py-0.5 text-[11px] font-medium text-foreground">
+                                                    {
+                                                        template.contract_number_format
+                                                    }
+                                                </span>
+                                            )}
+                                            {template.work_category && (
+                                                <span className="ml-1.5 inline-flex items-center rounded-sm bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">
+                                                    {template.work_category}
+                                                </span>
+                                            )}
                                         </TableCell>
                                         <TableCell className="font-medium">
                                             {template.name}
@@ -149,11 +189,11 @@ export default function DocumentTemplates({
                                             <Button
                                                 size="sm"
                                                 variant="ghost"
+                                                disabled={
+                                                    loadingId === template.id
+                                                }
                                                 onClick={() =>
-                                                    setPreview({
-                                                        title: `${template.name} v${template.version}`,
-                                                        body: template.body,
-                                                    })
+                                                    openPreview(template)
                                                 }
                                             >
                                                 <Eye className="size-3.5" />

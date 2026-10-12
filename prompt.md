@@ -299,6 +299,14 @@ Agar template standar ini nantinya dapat diganti dengan template resmi **tanpa m
 - Dokumen hasil generate dapat diunduh dalam format standar (mis. Word/PDF sesuai jenis dokumen).
 - Dokumen tersimpan otomatis pada Arsip Dokumen pengadaan terkait.
 
+### Data Dokumen Selalu Terbaru (sinkron otomatis)
+
+- Setiap data yang dipanggil template (placeholder) ditulis di dokumen sebagai **field hidup**. Saat data pengadaan berubah dari layar mana pun (form ubah pengadaan, isian checklist seperti rekening/tanggal/garansi, penunjukan PIC, status, nilai setelah nego, dll.), seluruh dokumen pengadaan itu langsung ikut diperbarui — tidak perlu "Muat Ulang dari Template".
+- Dokumen yang belum pernah diedit disusun ulang penuh dari templatenya; dokumen yang sudah diedit hanya diperbarui pada field yang belum diubah manual — **ketikan manual tidak pernah ditimpa**.
+- **Halaman Edit Dokumen** memeriksa data terbaru setiap ±4 detik. Perubahan data langsung tampil di editor tanpa keluar-masuk halaman (indikator "Sinkron otomatis" / "Data terbaru dimuat"); perubahan yang belum disimpan tetap utuh.
+- Unduh/Pratinjau PDF dan Arsip Dokumen selalu memakai data terbaru (termasuk perubahan nama di data master).
+- **Tanggal dokumen** (`{{tanggal_dokumen}}`) dan **tahun** tetap sesuai saat dokumen digenerate.
+
 ---
 
 # Alur Bisnis Pengadaan
@@ -398,6 +406,47 @@ Setelah dokumen perencanaan disetujui, **Team Leader Pengadaan** menunjuk **1 or
 
 - **Generate dokumen hanya pada Berita Acara dan Kontrak**; tahapan lain cukup diunggah.
 - **Penyusunan Kontrak dihapus** (dinonaktifkan) untuk semua format.
+
+### Kategori Barang / Jasa (SPK & PJ)
+
+- Saat **Jenis No Kontrak** SPK atau PJ dipilih di form Buat/Ubah Pengadaan, muncul pilihan wajib **Barang** atau **Jasa**. Format lain (mis. SPPL) tidak meminta kategori.
+- Format mana yang meminta kategori diatur di **Data Master → Format No Kontrak** (sakelar "Pilih Barang / Jasa").
+- Kategori tampil di detail pengadaan dan tersedia sebagai placeholder `{{kategori_pekerjaan}}`.
+- **Template Dokumen** dapat dibatasi per **Metode**, per **Format No Kontrak** (SPK/PJ/SPPL), dan per **Kategori** (Barang/Jasa). Saat generate, template paling spesifik yang cocok dipakai (metode → format → kategori → versi terbaru); template tanpa batasan menjadi cadangan. Mengaktifkan template satu kategori/format tidak menonaktifkan template kategori/format lain.
+- Template terpasang:
+  - **SPK Jasa**: format perjanjian 20 pasal (lingkup pekerjaan).
+  - **SPK Barang**: layout yang sama, pasal disesuaikan untuk barang (Jenis dan Jumlah Barang, Spesifikasi dan Mutu Barang, penyerahan di Gudang, Bon Penerimaan Barang, garansi barang). Redaksi masih standar — dapat disempurnakan di Template Dokumen.
+  - **HPE PJ Barang**: "Harga Perkiraan Enjiniring" — kop logo + PT PLN Nusantara Power UP Kendari, Nomor `{{nomor_nota_dinas_usulan}}-HPE(A)`, Dasar Usulan, tabel No | Stock Code | Nama Barang dan Spesifikasi | Qty | Stn | Harga HPE (Rp.) | Keterangan, tanda tangan {{direksi_pekerjaan}} & TL Inventori Kontrol & Gudang, disahkan Manager UP Kendari.
+  - **RKS PJ Jasa (Penunjukan Langsung)**: cover berbingkai (logo, PT PLN NUSANTARA POWER UP KENDARI, judul RKS, Nomor `{{nomor_rks}}`, Tanggal, "UNTUK {{nama_pengadaan}}", UP KENDARI + tahun), Daftar Isi, BAB I Umum (Dasar Hukum, Pengertian & Istilah, Undangan), BAB II Instruksi kepada Peserta (A–M, termasuk Syarat-Syarat Perjanjian 1–19), BAB III Kepatuhan Hukum & Anti Penyuapan, BAB IV Penutup + tanda tangan (TL Inventori Kontrol & Gudang, Officer Inventori Kontrol = {{pic_perencana}}, Manager UP Kendari, {{direksi_pekerjaan}}), Lampiran 1–13 (spesifikasi, contoh surat penawaran, rincian harga, surat pernyataan, pakta integritas, referensi pengalaman, ketentuan blacklist, surat minat, kesanggupan TOR, K3L, TOR, cara VICON). ±41 halaman.
+  - **UPB PJ (Usulan Pengadaan Barang / Jasa)** — berlaku untuk PJ Barang maupun Jasa: kop logo + PT PLN Nusantara Power UP Kendari, judul bergaris bawah, Nomor `{{nomor_nota_dinas_usulan}}`, Sumber Dana `{{sumber_anggaran}}-{{tahun}}`, Peruntukan {{nama_pengadaan}}, Dasar Usulan "NOTA DINAS {{nomor_nota_dinas_icc}}", tabel No | Stock Code | Nama Barang dan Spesifikasi | No. Requisisi ({{nomor_pr_po}}) | No. WO ({{nomor_wo}}) | WO Description | Qty | Satuan | Tgl Dibutuhkan ({{target_penyelesaian}}) | Keterangan, tanda tangan TL Inventori Kontrol & Gudang, Officer Inventori Kontrol ({{pic_perencana}}), disetujui {{direksi_pekerjaan}}. 1 halaman A4 potret.
+  - `{{nomor_rks}}` disusun otomatis dari No Kontrak: `KDD017.PJ/612/UPKD/2026` → `017.RKS-PJ/612/UPKD/2026`.
+  - Klausul khusus paket (tahapan pembayaran, level CSMS, detail laporan) ditulis sebagai isian titik-titik/umum untuk disesuaikan di editor dokumen.
+  - HPE PJ Jasa dan format PJ lainnya menyusul (sementara memakai template HPE umum).
+- Urutan prioritas pemilihan template: **format kontrak → kategori → metode → versi terbaru**.
+- **Dokumen yang belum pernah diedit** otomatis berpindah ke template yang paling cocok saat ini (mis. setelah template PJ/kategori baru dipasang atau kategori pengadaan diubah). Dokumen yang sudah diedit tetap memakai template saat dibuat; gunakan "Muat Ulang dari Template" bila ingin pindah.
+- **HPE PJ** sementara berlaku untuk Barang maupun Jasa; template HPE khusus Jasa yang ditambahkan nanti otomatis lebih diutamakan.
+
+### Performa Dokumen Panjang
+
+- **Editor dokumen**: polling tiap ±4 detik hanya membawa sidik versi (`liveVersion`, 40 karakter); isi dokumen diunduh ulang hanya bila sidiknya berubah.
+- **Penyegaran di server** di-cache per dokumen (sidik data pengadaan + versi template + versi dokumen): dokumen tidak disusun ulang selama tidak ada yang berubah.
+- **Render browser**: bab, lampiran, dan cover yang berada di luar layar tidak di-layout/paint sampai digulir (`content-visibility: auto`), di editor dokumen maupun editor template.
+- **Pratinjau PDF** draf disimpan di disk per dokumen (berdasarkan sidik isi); pratinjau ulang tanpa perubahan atau versi tersimpan tidak dirender ulang. Unduhan PDF memakai cache yang sudah ada.
+- **Daftar Template Dokumen** tidak lagi mengirim isi seluruh template; isi diambil saat tombol Pratinjau diklik.
+- Penghitung kata/karakter editor dihitung dengan `useDeferredValue` sehingga tidak memperlambat pengetikan.
+- Tanggal terbit (`{{tanggal_dokumen}}`, `{{tahun}}`) tetap tanggal generate, juga saat dokumen yang belum diedit disusun ulang mengikuti data terbaru.
+
+### Format Dokumen SPK (Surat Perintah Kerja)
+
+SPK disusun sebagai perjanjian lengkap mengikuti format kontrak UP Kendari (±9–10 halaman A4 potret, font Arial):
+
+- **Kepala**: logo PLN, judul SURAT PERINTAH KERJA, *Nomor : {{nomor_pengadaan}}*, "PT PLN NUSANTARA POWER / UP KENDARI / DAN / {{nama_mitra}} / Tentang / {{nama_pengadaan}}".
+- **Para pihak**: (1) PT PLN Nusantara Power diwakili {{nama_manager}} selaku MANAGER PT PLN NP UP Kendari (nomor & tanggal SK Direksi diisi di editor), alamat Jl. Chairil Anwar No.2 Kendari — PIHAK KESATU; (2) {{nama_mitra}} berkantor di {{alamat_perusahaan}} diwakili {{nama_direktur}} selaku DIREKTUR — PIHAK KEDUA.
+- **Berdasarkan** (tabel No | Uraian | Nomor Dokumen | Tanggal Dokumen): Permintaan Penawaran Harga, Surat Penawaran Harga ({{nomor_surat_penawaran}}, {{tanggal_surat_penawaran}}), Berita Acara Klarifikasi & Negosiasi.
+- **Pasal 1–20**: Lingkup Pekerjaan (tabel No | Deskripsi | Volume | Satuan), Spesifikasi dan Mutu, Harga ({{nilai_setelah_nego}} + terbilang), Waktu dan Tempat Penyerahan ({{jangka_waktu_hari}} hari kalender), Cara Pembayaran (lampiran a–l + rekening {{nama_bank}}/{{nomor_rekening}}/{{nama_pemilik_rekening}}), Penyerahan Pekerjaan, Sanksi, Jaminan Produk, Garansi ({{masa_garansi_bulan}} bulan), Pembebasan Tuntutan, Pemenuhan Sistem Manajemen, Kepemilikan, Pemutusan Perjanjian, Force Majeure, Pajak dan Pungutan, Tuntutan Tambahan Biaya, Perselisihan Pendapat, Kepatuhan Hukum & Larangan KKN, Dokumen-Dokumen, Perubahan-Perubahan.
+- **Penutup & tanda tangan**: dibuat di Kendari; PIHAK KEDUA ({{nama_mitra}}, DIREKTUR, {{nama_direktur}}) dan PIHAK KESATU (PT PLN NP UP KENDARI, MANAGER, {{nama_manager}}).
+- **Footer setiap halaman (PDF)**: nomor SPK di kiri, paraf "PIHAK KESATU : ……" / "PIHAK KEDUA : ……" di kanan, nomor halaman di tengah.
+- Data yang belum ada di sistem (nomor SK Direksi, nomor RFQ, nomor BA Klarifikasi, uraian lingkup) tampil sebagai titik-titik untuk dilengkapi di editor dokumen.
 
 ### Checklist Pelaksanaan — format SPPL
 

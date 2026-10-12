@@ -21,6 +21,11 @@ class DocumentPdfRenderer
      */
     private const DIRECTORY = 'documents/pdf';
 
+    /**
+     * Where the PDFs of unsaved drafts are kept between previews.
+     */
+    private const PREVIEW_DIRECTORY = 'documents/pdf-preview';
+
     public function __construct(protected DocumentGenerator $generator) {}
 
     /**
@@ -43,6 +48,46 @@ class DocumentPdfRenderer
 
         $disk->put($path, $pdf);
         $this->pruneOtherRevisions($document, $path);
+
+        return $pdf;
+    }
+
+    /**
+     * Get the PDF of an unsaved draft, reusing it while the draft is unchanged.
+     *
+     * A long document takes seconds to lay out, so asking for the same
+     * preview twice (or previewing the saved version) is served from disk.
+     * Only the latest preview of each document is kept.
+     */
+    public function previewBytes(ProcurementDocument $draft): string
+    {
+        $original = $draft->getOriginal('rendered_body');
+
+        if ($draft->rendered_body === $original && $draft->title === $draft->getOriginal('title')) {
+            return $this->bytes($draft);
+        }
+
+        $disk = $this->disk();
+        $prefix = self::PREVIEW_DIRECTORY.'/'.$draft->getKey().'-';
+        $path = $prefix.sha1($draft->title.'|'.$draft->rendered_body).'.pdf';
+
+        if ($disk->exists($path)) {
+            $cached = $disk->get($path);
+
+            if ($cached !== null && $cached !== '') {
+                return $cached;
+            }
+        }
+
+        $pdf = $this->render($draft);
+
+        foreach ($disk->files(self::PREVIEW_DIRECTORY) as $file) {
+            if (str_starts_with($file, $prefix)) {
+                $disk->delete($file);
+            }
+        }
+
+        $disk->put($path, $pdf);
 
         return $pdf;
     }
@@ -126,6 +171,29 @@ class DocumentPdfRenderer
                 $textWidth = $fontMetrics->getTextWidth($rightText, $font, $footerFontSize);
                 $rightX = $pageWidth - 56 - $textWidth;
                 $canvas->text($rightX, $footerY, $rightText, $font, $footerFontSize, [0.25, 0.25, 0.25]);
+            });
+
+            return;
+        }
+
+        // SPK: contract number left, initials boxes right, page number centred.
+        if ($docTypeCode === 'spk') {
+            $contractNumber = trim((string) ($document?->procurement?->number ?? '')) ?: '—';
+            $bold = $dompdf->getFontMetrics()->getFont('DejaVu Sans', 'bold') ?? $font;
+
+            $canvas->page_script(function ($pageNumber, $pageCount, $canvas, $fontMetrics) use ($font, $bold, $contractNumber): void {
+                $grey = [0.45, 0.45, 0.45];
+                $pageWidth = $canvas->get_width();
+
+                $canvas->text(56, 785, $contractNumber, $bold, 6.5, $grey);
+
+                foreach (['PIHAK KESATU : ............', 'PIHAK KEDUA   : ............'] as $line => $text) {
+                    $width = $fontMetrics->getTextWidth($text, $font, 7);
+                    $canvas->text($pageWidth - 56 - $width, 785 + ($line * 12), $text, $font, 7, $grey);
+                }
+
+                $number = (string) $pageNumber;
+                $canvas->text(($pageWidth - $fontMetrics->getTextWidth($number, $font, 8)) / 2, 815, $number, $font, 8, $grey);
             });
 
             return;

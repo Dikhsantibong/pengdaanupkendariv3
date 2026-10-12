@@ -55,6 +55,8 @@ export type ProcurementRow = {
     budget_source: string | null;
     contract_type: string | null;
     contract_type_id: number | null;
+    /** Barang or Jasa, for the formats that ask for it. */
+    work_category?: string | null;
     manager_memo_number: string | null;
     pr_po_number: string | null;
     prk_number: string | null;

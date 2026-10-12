@@ -39,6 +39,7 @@ class ProcurementResource extends JsonResource
                 ? null
                 : $this->contractType->name,
             'contract_type_id' => $this->contract_type_id,
+            'work_category' => $this->work_category?->label(),
             'manager_memo_number' => $this->manager_memo_number,
             'pr_po_number' => $this->pr_po_number,
             'prk_number' => $this->prk_number,
