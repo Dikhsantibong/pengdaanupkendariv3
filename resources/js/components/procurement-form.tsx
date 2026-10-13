@@ -1,4 +1,6 @@
 import { useForm } from '@inertiajs/react';
+import { FileText, Plus, X } from 'lucide-react';
+import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { CurrencyInput } from '@/components/currency-input';
 import InputError from '@/components/input-error';
@@ -55,6 +57,7 @@ export type ProcurementFormValues = {
     icc_memo_date: string;
     pr_po_number: string;
     coa_number: string;
+    sr_number: string;
     wo_number: string;
     quotation_number: string;
     quotation_date: string;
@@ -104,6 +107,8 @@ export function ProcurementForm({
     proposal?: ProposalMode;
 }) {
     const isProposal = proposal?.enabled === true;
+    // A new proposal is told its TOR will be generated once it is sent.
+    const asksForTor = isProposal && initialValues === undefined;
 
     const firstFormatId = options.contractNumberFormats[0]?.value ?? null;
 
@@ -115,7 +120,6 @@ export function ProcurementForm({
         ...(withPlanner && !isProposal
             ? { planner_id: initialValues?.planner_id ?? null }
             : {}),
-        ...(isProposal ? { attachments: [] } : {}),
         contract_number_format_id: startingFormatId,
         work_category: initialValues?.work_category ?? null,
         number:
@@ -140,6 +144,7 @@ export function ProcurementForm({
         icc_memo_date: initialValues?.icc_memo_date ?? '',
         pr_po_number: initialValues?.pr_po_number ?? '',
         coa_number: initialValues?.coa_number ?? '',
+        sr_number: initialValues?.sr_number ?? '',
         wo_number: initialValues?.wo_number ?? '',
         quotation_number: initialValues?.quotation_number ?? '',
         quotation_date: initialValues?.quotation_date ?? '',
@@ -377,11 +382,7 @@ export function ProcurementForm({
                 )}
 
                 <div className="grid gap-2">
-                    <Label htmlFor="name">
-                        {isProposal
-                            ? 'Nama Pekerjaan yang Diusulkan'
-                            : 'Nama Pengadaan'}
-                    </Label>
+                    <Label htmlFor="name">Nama Pengadaan</Label>
                     <Input
                         id="name"
                         value={data.name}
@@ -482,39 +483,48 @@ export function ProcurementForm({
                         <InputError message={unitError} />
                     </div>
 
-                    <div className="grid gap-2">
-                        <Label htmlFor="procurement_method_id">
-                            Metode Pengadaan
-                        </Label>
-                        <Select
-                            value={
-                                data.procurement_method_id === null
-                                    ? undefined
-                                    : String(data.procurement_method_id)
-                            }
-                            onValueChange={(value) =>
-                                setData('procurement_method_id', Number(value))
-                            }
-                        >
-                            <SelectTrigger
-                                id="procurement_method_id"
-                                className="w-full"
+                    {!isProposal && (
+                        <div className="grid gap-2">
+                            <Label htmlFor="procurement_method_id">
+                                Metode Pengadaan
+                            </Label>
+                            <Select
+                                value={
+                                    data.procurement_method_id === null
+                                        ? undefined
+                                        : String(data.procurement_method_id)
+                                }
+                                onValueChange={(value) =>
+                                    setData(
+                                        'procurement_method_id',
+                                        Number(value),
+                                    )
+                                }
                             >
-                                <SelectValue placeholder="Pilih metode pengadaan" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {options.procurementMethods.map((option) => (
-                                    <SelectItem
-                                        key={option.value}
-                                        value={String(option.value)}
-                                    >
-                                        {option.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <InputError message={errors.procurement_method_id} />
-                    </div>
+                                <SelectTrigger
+                                    id="procurement_method_id"
+                                    className="w-full"
+                                >
+                                    <SelectValue placeholder="Pilih metode pengadaan" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {options.procurementMethods.map(
+                                        (option) => (
+                                            <SelectItem
+                                                key={option.value}
+                                                value={String(option.value)}
+                                            >
+                                                {option.label}
+                                            </SelectItem>
+                                        ),
+                                    )}
+                                </SelectContent>
+                            </Select>
+                            <InputError
+                                message={errors.procurement_method_id}
+                            />
+                        </div>
+                    )}
 
                     <div className="grid gap-2">
                         <Label htmlFor="budget_source_id">
@@ -624,43 +634,69 @@ export function ProcurementForm({
             )}
 
             <section className="space-y-4 rounded-md border border-border bg-card p-5">
-                <p className="section-label">Usulan Pekerjaan</p>
+                <div>
+                    <p className="section-label">Nomor Referensi</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        Setiap nomor dapat diisi lebih dari satu — klik{' '}
+                        <b>Tambah</b> untuk menambah baris.
+                    </p>
+                </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                    <TextField
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <MultiValueField
                         id="prk_number"
                         label="Nomor PRK"
                         value={data.prk_number}
                         onChange={(value) => setData('prk_number', value)}
                         placeholder="Contoh: 2026.AO.01.001"
+                        required={isProposal}
                         error={errors.prk_number}
                     />
-                    <TextField
+                    <MultiValueField
+                        id="pr_po_number"
+                        label="Nomor PR"
+                        value={data.pr_po_number}
+                        onChange={(value) => setData('pr_po_number', value)}
+                        placeholder="Contoh: 1000012345"
+                        required={isProposal}
+                        error={errors.pr_po_number}
+                    />
+                    <MultiValueField
                         id="coa_number"
                         label="Nomor COA"
                         value={data.coa_number}
                         onChange={(value) => setData('coa_number', value)}
                         placeholder="Contoh: 5110100000"
+                        required={isProposal}
                         error={errors.coa_number}
                     />
-
-                    <TextField
-                        id="pr_po_number"
-                        label="Nomor PR/PO"
-                        value={data.pr_po_number}
-                        onChange={(value) => setData('pr_po_number', value)}
-                        placeholder="Kosongkan bila belum tersedia"
-                        error={errors.pr_po_number}
+                    <MultiValueField
+                        id="sr_number"
+                        label="Nomor SR"
+                        value={data.sr_number}
+                        onChange={(value) => setData('sr_number', value)}
+                        placeholder="Contoh: SR-2026-0015"
+                        optional
+                        error={errors.sr_number}
                     />
-                    <TextField
+                    <MultiValueField
                         id="wo_number"
                         label="Nomor WO"
                         value={data.wo_number}
                         onChange={(value) => setData('wo_number', value)}
                         placeholder="Contoh: WO-2026-0042"
+                        optional
                         error={errors.wo_number}
                     />
+                </div>
+            </section>
 
+            <section className="space-y-4 rounded-md border border-border bg-card p-5">
+                <p className="section-label">
+                    {isProposal ? 'Nota Dinas Usulan' : 'Nota Dinas & Nilai'}
+                </p>
+
+                <div className="grid gap-4 md:grid-cols-2">
                     <TextField
                         id="proposal_memo_number"
                         label="Nomor Nota Dinas Usulan"
@@ -669,6 +705,7 @@ export function ProcurementForm({
                             setData('proposal_memo_number', value)
                         }
                         placeholder="Contoh: ND-021/USL/2026"
+                        required={isProposal}
                         error={errors.proposal_memo_number}
                     />
                     <DateField
@@ -678,41 +715,52 @@ export function ProcurementForm({
                         onChange={(value) =>
                             setData('proposal_memo_date', value)
                         }
+                        required={isProposal}
                         error={errors.proposal_memo_date}
                     />
 
-                    <TextField
-                        id="icc_memo_number"
-                        label="Nomor Nota Dinas ke Manager"
-                        value={data.icc_memo_number}
-                        onChange={(value) => setData('icc_memo_number', value)}
-                        placeholder="Contoh: ND-014/ND-MGR/2026"
-                        error={errors.icc_memo_number}
-                    />
-                    <DateField
-                        id="icc_memo_date"
-                        label="Tanggal Nota Dinas ke Manager"
-                        value={data.icc_memo_date}
-                        onChange={(value) => setData('icc_memo_date', value)}
-                        error={errors.icc_memo_date}
-                    />
+                    {!isProposal && (
+                        <>
+                            <TextField
+                                id="icc_memo_number"
+                                label="Nomor Nota Dinas ke Manager"
+                                value={data.icc_memo_number}
+                                onChange={(value) =>
+                                    setData('icc_memo_number', value)
+                                }
+                                placeholder="Contoh: ND-014/ND-MGR/2026"
+                                error={errors.icc_memo_number}
+                            />
+                            <DateField
+                                id="icc_memo_date"
+                                label="Tanggal Nota Dinas ke Manager"
+                                value={data.icc_memo_date}
+                                onChange={(value) =>
+                                    setData('icc_memo_date', value)
+                                }
+                                error={errors.icc_memo_date}
+                            />
+                        </>
+                    )}
 
-                    <div className="grid gap-2">
-                        <Label htmlFor="hpe_value">
-                            {isProposal
-                                ? 'Perkiraan Nilai Pekerjaan'
-                                : 'Nilai (Sebelum Nego)'}
-                        </Label>
-                        <CurrencyInput
-                            id="hpe_value"
-                            value={data.hpe_value}
-                            onValueChange={(next) => setData('hpe_value', next)}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            Nilai HPE / anggaran sebelum negosiasi.
-                        </p>
-                        <InputError message={errors.hpe_value} />
-                    </div>
+                    {!isProposal && (
+                        <div className="grid gap-2">
+                            <Label htmlFor="hpe_value">
+                                Nilai (Sebelum Nego)
+                            </Label>
+                            <CurrencyInput
+                                id="hpe_value"
+                                value={data.hpe_value}
+                                onValueChange={(next) =>
+                                    setData('hpe_value', next)
+                                }
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Nilai HPE / anggaran sebelum negosiasi.
+                            </p>
+                            <InputError message={errors.hpe_value} />
+                        </div>
+                    )}
 
                     {!isProposal && (
                         <>
@@ -812,103 +860,42 @@ export function ProcurementForm({
                 </section>
             )}
 
-            {isProposal && (
-                <section className="space-y-3 rounded-md border border-border bg-card p-5">
-                    <div>
-                        <p className="section-label">Lampiran Usulan</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                            Lampirkan dokumen pendukung yang akan ditinjau
-                            Direksi Pekerjaan, misalnya Nota Dinas usulan, TOR,
-                            foto kondisi, atau perhitungan kebutuhan. PDF, JPG,
-                            PNG, Word, atau Excel, maksimal 20 MB per berkas.
+            {asksForTor && (
+                <section className="flex items-start gap-3 rounded-md border border-primary/30 bg-primary/5 p-5">
+                    <FileText className="mt-0.5 size-5 shrink-0 text-primary" />
+                    <div className="space-y-1">
+                        <p className="text-sm font-semibold text-foreground">
+                            TOR digenerate otomatis
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            Setelah usulan dikirim, dokumen TOR dibuat dari
+                            template dengan data di atas. Lengkapi isinya lewat
+                            tombol <b>Edit TOR</b> di halaman usulan sebelum
+                            ditinjau Direksi Pekerjaan.
                         </p>
                     </div>
-                    <label
-                        htmlFor="attachments"
-                        className="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-border bg-muted/30 px-4 py-6 text-center text-sm transition-colors hover:border-primary hover:bg-primary/5"
-                    >
-                        <span className="font-medium text-foreground">
-                            Klik untuk memilih berkas
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                            Bisa pilih beberapa berkas sekaligus
-                        </span>
-                        <input
-                            id="attachments"
-                            type="file"
-                            multiple
-                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
-                            className="sr-only"
-                            onChange={(event) => {
-                                const chosen = Array.from(
-                                    event.target.files ?? [],
-                                );
-                                setData('attachments', [
-                                    ...(data.attachments ?? []),
-                                    ...chosen,
-                                ]);
-                                event.target.value = '';
-                            }}
-                        />
-                    </label>
-                    {(data.attachments ?? []).length > 0 && (
-                        <ul className="divide-y divide-border rounded-md border border-border">
-                            {(data.attachments ?? []).map((file, index) => (
-                                <li
-                                    key={`${file.name}-${index}`}
-                                    className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
-                                >
-                                    <span className="truncate">
-                                        {file.name}
-                                    </span>
-                                    <button
-                                        type="button"
-                                        className="shrink-0 text-xs font-medium text-destructive hover:underline"
-                                        onClick={() =>
-                                            setData(
-                                                'attachments',
-                                                (data.attachments ?? []).filter(
-                                                    (_, position) =>
-                                                        position !== index,
-                                                ),
-                                            )
-                                        }
-                                    >
-                                        Hapus
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                    <InputError
-                        message={
-                            (errors as Record<string, string | undefined>)
-                                .attachments ??
-                            Object.entries(errors).find(([key]) =>
-                                key.startsWith('attachments.'),
-                            )?.[1]
-                        }
-                    />
                 </section>
             )}
 
-            <section className="space-y-4 rounded-md border border-border bg-card p-5">
-                <p className="section-label">Informasi Tambahan</p>
+            {!isProposal && (
+                <section className="space-y-4 rounded-md border border-border bg-card p-5">
+                    <p className="section-label">Informasi Tambahan</p>
 
-                <div className="grid gap-2">
-                    <Label htmlFor="notes">Catatan</Label>
-                    <Textarea
-                        id="notes"
-                        value={data.notes}
-                        onChange={(event) =>
-                            setData('notes', event.target.value)
-                        }
-                        rows={3}
-                        placeholder="Catatan internal terkait pengadaan ini"
-                    />
-                    <InputError message={errors.notes} />
-                </div>
-            </section>
+                    <div className="grid gap-2">
+                        <Label htmlFor="notes">Catatan</Label>
+                        <Textarea
+                            id="notes"
+                            value={data.notes}
+                            onChange={(event) =>
+                                setData('notes', event.target.value)
+                            }
+                            rows={3}
+                            placeholder="Catatan internal terkait pengadaan ini"
+                        />
+                        <InputError message={errors.notes} />
+                    </div>
+                </section>
+            )}
 
             <div className="flex items-center gap-2">
                 <Button type="submit" disabled={processing}>
@@ -929,13 +916,39 @@ export function ProcurementForm({
     );
 }
 
-/** A labelled, optional text field for a reference number. */
+/** A field label marking required or optional entries. */
+function FieldLabel({
+    htmlFor,
+    label,
+    required = false,
+    optional = false,
+}: {
+    htmlFor: string;
+    label: string;
+    required?: boolean;
+    optional?: boolean;
+}) {
+    return (
+        <Label htmlFor={htmlFor}>
+            {label}
+            {required && <span className="text-destructive">*</span>}
+            {optional && (
+                <span className="font-normal text-muted-foreground">
+                    (opsional)
+                </span>
+            )}
+        </Label>
+    );
+}
+
+/** A labelled text field for a reference number. */
 function TextField({
     id,
     label,
     value,
     onChange,
     placeholder,
+    required = false,
     error,
 }: {
     id: string;
@@ -943,46 +956,155 @@ function TextField({
     value: string;
     onChange: (value: string) => void;
     placeholder?: string;
+    required?: boolean;
     error?: string;
 }) {
     return (
-        <div className="grid gap-2">
-            <Label htmlFor={id}>{label}</Label>
+        <div className="grid content-start gap-2">
+            <FieldLabel htmlFor={id} label={label} required={required} />
             <Input
                 id={id}
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
                 placeholder={placeholder}
                 autoComplete="off"
+                required={required}
             />
             <InputError message={error} />
         </div>
     );
 }
 
-/** A labelled, optional date field for memo dates. */
-function DateField({
+/**
+ * Several reference numbers of one kind, one per row.
+ *
+ * The rows are kept locally and handed up as one comma separated list, which
+ * is how the numbers are stored.
+ */
+function MultiValueField({
     id,
     label,
     value,
     onChange,
+    placeholder,
+    required = false,
+    optional = false,
     error,
 }: {
     id: string;
     label: string;
     value: string;
     onChange: (value: string) => void;
+    placeholder?: string;
+    required?: boolean;
+    optional?: boolean;
+    error?: string;
+}) {
+    const [rows, setRows] = useState<string[]>(() => {
+        const numbers = value
+            .split(/[,;\n]+/)
+            .map((part) => part.trim())
+            .filter((part) => part !== '');
+
+        return numbers.length > 0 ? numbers : [''];
+    });
+
+    const update = (next: string[]) => {
+        setRows(next);
+        onChange(
+            next
+                .map((part) => part.trim())
+                .filter((part) => part !== '')
+                .join(', '),
+        );
+    };
+
+    return (
+        <div className="grid content-start gap-2">
+            <FieldLabel
+                htmlFor={`${id}-0`}
+                label={label}
+                required={required}
+                optional={optional}
+            />
+            {rows.map((row, index) => (
+                <div key={index} className="flex items-center gap-1.5">
+                    <Input
+                        id={`${id}-${index}`}
+                        value={row}
+                        onChange={(event) =>
+                            update(
+                                rows.map((current, position) =>
+                                    position === index
+                                        ? event.target.value
+                                        : current,
+                                ),
+                            )
+                        }
+                        placeholder={placeholder}
+                        autoComplete="off"
+                        required={required && index === 0}
+                        aria-label={`${label} ke-${index + 1}`}
+                    />
+                    {rows.length > 1 && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="shrink-0 text-muted-foreground hover:text-destructive"
+                            aria-label={`Hapus ${label} ke-${index + 1}`}
+                            onClick={() =>
+                                update(
+                                    rows.filter(
+                                        (_, position) => position !== index,
+                                    ),
+                                )
+                            }
+                        >
+                            <X className="size-4" />
+                        </Button>
+                    )}
+                </div>
+            ))}
+            <button
+                type="button"
+                className="flex items-center gap-1 justify-self-start text-xs font-medium text-primary hover:underline"
+                onClick={() => setRows([...rows, ''])}
+            >
+                <Plus className="size-3.5" />
+                Tambah {label}
+            </button>
+            <InputError message={error} />
+        </div>
+    );
+}
+
+/** A labelled date field for memo dates. */
+function DateField({
+    id,
+    label,
+    value,
+    onChange,
+    required = false,
+    error,
+}: {
+    id: string;
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    required?: boolean;
     error?: string;
 }) {
     return (
-        <div className="grid gap-2">
-            <Label htmlFor={id}>{label}</Label>
+        <div className="grid content-start gap-2">
+            <FieldLabel htmlFor={id} label={label} required={required} />
             <Input
                 id={id}
                 type="date"
                 className="tabular"
                 value={value}
                 onChange={(event) => onChange(event.target.value)}
+                required={required}
             />
             <InputError message={error} />
         </div>

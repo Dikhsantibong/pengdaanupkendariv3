@@ -19,6 +19,7 @@ class StoreProcurementRequest extends FormRequest
     {
         $this->normaliseTargetUnits();
         $this->normaliseWorkCategory();
+        $this->normaliseReferenceNumbers();
     }
 
     /**
@@ -35,7 +36,8 @@ class StoreProcurementRequest extends FormRequest
     {
         return [
             ...$this->procurementRules(),
-            // Supporting files for the Direksi Pekerjaan to review.
+            // Optional supporting files for the Direksi Pekerjaan to review;
+            // the TOR itself is generated, not uploaded.
             'attachments' => ['nullable', 'array', 'max:10'],
             'attachments.*' => ['file', 'mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx', 'max:20480'],
             'planner_id' => [

@@ -18,6 +18,7 @@ class UpdateProcurementRequest extends FormRequest
     {
         $this->normaliseTargetUnits();
         $this->normaliseWorkCategory();
+        $this->normaliseReferenceNumbers();
     }
 
     /**

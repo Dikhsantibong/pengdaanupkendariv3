@@ -300,7 +300,13 @@ class MasterDataSeeder extends Seeder
         foreach ($planning as $index => [$name, $isOptional]) {
             ChecklistItem::query()->updateOrCreate(
                 ['stage' => ProcurementStage::Perencanaan->value, 'name' => $name],
-                ['is_optional' => $isOptional, 'sort_order' => $index + 1, 'is_active' => true],
+                [
+                    'is_optional' => $isOptional,
+                    'sort_order' => $index + 1,
+                    // The bare "Checklist Perencanaan" tick duplicated the
+                    // stage heading and is no longer asked for.
+                    'is_active' => $name !== 'Checklist Perencanaan',
+                ],
             );
         }
 
@@ -582,7 +588,8 @@ class MasterDataSeeder extends Seeder
             // Only the Berita Acara and Kontrak documents are still generated
             // during execution; the rest is uploaded.
             ->whereIn('code', [
-                'nota-dinas-usulan', 'tor', 'rab', 'penawaran', 'csms', 'nota-dinas-perintah-pekerjaan',
+                // The TOR is generated when the work is proposed.
+                'nota-dinas-usulan', 'rab', 'penawaran', 'csms', 'nota-dinas-perintah-pekerjaan',
                 'penyusunan-hps', 'proses-smart-scm', 'jaminan-bank', 'amandemen', 'masa-pemeliharaan',
             ])
             ->update(['upload_only' => true]);

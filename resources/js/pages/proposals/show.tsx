@@ -16,7 +16,7 @@ import { useRef, useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { formatCurrency, formatDate, formatDateTime } from '@/lib/format';
+import { formatDate, formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { StateBadge } from '@/pages/proposals/index';
 import type { ProposalRow } from '@/pages/proposals/index';
@@ -34,6 +34,13 @@ type Attachment = {
     url: string;
 };
 
+type GeneratedDocument = {
+    id: number;
+    title: string;
+    url: string;
+    edit_url: string;
+};
+
 type HistoryItem = {
     id: number;
     label: string;
@@ -45,13 +52,17 @@ type HistoryItem = {
 type Proposal = ProposalRow & {
     procurement_method: string | null;
     budget_source: string | null;
-    prk_number: string | null;
+    pr_number: string | null;
+    coa_number: string | null;
+    sr_number: string | null;
+    wo_number: string | null;
     proposal_memo_number: string | null;
     proposal_memo_date: string | null;
     notes: string | null;
     reviewed_by: string | null;
     reviewed_at: string | null;
     review_note: string | null;
+    documents: GeneratedDocument[];
     attachments: Attachment[];
     history: HistoryItem[];
 };
@@ -66,69 +77,85 @@ function formatSize(bytes: number | null): string {
         : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
-/** Large in-page reader for the supporting files. */
+/** One readable file in the viewer: a generated document or an upload. */
+type ViewerItem = {
+    key: string;
+    name: string;
+    url: string;
+    previewable: boolean;
+    isImage: boolean;
+    meta: string;
+    editUrl: string | null;
+    attachmentId: number | null;
+};
+
+/** Large in-page reader for the TOR and the supporting files. */
 function DocumentViewer({
-    attachments,
+    items,
     canRemove,
     proposalId,
 }: {
-    attachments: Attachment[];
+    items: ViewerItem[];
     canRemove: boolean;
     proposalId: number;
 }) {
-    const [activeId, setActiveId] = useState(attachments[0]?.id ?? null);
-    const active =
-        attachments.find((file) => file.id === activeId) ?? attachments[0];
+    const [activeKey, setActiveKey] = useState(items[0]?.key ?? null);
+    const active = items.find((item) => item.key === activeKey) ?? items[0];
 
     if (active === undefined) {
         return (
             <div className="flex h-full min-h-[50vh] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-card p-8 text-center">
                 <Paperclip className="size-8 text-muted-foreground" />
-                <p className="font-medium">Tidak ada lampiran</p>
+                <p className="font-medium">Belum ada dokumen</p>
                 <p className="max-w-sm text-sm text-muted-foreground">
-                    Usulan ini diajukan tanpa dokumen pendukung. Tinjau data
-                    usulan di panel samping.
+                    TOR usulan ini belum tersedia. Tinjau data usulan di panel
+                    samping.
                 </p>
             </div>
         );
     }
 
+    const attachmentId = active.attachmentId;
+
     return (
         <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
             <div className="flex gap-1 overflow-x-auto border-b border-border bg-muted/40 p-1.5">
-                {attachments.map((file) => (
+                {items.map((item) => (
                     <button
-                        key={file.id}
+                        key={item.key}
                         type="button"
-                        onClick={() => setActiveId(file.id)}
+                        onClick={() => setActiveKey(item.key)}
                         className={cn(
                             'flex max-w-[16rem] shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm transition-colors',
-                            file.id === active.id
+                            item.key === active.key
                                 ? 'bg-background font-medium text-foreground shadow-xs'
                                 : 'text-muted-foreground hover:bg-background/60',
                         )}
                     >
                         <FileText className="size-4 shrink-0" />
-                        <span className="truncate">{file.file_name}</span>
+                        <span className="truncate">{item.name}</span>
                     </button>
                 ))}
             </div>
 
             <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2 text-xs text-muted-foreground">
-                <span className="truncate">
-                    {formatSize(active.size)}
-                    {active.uploaded_by
-                        ? ` · diunggah ${active.uploaded_by}`
-                        : ''}
-                </span>
+                <span className="truncate">{active.meta}</span>
                 <div className="flex shrink-0 items-center gap-1">
+                    {active.editUrl !== null && (
+                        <Button asChild size="sm" variant="outline">
+                            <Link href={active.editUrl}>
+                                <Pencil className="size-3.5" />
+                                Edit TOR
+                            </Link>
+                        </Button>
+                    )}
                     <Button asChild size="sm" variant="ghost">
                         <a href={active.url} target="_blank" rel="noreferrer">
                             <ExternalLink className="size-3.5" />
                             Buka
                         </a>
                     </Button>
-                    {canRemove && (
+                    {canRemove && attachmentId !== null && (
                         <Button
                             size="sm"
                             variant="ghost"
@@ -136,13 +163,13 @@ function DocumentViewer({
                             onClick={() => {
                                 if (
                                     window.confirm(
-                                        `Hapus lampiran ${active.file_name}?`,
+                                        `Hapus lampiran ${active.name}?`,
                                     )
                                 ) {
                                     router.delete(
                                         proposals.attachments.destroy({
                                             procurement: proposalId,
-                                            attachment: active.id,
+                                            attachment: attachmentId,
                                         }).url,
                                         { preserveScroll: true },
                                     );
@@ -157,19 +184,19 @@ function DocumentViewer({
             </div>
 
             <div className="min-h-0 flex-1 bg-muted/30">
-                {active.is_image ? (
+                {active.isImage ? (
                     <div className="flex h-full items-center justify-center overflow-auto p-4">
                         <img
                             src={active.url}
-                            alt={active.file_name}
+                            alt={active.name}
                             className="max-h-full max-w-full rounded shadow-sm"
                         />
                     </div>
                 ) : active.previewable ? (
                     <iframe
-                        key={active.id}
+                        key={active.key}
                         src={`${active.url}#view=FitH`}
-                        title={active.file_name}
+                        title={active.name}
                         className="h-full w-full bg-white"
                     />
                 ) : (
@@ -181,7 +208,7 @@ function DocumentViewer({
                         <Button asChild variant="outline">
                             <a href={active.url}>
                                 <Download className="size-4" />
-                                Unduh {active.file_name}
+                                Unduh {active.name}
                             </a>
                         </Button>
                     </div>
@@ -282,8 +309,36 @@ export default function ProposalShow({
     can,
 }: {
     proposal: Proposal;
-    can: { approve: boolean; revise: boolean; openProcurement: boolean };
+    can: {
+        approve: boolean;
+        revise: boolean;
+        editDocuments: boolean;
+        openProcurement: boolean;
+    };
 }) {
+    const viewerItems: ViewerItem[] = [
+        ...proposal.documents.map((document) => ({
+            key: `document-${document.id}`,
+            name: document.title,
+            url: document.url,
+            previewable: true,
+            isImage: false,
+            meta: 'Digenerate dari template TOR',
+            editUrl: can.editDocuments ? document.edit_url : null,
+            attachmentId: null,
+        })),
+        ...proposal.attachments.map((file) => ({
+            key: `attachment-${file.id}`,
+            name: file.file_name,
+            url: file.url,
+            previewable: file.previewable,
+            isImage: file.is_image,
+            meta: `${formatSize(file.size)}${file.uploaded_by ? ` · diunggah ${file.uploaded_by}` : ''}`,
+            editUrl: null,
+            attachmentId: file.id,
+        })),
+    ];
+
     const fileInput = useRef<HTMLInputElement>(null);
     const upload = useForm<{ attachments: File[] }>({ attachments: [] });
 
@@ -296,10 +351,12 @@ export default function ProposalShow({
                 .join(' · ') || null,
         ],
         ['Unit Tujuan', proposal.target_units || null],
-        ['Perkiraan Nilai', formatCurrency(proposal.hpe_value)],
-        ['Metode Pengadaan', proposal.procurement_method],
         ['Sumber Anggaran', proposal.budget_source],
         ['Nomor PRK', proposal.prk_number],
+        ['Nomor PR', proposal.pr_number],
+        ['Nomor COA', proposal.coa_number],
+        ['Nomor SR', proposal.sr_number],
+        ['Nomor WO', proposal.wo_number],
         [
             'Nota Dinas Usulan',
             proposal.proposal_memo_number
@@ -339,7 +396,7 @@ export default function ProposalShow({
                 <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1fr)_24rem]">
                     <div className="min-h-[60vh] lg:min-h-0">
                         <DocumentViewer
-                            attachments={proposal.attachments}
+                            items={viewerItems}
                             canRemove={can.revise}
                             proposalId={proposal.id}
                         />

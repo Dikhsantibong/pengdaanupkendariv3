@@ -50,6 +50,7 @@ use Illuminate\Support\Collection;
  * @property CarbonImmutable|null $icc_memo_date
  * @property string|null $coa_number
  * @property string|null $wo_number
+ * @property string|null $sr_number
  * @property string|null $quotation_number
  * @property CarbonImmutable|null $quotation_date
  * @property string $hpe_value
@@ -103,6 +104,7 @@ use Illuminate\Support\Collection;
     'icc_memo_date',
     'coa_number',
     'wo_number',
+    'sr_number',
     'quotation_number',
     'quotation_date',
     'hpe_value',

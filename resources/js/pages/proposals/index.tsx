@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { formatCurrency, formatDateTime } from '@/lib/format';
+import { formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import procurements from '@/routes/procurements';
@@ -27,6 +27,7 @@ export type ProposalRow = {
     proposer_position: string | null;
     target_units: string;
     hpe_value: number;
+    prk_number: string | null;
     attachments_count: number;
     submitted_at: string | null;
     reviewed_at: string | null;
@@ -85,11 +86,9 @@ function AwaitingCard({ row }: { row: ProposalRow }) {
                     )}
                 </div>
                 <div>
-                    <dt className="text-xs text-muted-foreground">
-                        Perkiraan Nilai
-                    </dt>
-                    <dd className="tabular font-medium">
-                        {formatCurrency(row.hpe_value)}
+                    <dt className="text-xs text-muted-foreground">Nomor PRK</dt>
+                    <dd className="tabular line-clamp-2 font-medium">
+                        {row.prk_number ?? '-'}
                     </dd>
                 </div>
                 <div>
@@ -138,8 +137,8 @@ function ListRow({ row }: { row: ProposalRow }) {
                             : `Diajukan ${formatDateTime(row.submitted_at)}`}
                     </p>
                 </div>
-                <span className="tabular hidden text-sm font-medium md:block">
-                    {formatCurrency(row.hpe_value)}
+                <span className="tabular hidden max-w-[16rem] truncate text-sm font-medium md:block">
+                    {row.prk_number ?? '-'}
                 </span>
                 <StateBadge row={row} />
                 <ChevronRight className="hidden size-4 text-muted-foreground sm:block" />

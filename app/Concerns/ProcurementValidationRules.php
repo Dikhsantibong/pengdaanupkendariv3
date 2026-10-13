@@ -2,8 +2,10 @@
 
 namespace App\Concerns;
 
+use App\Enums\Permission;
 use App\Enums\WorkCategory;
 use App\Models\ContractNumberFormat;
+use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rule;
 
@@ -13,12 +15,24 @@ use Illuminate\Validation\Rule;
 trait ProcurementValidationRules
 {
     /**
+     * The fields that may hold several reference numbers.
+     *
+     * @var array<int, string>
+     */
+    protected const REFERENCE_NUMBER_FIELDS = ['prk_number', 'pr_po_number', 'coa_number', 'sr_number', 'wo_number'];
+
+    /**
      * Get the rules for the initial procurement input form.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     protected function procurementRules(?int $ignoreId = null): array
     {
+        // A work proposal asks only what the division knows; the method and
+        // the value are filled in by procurement once it is approved.
+        $proposal = $this->isProposalRequest();
+        $proposalRequired = $proposal ? 'required' : 'nullable';
+
         return [
             // Both stay optional so a procurement can still be registered from
             // a caller that does not number it; the service then falls back to
@@ -50,17 +64,19 @@ trait ProcurementValidationRules
                 'distinct',
                 Rule::exists('target_units', 'id')->whereNull('deleted_at'),
             ],
-            'procurement_method_id' => ['required', Rule::exists('procurement_methods', 'id')->whereNull('deleted_at')],
+            'procurement_method_id' => [$proposal ? 'nullable' : 'required', Rule::exists('procurement_methods', 'id')->whereNull('deleted_at')],
             'budget_source_id' => ['required', Rule::exists('budget_sources', 'id')->whereNull('deleted_at')],
-            // Usulan pekerjaan: reference numbers typed by hand, all optional.
-            'prk_number' => ['nullable', 'string', 'max:255'],
-            'proposal_memo_number' => ['nullable', 'string', 'max:255'],
-            'proposal_memo_date' => ['nullable', 'date'],
+            // Usulan pekerjaan: reference numbers typed by hand. PRK, PR, COA,
+            // SR and WO may each hold several numbers, kept as one list.
+            'prk_number' => [$proposalRequired, 'string', 'max:2000'],
+            'proposal_memo_number' => [$proposalRequired, 'string', 'max:255'],
+            'proposal_memo_date' => [$proposalRequired, 'date'],
             'icc_memo_number' => ['nullable', 'string', 'max:255'],
             'icc_memo_date' => ['nullable', 'date'],
-            'pr_po_number' => ['nullable', 'string', 'max:255'],
-            'coa_number' => ['nullable', 'string', 'max:255'],
-            'wo_number' => ['nullable', 'string', 'max:255'],
+            'pr_po_number' => [$proposalRequired, 'string', 'max:2000'],
+            'coa_number' => [$proposalRequired, 'string', 'max:2000'],
+            'sr_number' => ['nullable', 'string', 'max:2000'],
+            'wo_number' => ['nullable', 'string', 'max:2000'],
             'quotation_number' => ['nullable', 'string', 'max:255'],
             'quotation_date' => ['nullable', 'date'],
             'hpe_value' => ['required', 'numeric', 'min:0', 'max:999999999999999999'],
@@ -68,6 +84,52 @@ trait ProcurementValidationRules
             'progress_status_id' => ['required', Rule::exists('progress_statuses', 'id')->whereNull('deleted_at')],
             'notes' => ['nullable', 'string', 'max:2000'],
         ];
+    }
+
+    /**
+     * Whether the author may only propose work rather than register it.
+     */
+    protected function isProposalRequest(): bool
+    {
+        $user = $this->user();
+
+        return $user instanceof User
+            && ! $user->hasPermission(Permission::CreateProcurement)
+            && $user->hasPermission(Permission::ProposeWork);
+    }
+
+    /**
+     * Tidy the reference number lists, and default the value of a proposal.
+     *
+     * PRK, PR, COA, SR and WO arrive as a list or as text; either way they are
+     * stored as one comma separated list without blanks or repeats.
+     */
+    protected function normaliseReferenceNumbers(): void
+    {
+        $normalised = [];
+
+        foreach (self::REFERENCE_NUMBER_FIELDS as $field) {
+            if (! $this->has($field)) {
+                continue;
+            }
+
+            $value = $this->input($field);
+            $parts = is_array($value) ? $value : (preg_split('/[,;\n]+/', (string) $value) ?: []);
+
+            $numbers = array_values(array_unique(array_filter(
+                array_map(fn (mixed $part): string => trim((string) $part), $parts),
+                fn (string $part): bool => $part !== '',
+            )));
+
+            $normalised[$field] = $numbers === [] ? null : implode(', ', $numbers);
+        }
+
+        // The value is left to procurement, so a proposal may come without it.
+        if ($this->isProposalRequest() && $this->input('hpe_value') === null) {
+            $normalised['hpe_value'] = 0;
+        }
+
+        $this->merge($normalised);
     }
 
     /**
@@ -133,8 +195,9 @@ trait ProcurementValidationRules
             'proposal_memo_date' => 'tanggal nota dinas usulan',
             'icc_memo_number' => 'nomor nota dinas ke manager',
             'icc_memo_date' => 'tanggal nota dinas ke manager',
-            'pr_po_number' => 'nomor PR/PO',
+            'pr_po_number' => 'nomor PR',
             'coa_number' => 'nomor COA',
+            'sr_number' => 'nomor SR',
             'wo_number' => 'nomor WO',
             'quotation_number' => 'nomor surat penawaran',
             'quotation_date' => 'tanggal surat penawaran',

@@ -9,6 +9,7 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\Procurement;
 use App\Models\ProcurementAttachment;
+use App\Models\ProcurementDocument;
 use App\Models\User;
 use App\Services\ProcurementService;
 use Illuminate\Database\Eloquent\Builder;
@@ -99,13 +100,27 @@ class ProposalController extends Controller
                 ...$this->row($procurement),
                 'procurement_method' => $procurement->procurementMethod?->name,
                 'budget_source' => $procurement->budgetSource?->name,
-                'prk_number' => $procurement->prk_number,
+                'pr_number' => $procurement->pr_po_number,
+                'coa_number' => $procurement->coa_number,
+                'sr_number' => $procurement->sr_number,
+                'wo_number' => $procurement->wo_number,
                 'proposal_memo_number' => $procurement->proposal_memo_number,
                 'proposal_memo_date' => $procurement->proposal_memo_date?->toDateString(),
                 'notes' => $procurement->notes,
                 'reviewed_by' => $procurement->proposalReviewer?->name,
                 'reviewed_at' => $procurement->proposal_reviewed_at?->toIso8601String(),
                 'review_note' => $procurement->proposal_review_note,
+                // The generated TOR, read as a PDF and completed by the proposer.
+                'documents' => $procurement->documents()
+                    ->with('documentType')
+                    ->oldest('id')
+                    ->get()
+                    ->map(fn (ProcurementDocument $document): array => [
+                        'id' => $document->id,
+                        'title' => $document->documentType->name,
+                        'url' => route('procurements.documents.show', [$procurement, $document, 'preview' => 1]),
+                        'edit_url' => route('procurements.documents.edit', [$procurement, $document]),
+                    ])->all(),
                 'attachments' => $procurement->attachments->map(fn (ProcurementAttachment $file): array => [
                     'id' => $file->id,
                     'file_name' => $file->file_name,
@@ -126,6 +141,7 @@ class ProposalController extends Controller
             'can' => [
                 'approve' => $request->user()->can('approveProposal', $procurement),
                 'revise' => $request->user()->can('reviseProposal', $procurement),
+                'editDocuments' => $request->user()->can('editDocument', $procurement),
                 'openProcurement' => $procurement->isProposalApproved(),
             ],
         ]);
@@ -257,6 +273,7 @@ class ProposalController extends Controller
             'proposer' => $procurement->creator?->name,
             'proposer_position' => $procurement->creator?->position,
             'target_units' => $procurement->targetUnitNames(),
+            'prk_number' => $procurement->prk_number,
             'hpe_value' => (float) $procurement->hpe_value,
             'attachments_count' => (int) ($procurement->attachments_count ?? $procurement->attachments()->count()),
             'submitted_at' => $procurement->proposal_submitted_at?->toIso8601String(),

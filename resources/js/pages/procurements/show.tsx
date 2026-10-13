@@ -139,7 +139,8 @@ export default function ShowProcurement({
     }> = [
         { label: 'Nomor PRK', value: procurement.prk_number ?? '—' },
         { label: 'Nomor COA', value: procurement.coa_number ?? '—' },
-        { label: 'Nomor PR/PO', value: procurement.pr_po_number ?? '—' },
+        { label: 'Nomor PR', value: procurement.pr_po_number ?? '—' },
+        { label: 'Nomor SR', value: procurement.sr_number ?? '—' },
         { label: 'Nomor WO', value: procurement.wo_number ?? '—' },
         {
             label: 'Nomor Nota Dinas Usulan',
@@ -332,7 +333,6 @@ export default function ShowProcurement({
                             <TabsContent value="perencanaan">
                                 <ChecklistPanel
                                     procurementId={procurement.id}
-                                    title="Checklist Perencanaan"
                                     description="Dokumen yang harus dilengkapi PIC Perencana sebelum diajukan ke TL ICC."
                                     rows={checklists.perencanaan}
                                     editable={can.updatePlanningChecklist}
@@ -349,7 +349,6 @@ export default function ShowProcurement({
                             <TabsContent value="pelaksanaan">
                                 <ChecklistPanel
                                     procurementId={procurement.id}
-                                    title="Checklist Pelaksanaan"
                                     description="Tahapan pelaksanaan pengadaan hingga masa pemeliharaan selesai."
                                     rows={checklists.pelaksanaan}
                                     editable={can.updateExecutionChecklist}

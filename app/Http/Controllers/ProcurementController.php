@@ -21,6 +21,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 
 class ProcurementController extends Controller
 {
@@ -86,6 +87,12 @@ class ProcurementController extends Controller
 
         $this->procurements->attachFiles($procurement, $request->file('attachments', []), $request->user());
 
+        // A proposal comes with its TOR, drafted from the template for the
+        // proposer to complete and the Direksi Pekerjaan to review.
+        if ($this->proposalContext($request->user())['enabled']) {
+            $this->generateProposalTor($procurement, $request->user());
+        }
+
         // A proposal waits on the Direksi Pekerjaan: show it where it is followed.
         if (! $procurement->isProposalApproved()) {
             Inertia::flash('toast', [
@@ -102,6 +109,27 @@ class ProcurementController extends Controller
         ]);
 
         return to_route('procurements.show', $procurement);
+    }
+
+    /**
+     * Draft the TOR of a new proposal.
+     *
+     * A missing template does not stop the proposal: the TOR can still be
+     * generated later on the planning checklist.
+     */
+    protected function generateProposalTor(Procurement $procurement, User $author): void
+    {
+        $tor = DocumentType::query()->where('code', 'tor')->first();
+
+        if ($tor === null) {
+            return;
+        }
+
+        try {
+            $this->generator->generate($procurement, $tor, $author);
+        } catch (RuntimeException $exception) {
+            report($exception);
+        }
     }
 
     /**
@@ -256,6 +284,7 @@ class ProcurementController extends Controller
                 'pr_po_number' => $procurement->pr_po_number ?? '',
                 'coa_number' => $procurement->coa_number ?? '',
                 'wo_number' => $procurement->wo_number ?? '',
+                'sr_number' => $procurement->sr_number ?? '',
                 'quotation_number' => $procurement->quotation_number ?? '',
                 'quotation_date' => $procurement->quotation_date?->toDateString() ?? '',
                 'hpe_value' => (float) $procurement->hpe_value,

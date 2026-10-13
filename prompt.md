@@ -340,8 +340,22 @@ Setiap pengadaan mengikuti tahapan yang telah ditentukan. Setiap tahapan memilik
 
 Pekerjaan dapat berawal dari bidang pengguna:
 
-1. **Pengusul** (Staf/TL bidang, peran `pengusul`) membuka menu **Usulkan Pekerjaan** (form yang sama dengan form pembuatan pengadaan, versi ringkas): nama pekerjaan, unit tujuan, metode, sumber anggaran, perkiraan nilai, PRK, nota dinas usulan, catatan, dan **Lampiran Usulan** (PDF/gambar/Word/Excel, maks. 10 berkas @20 MB). Bidang (Direksi Pekerjaan) otomatis mengikuti bidang akun pengusul dan tidak dapat diganti. Status usulan: **Menunggu Persetujuan**.
-2. **Direksi Pekerjaan** (Asman bidang, atau TL untuk K3 KAM dan Lingkungan, peran `direksi_pekerjaan`) menerima notifikasi dan melihat usulan pada menu **Usulan Pekerjaan** dan kartu dashboard. Halaman **Tinjau Usulan** menampilkan lampiran berukuran besar di kiri (PDF/gambar langsung terbaca) dan ringkasan data serta tombol **Setujui Usulan** / **Kembalikan ke Pengusul** di kanan. Mengembalikan wajib disertai catatan.
+1. **Pengusul** (Staf/TL bidang, peran `pengusul`) membuka menu **Usulkan Pekerjaan** dan mengisi (semua wajib kecuali yang ditandai opsional):
+   1. Nama Pengadaan
+   2. Direksi Pekerjaan — otomatis mengikuti bidang akun pengusul, tidak dapat diganti
+   3. Sumber Anggaran
+   4. Unit Tujuan
+   5. Nomor PRK (bisa lebih dari satu)
+   6. Nomor PR (bisa lebih dari satu)
+   7. Nomor COA (bisa lebih dari satu)
+   8. Nomor SR — opsional (bisa lebih dari satu)
+   9. Nomor WO — opsional (bisa lebih dari satu)
+   10. Nomor Nota Dinas Usulan
+   11. Tanggal Nota Dinas Usulan
+   12. **TOR** — tidak diunggah, melainkan **digenerate otomatis** dari template TOR saat usulan dikirim. Pengusul melengkapi isinya lewat tombol **Edit TOR** di halaman usulan (selama usulan belum disetujui).
+
+   Nomor yang lebih dari satu diisi per baris (tombol *Tambah*) dan disimpan sebagai satu daftar dipisah koma (`{{nomor_prk}}`, `{{nomor_sr}}`, dst. di dokumen menampilkan seluruh daftar). Metode pengadaan, nilai, calon mitra, nota dinas ke manager, dan catatan diisi kemudian oleh pengadaan/perencana setelah usulan disetujui (inputan perencana akan disesuaikan lagi). Status usulan: **Menunggu Persetujuan**.
+2. **Direksi Pekerjaan** (Asman bidang, atau TL untuk K3 KAM dan Lingkungan, peran `direksi_pekerjaan`) menerima notifikasi dan melihat usulan pada menu **Usulan Pekerjaan** dan kartu dashboard. Halaman **Tinjau Usulan** menampilkan PDF TOR (dan lampiran lain bila ada) berukuran besar di kiri dan ringkasan data serta tombol **Setujui Usulan** / **Kembalikan ke Pengusul** di kanan. Mengembalikan wajib disertai catatan.
 3. Usulan yang **dikembalikan** dapat diperbaiki pengusul (ubah data, tambah/hapus lampiran) lalu **Ajukan Ulang**.
 4. Usulan yang **disetujui** baru masuk ke pipeline pengadaan: muncul di Penunjukan PIC, Perencanaan, Monitoring Publik, dan TL Pengadaan/TL ICC mendapat notifikasi. Sebelum disetujui, usulan tidak tampil di perencanaan dan PIC tidak dapat ditunjuk.
 5. Direksi Pekerjaan yang mengusulkan untuk bidangnya sendiri langsung berstatus disetujui. Direksi Pekerjaan tidak dapat menyetujui usulan bidang lain maupun usulannya sendiri.
@@ -378,9 +392,8 @@ Sebelum proses perencanaan dimulai, **Team Leader Pengadaan** wajib menunjuk **1
 
 | Tahapan | Cara penyelesaian |
 |---------|-------------------|
-| Checklist Perencanaan | Centang |
 | Nota Dinas Usulan | **Unggah saja** |
-| TOR / KAK | **Unggah saja** |
+| TOR / KAK | Digenerate otomatis saat usulan dikirim (dilengkapi pengusul), lalu unggah hasil tanda tangan |
 | RAB (Rencana Anggaran Biaya) | **Unggah saja** — dilewati untuk format SPPL |
 | Penawaran | **Unggah saja** — untuk SPPL sekaligus mencakup RAB |
 | CSMS (Sertifikat) — opsional | **Unggah saja** |
@@ -667,7 +680,7 @@ Penunjukan PIC Perencana
 Tahap Perencanaan
 │
 ├── Nota Dinas Usulan        (unggah)
-├── TOR / KAK                (unggah)
+├── TOR / KAK                (generate)
 ├── RAB                      (unggah; dilewati SPPL)
 ├── Penawaran                (unggah)
 ├── CSMS (Sertifikat)        (unggah)
@@ -810,8 +823,8 @@ Di bagian atas dashboard tampil daftar tugas sesuai akun yang login. Setiap bari
 
 # Standar Orientasi Kertas Template Dokumen
 
-- **Hanya Berita Acara Negosiasi (BA Negosiasi SPPL dan Kontrak/SPK)** yang menggunakan format kertas **Lanskap (A4 Landscape)** (`@page { size: A4 landscape; margin: 15mm 20mm; }`).
-- **Seluruh dokumen lainnya** (TOR, RKS, HPE, UPB, Nota Dinas, Surat Pesanan, Lampiran Surat Pesanan, dsb.) secara konsisten menggunakan format kertas **Potret (A4 Portrait)** (`@page { size: A4 portrait; margin: 20mm 15mm; }`).
+- **Berita Acara Negosiasi (SPPL dan Kontrak/SPK), HPE, dan UPB** (umum maupun PJ) menggunakan format kertas **Lanskap (A4 Landscape)** (`@page { size: A4 landscape; ... }`).
+- **Seluruh dokumen lainnya** (TOR, RKS, Nota Dinas, Surat Pesanan, Lampiran Surat Pesanan, dsb.) secara konsisten menggunakan format kertas **Potret (A4 Portrait)** (`@page { size: A4 portrait; margin: 20mm 15mm; }`).
 - Pengaturan cetak HTML dan PDF secara otomatis mendeteksi konfigurasi `@page` pada dokumen sehingga orientasi kertas (landscape vs portrait) dan footer tercetak dengan koordinat yang presisi pada browser maupun Dompdf.
 - Dialog pratinjau template dokumen pada Data Master dan canvas editor visual menyesuaikan lebar bingkai secara dinamis (`max-w-[297mm]` untuk dokumen landscape dan `max-w-[210mm]` untuk dokumen portrait).
 

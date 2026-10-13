@@ -5,6 +5,8 @@ namespace Tests\Feature\Procurements;
 use App\Enums\ActivityType;
 use App\Enums\ProposalState;
 use App\Models\BudgetSource;
+use App\Models\DocumentTemplate;
+use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementMethod;
 use App\Models\ProgressStatus;
@@ -63,7 +65,7 @@ class ProposalFlowTest extends TestCase
 
         $this->actingAs($proposer)
             ->post(route('procurements.store'), [
-                ...$this->payload(),
+                ...$this->proposalPayload(),
                 // A proposer cannot raise work for another division.
                 'work_director_id' => WorkDirector::factory()->create()->id,
                 'attachments' => [UploadedFile::fake()->create('tor.pdf', 120, 'application/pdf')],
@@ -85,6 +87,94 @@ class ProposalFlowTest extends TestCase
             'procurement_id' => $procurement->id,
             'type' => ActivityType::UsulanDiajukan->value,
         ]);
+    }
+
+    public function test_a_proposal_asks_for_every_listed_field_except_sr_and_wo(): void
+    {
+        $proposer = User::factory()->proposer($this->division)->create();
+
+        $this->actingAs($proposer)
+            ->post(route('procurements.store'), [
+                ...$this->proposalPayload(),
+                'prk_number' => '',
+                'pr_po_number' => '',
+                'coa_number' => '',
+                'proposal_memo_number' => '',
+                'proposal_memo_date' => '',
+                'budget_source_id' => null,
+            ])
+            ->assertSessionHasErrors([
+                'prk_number', 'pr_po_number', 'coa_number',
+                'proposal_memo_number', 'proposal_memo_date', 'budget_source_id',
+            ])
+            ->assertSessionDoesntHaveErrors(['sr_number', 'wo_number', 'procurement_method_id', 'hpe_value']);
+
+        $this->assertDatabaseCount('procurements', 0);
+
+        // Method and value are left to procurement.
+        $this->actingAs($proposer)
+            ->post(route('procurements.store'), $this->proposalPayload())
+            ->assertSessionHasNoErrors();
+
+        $procurement = Procurement::query()->firstOrFail();
+        $this->assertNull($procurement->procurement_method_id);
+        $this->assertSame('0.00', (string) $procurement->hpe_value);
+    }
+
+    public function test_reference_numbers_may_hold_several_values(): void
+    {
+        $this->actingAs(User::factory()->proposer($this->division)->create())
+            ->post(route('procurements.store'), [
+                ...$this->proposalPayload(),
+                'prk_number' => ['2026.AO.01.001', ' 2026.AO.01.002 ', '', '2026.AO.01.001'],
+                'pr_po_number' => '1000012345, 1000012346',
+                'sr_number' => 'SR-1; SR-2',
+                'wo_number' => '',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $procurement = Procurement::query()->firstOrFail();
+
+        $this->assertSame('2026.AO.01.001, 2026.AO.01.002', $procurement->prk_number);
+        $this->assertSame('1000012345, 1000012346', $procurement->pr_po_number);
+        $this->assertSame('SR-1, SR-2', $procurement->sr_number);
+        $this->assertNull($procurement->wo_number);
+    }
+
+    public function test_the_tor_is_generated_with_the_proposal_and_written_by_the_proposer(): void
+    {
+        $tor = $this->torTemplate();
+        $proposer = User::factory()->proposer($this->division)->create();
+
+        $this->actingAs($proposer)
+            ->post(route('procurements.store'), [...$this->proposalPayload(), 'sr_number' => 'SR-9'])
+            ->assertRedirect();
+
+        $procurement = Procurement::query()->firstOrFail();
+        $document = $procurement->documents()->where('document_type_id', $tor->id)->sole();
+
+        $this->assertStringContainsString('SR-9', strip_tags($document->rendered_body));
+
+        $this->actingAs($proposer)
+            ->get(route('proposals.show', $procurement))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('proposal.documents', 1)
+                ->where('proposal.documents.0.id', $document->id)
+                ->where('can.editDocuments', true)
+            );
+
+        $this->actingAs($proposer)
+            ->get(route('procurements.documents.edit', [$procurement, $document]))
+            ->assertOk();
+
+        $this->actingAs(User::factory()->workDirector($this->division)->create())
+            ->post(route('proposals.decide', $procurement), ['decision' => 'approve']);
+
+        // Once approved the TOR belongs to procurement.
+        $this->actingAs($proposer)
+            ->get(route('procurements.documents.edit', [$procurement, $document]))
+            ->assertForbidden();
     }
 
     public function test_a_pending_proposal_stays_out_of_planning(): void
@@ -283,7 +373,7 @@ class ProposalFlowTest extends TestCase
     {
         $proposer = User::factory()->proposer($this->division)->create();
 
-        $this->actingAs($proposer)->post(route('procurements.store'), $this->payload());
+        $this->actingAs($proposer)->post(route('procurements.store'), $this->proposalPayload());
 
         return Procurement::query()->latest('id')->firstOrFail();
     }
@@ -303,6 +393,37 @@ class ProposalFlowTest extends TestCase
             'budget_source_id' => BudgetSource::factory()->create()->id,
             'hpe_value' => 25_000_000,
             'progress_status_id' => ProgressStatus::factory()->asDefault()->create()->id,
+            'prk_number' => '2026.AO.01.001',
+            'pr_po_number' => '1000012345',
+            'coa_number' => '5110100000',
+            'proposal_memo_number' => 'ND-021/USL/2026',
+            'proposal_memo_date' => '2026-10-13',
         ];
+    }
+
+    /**
+     * Only what the division fills in on the proposal form.
+     *
+     * @return array<string, mixed>
+     */
+    protected function proposalPayload(): array
+    {
+        return collect($this->payload())->except(['procurement_method_id', 'hpe_value'])->all();
+    }
+
+    /**
+     * An active TOR template for the generated proposal TOR.
+     */
+    protected function torTemplate(): DocumentType
+    {
+        $tor = DocumentType::factory()->create(['code' => 'tor', 'name' => 'TOR (Term of Reference)']);
+
+        DocumentTemplate::factory()->create([
+            'document_type_id' => $tor->id,
+            'procurement_method_id' => null,
+            'body' => '<h1>TOR {{nama_pengadaan}}</h1><p>PRK {{nomor_prk}} SR {{nomor_sr}}</p>',
+        ]);
+
+        return $tor;
     }
 }

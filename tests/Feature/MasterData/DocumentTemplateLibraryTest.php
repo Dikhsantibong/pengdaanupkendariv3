@@ -41,6 +41,25 @@ class DocumentTemplateLibraryTest extends TestCase
         return new DocumentTemplateLibrary($this->root);
     }
 
+    public function test_the_hpe_and_upb_defaults_print_in_landscape(): void
+    {
+        $root = resource_path('document-templates');
+        $entries = array_filter(
+            require $root.'/manifest.php',
+            fn (array $entry): bool => in_array($entry['document_type'], ['hpe', 'upb'], true),
+        );
+
+        $this->assertNotEmpty($entries);
+
+        foreach ($entries as $key => $entry) {
+            $this->assertStringContainsString(
+                'size: A4 landscape',
+                File::get($root.'/'.$entry['file']),
+                "Template [{$key}] harus lanskap.",
+            );
+        }
+    }
+
     public function test_a_default_is_installed_once_and_then_reported_up_to_date(): void
     {
         $this->assertSame(['demo.memo' => DocumentTemplateLibrary::INSTALLED], $this->library()->sync());

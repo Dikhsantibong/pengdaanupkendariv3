@@ -237,6 +237,8 @@ class ProcurementPolicy
      */
     public function editDocument(User $user, Procurement $procurement): bool
     {
-        return $this->generateDocument($user, $procurement);
+        // The proposer writes the TOR of their proposal until it is approved.
+        return $this->generateDocument($user, $procurement)
+            || $this->reviseProposal($user, $procurement);
     }
 }

@@ -66,6 +66,7 @@ export type ProcurementRow = {
     icc_memo_date: string | null;
     coa_number: string | null;
     wo_number: string | null;
+    sr_number: string | null;
     quotation_number: string | null;
     quotation_date: string | null;
     hpe_value: number;

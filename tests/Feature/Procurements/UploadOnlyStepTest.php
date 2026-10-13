@@ -31,14 +31,14 @@ class UploadOnlyStepTest extends TestCase
         $this->assertSame(
             [
                 'amandemen', 'csms', 'jaminan-bank', 'masa-pemeliharaan', 'nota-dinas-perintah-pekerjaan',
-                'nota-dinas-usulan', 'penawaran', 'penyusunan-hps', 'proses-smart-scm', 'rab', 'tor',
+                'nota-dinas-usulan', 'penawaran', 'penyusunan-hps', 'proses-smart-scm', 'rab',
             ],
             DocumentType::query()->where('upload_only', true)->orderBy('code')->pluck('code')->all(),
         );
 
         // HPE, UPB and RKS in planning, and the Berita Acara and Kontrak
         // documents in execution, are still generated.
-        foreach (['hpe', 'upb', 'rks', 'ba-aanwijzing', 'spk', 'ba-negosiasi', 'surat-pesanan'] as $code) {
+        foreach (['tor', 'hpe', 'upb', 'rks', 'ba-aanwijzing', 'spk', 'ba-negosiasi', 'surat-pesanan'] as $code) {
             $this->assertFalse(DocumentType::query()->where('code', $code)->firstOrFail()->upload_only, $code);
         }
     }
@@ -47,7 +47,7 @@ class UploadOnlyStepTest extends TestCase
     {
         Storage::fake('local');
 
-        [$procurement, $planner, $checklist, $type] = $this->planningStep('TOR / KAK');
+        [$procurement, $planner, $checklist, $type] = $this->planningStep('RAB (Rencana Anggaran Biaya)');
 
         $this->actingAs($planner)
             ->post(route('procurements.documents.upload', $procurement), [
@@ -74,7 +74,7 @@ class UploadOnlyStepTest extends TestCase
 
     public function test_an_upload_only_step_still_needs_its_upload(): void
     {
-        [$procurement, $planner, $checklist] = $this->planningStep('TOR / KAK');
+        [$procurement, $planner, $checklist] = $this->planningStep('RAB (Rencana Anggaran Biaya)');
 
         $this->actingAs($planner)
             ->put(route('procurements.checklists.update', [$procurement, $checklist]), [
@@ -85,7 +85,7 @@ class UploadOnlyStepTest extends TestCase
 
     public function test_an_upload_only_document_cannot_be_generated(): void
     {
-        [$procurement, $planner, , $type] = $this->planningStep('TOR / KAK');
+        [$procurement, $planner, , $type] = $this->planningStep('RAB (Rencana Anggaran Biaya)');
 
         $this->actingAs($planner)
             ->post(route('procurements.documents.store', $procurement), [
@@ -98,7 +98,7 @@ class UploadOnlyStepTest extends TestCase
 
     public function test_a_generated_document_cannot_be_filed_through_the_upload_route(): void
     {
-        [$procurement, $planner] = $this->planningStep('TOR / KAK');
+        [$procurement, $planner] = $this->planningStep('RAB (Rencana Anggaran Biaya)');
         $hpe = DocumentType::query()->where('code', 'hpe')->firstOrFail();
 
         $this->actingAs($planner)
@@ -111,7 +111,7 @@ class UploadOnlyStepTest extends TestCase
 
     public function test_an_unassigned_pic_cannot_upload(): void
     {
-        [$procurement, , , $type] = $this->planningStep('TOR / KAK');
+        [$procurement, , , $type] = $this->planningStep('RAB (Rencana Anggaran Biaya)');
 
         $this->actingAs(User::factory()->planner()->create())
             ->post(route('procurements.documents.upload', $procurement), [

@@ -193,6 +193,7 @@ class ChecklistDocumentRequirementTest extends TestCase
         [$procurement, $planner] = $this->planningStep('HPE (Harga Perkiraan Engineer)');
 
         $plain = ChecklistItem::query()
+            ->active()
             ->forStage(ProcurementStage::Perencanaan)
             ->whereDoesntHave('documentTypes')
             ->firstOrFail();
@@ -286,7 +287,9 @@ class ChecklistDocumentRequirementTest extends TestCase
                 $rows = collect($page->toArray()['props']['checklists']['perencanaan']);
 
                 $hpe = $rows->firstWhere('name', 'HPE (Harga Perkiraan Engineer)');
-                $plain = $rows->firstWhere('name', 'Checklist Perencanaan');
+                $plain = $rows->firstWhere('name', 'Inisiasi SMART SCM');
+
+                $this->assertNull($rows->firstWhere('name', 'Checklist Perencanaan'));
 
                 $this->assertCount(1, $hpe['documents']);
                 $this->assertFalse($hpe['documents'][0]['is_signed']);

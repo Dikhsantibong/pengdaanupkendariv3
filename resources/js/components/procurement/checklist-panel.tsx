@@ -27,7 +27,8 @@ export function ChecklistPanel({
     lockedReason,
 }: {
     procurementId: number;
-    title: string;
+    /** Left out where the surrounding tab already names the stage. */
+    title?: string;
     description?: string;
     rows: ChecklistRow[];
     editable: boolean;
@@ -54,9 +55,11 @@ export function ChecklistPanel({
         <section className="rounded-md border border-border bg-card">
             <header className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-1">
-                    <h2 className="text-sm font-semibold text-foreground">
-                        {title}
-                    </h2>
+                    {title && (
+                        <h2 className="text-sm font-semibold text-foreground">
+                            {title}
+                        </h2>
+                    )}
                     {description && (
                         <p className="text-xs text-muted-foreground">
                             {description}

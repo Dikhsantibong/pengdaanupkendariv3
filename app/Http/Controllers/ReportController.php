@@ -66,7 +66,7 @@ class ReportController extends Controller
         fputcsv($handle, [
             'Nomor Pengadaan', 'Nama Pengadaan', 'Nama Mitra/Pelaksana', 'Direksi Pekerjaan', 'Unit Tujuan',
             'Metode Pengadaan', 'Sumber Anggaran', 'Nomor PR/PO', 'Nomor PRK',
-            'Nomor Nota Dinas Usulan', 'Nomor Nota Dinas ICC', 'Nomor COA', 'Nomor WO',
+            'Nomor Nota Dinas Usulan', 'Nomor Nota Dinas ICC', 'Nomor COA', 'Nomor WO', 'Nomor SR',
             'Nilai Sebelum Nego', 'Nilai Setelah Nego', 'Status Progres', 'PIC Perencana', 'PIC Pelaksana',
             'Status Persetujuan', 'Dibuat',
         ]);
@@ -86,6 +86,7 @@ class ReportController extends Controller
                 $procurement->icc_memo_number ?? '-',
                 $procurement->coa_number ?? '-',
                 $procurement->wo_number ?? '-',
+                $procurement->sr_number ?? '-',
                 number_format((float) $procurement->hpe_value, 2, ',', '.'),
                 $procurement->value_after_negotiation === null
                     ? '-'
