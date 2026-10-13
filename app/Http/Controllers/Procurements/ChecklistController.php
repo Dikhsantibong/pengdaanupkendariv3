@@ -80,8 +80,9 @@ class ChecklistController extends Controller
 
         // A step that produces documents is only finished once every signed
         // copy is filed, which is what stops an unevidenced stage from moving
-        // on to the next one.
-        if ($isCompleted && $checklist->checklistItem->requiresDocument()) {
+        // on to the next one. An optional step may be ticked without them:
+        // its document is filed only when the job actually needs it.
+        if ($isCompleted && ! $checklist->checklistItem->is_optional && $checklist->checklistItem->requiresDocument()) {
             $procurement->loadMissing('documents');
 
             $missing = $checklist->checklistItem->missingDocuments(

@@ -392,7 +392,8 @@ Sebelum proses perencanaan dimulai, **Team Leader Pengadaan** wajib menunjuk **1
 | PR / RO — opsional | Centang |
 
 - Tahapan **unggah saja** tidak menampilkan tombol generate maupun edit: dokumen disiapkan di luar sistem, diunggah (boleh beberapa berkas, PDF/JPG/PNG), lalu tahapan dapat dicentang dan lanjut ke tahap berikutnya.
-- Tahapan yang memiliki dokumen tetap **wajib diunggah** sebelum dapat dicentang.
+- Tahapan wajib yang memiliki dokumen tetap **wajib diunggah** sebelum dapat dicentang.
+- Tahapan **opsional** (mis. CSMS, Amandemen) dapat langsung dicentang tanpa dokumen; dokumennya tetap bisa diunggah bila pekerjaan memerlukannya. Sifat opsional diatur di **Data Master → Item Checklist**.
 - Sifat "unggah saja" diatur per jenis dokumen di **Data Master → Jenis Dokumen** (saklar *Hanya diunggah (tanpa generate)*).
 
 ### Susunan Tahapan per Format Kontrak & Metode

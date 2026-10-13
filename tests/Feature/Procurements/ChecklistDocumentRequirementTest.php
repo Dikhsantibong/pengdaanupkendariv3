@@ -211,6 +211,23 @@ class ChecklistDocumentRequirementTest extends TestCase
         $this->assertTrue($checklist->refresh()->is_completed);
     }
 
+    public function test_an_optional_step_is_ticked_without_its_document(): void
+    {
+        [$procurement, $planner, $checklist] = $this->planningStep('CSMS (Sertifikat)');
+
+        $this->assertTrue($checklist->checklistItem->is_optional);
+        $this->assertTrue($checklist->checklistItem->requiresDocument());
+
+        $this->actingAs($planner)
+            ->put(route('procurements.checklists.update', [$procurement, $checklist]), [
+                'is_completed' => true,
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertTrue($checklist->refresh()->is_completed);
+    }
+
     public function test_unticking_a_step_never_needs_a_document(): void
     {
         [$procurement, $planner, $checklist] = $this->planningStep('HPE (Harga Perkiraan Engineer)');
