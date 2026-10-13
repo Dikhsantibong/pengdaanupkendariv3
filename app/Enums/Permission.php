@@ -27,12 +27,14 @@ enum Permission: string
     case AssignPic = 'procurement.assign-pic';
     case ReviewPlanning = 'procurement.review-planning';
     case CompleteProcurement = 'procurement.complete';
+    case ProcessPayment = 'procurement.process-payment';
     case ViewAllProcurements = 'procurement.view-all';
     case ManageVendorAssessments = 'vendor-assessments.manage';
     case ManageMasterData = 'master-data.manage';
     case MenuProposals = 'menu.proposals';
     case MenuPlanning = 'menu.planning';
     case MenuExecution = 'menu.execution';
+    case MenuFinance = 'menu.finance';
     case MenuApprovals = 'menu.approvals';
     case MenuDocuments = 'menu.documents';
     case MenuMonitoring = 'menu.monitoring';
@@ -53,12 +55,14 @@ enum Permission: string
             self::AssignPic => 'Tunjuk PIC perencana & pelaksana',
             self::ReviewPlanning => 'Setujui / tolak perencanaan',
             self::CompleteProcurement => 'Nyatakan pengadaan selesai',
+            self::ProcessPayment => 'Proses pembayaran (Keuangan)',
             self::ViewAllProcurements => 'Lihat seluruh pengadaan',
             self::ManageVendorAssessments => 'Kelola penilaian penyedia',
             self::ManageMasterData => 'Kelola data master',
             self::MenuProposals => 'Menu Usulan Pekerjaan',
             self::MenuPlanning => 'Menu Perencanaan',
             self::MenuExecution => 'Menu Pelaksanaan',
+            self::MenuFinance => 'Menu Keuangan',
             self::MenuApprovals => 'Menu Approval',
             self::MenuDocuments => 'Menu Arsip Dokumen',
             self::MenuMonitoring => 'Menu Monitoring',
@@ -74,19 +78,21 @@ enum Permission: string
     {
         return match ($this) {
             self::CreateProcurement => 'Membuka menu Buat Perencanaan Pengadaan dan mendaftarkan pengadaan baru.',
-            self::ProposeWork => 'Mengajukan usulan pekerjaan untuk bidangnya. Usulan baru masuk perencanaan setelah disetujui Direksi Pekerjaan bidang tersebut.',
+            self::ProposeWork => 'Mengajukan usulan pekerjaan untuk bidangnya. Usulan disetujui TL atasan langsung, lalu Direksi Pekerjaan (Asman) bidang tersebut, sebelum masuk perencanaan.',
             self::ApproveProposal => 'Meninjau lalu menyetujui atau mengembalikan usulan pekerjaan dari bidang yang dipimpinnya, serta melihat seluruh pengadaan bidang tersebut.',
             self::UpdateProcurement => 'Mengubah identitas dan usulan pekerjaan pada pengadaan yang dapat dilihat.',
             self::DeleteProcurement => 'Mengarsipkan pengadaan yang dapat dilihat.',
             self::AssignPic => 'Membuka menu Penunjukan PIC dan mengganti PIC pada pengadaan.',
             self::ReviewPlanning => 'Menyetujui, menolak, atau membuka kembali penolakan perencanaan. Tidak berlaku untuk perencanaan yang diajukan oleh dirinya sendiri.',
             self::CompleteProcurement => 'Menutup pengadaan yang sudah selesai.',
+            self::ProcessPayment => 'Memverifikasi dokumen tagihan, mencatat pembayaran, lalu menutup pengadaan yang sudah diserahkan ke Keuangan, serta melihat pengadaan tersebut.',
             self::ViewAllProcurements => 'Melihat seluruh pengadaan, bukan hanya yang ditugaskan atau dibuat sendiri.',
             self::ManageVendorAssessments => 'Membuat, mengisi, dan mengirim formulir penilaian kinerja penyedia.',
             self::ManageMasterData => 'Mengubah seluruh data master.',
             self::MenuProposals => 'Menampilkan dan membuka halaman Usulan Pekerjaan (usulan sendiri dan antrean persetujuan).',
             self::MenuPlanning => 'Menampilkan dan membuka papan Perencanaan.',
             self::MenuExecution => 'Menampilkan dan membuka papan Pelaksanaan.',
+            self::MenuFinance => 'Menampilkan dan membuka papan Keuangan (antrean pembayaran).',
             self::MenuApprovals => 'Menampilkan dan membuka antrean Approval.',
             self::MenuDocuments => 'Menampilkan dan membuka Arsip Dokumen.',
             self::MenuMonitoring => 'Menampilkan dan membuka Monitoring.',
@@ -109,12 +115,14 @@ enum Permission: string
             self::AssignPic,
             self::ReviewPlanning,
             self::CompleteProcurement,
+            self::ProcessPayment,
             self::ViewAllProcurements => 'Pengadaan',
             self::ManageVendorAssessments => 'Penilaian Penyedia',
             self::ManageMasterData => 'Administrasi',
             self::MenuProposals,
             self::MenuPlanning,
             self::MenuExecution,
+            self::MenuFinance,
             self::MenuApprovals,
             self::MenuDocuments,
             self::MenuMonitoring,
@@ -140,11 +148,14 @@ enum Permission: string
             self::AssignPic,
             self::CompleteProcurement => [UserRole::TeamLeaderPengadaan],
             self::ReviewPlanning => [UserRole::TeamLeaderIcc],
-            self::ProposeWork => [UserRole::Pengusul, UserRole::DireksiPekerjaan],
+            self::ProposeWork => [UserRole::Pengusul, UserRole::DireksiPekerjaan, UserRole::Keuangan],
+            self::ProcessPayment => [UserRole::Keuangan],
+            self::MenuFinance => [UserRole::Keuangan, UserRole::TeamLeaderPengadaan, UserRole::TeamLeaderIcc],
             self::ApproveProposal => [UserRole::DireksiPekerjaan],
             self::MenuProposals => [
                 UserRole::Pengusul,
                 UserRole::DireksiPekerjaan,
+                UserRole::Keuangan,
                 UserRole::TeamLeaderPengadaan,
                 UserRole::TeamLeaderIcc,
             ],

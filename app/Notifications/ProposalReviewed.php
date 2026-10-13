@@ -14,6 +14,8 @@ class ProposalReviewed extends Notification
         public Procurement $procurement,
         public bool $approved,
         public ?string $note = null,
+        /** Approved by the team leader and passed on to the Asman. */
+        public bool $forwarded = false,
     ) {}
 
     /**
@@ -34,10 +36,16 @@ class ProposalReviewed extends Notification
     public function toArray(object $notifiable): array
     {
         return [
-            'title' => $this->approved ? 'Usulan pekerjaan disetujui' : 'Usulan pekerjaan dikembalikan',
-            'message' => $this->approved
+            'title' => match (true) {
+                ! $this->approved => 'Usulan pekerjaan dikembalikan',
+                $this->forwarded => 'Usulan pekerjaan disetujui TL',
+                default => 'Usulan pekerjaan disetujui',
+            },
+            'message' => $this->forwarded
+                ? "Usulan {$this->procurement->name} disetujui TL dan menunggu persetujuan Asman."
+                : ($this->approved
                 ? "Usulan {$this->procurement->name} disetujui Direksi Pekerjaan dan diteruskan ke perencanaan."
-                : "Usulan {$this->procurement->name} dikembalikan untuk diperbaiki.".($this->note !== null ? " Catatan: {$this->note}" : ''),
+                : "Usulan {$this->procurement->name} dikembalikan untuk diperbaiki.".($this->note !== null ? " Catatan: {$this->note}" : '')),
             'procurement_id' => $this->procurement->id,
             'procurement_number' => $this->procurement->number,
         ];

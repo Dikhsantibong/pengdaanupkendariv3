@@ -47,6 +47,8 @@ type ManagedUser = {
     position: string | null;
     work_director_id: number | null;
     work_director: string | null;
+    team_leader_id: number | null;
+    team_leader: string | null;
     is_active: boolean;
     planned_count: number;
     executed_count: number;
@@ -58,6 +60,7 @@ type UserFormValues = {
     role: string;
     position: string;
     work_director_id: string;
+    team_leader_id: string;
     is_active: boolean;
     password: string;
     password_confirmation: string;
@@ -68,11 +71,13 @@ export default function UserIndex({
     filters,
     roles,
     divisions,
+    teamLeaders,
 }: {
     users: ManagedUser[];
     filters: { search: string | null; role: string | null };
     roles: EnumOption[];
     divisions: Array<{ value: number; label: string }>;
+    teamLeaders: Array<{ value: number; label: string }>;
 }) {
     const [search, setSearch] = useState(filters.search ?? '');
     const [editing, setEditing] = useState<ManagedUser | null>(null);
@@ -85,6 +90,7 @@ export default function UserIndex({
         role: roles[0]?.value ?? 'pic_perencana',
         position: '',
         work_director_id: NO_DIVISION,
+        team_leader_id: NO_DIVISION,
         is_active: true,
         password: '',
         password_confirmation: '',
@@ -142,6 +148,10 @@ export default function UserIndex({
                 user.work_director_id === null
                     ? NO_DIVISION
                     : String(user.work_director_id),
+            team_leader_id:
+                user.team_leader_id === null
+                    ? NO_DIVISION
+                    : String(user.team_leader_id),
             is_active: user.is_active,
             password: '',
             password_confirmation: '',
@@ -166,6 +176,10 @@ export default function UserIndex({
                 data.work_director_id === NO_DIVISION
                     ? null
                     : Number(data.work_director_id),
+            team_leader_id:
+                data.team_leader_id === NO_DIVISION
+                    ? null
+                    : Number(data.team_leader_id),
         }));
 
         if (editing === null) {
@@ -281,6 +295,11 @@ export default function UserIndex({
                                         </TableCell>
                                         <TableCell>
                                             {user.work_director ?? '—'}
+                                            {user.team_leader && (
+                                                <span className="block text-xs text-muted-foreground">
+                                                    TL: {user.team_leader}
+                                                </span>
+                                            )}
                                         </TableCell>
                                         <TableCell className="tabular text-xs text-muted-foreground">
                                             {user.planned_count} perencanaan ·{' '}
@@ -478,6 +497,48 @@ export default function UserIndex({
                             <InputError
                                 message={form.errors.work_director_id}
                             />
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="user-team-leader">
+                                TL / Atasan Langsung
+                            </Label>
+                            <Select
+                                value={form.data.team_leader_id}
+                                onValueChange={(value) =>
+                                    form.setData('team_leader_id', value)
+                                }
+                            >
+                                <SelectTrigger
+                                    id="user-team-leader"
+                                    className="w-full"
+                                >
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={NO_DIVISION}>
+                                        Tidak ada (langsung ke Asman)
+                                    </SelectItem>
+                                    {teamLeaders
+                                        .filter(
+                                            (leader) =>
+                                                leader.value !== editing?.id,
+                                        )
+                                        .map((leader) => (
+                                            <SelectItem
+                                                key={leader.value}
+                                                value={String(leader.value)}
+                                            >
+                                                {leader.label}
+                                            </SelectItem>
+                                        ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                                Usulan pekerjaan staf disetujui TL ini dulu,
+                                lalu Asman bidangnya.
+                            </p>
+                            <InputError message={form.errors.team_leader_id} />
                         </div>
 
                         <div className="grid gap-4 sm:grid-cols-2">

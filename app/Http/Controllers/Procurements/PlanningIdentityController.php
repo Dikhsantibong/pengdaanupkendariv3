@@ -9,6 +9,7 @@ use App\Models\ContractType;
 use App\Models\Procurement;
 use App\Services\DocumentGenerator;
 use App\Services\ProcurementService;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 
@@ -45,6 +46,10 @@ class PlanningIdentityController extends Controller
             );
         }
 
+        if ($request->has('target_completion_date')) {
+            $changes[] = $this->applyTargetDate($procurement, $request->date('target_completion_date')?->toImmutable()->startOfDay());
+        }
+
         $changes = array_filter($changes);
 
         if ($changes === []) {
@@ -63,6 +68,7 @@ class PlanningIdentityController extends Controller
             [
                 'contract_type_id' => $procurement->contract_type_id,
                 'manager_memo_number' => $procurement->manager_memo_number,
+                'target_completion_date' => $procurement->target_completion_date?->toDateString(),
             ],
         );
 
@@ -99,6 +105,24 @@ class PlanningIdentityController extends Controller
         return $previous === null
             ? "Jenis kontrak ditetapkan: {$current}."
             : "Jenis kontrak diubah dari {$previous} menjadi {$current}.";
+    }
+
+    /**
+     * Set the target completion date, returning what changed.
+     *
+     * It drives the target column, the S-curve and the overdue warnings.
+     */
+    protected function applyTargetDate(Procurement $procurement, ?CarbonImmutable $date): ?string
+    {
+        if ($procurement->target_completion_date?->toDateString() === $date?->toDateString()) {
+            return null;
+        }
+
+        $procurement->target_completion_date = $date;
+
+        return $date === null
+            ? 'Target selesai dikosongkan.'
+            : 'Target selesai ditetapkan: '.$date->translatedFormat('d F Y').'.';
     }
 
     /**

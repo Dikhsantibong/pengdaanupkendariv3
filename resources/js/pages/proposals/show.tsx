@@ -59,6 +59,9 @@ type Proposal = ProposalRow & {
     proposal_memo_number: string | null;
     proposal_memo_date: string | null;
     notes: string | null;
+    team_leader: string | null;
+    tl_reviewed_by: string | null;
+    tl_reviewed_at: string | null;
     reviewed_by: string | null;
     reviewed_at: string | null;
     review_note: string | null;
@@ -219,7 +222,13 @@ function DocumentViewer({
 }
 
 /** Approve, or return with a reason. */
-function DecisionPanel({ proposalId }: { proposalId: number }) {
+function DecisionPanel({
+    proposalId,
+    atTeamLeader,
+}: {
+    proposalId: number;
+    atTeamLeader: boolean;
+}) {
     const [returning, setReturning] = useState(false);
     const form = useForm<{ decision: 'approve' | 'return'; note: string }>({
         decision: 'approve',
@@ -259,8 +268,9 @@ function DecisionPanel({ proposalId }: { proposalId: number }) {
                         Kembalikan ke Pengusul
                     </Button>
                     <p className="text-xs text-muted-foreground">
-                        Usulan yang disetujui langsung diteruskan ke perencanaan
-                        pengadaan.
+                        {atTeamLeader
+                            ? 'Usulan yang Anda setujui diteruskan ke Asman bidang untuk persetujuan akhir.'
+                            : 'Usulan yang disetujui langsung masuk perencanaan untuk penunjukan PIC Perencana.'}
                     </p>
                 </div>
             ) : (
@@ -345,6 +355,12 @@ export default function ProposalShow({
     const details: Array<[string, string | null]> = [
         ['Bidang / Direksi Pekerjaan', proposal.division],
         [
+            'Persetujuan TL',
+            proposal.tl_reviewed_by
+                ? `${proposal.tl_reviewed_by} · ${formatDateTime(proposal.tl_reviewed_at)}`
+                : (proposal.team_leader ?? 'Tanpa TL (langsung ke Asman)'),
+        ],
+        [
             'Pengusul',
             [proposal.proposer, proposal.proposer_position]
                 .filter(Boolean)
@@ -404,7 +420,12 @@ export default function ProposalShow({
 
                     <aside className="flex min-h-0 flex-col gap-4 lg:overflow-y-auto">
                         {can.approve && (
-                            <DecisionPanel proposalId={proposal.id} />
+                            <DecisionPanel
+                                proposalId={proposal.id}
+                                atTeamLeader={
+                                    proposal.state === 'menunggu_persetujuan_tl'
+                                }
+                            />
                         )}
 
                         {proposal.state === 'dikembalikan' && (

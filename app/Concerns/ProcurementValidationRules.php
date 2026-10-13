@@ -174,7 +174,7 @@ trait ProcurementValidationRules
         }
 
         $contractType = $this->filled('contract_type_id')
-            ? ContractType::query()->find($this->input('contract_type_id'))
+            ? ContractType::query()->find($this->integer('contract_type_id'))
             : null;
 
         $this->merge(['work_category' => $contractType?->work_category?->value]);

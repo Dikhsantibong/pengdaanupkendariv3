@@ -11,6 +11,7 @@ enum UserRole: string
     case PicPelaksana = 'pic_pelaksana';
     case DireksiPekerjaan = 'direksi_pekerjaan';
     case Pengusul = 'pengusul';
+    case Keuangan = 'keuangan';
 
     /**
      * Get the human readable label for the role.
@@ -25,6 +26,7 @@ enum UserRole: string
             self::PicPelaksana => 'PIC Pelaksana',
             self::DireksiPekerjaan => 'Direksi Pekerjaan (Asman/TL)',
             self::Pengusul => 'Pengusul (Staf/TL Bidang)',
+            self::Keuangan => 'Keuangan',
         };
     }
 

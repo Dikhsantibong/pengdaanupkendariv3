@@ -37,11 +37,12 @@ class ProposalController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $canApprove = $user->hasPermission(Permission::ApproveProposal);
+        $leadsDivision = $user->hasPermission(Permission::ApproveProposal);
+        $leadsTeam = $user->leadsTeam();
+        $canApprove = $leadsDivision || $leadsTeam || $user->role === UserRole::Administrator;
 
         $awaiting = $canApprove
-            ? $this->forApprover(Procurement::query(), $user)
-                ->where('proposal_state', ProposalState::MenungguPersetujuan->value)
+            ? $this->awaitingDecisionBy(Procurement::query(), $user)
                 ->with(['creator', 'workDirector', 'targetUnits', 'targetUnit'])
                 ->withCount('attachments')
                 ->oldest('proposal_submitted_at')
@@ -50,7 +51,9 @@ class ProposalController extends Controller
 
         $decided = $canApprove
             ? Procurement::query()
-                ->where('proposal_reviewed_by', $user->id)
+                ->where(fn (Builder $query) => $query
+                    ->where('proposal_reviewed_by', $user->id)
+                    ->orWhere('proposal_tl_reviewed_by', $user->id))
                 ->with(['creator', 'workDirector', 'targetUnits', 'targetUnit'])
                 ->withCount('attachments')
                 ->latest('proposal_reviewed_at')
@@ -85,11 +88,12 @@ class ProposalController extends Controller
         $this->authorize('view', $procurement);
 
         $procurement->load([
-            'creator', 'workDirector', 'targetUnits', 'targetUnit', 'procurementMethod',
-            'budgetSource', 'proposalReviewer', 'attachments.uploader',
+            'creator.teamLeader', 'workDirector', 'targetUnits', 'targetUnit', 'procurementMethod',
+            'budgetSource', 'proposalReviewer', 'proposalTeamLeaderReviewer', 'attachments.uploader',
             'activities' => fn ($query) => $query->whereIn('type', [
                 ActivityType::Dibuat->value,
                 ActivityType::UsulanDiajukan->value,
+                ActivityType::UsulanDisetujuiTl->value,
                 ActivityType::UsulanDisetujui->value,
                 ActivityType::UsulanDikembalikan->value,
             ])->with('user')->latest('id'),
@@ -107,7 +111,13 @@ class ProposalController extends Controller
                 'proposal_memo_number' => $procurement->proposal_memo_number,
                 'proposal_memo_date' => $procurement->proposal_memo_date?->toDateString(),
                 'notes' => $procurement->notes,
-                'reviewed_by' => $procurement->proposalReviewer?->name,
+                'team_leader' => $procurement->creator?->teamLeader?->name,
+                'tl_reviewed_by' => $procurement->proposalTeamLeaderReviewer?->name,
+                'tl_reviewed_at' => $procurement->proposal_tl_reviewed_at?->toIso8601String(),
+                'reviewed_by' => $procurement->proposal_state === ProposalState::Dikembalikan
+                    && $procurement->proposal_reviewed_by === null
+                    ? $procurement->proposalTeamLeaderReviewer?->name
+                    : $procurement->proposalReviewer?->name,
                 'reviewed_at' => $procurement->proposal_reviewed_at?->toIso8601String(),
                 'review_note' => $procurement->proposal_review_note,
                 // The generated TOR, read as a PDF and completed by the proposer.
@@ -240,20 +250,34 @@ class ProposalController extends Controller
     }
 
     /**
-     * Limit a query to the proposals the user may decide on.
+     * Limit a query to the proposals waiting on the user's decision.
+     *
+     * A team leader decides their staff's proposals first; the Direksi
+     * Pekerjaan then decides those of their division. The administrator sees
+     * both queues.
      *
      * @param  Builder<Procurement>  $query
      * @return Builder<Procurement>
      */
-    protected function forApprover(Builder $query, User $user): Builder
+    protected function awaitingDecisionBy(Builder $query, User $user): Builder
     {
         if ($user->role === UserRole::Administrator) {
-            return $query;
+            return $query->whereIn('proposal_state', [
+                ProposalState::MenungguPersetujuanTl->value,
+                ProposalState::MenungguPersetujuan->value,
+            ]);
         }
 
         return $query
-            ->where('work_director_id', $user->work_director_id ?? 0)
-            ->where('created_by', '!=', $user->id);
+            ->where('created_by', '!=', $user->id)
+            ->where(fn (Builder $levels) => $levels
+                ->where(fn (Builder $team) => $team
+                    ->where('proposal_state', ProposalState::MenungguPersetujuanTl->value)
+                    ->whereIn('created_by', User::query()->select('id')->where('team_leader_id', $user->id)))
+                ->when($user->hasPermission(Permission::ApproveProposal), fn (Builder $levels) => $levels
+                    ->orWhere(fn (Builder $division) => $division
+                        ->where('proposal_state', ProposalState::MenungguPersetujuan->value)
+                        ->where('work_director_id', $user->work_director_id ?? 0))));
     }
 
     /**

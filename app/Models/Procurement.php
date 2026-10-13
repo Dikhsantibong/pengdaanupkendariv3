@@ -40,6 +40,12 @@ use Illuminate\Support\Collection;
  * @property CarbonImmutable|null $proposal_submitted_at
  * @property CarbonImmutable|null $proposal_reviewed_at
  * @property int|null $proposal_reviewed_by
+ * @property CarbonImmutable|null $proposal_tl_reviewed_at
+ * @property int|null $proposal_tl_reviewed_by
+ * @property CarbonImmutable|null $finance_submitted_at
+ * @property int|null $finance_submitted_by
+ * @property CarbonImmutable|null $payment_completed_at
+ * @property int|null $payment_completed_by
  * @property string|null $proposal_review_note
  * @property string|null $manager_memo_number
  * @property string|null $pr_po_number
@@ -287,6 +293,116 @@ class Procurement extends Model
     }
 
     /**
+     * The team leader who decided on the proposal first.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function proposalTeamLeaderReviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'proposal_tl_reviewed_by')->withTrashed();
+    }
+
+    /**
+     * Who handed the job to Keuangan.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function financeSubmitter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'finance_submitted_by')->withTrashed();
+    }
+
+    /**
+     * Who recorded the payment and closed the job.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function paymentCompleter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'payment_completed_by')->withTrashed();
+    }
+
+    /**
+     * Whether the job has been handed to Keuangan and is still being paid.
+     */
+    public function isInFinance(): bool
+    {
+        return $this->finance_submitted_at !== null && $this->payment_completed_at === null;
+    }
+
+    /**
+     * Whether Keuangan has paid the partner.
+     */
+    public function isPaid(): bool
+    {
+        return $this->payment_completed_at !== null;
+    }
+
+    /**
+     * Where the job is in its journey, as a key and a label.
+     *
+     * @return array{key: string, label: string}
+     */
+    public function currentStage(): array
+    {
+        [$key, $label] = match (true) {
+            $this->completed_at !== null => ['selesai', 'Selesai'],
+            $this->finance_submitted_at !== null => ['keuangan', 'Keuangan'],
+            $this->isPlanningApproved() => ['pelaksanaan', 'Pelaksanaan'],
+            $this->isProposalApproved() => ['perencanaan', 'Perencanaan'],
+            default => ['usulan', 'Usulan'],
+        };
+
+        return ['key' => $key, 'label' => $label];
+    }
+
+    /**
+     * The procurement data still missing before planning documents are drawn.
+     *
+     * A job that came in as a work proposal has no method or contract
+     * category yet; its documents would otherwise pick the wrong template,
+     * so generating and submitting wait until procurement has filled them.
+     * A procurement registered directly already had them asked on its form.
+     *
+     * @return array<int, string>
+     */
+    public function missingPlanningData(): array
+    {
+        if ($this->proposal_submitted_at === null) {
+            return [];
+        }
+
+        $missing = [];
+
+        if ($this->procurement_method_id === null) {
+            $missing[] = 'Metode Pengadaan';
+        }
+
+        if ($this->contract_number_format_id === null) {
+            $missing[] = 'Jenis No Kontrak';
+        } elseif ($this->contractNumberFormat?->uses_work_category === true && $this->contract_type_id === null) {
+            $missing[] = 'Kategori Kontrak';
+        }
+
+        return $missing;
+    }
+
+    /**
+     * The mandatory steps of a stage that are still outstanding.
+     *
+     * @return Collection<int, ProcurementChecklist>
+     */
+    public function pendingRequiredChecklists(ProcurementStage $stage): Collection
+    {
+        return $this->checklists
+            ->where('stage', $stage)
+            ->where('is_completed', false)
+            ->filter(fn (ProcurementChecklist $checklist): bool => ! $checklist->checklistItem->is_optional)
+            ->sortBy(fn (ProcurementChecklist $checklist): int => $checklist->checklistItem->sort_order)
+            ->values();
+    }
+
+    /**
      * The Direksi Pekerjaan account that decided on the proposal.
      *
      * @return BelongsTo<User, $this>
@@ -399,15 +515,25 @@ class Procurement extends Model
         // every procurement of the division they lead.
         $leadsDivision = $user->work_director_id !== null
             && $user->hasPermission(Permission::ApproveProposal);
+        $paysPartners = $user->hasPermission(Permission::ProcessPayment);
 
-        return $query->where(function (Builder $builder) use ($user, $leadsDivision): void {
+        return $query->where(function (Builder $builder) use ($user, $leadsDivision, $paysPartners): void {
             $builder->where('planner_id', $user->id)
                 ->orWhere('executor_id', $user->id)
-                ->orWhere('created_by', $user->id);
+                ->orWhere('created_by', $user->id)
+                // A team leader follows the work their staff proposed.
+                ->orWhereIn($builder->qualifyColumn('created_by'), User::query()
+                    ->select('id')
+                    ->where('team_leader_id', $user->id));
 
             if ($leadsDivision) {
                 // Qualified: report queries join tables that share the column.
                 $builder->orWhere($builder->qualifyColumn('work_director_id'), $user->work_director_id);
+            }
+
+            // Keuangan sees every job handed to it.
+            if ($paysPartners) {
+                $builder->orWhereNotNull($builder->qualifyColumn('finance_submitted_at'));
             }
         });
     }
@@ -525,6 +651,9 @@ class Procurement extends Model
             'planning_submitted_at' => 'datetime',
             'planning_reviewed_at' => 'datetime',
             'completed_at' => 'datetime',
+            'finance_submitted_at' => 'datetime',
+            'payment_completed_at' => 'datetime',
+            'proposal_tl_reviewed_at' => 'datetime',
             'target_completion_date' => 'date',
             'proposal_memo_date' => 'date',
             'icc_memo_date' => 'date',

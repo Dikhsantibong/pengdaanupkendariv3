@@ -1,6 +1,10 @@
 export type StatusCategory = 'pending' | 'batal' | 'berjalan' | 'selesai';
 
-export type ProcurementStage = 'perencanaan' | 'pelaksanaan';
+export type ProcurementStage = 'perencanaan' | 'pelaksanaan' | 'keuangan';
+
+/** Where a job is in its journey, from proposal to closing. */
+export type CurrentStage =
+    'usulan' | 'perencanaan' | 'pelaksanaan' | 'keuangan' | 'selesai';
 
 export type PlanningApprovalState =
     'belum_diajukan' | 'menunggu_persetujuan' | 'disetujui' | 'ditolak';
@@ -76,6 +80,10 @@ export type ProcurementRow = {
     executor: UserRef | null;
     planning_approval_state: PlanningApprovalState;
     planning_approval_label: string;
+    current_stage: CurrentStage;
+    current_stage_label: string;
+    finance_submitted_at: string | null;
+    payment_completed_at: string | null;
     planning_progress?: ChecklistProgress;
     execution_progress?: ChecklistProgress;
     target_completion_date: string | null;

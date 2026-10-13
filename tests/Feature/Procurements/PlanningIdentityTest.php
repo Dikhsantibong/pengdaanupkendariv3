@@ -21,12 +21,12 @@ class PlanningIdentityTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_khs_and_lumsum_are_seeded(): void
+    public function test_the_default_contract_types_are_seeded(): void
     {
         $this->seed(MasterDataSeeder::class);
 
         $this->assertSame(
-            ['KHS', 'Lumsum'],
+            ['KHS', 'Lumsum', 'Barang', 'Jasa'],
             ContractType::query()->active()->ordered()->pluck('name')->all(),
         );
     }
@@ -68,7 +68,7 @@ class PlanningIdentityTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->where('can.updatePlanningIdentity', true)
-                ->has('options.contractTypes', 2)
+                ->has('options.contractTypes', 4)
                 ->where('procurement.contract_type', null)
                 ->where('procurement.contract_type_id', null)
             );

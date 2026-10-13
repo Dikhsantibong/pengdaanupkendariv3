@@ -43,6 +43,16 @@ class ProcurementWorkflowTest extends TestCase
         $this->assertSame($executor->id, $procurement->executor_id);
 
         Notification::assertSentTo($planner, ProcurementAssigned::class);
+
+        // Execution cannot start yet: the executor hears once planning is approved.
+        Notification::assertNotSentTo($executor, ProcurementAssigned::class);
+
+        $approved = Procurement::factory()->planningApproved()->create();
+
+        $this->actingAs($teamLeader)
+            ->put(route('procurements.pic.update', $approved), ['executor_id' => $executor->id])
+            ->assertRedirect();
+
         Notification::assertSentTo($executor, ProcurementAssigned::class);
     }
 
@@ -205,10 +215,19 @@ class ProcurementWorkflowTest extends TestCase
         ]);
     }
 
-    public function test_team_leader_can_close_out_an_approved_procurement(): void
+    public function test_closing_out_waits_for_keuangan_to_pay(): void
     {
         $teamLeader = User::factory()->teamLeader()->create();
         $procurement = Procurement::factory()->planningApproved()->create();
+
+        // An executed job is closed by Keuangan's payment, not by hand.
+        $this->actingAs($teamLeader)
+            ->post(route('procurements.completion.store', $procurement))
+            ->assertForbidden();
+
+        $this->assertNull($procurement->refresh()->completed_at);
+
+        $procurement->forceFill(['payment_completed_at' => now()])->save();
 
         $this->actingAs($teamLeader)
             ->post(route('procurements.completion.store', $procurement))

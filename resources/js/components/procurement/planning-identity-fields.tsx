@@ -70,6 +70,43 @@ export function ContractTypePicker({
 }
 
 /**
+ * Set the date the job should be finished by.
+ *
+ * It drives the target column, the S-curve and the overdue warnings, so it
+ * is saved as soon as a date is picked.
+ */
+export function TargetDateField({
+    procurementId,
+    value,
+}: {
+    procurementId: number;
+    value: string | null;
+}) {
+    const current = value ?? '';
+
+    return (
+        <Input
+            key={current}
+            type="date"
+            defaultValue={current}
+            onChange={(event) => {
+                const next = event.target.value;
+
+                if (next === current) {
+                    return;
+                }
+
+                save(procurementId, {
+                    target_completion_date: next === '' ? null : next,
+                });
+            }}
+            aria-label="Target selesai"
+            className="tabular ml-auto h-8 w-44 text-sm"
+        />
+    );
+}
+
+/**
  * Type in the manager's memo number that hands the work to procurement.
  *
  * Saved on blur or Enter rather than on every keystroke, so a half-typed

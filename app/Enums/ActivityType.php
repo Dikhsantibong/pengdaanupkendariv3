@@ -6,6 +6,7 @@ enum ActivityType: string
 {
     case Dibuat = 'dibuat';
     case UsulanDiajukan = 'usulan_diajukan';
+    case UsulanDisetujuiTl = 'usulan_disetujui_tl';
     case UsulanDisetujui = 'usulan_disetujui';
     case UsulanDikembalikan = 'usulan_dikembalikan';
     case Diperbarui = 'diperbarui';
@@ -18,6 +19,8 @@ enum ActivityType: string
     case DokumenDigenerate = 'dokumen_digenerate';
     case DokumenDiedit = 'dokumen_diedit';
     case DokumenDitandatangani = 'dokumen_ditandatangani';
+    case DiajukanKeKeuangan = 'diajukan_ke_keuangan';
+    case PembayaranSelesai = 'pembayaran_selesai';
     case PengadaanSelesai = 'pengadaan_selesai';
 
     /**
@@ -28,7 +31,8 @@ enum ActivityType: string
         return match ($this) {
             self::Dibuat => 'Pengadaan Dibuat',
             self::UsulanDiajukan => 'Usulan Diajukan',
-            self::UsulanDisetujui => 'Usulan Disetujui Direksi Pekerjaan',
+            self::UsulanDisetujui => 'Usulan Disetujui Asman',
+            self::UsulanDisetujuiTl => 'Usulan Disetujui TL',
             self::UsulanDikembalikan => 'Usulan Dikembalikan',
             self::Diperbarui => 'Data Diperbarui',
             self::StatusDiubah => 'Status Diubah',
@@ -40,6 +44,8 @@ enum ActivityType: string
             self::DokumenDigenerate => 'Dokumen Digenerate',
             self::DokumenDiedit => 'Dokumen Diedit',
             self::DokumenDitandatangani => 'Dokumen Bertanda Tangan Diunggah',
+            self::DiajukanKeKeuangan => 'Diserahkan ke Keuangan',
+            self::PembayaranSelesai => 'Pembayaran Selesai',
             self::PengadaanSelesai => 'Pengadaan Selesai',
         };
     }

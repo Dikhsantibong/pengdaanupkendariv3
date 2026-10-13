@@ -10,6 +10,10 @@ namespace App\Enums;
  */
 enum ProposalState: string
 {
+    /** Waiting for the proposer's team leader. */
+    case MenungguPersetujuanTl = 'menunggu_persetujuan_tl';
+
+    /** Waiting for the division's Direksi Pekerjaan (its Asman). */
     case MenungguPersetujuan = 'menunggu_persetujuan';
     case Dikembalikan = 'dikembalikan';
     case Disetujui = 'disetujui';
@@ -20,7 +24,8 @@ enum ProposalState: string
     public function label(): string
     {
         return match ($this) {
-            self::MenungguPersetujuan => 'Menunggu Persetujuan Direksi Pekerjaan',
+            self::MenungguPersetujuanTl => 'Menunggu Persetujuan TL',
+            self::MenungguPersetujuan => 'Menunggu Persetujuan Asman',
             self::Dikembalikan => 'Dikembalikan ke Pengusul',
             self::Disetujui => 'Disetujui Direksi Pekerjaan',
         };

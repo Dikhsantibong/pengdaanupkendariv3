@@ -171,6 +171,8 @@ class ProcurementController extends Controller
             'executor',
             'planningReviewer',
             'creator',
+            'financeSubmitter',
+            'paymentCompleter',
             'checklists.checklistItem.documentTypes',
             'checklists.completedBy',
             'documents.documentType',
@@ -197,10 +199,26 @@ class ProcurementController extends Controller
                 'is_planner' => $procurement->planner_id === $user->id,
                 'planner_name' => $procurement->planner?->name,
                 'planning_revision' => $procurement->planning_revision,
+                // What procurement still has to fill in before a proposed job
+                // can have its planning documents drawn and submitted.
+                'missing_planning_data' => $procurement->missingPlanningData(),
+                'finance' => [
+                    'submitted_at' => $procurement->finance_submitted_at?->toDateTimeString(),
+                    'submitted_by' => $procurement->financeSubmitter?->name,
+                    'paid_at' => $procurement->payment_completed_at?->toDateTimeString(),
+                    'paid_by' => $procurement->paymentCompleter?->name,
+                    'pending_execution' => $procurement->pendingRequiredChecklists(ProcurementStage::Pelaksanaan)
+                        ->map(fn ($checklist): string => $checklist->checklistItem->name)
+                        ->all(),
+                    'pending_finance' => $procurement->pendingRequiredChecklists(ProcurementStage::Keuangan)
+                        ->map(fn ($checklist): string => $checklist->checklistItem->name)
+                        ->all(),
+                ],
             ],
             'checklists' => [
                 'perencanaan' => $this->checklistPayload($procurement, ProcurementStage::Perencanaan),
                 'pelaksanaan' => $this->checklistPayload($procurement, ProcurementStage::Pelaksanaan),
+                'keuangan' => $this->checklistPayload($procurement, ProcurementStage::Keuangan),
             ],
             'documents' => $procurement->documents
                 ->sortByDesc('generated_at')
@@ -237,6 +255,9 @@ class ProcurementController extends Controller
                 'updatePlanningIdentity' => $user->can('updatePlanningIdentity', $procurement),
                 'updatePlanningChecklist' => $user->can('updatePlanningChecklist', $procurement),
                 'updateExecutionChecklist' => $user->can('updateExecutionChecklist', $procurement),
+                'updateFinanceChecklist' => $user->can('updateFinanceChecklist', $procurement),
+                'submitToFinance' => $user->can('submitToFinance', $procurement),
+                'completePayment' => $user->can('completePayment', $procurement),
                 'submitPlanning' => $user->can('submitPlanning', $procurement),
                 'reviewPlanning' => $user->can('reviewPlanning', $procurement),
                 'revertPlanningRejection' => $user->can('revertPlanningRejection', $procurement),

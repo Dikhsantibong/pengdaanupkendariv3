@@ -41,6 +41,19 @@ class DocumentController extends Controller
 
         $documentType = DocumentType::query()->findOrFail($request->integer('document_type_id'));
 
+        // A proposed job is only drafted once procurement has filled in what
+        // picks its template.
+        $missing = $procurement->missingPlanningData();
+
+        if ($missing !== []) {
+            Inertia::flash('toast', [
+                'type' => 'error',
+                'message' => 'Lengkapi dulu '.implode(', ', $missing).' pada data pengadaan sebelum membuat dokumen.',
+            ]);
+
+            return back();
+        }
+
         try {
             $document = $this->generator->generate($procurement, $documentType, $request->user());
         } catch (RuntimeException $exception) {

@@ -355,14 +355,19 @@ Pekerjaan dapat berawal dari bidang pengguna:
    12. **TOR** — tidak diunggah, melainkan **digenerate otomatis** dari template TOR saat usulan dikirim. Pengusul melengkapi isinya lewat tombol **Edit TOR** di halaman usulan (selama usulan belum disetujui).
 
    Nomor yang lebih dari satu diisi per baris (tombol *Tambah*) dan disimpan sebagai satu daftar dipisah koma (`{{nomor_prk}}`, `{{nomor_sr}}`, dst. di dokumen menampilkan seluruh daftar). Metode pengadaan, nilai, calon mitra, nota dinas ke manager, dan catatan diisi kemudian oleh pengadaan/perencana setelah usulan disetujui (inputan perencana akan disesuaikan lagi). Status usulan: **Menunggu Persetujuan**.
-2. **Direksi Pekerjaan** (Asman bidang, atau TL untuk K3 KAM dan Lingkungan, peran `direksi_pekerjaan`) menerima notifikasi dan melihat usulan pada menu **Usulan Pekerjaan** dan kartu dashboard. Halaman **Tinjau Usulan** menampilkan PDF TOR (dan lampiran lain bila ada) berukuran besar di kiri dan ringkasan data serta tombol **Setujui Usulan** / **Kembalikan ke Pengusul** di kanan. Mengembalikan wajib disertai catatan.
-3. Usulan yang **dikembalikan** dapat diperbaiki pengusul (ubah data, tambah/hapus lampiran) lalu **Ajukan Ulang**.
-4. Usulan yang **disetujui** baru masuk ke pipeline pengadaan: muncul di Penunjukan PIC, Perencanaan, Monitoring Publik, dan TL Pengadaan/TL ICC mendapat notifikasi. Sebelum disetujui, usulan tidak tampil di perencanaan dan PIC tidak dapat ditunjuk.
+2. **Persetujuan dua tingkat.** Usulan staf lebih dulu disetujui **TL atasan langsung** pengusul (status *Menunggu Persetujuan TL*), lalu **Direksi Pekerjaan / Asman** bidang (status *Menunggu Persetujuan Asman*). TL atasan diatur per akun di **Manajemen Pengguna → TL / Atasan Langsung** (`users.team_leader_id`); siapa pun yang menjadi atasan staf otomatis mendapat antrean persetujuan di menu Usulan Pekerjaan dan dashboard. Usulan dari TL sendiri, atau dari staf tanpa TL, langsung ke Asman. Jika TL atasan sekaligus Direksi Pekerjaan bidangnya (K3 KAM, Lingkungan), cukup satu kali persetujuan.
+   **Direksi Pekerjaan** (Asman bidang, atau TL untuk K3 KAM dan Lingkungan, peran `direksi_pekerjaan`) menerima notifikasi setelah TL menyetujui dan melihat usulan pada menu **Usulan Pekerjaan** dan kartu dashboard. Halaman **Tinjau Usulan** menampilkan PDF TOR (dan lampiran lain bila ada) berukuran besar di kiri dan ringkasan data serta tombol **Setujui Usulan** / **Kembalikan ke Pengusul** di kanan. Mengembalikan wajib disertai catatan.
+3. Usulan yang **dikembalikan** (oleh TL maupun Asman) dapat diperbaiki pengusul (ubah data, tambah/hapus lampiran) lalu **Ajukan Ulang**; pengajuan ulang mulai lagi dari TL.
+4. Usulan yang **disetujui Asman** langsung masuk perencanaan untuk **penunjukan PIC Perencana** oleh TL Pengadaan: muncul di Penunjukan PIC, Perencanaan, Monitoring Publik, dan TL Pengadaan/TL ICC mendapat notifikasi. Sebelum disetujui, usulan tidak tampil di perencanaan dan PIC tidak dapat ditunjuk.
 5. Direksi Pekerjaan yang mengusulkan untuk bidangnya sendiri langsung berstatus disetujui. Direksi Pekerjaan tidak dapat menyetujui usulan bidang lain maupun usulannya sendiri.
 
 Hak akses terkait (dapat diatur di menu Hak Akses): `procurement.propose` (Mengusulkan Pekerjaan), `procurement.approve-proposal` (Menyetujui Usulan), `menu.proposals` (menu Usulan Pekerjaan). Bidang setiap akun diatur pada **Manajemen Pengguna → Bidang (Direksi Pekerjaan)**, wajib untuk peran Pengusul dan Direksi Pekerjaan.
 
 Akun bidang dibuat oleh `DivisionUserSeeder` (`php artisan db:seed --class=DivisionUserSeeder`), hanya membuat akun yang belum ada (password awal `password`, email `nama.lengkap@upkendari.go.id`). Akun Asman dibuat atas nama jabatan (`asman.operasi@`, `asman.engineering@`, `asman.pemeliharaan@`, `asman.bs@`) karena nama orangnya belum ditentukan, dan dapat diganti lewat Manajemen Pengguna. TL K3 KAM (Musriadi) dan TL Lingkungan (Sadri) berperan sebagai Direksi Pekerjaan bidangnya; Muhammad Amrullah sebagai Team Leader Pengadaan; Bastial tetap PIC Perencana.
+
+Nomor usulan: usulan mendapat nomor sementara berawalan **USL/** (mis. `USL/2026/10/0001`) sampai pengadaan memberi nomor kontrak.
+
+Setelah usulan disetujui, **TL Pengadaan** melengkapi data yang tidak diketahui bidang (Metode Pengadaan, Jenis No Kontrak & Kategori, nomor kontrak, nilai, calon mitra) lewat **Ubah Data**. Selama Metode, Jenis No Kontrak, dan Kategori (untuk SPK/PJ) belum terisi, dokumen perencanaan belum bisa digenerate dan perencanaan belum bisa diajukan — tab Perencanaan menampilkan peringatan data apa yang kurang. *(Inputan lanjutan untuk perencana menunggu daftar dari pengguna.)*
 
 ## 0b. Tahap Pembuatan Pengadaan
 
@@ -458,11 +463,13 @@ Setelah dokumen perencanaan disetujui, **Team Leader Pengadaan** menunjuk **1 or
 - **Generate dokumen hanya pada Berita Acara dan Kontrak**; tahapan lain cukup diunggah.
 - **Penyusunan Kontrak dihapus** (dinonaktifkan) untuk semua format.
 
-### Kategori Barang / Jasa (SPK & PJ)
+### Kategori Kontrak (SPK & PJ) dari Data Master Jenis Kontrak
 
-- Saat **Jenis No Kontrak** SPK atau PJ dipilih di form Buat/Ubah Pengadaan, muncul pilihan wajib **Barang** atau **Jasa**. Format lain (mis. SPPL) tidak meminta kategori.
+- Saat **Jenis No Kontrak** SPK atau PJ dipilih di form Buat/Ubah Pengadaan, muncul pilihan wajib **Kategori SPK/PJ** yang diambil dari **Data Master → Jenis Kontrak** (bawaan: KHS, Lumsum, Barang, Jasa; dapat ditambah/diubah). Format lain (mis. SPPL) tidak meminta kategori.
+- Setiap Jenis Kontrak memiliki **Format Dokumen** (Umum / Barang / Jasa) yang menentukan template SPK/PJ yang digenerate. Kategori Barang/Jasa pengadaan (`work_category`) tidak lagi dipilih manual, melainkan otomatis mengikuti Jenis Kontrak yang dipilih.
+- Jenis Kontrak yang sama tampil (dan dapat diubah PIC Perencana sebelum perencanaan disetujui) pada panel identitas di detail pengadaan; mengubahnya di sana ikut memperbarui format dokumen.
 - Format mana yang meminta kategori diatur di **Data Master → Format No Kontrak** (sakelar "Pilih Barang / Jasa").
-- Kategori tampil di detail pengadaan dan tersedia sebagai placeholder `{{kategori_pekerjaan}}`.
+- Jenis kontrak tersedia sebagai placeholder `{{jenis_kontrak}}`, format dokumennya sebagai `{{kategori_pekerjaan}}`.
 - **Template Dokumen** dapat dibatasi per **Metode**, per **Format No Kontrak** (SPK/PJ/SPPL), dan per **Kategori** (Barang/Jasa). Saat generate, template paling spesifik yang cocok dipakai (metode → format → kategori → versi terbaru); template tanpa batasan menjadi cadangan. Mengaktifkan template satu kategori/format tidak menonaktifkan template kategori/format lain.
 - Template terpasang:
   - **SPK Jasa**: format perjanjian 20 pasal (lingkup pekerjaan).
@@ -536,10 +543,35 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 
 ### Output
 
-- Pengadaan selesai.
 - Kontrak / Surat Pesanan selesai.
 - Masa pemeliharaan / masa garansi selesai.
 - Arsip dokumen lengkap.
+- Setelah seluruh tahapan **wajib** pelaksanaan selesai, PIC Pelaksana (atau TL) menekan **Serahkan ke Keuangan**. Sejak itu checklist pelaksanaan terkunci.
+
+## 3. Tahap Keuangan
+
+- Pengadaan yang diserahkan muncul di menu **Keuangan** (antrean *Menunggu Pembayaran*, total nilai tagihan, dan riwayat *Sudah Dibayar*) serta kartu dashboard **Tagihan Menunggu Pembayaran**, dan seluruh akun Keuangan mendapat notifikasi.
+- Peran **Keuangan** (`keuangan`) mengerjakan tab **Keuangan** di detail pengadaan. Tahapan bawaan (dapat diubah di **Data Master → Item Checklist**, tahap *Keuangan*; dokumennya di **Jenis Dokumen**, semua *unggah saja*):
+
+| Tahapan | Dokumen | Sifat |
+|---------|---------|-------|
+| Penerimaan Tagihan | Invoice / Surat Tagihan, Kuitansi | Wajib |
+| Berita Acara Serah Terima | BAST | Wajib |
+| Faktur Pajak | Faktur Pajak | Opsional |
+| Verifikasi Dokumen Tagihan | — (centang) | Wajib |
+| Pengajuan Pembayaran | Dokumen Pengajuan Pembayaran | Wajib |
+| Pembayaran ke Mitra | Bukti Transfer Pembayaran | Wajib |
+
+- Setelah semua tahapan wajib selesai, Keuangan menekan **Pembayaran Lunas & Tutup Pengadaan**: pengadaan ditutup (`completed_at`), status progres otomatis menjadi **Selesai**, dan pengusul, TL, Asman, PIC Pelaksana, serta TL Pengadaan/ICC mendapat notifikasi.
+- Pengadaan tidak lagi bisa ditutup manual sebelum dibayar (hak `procurement.complete` hanya berlaku untuk pengadaan yang sudah lunas).
+- Hak akses: `procurement.process-payment` (Proses pembayaran, bawaan: Keuangan) dan `menu.finance` (Menu Keuangan, bawaan: Keuangan, TL Pengadaan, TL ICC). Keuangan juga dapat mengusulkan pekerjaan.
+
+## Penyempurnaan Alur
+
+- **Target Selesai** diisi PIC Perencana (atau TL) di panel identitas detail pengadaan; dipakai kolom target, kurva-S, dan penanda terlambat.
+- **Notifikasi tiap tahap** ke pengusul, TL atasan, dan Asman bidang: usulan disetujui TL/Asman, perencanaan disetujui, diserahkan ke Keuangan, dan pengadaan selesai.
+- **PIC Pelaksana** yang ditunjuk sebelum perencanaan disetujui baru mendapat notifikasi saat perencanaan disetujui.
+- Detail pengadaan otomatis terbuka di tab tahap yang sedang berjalan (Perencanaan / Pelaksanaan / Keuangan).
 
 ---
 
@@ -593,6 +625,12 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 
 - Asman bidang (atau TL K3 KAM / TL Lingkungan). Meninjau lampiran usulan pekerjaan bidangnya lalu menyetujui atau mengembalikan.
 - Melihat seluruh pengadaan milik bidangnya (berdasarkan Direksi Pekerjaan pengadaan).
+
+## Keuangan (`keuangan`)
+
+- Memproses pembayaran pengadaan yang diserahkan PIC Pelaksana: melengkapi dokumen tagihan, mencatat pembayaran, lalu menutup pengadaan.
+- Melihat pengadaan yang sudah diserahkan ke Keuangan. Dapat juga mengusulkan pekerjaan untuk bidangnya.
+- Akun bawaan: Nova Sang Jaya (TL Keuangan, sekaligus TL atasan staf keuangan), Muhammad Jaya Junaid, Inggrid Novela Pitaloka.
 
 ## Pengusul (`pengusul`)
 

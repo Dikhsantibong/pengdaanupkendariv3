@@ -30,6 +30,7 @@ class UpdatePlanningIdentityRequest extends FormRequest
                     ->whereNull('deleted_at'),
             ],
             'manager_memo_number' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'target_completion_date' => ['sometimes', 'nullable', 'date'],
         ];
     }
 
@@ -43,6 +44,7 @@ class UpdatePlanningIdentityRequest extends FormRequest
         return [
             'contract_type_id' => 'jenis kontrak',
             'manager_memo_number' => 'nomor nota dinas manager',
+            'target_completion_date' => 'target selesai',
         ];
     }
 }

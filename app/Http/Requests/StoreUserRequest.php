@@ -25,6 +25,7 @@ class StoreUserRequest extends FormRequest
             'role' => ['required', Rule::enum(UserRole::class)],
             'position' => ['nullable', 'string', 'max:255'],
             'work_director_id' => [Rule::requiredIf(fn (): bool => in_array($this->input('role'), [UserRole::Pengusul->value, UserRole::DireksiPekerjaan->value], true)), 'nullable', 'integer', Rule::exists('work_directors', 'id')->whereNull('deleted_at')],
+            'team_leader_id' => ['nullable', 'integer', Rule::exists('users', 'id')->whereNull('deleted_at')],
             'is_active' => ['required', 'boolean'],
             'password' => $this->passwordRules(),
         ];
@@ -43,6 +44,7 @@ class StoreUserRequest extends FormRequest
             'role' => 'peran',
             'position' => 'jabatan',
             'work_director_id' => 'bidang',
+            'team_leader_id' => 'TL / atasan langsung',
             'is_active' => 'status aktif',
             'password' => 'kata sandi',
         ];

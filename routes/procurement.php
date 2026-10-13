@@ -11,6 +11,7 @@ use App\Http\Controllers\Procurements\ApprovalController;
 use App\Http\Controllers\Procurements\ChecklistController;
 use App\Http\Controllers\Procurements\CompletionController;
 use App\Http\Controllers\Procurements\DocumentController;
+use App\Http\Controllers\Procurements\FinanceController;
 use App\Http\Controllers\Procurements\PicAssignmentController;
 use App\Http\Controllers\Procurements\PlanningIdentityController;
 use App\Http\Controllers\Procurements\ProposalController;
@@ -31,6 +32,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('approval', [ApprovalController::class, 'update'])->name('approval.update');
         Route::delete('approval', [ApprovalController::class, 'destroy'])->name('approval.destroy');
         Route::post('completion', [CompletionController::class, 'store'])->name('completion.store');
+        // Keuangan: hand over the executed job, then record its payment.
+        Route::post('keuangan', [FinanceController::class, 'submit'])->name('finance.submit');
+        Route::post('keuangan/lunas', [FinanceController::class, 'complete'])->name('finance.complete');
         Route::post('documents', [DocumentController::class, 'store'])->name('documents.store');
         Route::post('documents/upload', [DocumentController::class, 'storeUpload'])->name('documents.upload');
         Route::get('documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
@@ -52,7 +56,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('penunjukan-pic', [PicAssignmentController::class, 'index'])->name('pic-assignments.index');
 
-    // Work proposals: raised by a division, approved by its Direksi Pekerjaan.
+    // Work proposals: raised by a division, approved by the proposer's TL
+    // and then the division's Direksi Pekerjaan (Asman).
     Route::prefix('usulan')->name('proposals.')->group(function () {
         Route::get('/', [ProposalController::class, 'index'])->middleware('can:menu.proposals')->name('index');
         Route::get('{procurement}', [ProposalController::class, 'show'])->name('show');
@@ -67,6 +72,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('can:menu.planning')->name('planning.index');
     Route::get('execution', [ExecutionController::class, 'index'])
         ->middleware('can:menu.execution')->name('execution.index');
+    Route::get('keuangan', [FinanceController::class, 'index'])
+        ->middleware('can:menu.finance')->name('finance.index');
     Route::get('approvals', [ApprovalQueueController::class, 'index'])
         ->middleware('can:menu.approvals')->name('approvals.index');
     Route::get('monitoring', [MonitoringController::class, 'index'])

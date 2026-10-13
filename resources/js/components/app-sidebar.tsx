@@ -12,6 +12,7 @@ import {
     Gauge,
     Hash,
     Inbox,
+    Landmark,
     KeyRound,
     LayoutDashboard,
     ListChecks,
@@ -42,6 +43,7 @@ import accessRights from '@/routes/access-rights';
 import approvals from '@/routes/approvals';
 import documents from '@/routes/documents';
 import execution from '@/routes/execution';
+import finance from '@/routes/finance';
 import masterData from '@/routes/master-data';
 import monitoring from '@/routes/monitoring';
 import picAssignments from '@/routes/pic-assignments';
@@ -124,6 +126,15 @@ export function AppSidebar() {
                               title: 'Pelaksanaan',
                               href: execution.index(),
                               icon: Play,
+                          },
+                      ]
+                    : []),
+                ...(menus.finance
+                    ? [
+                          {
+                              title: 'Keuangan',
+                              href: finance.index(),
+                              icon: Landmark,
                           },
                       ]
                     : []),

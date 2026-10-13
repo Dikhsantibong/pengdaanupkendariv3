@@ -33,8 +33,11 @@ class DashboardTasks
     public static function for(User $user): array
     {
         return [
-            'proposals' => $user->hasPermission(Permission::ApproveProposal)
+            'proposals' => $user->hasPermission(Permission::ApproveProposal) || $user->leadsTeam()
                 ? self::proposalsToApprove($user)
+                : null,
+            'finance' => $user->hasPermission(Permission::ProcessPayment)
+                ? self::payments($user)
                 : null,
             'myProposals' => self::myProposals($user),
             'approvals' => $user->hasPermission(Permission::ReviewPlanning)
@@ -104,17 +107,29 @@ class DashboardTasks
      */
     protected static function proposalsToApprove(User $user): array
     {
+        $levels = [ProposalState::MenungguPersetujuanTl->value, ProposalState::MenungguPersetujuan->value];
+
         $query = Procurement::query()
-            ->where('proposal_state', ProposalState::MenungguPersetujuan->value)
+            ->whereIn('proposal_state', $levels)
             ->when($user->role !== UserRole::Administrator, fn (Builder $query) => $query
-                ->where('work_director_id', $user->work_director_id ?? 0)
-                ->where('created_by', '!=', $user->id))
+                ->where('created_by', '!=', $user->id)
+                ->where(fn (Builder $waiting) => $waiting
+                    // The team leader decides first ...
+                    ->where(fn (Builder $team) => $team
+                        ->where('proposal_state', ProposalState::MenungguPersetujuanTl->value)
+                        ->whereIn('created_by', User::query()->select('id')->where('team_leader_id', $user->id)))
+                    // ... then the division's Direksi Pekerjaan.
+                    ->when($user->hasPermission(Permission::ApproveProposal), fn (Builder $waiting) => $waiting
+                        ->orWhere(fn (Builder $division) => $division
+                            ->where('proposal_state', ProposalState::MenungguPersetujuan->value)
+                            ->where('work_director_id', $user->work_director_id ?? 0)))))
             ->with('creator')
             ->oldest('proposal_submitted_at');
 
         return self::collect(
             $query,
-            fn (Procurement $procurement): string => 'Diusulkan oleh '.($procurement->creator->name ?? '-'),
+            fn (Procurement $procurement): string => 'Diusulkan oleh '.($procurement->creator->name ?? '-')
+                .($procurement->proposal_state === ProposalState::MenungguPersetujuanTl ? ' · persetujuan TL' : ' · persetujuan Asman'),
             fn (Procurement $procurement): ?string => $procurement->proposal_submitted_at?->toDateTimeString(),
         );
     }
@@ -130,6 +145,7 @@ class DashboardTasks
         $query = Procurement::query()
             ->where('created_by', $user->id)
             ->whereIn('proposal_state', [
+                ProposalState::MenungguPersetujuanTl->value,
                 ProposalState::MenungguPersetujuan->value,
                 ProposalState::Dikembalikan->value,
             ])
@@ -139,9 +155,11 @@ class DashboardTasks
 
         return self::collect(
             $query,
-            fn (Procurement $procurement): string => $procurement->proposal_state === ProposalState::Dikembalikan
-                ? 'Dikembalikan: '.($procurement->proposal_review_note ?? 'perlu diperbaiki')
-                : 'Menunggu persetujuan Direksi Pekerjaan',
+            fn (Procurement $procurement): string => match ($procurement->proposal_state) {
+                ProposalState::Dikembalikan => 'Dikembalikan: '.($procurement->proposal_review_note ?? 'perlu diperbaiki'),
+                ProposalState::MenungguPersetujuanTl => 'Menunggu persetujuan TL',
+                default => 'Menunggu persetujuan Asman',
+            },
             fn (Procurement $procurement): ?string => $procurement->proposal_submitted_at?->toDateTimeString(),
         );
     }
@@ -181,6 +199,8 @@ class DashboardTasks
             ->inProgress()
             ->where('executor_id', $user->id)
             ->where('planning_approval_state', PlanningApprovalState::Disetujui->value)
+            // Once handed to Keuangan, the job is no longer the executor's.
+            ->whereNull('finance_submitted_at')
             ->withCount([
                 'checklists as open_execution_steps' => fn (Builder $checklists) => $checklists
                     ->where('stage', ProcurementStage::Pelaksanaan->value)
@@ -194,8 +214,35 @@ class DashboardTasks
 
             return $open > 0
                 ? "{$open} tahapan pelaksanaan belum selesai"
-                : 'Semua tahapan selesai, siap ditutup';
+                : 'Semua tahapan selesai, siap diserahkan ke Keuangan';
         }, fn (Procurement $procurement): ?string => $procurement->target_completion_date?->toDateString());
+    }
+
+    /**
+     * Executed jobs handed to Keuangan and still waiting to be paid.
+     *
+     * @return array{total: int, items: array<int, array{id: int, number: string, name: string, note: string, date: string|null}>}
+     */
+    protected static function payments(User $user): array
+    {
+        $query = Procurement::query()
+            ->visibleTo($user)
+            ->whereNotNull('finance_submitted_at')
+            ->whereNull('payment_completed_at')
+            ->withCount([
+                'checklists as open_finance_steps' => fn (Builder $checklists) => $checklists
+                    ->where('stage', ProcurementStage::Keuangan->value)
+                    ->where('is_completed', false),
+            ])
+            ->oldest('finance_submitted_at');
+
+        return self::collect($query, function (Procurement $procurement): string {
+            $open = (int) $procurement->getAttribute('open_finance_steps');
+
+            return $open > 0
+                ? "{$open} tahapan keuangan belum selesai"
+                : 'Siap dicatat lunas';
+        }, fn (Procurement $procurement): ?string => $procurement->finance_submitted_at?->toDateTimeString());
     }
 
     /**

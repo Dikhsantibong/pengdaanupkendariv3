@@ -40,9 +40,11 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property-read int|null $planned_procurements_count
  * @property-read int|null $executed_procurements_count
  * @property int|null $work_director_id
+ * @property int|null $team_leader_id
  * @property-read WorkDirector|null $workDirector
+ * @property-read User|null $teamLeader
  */
-#[Fillable(['name', 'email', 'password', 'role', 'position', 'work_director_id', 'is_active'])]
+#[Fillable(['name', 'email', 'password', 'role', 'position', 'work_director_id', 'team_leader_id', 'is_active'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
@@ -60,6 +62,34 @@ class User extends Authenticatable implements PasskeyUser
     public function workDirector(): BelongsTo
     {
         return $this->belongsTo(WorkDirector::class)->withTrashed();
+    }
+
+    /**
+     * The team leader who first approves this user's work proposals.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function teamLeader(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'team_leader_id')->withTrashed();
+    }
+
+    /**
+     * The staff whose work proposals this user approves as team leader.
+     *
+     * @return HasMany<User, $this>
+     */
+    public function teamMembers(): HasMany
+    {
+        return $this->hasMany(User::class, 'team_leader_id');
+    }
+
+    /**
+     * Whether anybody reports to this user as their team leader.
+     */
+    public function leadsTeam(): bool
+    {
+        return $this->teamMembers()->exists();
     }
 
     /**

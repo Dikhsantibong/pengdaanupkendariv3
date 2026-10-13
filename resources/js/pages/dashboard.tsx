@@ -10,6 +10,7 @@ import {
     FilePlus2,
     FolderKanban,
     Inbox,
+    Landmark,
     ListChecks,
     PartyPopper,
     RotateCcw,
@@ -40,6 +41,7 @@ import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import approvals from '@/routes/approvals';
 import execution from '@/routes/execution';
+import finance from '@/routes/finance';
 import picAssignments from '@/routes/pic-assignments';
 import planning from '@/routes/planning';
 import procurements from '@/routes/procurements';
@@ -61,6 +63,7 @@ type TaskList = { total: number; items: TaskItem[] };
 type DashboardTasks = {
     proposals: TaskList | null;
     myProposals: TaskList;
+    finance: TaskList | null;
     approvals: TaskList | null;
     assignments: TaskList | null;
     planning: TaskList;
@@ -307,6 +310,22 @@ function TaskInbox({
                 item.date ? `Diajukan ${formatDateTime(item.date)}` : null,
             allHref: menus.proposals ? proposals.index().url : null,
             tone: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+        });
+    }
+
+    if (tasks.finance !== null) {
+        cards.push({
+            key: 'finance',
+            title: 'Tagihan Menunggu Pembayaran',
+            icon: Landmark,
+            list: tasks.finance,
+            emptyText: 'Tidak ada tagihan yang menunggu pembayaran.',
+            itemHref: (item) =>
+                procurements.show(item.id, { query: { tab: 'keuangan' } }).url,
+            dateLabel: (item) =>
+                item.date ? `Diserahkan ${formatDateTime(item.date)}` : null,
+            allHref: menus.finance ? finance.index().url : null,
+            tone: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
         });
     }
 

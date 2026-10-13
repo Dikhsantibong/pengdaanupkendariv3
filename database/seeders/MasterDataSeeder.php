@@ -40,6 +40,8 @@ class MasterDataSeeder extends Seeder
         // Document types first: the checklist steps link to them.
         $this->seedDocumentTypes();
         $this->seedChecklistItems();
+        // The Keuangan stage that follows execution.
+        $this->call(FinanceStageSeeder::class);
     }
 
     /**

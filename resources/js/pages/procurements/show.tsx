@@ -1,11 +1,19 @@
-import { Head, Link, router } from '@inertiajs/react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { AlertTriangle, Pencil, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { ActivityTimeline } from '@/components/procurement/activity-timeline';
 import { ApprovalCard } from '@/components/procurement/approval-card';
 import { ChecklistPanel } from '@/components/procurement/checklist-panel';
+import {
+    FinanceHandover,
+    FinanceStatus,
+} from '@/components/procurement/finance-card';
+import type { FinanceDetail } from '@/components/procurement/finance-card';
 import { PicAssignmentCard } from '@/components/procurement/pic-assignment-card';
-import { ContractTypePicker } from '@/components/procurement/planning-identity-fields';
+import {
+    ContractTypePicker,
+    TargetDateField,
+} from '@/components/procurement/planning-identity-fields';
 import { StatusCard } from '@/components/procurement/status-card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -34,10 +42,13 @@ type ShowProps = {
         is_planner: boolean;
         planner_name: string | null;
         planning_revision: number;
+        missing_planning_data: string[];
+        finance: FinanceDetail;
     };
     checklists: {
         perencanaan: ChecklistRow[];
         pelaksanaan: ChecklistRow[];
+        keuangan: ChecklistRow[];
     };
     activities: ActivityRow[];
     options: {
@@ -54,6 +65,9 @@ type ShowProps = {
         updatePlanningIdentity: boolean;
         updatePlanningChecklist: boolean;
         updateExecutionChecklist: boolean;
+        updateFinanceChecklist: boolean;
+        submitToFinance: boolean;
+        completePayment: boolean;
         submitPlanning: boolean;
         reviewPlanning: boolean;
         revertPlanningRejection: boolean;
@@ -70,10 +84,25 @@ export default function ShowProcurement({
     options,
     can,
 }: ShowProps) {
+    const { url } = usePage();
+    const requestedTab = new URLSearchParams(url.split('?')[1] ?? '').get(
+        'tab',
+    );
+    // Open on the stage the job is in, unless a link asked for a tab.
+    const initialTab =
+        requestedTab ??
+        {
+            usulan: 'perencanaan',
+            perencanaan: 'perencanaan',
+            pelaksanaan: 'pelaksanaan',
+            keuangan: 'keuangan',
+            selesai: detail.finance.paid_at ? 'keuangan' : 'pelaksanaan',
+        }[procurement.current_stage];
+
     const identitySummary: Array<{
         label: string;
         value: string;
-        field?: 'contract_type';
+        field?: 'contract_type' | 'target_date';
     }> = [
         { label: 'Direksi Pekerjaan', value: procurement.work_director },
         { label: 'Unit Tujuan', value: procurement.target_unit },
@@ -89,6 +118,13 @@ export default function ShowProcurement({
             label: 'Jenis Kontrak',
             value: procurement.contract_type ?? '—',
             field: 'contract_type' as const,
+        },
+        {
+            label: 'Target Selesai',
+            value: procurement.target_completion_date
+                ? formatDate(procurement.target_completion_date)
+                : '—',
+            field: 'target_date' as const,
         },
         ...(procurement.work_category
             ? [
@@ -239,7 +275,17 @@ export default function ShowProcurement({
                                         </dt>
                                         <dd className="tabular text-right text-sm font-medium text-foreground">
                                             {can.updatePlanningIdentity &&
-                                            item.field === 'contract_type' ? (
+                                            item.field === 'target_date' ? (
+                                                <TargetDateField
+                                                    procurementId={
+                                                        procurement.id
+                                                    }
+                                                    value={
+                                                        procurement.target_completion_date
+                                                    }
+                                                />
+                                            ) : can.updatePlanningIdentity &&
+                                              item.field === 'contract_type' ? (
                                                 <ContractTypePicker
                                                     procurementId={
                                                         procurement.id
@@ -317,7 +363,7 @@ export default function ShowProcurement({
                             )}
                         </section>
 
-                        <Tabs defaultValue="perencanaan">
+                        <Tabs defaultValue={initialTab}>
                             <TabsList>
                                 <TabsTrigger value="perencanaan">
                                     Perencanaan
@@ -325,12 +371,33 @@ export default function ShowProcurement({
                                 <TabsTrigger value="pelaksanaan">
                                     Pelaksanaan
                                 </TabsTrigger>
+                                <TabsTrigger value="keuangan">
+                                    Keuangan
+                                </TabsTrigger>
                                 <TabsTrigger value="aktivitas">
                                     Aktivitas
                                 </TabsTrigger>
                             </TabsList>
 
-                            <TabsContent value="perencanaan">
+                            <TabsContent
+                                value="perencanaan"
+                                className="space-y-3"
+                            >
+                                {detail.missing_planning_data.length > 0 && (
+                                    <p className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm">
+                                        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                                        <span>
+                                            Usulan ini belum bisa dibuatkan
+                                            dokumen perencanaan. Lengkapi dulu{' '}
+                                            <b>
+                                                {detail.missing_planning_data.join(
+                                                    ', ',
+                                                )}
+                                            </b>{' '}
+                                            lewat tombol Ubah Data.
+                                        </span>
+                                    </p>
+                                )}
                                 <ChecklistPanel
                                     procurementId={procurement.id}
                                     description="Dokumen yang harus dilengkapi PIC Perencana sebelum diajukan ke TL ICC."
@@ -346,7 +413,10 @@ export default function ShowProcurement({
                                 />
                             </TabsContent>
 
-                            <TabsContent value="pelaksanaan">
+                            <TabsContent
+                                value="pelaksanaan"
+                                className="space-y-3"
+                            >
                                 <ChecklistPanel
                                     procurementId={procurement.id}
                                     description="Tahapan pelaksanaan pengadaan hingga masa pemeliharaan selesai."
@@ -358,6 +428,40 @@ export default function ShowProcurement({
                                         'disetujui'
                                             ? 'Tahap pelaksanaan terbuka setelah dokumen perencanaan disetujui.'
                                             : 'Anda tidak memiliki akses untuk mengubah checklist ini.'
+                                    }
+                                />
+                                <FinanceHandover
+                                    procurementId={procurement.id}
+                                    finance={detail.finance}
+                                    canSubmit={can.submitToFinance}
+                                    planningApproved={
+                                        procurement.planning_approval_state ===
+                                        'disetujui'
+                                    }
+                                />
+                            </TabsContent>
+
+                            <TabsContent value="keuangan" className="space-y-3">
+                                <FinanceStatus
+                                    procurementId={procurement.id}
+                                    finance={detail.finance}
+                                    canComplete={can.completePayment}
+                                />
+                                <ChecklistPanel
+                                    procurementId={procurement.id}
+                                    description="Dokumen tagihan dan pembayaran yang dilengkapi Keuangan sebelum pengadaan ditutup."
+                                    rows={checklists.keuangan}
+                                    editable={can.updateFinanceChecklist}
+                                    canManageDocuments={
+                                        can.updateFinanceChecklist
+                                    }
+                                    lockedReason={
+                                        detail.finance.paid_at !== null
+                                            ? 'Checklist terkunci karena pembayaran sudah dicatat.'
+                                            : detail.finance.submitted_at ===
+                                                null
+                                              ? 'Tahap Keuangan terbuka setelah pengadaan diserahkan oleh PIC Pelaksana.'
+                                              : 'Hanya Keuangan yang dapat mengubah checklist ini.'
                                     }
                                 />
                             </TabsContent>

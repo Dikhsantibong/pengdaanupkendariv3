@@ -114,6 +114,8 @@ class ChecklistDocumentRequirementTest extends TestCase
             'Rekening Pelaksana',
             'Rentang Waktu',
             'Rentang Waktu Pelaksanaan',
+            // Keuangan checks the invoice papers by hand.
+            'Verifikasi Dokumen Tagihan',
         ], $withoutDocument);
     }
 
@@ -448,8 +450,10 @@ class ChecklistDocumentRequirementTest extends TestCase
         $this->seed(StandardDocumentTemplateSeeder::class);
         $this->seed(SpplDocumentTemplateSeeder::class);
 
+        // Uploaded documents are filed as scans and need no template.
         $linked = DocumentType::query()
             ->whereHas('checklistItems')
+            ->where('upload_only', false)
             ->get();
 
         $this->assertGreaterThan(0, $linked->count());

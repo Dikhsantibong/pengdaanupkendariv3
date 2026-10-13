@@ -75,7 +75,7 @@ class PublicMonitoringTest extends TestCase
 
         $procurement = Procurement::factory()->create();
         app(ProcurementService::class)->syncChecklists($procurement);
-        $procurement->checklists()->limit(2)->update(['is_completed' => true]);
+        $procurement->checklists()->where('stage', ProcurementStage::Perencanaan)->limit(2)->update(['is_completed' => true]);
 
         $this->get(route('public-monitoring.planning'))
             ->assertOk()
@@ -97,7 +97,7 @@ class PublicMonitoringTest extends TestCase
 
         app(ProcurementService::class)->syncChecklists($procurement);
 
-        $procurement->checklists()->limit(2)->update([
+        $procurement->checklists()->where('stage', ProcurementStage::Perencanaan)->limit(2)->update([
             'is_completed' => true,
             'completed_at' => now()->subDays(20),
         ]);

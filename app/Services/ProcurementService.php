@@ -7,6 +7,7 @@ use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Enums\ProposalState;
+use App\Enums\StatusCategory;
 use App\Enums\UserRole;
 use App\Models\ChecklistItem;
 use App\Models\ContractNumberFormat;
@@ -17,8 +18,10 @@ use App\Models\User;
 use App\Notifications\PlanningReviewed;
 use App\Notifications\PlanningSubmitted;
 use App\Notifications\ProcurementAssigned;
+use App\Notifications\ProcurementMilestone;
 use App\Notifications\ProposalReviewed;
 use App\Notifications\ProposalSubmitted;
+use Database\Seeders\FinanceStageSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 
@@ -63,21 +66,19 @@ class ProcurementService
 
             // The form offers the next free number and lets it be corrected, so
             // only fall back to generating one when nothing was submitted.
+            // A proposal gets a recognisable USL number until procurement
+            // gives it its contract number.
             $procurement->number = trim((string) ($attributes['number'] ?? '')) !== ''
                 ? (string) $attributes['number']
-                : $this->nextNumber($procurement->contractNumberFormat);
+                : ($isProposal && $procurement->contract_number_format_id === null
+                    ? $this->nextInternalNumber('USL')
+                    : $this->nextNumber($procurement->contractNumberFormat));
 
             $procurement->created_by = $author->id;
 
-            // The Direksi Pekerjaan proposing for their own division needs
-            // no second signature.
-            $selfApproved = $author->hasPermission(Permission::ApproveProposal)
-                && $author->work_director_id !== null
-                && $author->work_director_id === (int) $procurement->work_director_id;
-
-            if ($isProposal && ! $selfApproved) {
-                $procurement->proposal_state = ProposalState::MenungguPersetujuan;
+            if ($isProposal) {
                 $procurement->proposal_submitted_at = now();
+                $procurement->proposal_state = $this->firstApprovalLevel($procurement, $author);
             }
 
             $procurement->save();
@@ -97,19 +98,74 @@ class ProcurementService
                 $this->assignPic($procurement, $author, (int) $plannerId, $procurement->executor_id);
             }
 
-            if ($procurement->proposal_state === ProposalState::MenungguPersetujuan) {
-                $this->recordActivity(
-                    $procurement,
-                    $author,
-                    ActivityType::UsulanDiajukan,
-                    'Usulan pekerjaan diajukan ke Direksi Pekerjaan untuk disetujui.',
-                );
-
-                $this->notifyDivisionApprovers($procurement);
+            if (! $procurement->isProposalApproved()) {
+                $this->announceProposal($procurement, $author, false);
             }
 
             return $procurement;
         });
+    }
+
+    /**
+     * Where a fresh or resubmitted proposal waits first.
+     *
+     * Staff with a team leader go to that TL, then to the Asman. A proposer
+     * without a TL — or whose TL is also the division's Direksi Pekerjaan,
+     * as for K3 KAM and Lingkungan — goes straight to the Asman. The Direksi
+     * Pekerjaan proposing for their own division needs no signature at all.
+     */
+    protected function firstApprovalLevel(Procurement $procurement, User $proposer): ProposalState
+    {
+        if ($this->leadsDivision($proposer, $procurement)) {
+            return ProposalState::Disetujui;
+        }
+
+        $leader = $proposer->teamLeader;
+
+        if ($leader === null
+            || ! $leader->is_active
+            || $leader->trashed()
+            || $leader->is($proposer)
+            || $this->leadsDivision($leader, $procurement)) {
+            return ProposalState::MenungguPersetujuan;
+        }
+
+        return ProposalState::MenungguPersetujuanTl;
+    }
+
+    /**
+     * Whether the user is the Direksi Pekerjaan of the procurement's division.
+     */
+    protected function leadsDivision(User $user, Procurement $procurement): bool
+    {
+        return $user->work_director_id !== null
+            && $user->work_director_id === (int) $procurement->work_director_id
+            && $user->hasPermission(Permission::ApproveProposal);
+    }
+
+    /**
+     * Log a proposal sent for approval and tell whoever decides it first.
+     */
+    protected function announceProposal(Procurement $procurement, User $proposer, bool $resubmitted): void
+    {
+        $atTeamLeader = $procurement->proposal_state === ProposalState::MenungguPersetujuanTl;
+        $approver = $atTeamLeader ? 'TL '.($proposer->teamLeader->name ?? '') : 'Direksi Pekerjaan (Asman)';
+
+        $this->recordActivity(
+            $procurement,
+            $proposer,
+            ActivityType::UsulanDiajukan,
+            ($resubmitted ? 'Usulan pekerjaan diperbaiki dan diajukan ulang ke ' : 'Usulan pekerjaan diajukan ke ')
+                .trim($approver).' untuk disetujui.',
+        );
+
+        if ($atTeamLeader) {
+            $proposer->teamLeader?->notify(new ProposalSubmitted($procurement));
+
+            return;
+        }
+
+        $this->notifyDivisionApprovers($procurement);
     }
 
     /**
@@ -208,9 +264,9 @@ class ProcurementService
     /**
      * Generate the internal procurement number used before contract numbering.
      */
-    protected function nextInternalNumber(): string
+    protected function nextInternalNumber(string $series = 'PGD'): string
     {
-        $prefix = 'PGD/'.now()->format('Y/m').'/';
+        $prefix = $series.'/'.now()->format('Y/m').'/';
 
         $latest = Procurement::withTrashed()
             ->where('number', 'like', $prefix.'%')
@@ -294,7 +350,9 @@ class ProcurementService
                 'PIC Pelaksana diubah menjadi '.($executorId === null ? 'kosong' : $procurement->executor->name).'.',
             );
 
-            if ($executorId !== null) {
+            // Execution cannot start before the planning is approved, so an
+            // executor appointed early is told when it is.
+            if ($executorId !== null && $procurement->isPlanningApproved()) {
                 $procurement->executor->notify(new ProcurementAssigned($procurement, ProcurementStage::Pelaksanaan));
             }
         }
@@ -383,6 +441,16 @@ class ProcurementService
             $procurement->planner->notify(new PlanningReviewed($procurement, $approved, $note));
         }
 
+        if ($approved) {
+            $procurement->executor?->notify(new ProcurementAssigned($procurement, ProcurementStage::Pelaksanaan));
+
+            $this->notifyProposers(
+                $procurement,
+                'Perencanaan disetujui',
+                "Perencanaan {$procurement->name} disetujui dan masuk tahap pelaksanaan.",
+            );
+        }
+
         return $procurement;
     }
 
@@ -437,30 +505,61 @@ class ProcurementService
     /**
      * Approve a work proposal, or return it to the proposer with a note.
      *
-     * Approval hands the job to procurement: it appears for planning and the
-     * procurement supervisors are told so they can appoint a planner.
+     * The team leader's approval passes the proposal on to the Asman (or
+     * straight to planning when that TL is also the division's Direksi
+     * Pekerjaan). The Asman's approval hands the job to procurement: it
+     * appears for planning and the procurement supervisors are told so they
+     * can appoint a planner.
      */
     public function decideProposal(Procurement $procurement, User $reviewer, bool $approved, ?string $note = null): Procurement
     {
-        $procurement->proposal_state = $approved ? ProposalState::Disetujui : ProposalState::Dikembalikan;
-        $procurement->proposal_reviewed_at = now();
-        $procurement->proposal_reviewed_by = $reviewer->id;
+        $atTeamLeader = $procurement->proposal_state === ProposalState::MenungguPersetujuanTl;
+
+        if ($atTeamLeader) {
+            $procurement->proposal_tl_reviewed_at = now();
+            $procurement->proposal_tl_reviewed_by = $reviewer->id;
+        }
+
+        if (! $approved) {
+            $procurement->proposal_state = ProposalState::Dikembalikan;
+        } elseif ($atTeamLeader && ! $this->leadsDivision($reviewer, $procurement)) {
+            $procurement->proposal_state = ProposalState::MenungguPersetujuan;
+        } else {
+            $procurement->proposal_state = ProposalState::Disetujui;
+        }
+
+        // The Asman's decision, or the TL's when it ends the round here.
+        if (! $atTeamLeader || $procurement->proposal_state !== ProposalState::MenungguPersetujuan) {
+            $procurement->proposal_reviewed_at = now();
+            $procurement->proposal_reviewed_by = $reviewer->id;
+        }
+
         $procurement->proposal_review_note = $note;
         $procurement->save();
+
+        $forwarded = $procurement->proposal_state === ProposalState::MenungguPersetujuan;
 
         $this->recordActivity(
             $procurement,
             $reviewer,
-            $approved ? ActivityType::UsulanDisetujui : ActivityType::UsulanDikembalikan,
-            $approved
-                ? 'Usulan pekerjaan disetujui Direksi Pekerjaan dan diteruskan ke perencanaan.'
-                : 'Usulan pekerjaan dikembalikan ke pengusul.'.($note !== null ? " Catatan: {$note}" : ''),
+            match (true) {
+                ! $approved => ActivityType::UsulanDikembalikan,
+                $forwarded => ActivityType::UsulanDisetujuiTl,
+                default => ActivityType::UsulanDisetujui,
+            },
+            match (true) {
+                ! $approved => 'Usulan pekerjaan dikembalikan ke pengusul.'.($note !== null ? " Catatan: {$note}" : ''),
+                $forwarded => 'Usulan pekerjaan disetujui TL dan diteruskan ke Direksi Pekerjaan (Asman).',
+                default => 'Usulan pekerjaan disetujui Direksi Pekerjaan dan diteruskan ke perencanaan.',
+            },
         );
 
-        $notification = new ProposalReviewed($procurement, $approved, $note);
+        $notification = new ProposalReviewed($procurement, $approved, $note, $forwarded);
         $procurement->creator?->notify($notification);
 
-        if ($approved) {
+        if ($forwarded) {
+            $this->notifyDivisionApprovers($procurement);
+        } elseif ($approved) {
             $this->notifySupervisors($notification);
         }
 
@@ -469,25 +568,120 @@ class ProcurementService
 
     /**
      * Send a returned proposal back for approval after the proposer revised it.
+     *
+     * It starts over from the team leader, who sees what was changed.
      */
     public function resubmitProposal(Procurement $procurement, User $proposer): Procurement
     {
-        $procurement->proposal_state = ProposalState::MenungguPersetujuan;
+        $procurement->proposal_state = $this->firstApprovalLevel($procurement, $proposer);
         $procurement->proposal_submitted_at = now();
         $procurement->proposal_reviewed_at = null;
         $procurement->proposal_reviewed_by = null;
+        $procurement->proposal_tl_reviewed_at = null;
+        $procurement->proposal_tl_reviewed_by = null;
+        $procurement->save();
+
+        if (! $procurement->isProposalApproved()) {
+            $this->announceProposal($procurement, $proposer, true);
+        }
+
+        return $procurement;
+    }
+
+    /**
+     * Hand the executed job to Keuangan for payment.
+     */
+    public function submitToFinance(Procurement $procurement, User $actor): Procurement
+    {
+        // Steps added to the master data since the job started are included.
+        $this->syncChecklists($procurement);
+
+        $procurement->finance_submitted_at = now();
+        $procurement->finance_submitted_by = $actor->id;
         $procurement->save();
 
         $this->recordActivity(
             $procurement,
-            $proposer,
-            ActivityType::UsulanDiajukan,
-            'Usulan pekerjaan diperbaiki dan diajukan ulang.',
+            $actor,
+            ActivityType::DiajukanKeKeuangan,
+            'Pelaksanaan selesai, pengadaan diserahkan ke Keuangan untuk proses pembayaran.',
         );
 
-        $this->notifyDivisionApprovers($procurement);
+        $message = "Pengadaan {$procurement->number} - {$procurement->name} diserahkan ke Keuangan untuk dibayar.";
+
+        User::query()->active()->get()
+            ->filter(fn (User $user): bool => $user->hasPermission(Permission::ProcessPayment))
+            ->each(fn (User $user) => $user->notify(new ProcurementMilestone($procurement, 'Tagihan menunggu pembayaran', $message)));
+
+        $this->notifyProposers($procurement, 'Diserahkan ke Keuangan', $message);
 
         return $procurement;
+    }
+
+    /**
+     * Record the payment and close the procurement.
+     *
+     * The job moves to the closing progress status (category Selesai), so
+     * every count of finished work agrees with it.
+     */
+    public function completePayment(Procurement $procurement, User $actor): Procurement
+    {
+        $procurement->payment_completed_at = now();
+        $procurement->payment_completed_by = $actor->id;
+        $procurement->completed_at = now();
+
+        // "Selesai" when it exists, otherwise the last finished status.
+        $closing = ProgressStatus::query()
+            ->active()
+            ->where('category', StatusCategory::Selesai->value)
+            ->orderByRaw('case when name = ? then 0 else 1 end', [FinanceStageSeeder::CLOSED_STATUS])
+            ->orderByDesc('sort_order')
+            ->first();
+
+        if ($closing !== null) {
+            $procurement->progress_status_id = $closing->id;
+        }
+
+        $procurement->save();
+
+        $this->recordActivity(
+            $procurement,
+            $actor,
+            ActivityType::PembayaranSelesai,
+            'Pembayaran ke mitra selesai, pengadaan ditutup.',
+        );
+
+        $message = "Pembayaran {$procurement->name} selesai dan pengadaan ditutup.";
+
+        $this->notifyProposers($procurement, 'Pengadaan selesai', $message);
+        $procurement->executor?->notify(new ProcurementMilestone($procurement, 'Pengadaan selesai', $message));
+        $this->notifySupervisors(new ProcurementMilestone($procurement, 'Pengadaan selesai', $message));
+
+        return $procurement;
+    }
+
+    /**
+     * Keep the division that proposed the work informed of its progress.
+     */
+    protected function notifyProposers(Procurement $procurement, string $title, string $message): void
+    {
+        if ($procurement->proposal_submitted_at === null) {
+            return;
+        }
+
+        $notification = new ProcurementMilestone($procurement, $title, $message);
+
+        $recipients = collect([$procurement->creator, $procurement->creator?->teamLeader])
+            ->merge(
+                User::query()->active()
+                    ->where('work_director_id', $procurement->work_director_id)
+                    ->get()
+                    ->filter(fn (User $user): bool => $user->hasPermission(Permission::ApproveProposal)),
+            )
+            ->filter()
+            ->unique('id');
+
+        $recipients->each(fn (User $user) => $user->notify($notification));
     }
 
     /**

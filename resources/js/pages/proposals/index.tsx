@@ -20,7 +20,11 @@ export type ProposalRow = {
     id: number;
     number: string;
     name: string;
-    state: 'menunggu_persetujuan' | 'dikembalikan' | 'disetujui';
+    state:
+        | 'menunggu_persetujuan_tl'
+        | 'menunggu_persetujuan'
+        | 'dikembalikan'
+        | 'disetujui';
     state_label: string;
     division: string | null;
     proposer: string | null;
@@ -35,6 +39,8 @@ export type ProposalRow = {
 };
 
 export const STATE_STYLE: Record<ProposalRow['state'], string> = {
+    menunggu_persetujuan_tl:
+        'bg-sky-500/10 text-sky-700 ring-sky-500/30 dark:text-sky-400',
     menunggu_persetujuan:
         'bg-amber-500/10 text-amber-700 ring-amber-500/30 dark:text-amber-400',
     dikembalikan:
@@ -45,7 +51,8 @@ export const STATE_STYLE: Record<ProposalRow['state'], string> = {
 
 export function StateBadge({ row }: { row: Pick<ProposalRow, 'state'> }) {
     const label = {
-        menunggu_persetujuan: 'Menunggu Persetujuan',
+        menunggu_persetujuan_tl: 'Menunggu Persetujuan TL',
+        menunggu_persetujuan: 'Menunggu Persetujuan Asman',
         dikembalikan: 'Dikembalikan',
         disetujui: 'Disetujui',
     }[row.state];
@@ -201,8 +208,8 @@ export default function ProposalIndex({
                     title="Usulan Pekerjaan"
                     description={
                         canApprove
-                            ? 'Tinjau usulan pekerjaan dari bidang Anda. Usulan yang disetujui langsung diteruskan ke perencanaan pengadaan.'
-                            : 'Pantau usulan pekerjaan Anda. Setelah disetujui Direksi Pekerjaan, usulan diteruskan ke perencanaan pengadaan.'
+                            ? 'Tinjau usulan pekerjaan yang menunggu keputusan Anda. Usulan staf disetujui TL lebih dulu, lalu Asman bidang, kemudian masuk perencanaan untuk penunjukan PIC.'
+                            : 'Pantau usulan pekerjaan Anda. Usulan disetujui TL Anda, lalu Asman bidang, kemudian masuk perencanaan untuk penunjukan PIC Perencana.'
                     }
                     actions={
                         canPropose ? (

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Procurements;
 
 use App\Enums\ActivityType;
-use App\Enums\ProcurementStage;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Procurements\UpdateChecklistInputRequest;
 use App\Http\Requests\Procurements\UpdateChecklistRequest;
@@ -16,6 +15,17 @@ use Inertia\Inertia;
 
 class ChecklistController extends Controller
 {
+    /**
+     * The ability that guards the steps of each stage.
+     *
+     * @var array<string, string>
+     */
+    protected const ABILITIES = [
+        'perencanaan' => 'updatePlanningChecklist',
+        'pelaksanaan' => 'updateExecutionChecklist',
+        'keuangan' => 'updateFinanceChecklist',
+    ];
+
     public function __construct(protected ProcurementService $procurements) {}
 
     /**
@@ -31,12 +41,7 @@ class ChecklistController extends Controller
     ): RedirectResponse {
         abort_unless($checklist->procurement_id === $procurement->id, 404);
 
-        $this->authorize(
-            $checklist->stage === ProcurementStage::Perencanaan
-                ? 'updatePlanningChecklist'
-                : 'updateExecutionChecklist',
-            $procurement,
-        );
+        $this->authorize(self::ABILITIES[$checklist->stage->value], $procurement);
 
         $kind = $checklist->checklistItem->input_kind;
 
@@ -67,12 +72,7 @@ class ChecklistController extends Controller
     ): RedirectResponse {
         abort_unless($checklist->procurement_id === $procurement->id, 404);
 
-        $this->authorize(
-            $checklist->stage === ProcurementStage::Perencanaan
-                ? 'updatePlanningChecklist'
-                : 'updateExecutionChecklist',
-            $procurement,
-        );
+        $this->authorize(self::ABILITIES[$checklist->stage->value], $procurement);
 
         $isCompleted = $request->boolean('is_completed');
 

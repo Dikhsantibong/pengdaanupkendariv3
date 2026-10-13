@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
+use App\Enums\ProcurementStage;
 use App\Enums\ProposalState;
 use App\Enums\UserRole;
 use App\Models\Procurement;
@@ -27,7 +28,18 @@ class ProcurementPolicy
         return $user->hasPermission(Permission::ViewAllProcurements)
             || $procurement->isAssignedTo($user)
             || $procurement->created_by === $user->id
-            || $this->leadsDivisionOf($user, $procurement);
+            || $this->leadsProposerOf($user, $procurement)
+            || $this->leadsDivisionOf($user, $procurement)
+            || ($procurement->finance_submitted_at !== null && $user->hasPermission(Permission::ProcessPayment));
+    }
+
+    /**
+     * Whether the user is the team leader of whoever proposed the work.
+     */
+    protected function leadsProposerOf(User $user, Procurement $procurement): bool
+    {
+        return $procurement->created_by !== null
+            && $procurement->creator?->team_leader_id === $user->id;
     }
 
     /**
@@ -43,12 +55,16 @@ class ProcurementPolicy
     /**
      * Determine whether the user may approve or return a work proposal.
      *
-     * Only the Direksi Pekerjaan of the proposal's own division decides on it
-     * (the administrator may stand in), and never on their own proposal.
+     * A staff proposal is decided twice: first by the proposer's team leader,
+     * then by the Direksi Pekerjaan (Asman) of the proposal's own division.
+     * The administrator may stand in for either, and nobody decides on their
+     * own proposal.
      */
     public function approveProposal(User $user, Procurement $procurement): bool
     {
-        if ($procurement->proposal_state !== ProposalState::MenungguPersetujuan) {
+        $level = $procurement->proposal_state;
+
+        if (! in_array($level, [ProposalState::MenungguPersetujuanTl, ProposalState::MenungguPersetujuan], true)) {
             return false;
         }
 
@@ -56,7 +72,13 @@ class ProcurementPolicy
             return true;
         }
 
-        return $this->leadsDivisionOf($user, $procurement) && $procurement->created_by !== $user->id;
+        if ($procurement->created_by === $user->id) {
+            return false;
+        }
+
+        return $level === ProposalState::MenungguPersetujuanTl
+            ? $this->leadsProposerOf($user, $procurement)
+            : $this->leadsDivisionOf($user, $procurement);
     }
 
     /**
@@ -169,7 +191,8 @@ class ProcurementPolicy
             return false;
         }
 
-        return $procurement->isPlanningChecklistComplete();
+        return $procurement->missingPlanningData() === []
+            && $procurement->isPlanningChecklistComplete();
     }
 
     /**
@@ -204,7 +227,8 @@ class ProcurementPolicy
      */
     public function updateExecutionChecklist(User $user, Procurement $procurement): bool
     {
-        if (! $procurement->isPlanningApproved()) {
+        // Execution is final once the job is with Keuangan.
+        if (! $procurement->isPlanningApproved() || $procurement->finance_submitted_at !== null) {
             return false;
         }
 
@@ -216,9 +240,51 @@ class ProcurementPolicy
      */
     public function complete(User $user, Procurement $procurement): bool
     {
+        // A job is closed by Keuangan once paid; this only remains for a paid
+        // job that somehow stayed open.
         return $user->hasPermission(Permission::CompleteProcurement)
             && $this->view($user, $procurement)
+            && $procurement->isPaid()
             && $procurement->completed_at === null;
+    }
+
+    /**
+     * Determine whether the user may hand the executed job to Keuangan.
+     *
+     * Only once every mandatory execution step is ticked, by the execution
+     * PIC or a supervisor.
+     */
+    public function submitToFinance(User $user, Procurement $procurement): bool
+    {
+        if (! $procurement->isPlanningApproved()
+            || $procurement->finance_submitted_at !== null
+            || $procurement->completed_at !== null) {
+            return false;
+        }
+
+        if (! $user->isSupervisor() && $procurement->executor_id !== $user->id) {
+            return false;
+        }
+
+        return $procurement->pendingRequiredChecklists(ProcurementStage::Pelaksanaan)->isEmpty();
+    }
+
+    /**
+     * Determine whether the user may work through the Keuangan steps.
+     */
+    public function updateFinanceChecklist(User $user, Procurement $procurement): bool
+    {
+        return $procurement->isInFinance()
+            && $user->hasPermission(Permission::ProcessPayment);
+    }
+
+    /**
+     * Determine whether the user may record the payment and close the job.
+     */
+    public function completePayment(User $user, Procurement $procurement): bool
+    {
+        return $this->updateFinanceChecklist($user, $procurement)
+            && $procurement->pendingRequiredChecklists(ProcurementStage::Keuangan)->isEmpty();
     }
 
     /**
@@ -226,7 +292,10 @@ class ProcurementPolicy
      */
     public function generateDocument(User $user, Procurement $procurement): bool
     {
-        return $user->isSupervisor() || $procurement->isAssignedTo($user);
+        return $user->isSupervisor()
+            || $procurement->isAssignedTo($user)
+            // Keuangan files the invoice papers of a job being paid.
+            || $this->updateFinanceChecklist($user, $procurement);
     }
 
     /**

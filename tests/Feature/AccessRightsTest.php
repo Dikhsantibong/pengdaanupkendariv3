@@ -254,7 +254,8 @@ class AccessRightsTest extends TestCase
         $procurementWaiting = Procurement::factory()->plannedBy($otherPlanner)->create([
             'planning_approval_state' => PlanningApprovalState::MenungguPersetujuan,
         ]);
-        $procurementApproved = Procurement::factory()->planningApproved()->create();
+        // Closing is only left for a job Keuangan has already paid.
+        $procurementApproved = Procurement::factory()->planningApproved()->create(['payment_completed_at' => now()]);
 
         // Initially PICs cannot review planning or complete procurements
         $this->assertFalse($plannerReviewer->can('reviewPlanning', $procurementWaiting));

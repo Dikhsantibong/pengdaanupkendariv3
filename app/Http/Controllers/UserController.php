@@ -22,7 +22,7 @@ class UserController extends Controller
     {
         return Inertia::render('users/index', [
             'users' => User::query()
-                ->with('workDirector')
+                ->with(['workDirector', 'teamLeader'])
                 ->withCount(['plannedProcurements', 'executedProcurements'])
                 ->when($request->string('search')->trim()->value(), function ($query, string $search): void {
                     $query->where(function ($inner) use ($search): void {
@@ -42,6 +42,8 @@ class UserController extends Controller
                     'position' => $user->position,
                     'work_director_id' => $user->work_director_id,
                     'work_director' => $user->workDirector?->name,
+                    'team_leader_id' => $user->team_leader_id,
+                    'team_leader' => $user->teamLeader?->name,
                     'is_active' => $user->is_active,
                     'planned_count' => $user->planned_procurements_count,
                     'executed_count' => $user->executed_procurements_count,
@@ -52,6 +54,16 @@ class UserController extends Controller
                 'role' => $request->string('role')->value() ?: null,
             ],
             'roles' => UserRole::options(),
+            // Anyone may be a team leader: their staff's proposals reach them first.
+            'teamLeaders' => User::query()
+                ->active()
+                ->orderBy('name')
+                ->get(['id', 'name', 'position'])
+                ->map(fn (User $leader): array => [
+                    'value' => $leader->id,
+                    'label' => $leader->position ? "{$leader->name} ({$leader->position})" : $leader->name,
+                ])
+                ->all(),
             'divisions' => WorkDirector::query()
                 ->orderBy('sort_order')
                 ->orderBy('name')

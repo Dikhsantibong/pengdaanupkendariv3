@@ -6,6 +6,7 @@ enum ProcurementStage: string
 {
     case Perencanaan = 'perencanaan';
     case Pelaksanaan = 'pelaksanaan';
+    case Keuangan = 'keuangan';
 
     /**
      * Get the human readable label for the stage.
@@ -15,6 +16,7 @@ enum ProcurementStage: string
         return match ($this) {
             self::Perencanaan => 'Perencanaan',
             self::Pelaksanaan => 'Pelaksanaan',
+            self::Keuangan => 'Keuangan',
         };
     }
 
