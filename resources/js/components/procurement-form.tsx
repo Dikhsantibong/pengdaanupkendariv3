@@ -63,6 +63,15 @@ export type ProcurementFormValues = {
     progress_status_id: number | null;
     notes: string;
     planner_id?: number | null;
+    /** Supporting files, sent with a work proposal. */
+    attachments?: File[];
+};
+
+/** How the form behaves for someone who may only propose work. */
+export type ProposalMode = {
+    enabled: boolean;
+    workDirectorId: number | null;
+    division: string | null;
 };
 
 export function ProcurementForm({
@@ -73,6 +82,7 @@ export function ProcurementForm({
     onCancel,
     withPlanner = false,
     nextNumbers = {},
+    proposal,
 }: {
     options: ProcurementFormOptions;
     initialValues?: Partial<ProcurementFormValues>;
@@ -86,16 +96,26 @@ export function ProcurementForm({
     withPlanner?: boolean;
     /** The next free number of each format, keyed by format id. */
     nextNumbers?: Record<number, string>;
+    /**
+     * Proposal mode: a staff member or TL proposes work for their division.
+     * Contract numbering, partner, PIC and progress are left to procurement;
+     * the division is fixed and supporting files can be attached.
+     */
+    proposal?: ProposalMode;
 }) {
+    const isProposal = proposal?.enabled === true;
+
     const firstFormatId = options.contractNumberFormats[0]?.value ?? null;
 
-    const startingFormatId =
-        initialValues?.contract_number_format_id ?? firstFormatId;
+    const startingFormatId = isProposal
+        ? (initialValues?.contract_number_format_id ?? null)
+        : (initialValues?.contract_number_format_id ?? firstFormatId);
 
     const form = useForm<ProcurementFormValues>({
-        ...(withPlanner
+        ...(withPlanner && !isProposal
             ? { planner_id: initialValues?.planner_id ?? null }
             : {}),
+        ...(isProposal ? { attachments: [] } : {}),
         contract_number_format_id: startingFormatId,
         work_category: initialValues?.work_category ?? null,
         number:
@@ -107,7 +127,9 @@ export function ProcurementForm({
         partner_name: initialValues?.partner_name ?? '',
         partner_director_name: initialValues?.partner_director_name ?? '',
         partner_address: initialValues?.partner_address ?? '',
-        work_director_id: initialValues?.work_director_id ?? null,
+        work_director_id:
+            initialValues?.work_director_id ??
+            (isProposal ? (proposal?.workDirectorId ?? null) : null),
         target_unit_ids: initialValues?.target_unit_ids ?? [],
         procurement_method_id: initialValues?.procurement_method_id ?? null,
         budget_source_id: initialValues?.budget_source_id ?? null,
@@ -211,136 +233,155 @@ export function ProcurementForm({
             <section className="space-y-4 rounded-md border border-border bg-card p-5">
                 <p className="section-label">Identitas Pengadaan</p>
 
-                <div className="grid gap-4 sm:grid-cols-[9rem_1fr]">
-                    <div className="grid gap-2">
-                        <Label htmlFor="contract_number_format_id">
-                            Jenis No Kontrak
-                        </Label>
-                        <Select
-                            value={
-                                data.contract_number_format_id === null
-                                    ? NONE
-                                    : String(data.contract_number_format_id)
-                            }
-                            onValueChange={(value) =>
-                                chooseFormat(
-                                    value === NONE ? null : Number(value),
-                                )
-                            }
-                        >
-                            <SelectTrigger id="contract_number_format_id">
-                                <SelectValue placeholder="Pilih" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {options.contractNumberFormats.map((option) => (
-                                    <SelectItem
-                                        key={option.value}
-                                        value={String(option.value)}
-                                    >
-                                        {option.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <InputError
-                            message={errors.contract_number_format_id}
-                        />
-                    </div>
+                {!isProposal && (
+                    <>
+                        <div className="grid gap-4 sm:grid-cols-[9rem_1fr]">
+                            <div className="grid gap-2">
+                                <Label htmlFor="contract_number_format_id">
+                                    Jenis No Kontrak
+                                </Label>
+                                <Select
+                                    value={
+                                        data.contract_number_format_id === null
+                                            ? NONE
+                                            : String(
+                                                  data.contract_number_format_id,
+                                              )
+                                    }
+                                    onValueChange={(value) =>
+                                        chooseFormat(
+                                            value === NONE
+                                                ? null
+                                                : Number(value),
+                                        )
+                                    }
+                                >
+                                    <SelectTrigger id="contract_number_format_id">
+                                        <SelectValue placeholder="Pilih" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {options.contractNumberFormats.map(
+                                            (option) => (
+                                                <SelectItem
+                                                    key={option.value}
+                                                    value={String(option.value)}
+                                                >
+                                                    {option.label}
+                                                </SelectItem>
+                                            ),
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                                <InputError
+                                    message={errors.contract_number_format_id}
+                                />
+                            </div>
 
-                    <div className="grid gap-2">
-                        <div className="flex items-center justify-between gap-2">
-                            <Label htmlFor="number">No Kontrak</Label>
-                            {suggestion !== null &&
-                                suggestion !== data.number && (
-                                    <button
-                                        type="button"
-                                        className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-                                        onClick={() =>
-                                            setData('number', suggestion)
-                                        }
-                                    >
-                                        Pakai nomor otomatis
-                                    </button>
-                                )}
+                            <div className="grid gap-2">
+                                <div className="flex items-center justify-between gap-2">
+                                    <Label htmlFor="number">No Kontrak</Label>
+                                    {suggestion !== null &&
+                                        suggestion !== data.number && (
+                                            <button
+                                                type="button"
+                                                className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                                                onClick={() =>
+                                                    setData(
+                                                        'number',
+                                                        suggestion,
+                                                    )
+                                                }
+                                            >
+                                                Pakai nomor otomatis
+                                            </button>
+                                        )}
+                                </div>
+                                <Input
+                                    id="number"
+                                    className="tabular"
+                                    value={data.number}
+                                    onChange={(event) =>
+                                        setData('number', event.target.value)
+                                    }
+                                    placeholder="KDD001.SPK/612/UPKD/2026"
+                                    autoComplete="off"
+                                    required
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Terisi otomatis mengikuti urutan berjalan
+                                    jenis yang dipilih, dan masih bisa diubah
+                                    bila perlu.
+                                </p>
+                                <InputError message={errors.number} />
+                            </div>
                         </div>
-                        <Input
-                            id="number"
-                            className="tabular"
-                            value={data.number}
-                            onChange={(event) =>
-                                setData('number', event.target.value)
-                            }
-                            placeholder="KDD001.SPK/612/UPKD/2026"
-                            autoComplete="off"
-                            required
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            Terisi otomatis mengikuti urutan berjalan jenis yang
-                            dipilih, dan masih bisa diubah bila perlu.
-                        </p>
-                        <InputError message={errors.number} />
-                    </div>
-                </div>
 
-                {usesWorkCategory(data.contract_number_format_id) && (
-                    <div className="grid gap-2">
-                        <Label id="work_category_label">
-                            Kategori{' '}
-                            {options.contractNumberFormats.find(
-                                (option) =>
-                                    option.value ===
-                                    data.contract_number_format_id,
-                            )?.label ?? ''}
-                        </Label>
-                        <div
-                            role="radiogroup"
-                            aria-labelledby="work_category_label"
-                            className="grid gap-2 sm:max-w-md sm:grid-cols-2"
-                        >
-                            {workCategories.map((category) => {
-                                const selected =
-                                    data.work_category === category.value;
+                        {usesWorkCategory(data.contract_number_format_id) && (
+                            <div className="grid gap-2">
+                                <Label id="work_category_label">
+                                    Kategori{' '}
+                                    {options.contractNumberFormats.find(
+                                        (option) =>
+                                            option.value ===
+                                            data.contract_number_format_id,
+                                    )?.label ?? ''}
+                                </Label>
+                                <div
+                                    role="radiogroup"
+                                    aria-labelledby="work_category_label"
+                                    className="grid gap-2 sm:max-w-md sm:grid-cols-2"
+                                >
+                                    {workCategories.map((category) => {
+                                        const selected =
+                                            data.work_category ===
+                                            category.value;
 
-                                return (
-                                    <button
-                                        key={category.value}
-                                        type="button"
-                                        role="radio"
-                                        aria-checked={selected}
-                                        onClick={() =>
-                                            setData(
-                                                'work_category',
-                                                category.value,
-                                            )
-                                        }
-                                        className={
-                                            selected
-                                                ? 'flex items-center gap-2.5 rounded-md border border-primary bg-primary/5 px-3 py-2.5 text-left text-sm font-medium text-primary ring-1 ring-primary'
-                                                : 'flex items-center gap-2.5 rounded-md border border-border bg-card px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-muted'
-                                        }
-                                    >
-                                        <span
-                                            className={
-                                                selected
-                                                    ? 'flex size-4 items-center justify-center rounded-full border-4 border-primary'
-                                                    : 'size-4 rounded-full border border-muted-foreground/50'
-                                            }
-                                        />
-                                        {category.label}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            Menentukan format dokumen kontrak yang digenerate
-                            (mis. SPK Barang atau SPK Jasa).
-                        </p>
-                        <InputError message={errors.work_category} />
-                    </div>
+                                        return (
+                                            <button
+                                                key={category.value}
+                                                type="button"
+                                                role="radio"
+                                                aria-checked={selected}
+                                                onClick={() =>
+                                                    setData(
+                                                        'work_category',
+                                                        category.value,
+                                                    )
+                                                }
+                                                className={
+                                                    selected
+                                                        ? 'flex items-center gap-2.5 rounded-md border border-primary bg-primary/5 px-3 py-2.5 text-left text-sm font-medium text-primary ring-1 ring-primary'
+                                                        : 'flex items-center gap-2.5 rounded-md border border-border bg-card px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-muted'
+                                                }
+                                            >
+                                                <span
+                                                    className={
+                                                        selected
+                                                            ? 'flex size-4 items-center justify-center rounded-full border-4 border-primary'
+                                                            : 'size-4 rounded-full border border-muted-foreground/50'
+                                                    }
+                                                />
+                                                {category.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Menentukan format dokumen kontrak yang
+                                    digenerate (mis. SPK Barang atau SPK Jasa).
+                                </p>
+                                <InputError message={errors.work_category} />
+                            </div>
+                        )}
+                    </>
                 )}
 
                 <div className="grid gap-2">
-                    <Label htmlFor="name">Nama Pengadaan</Label>
+                    <Label htmlFor="name">
+                        {isProposal
+                            ? 'Nama Pekerjaan yang Diusulkan'
+                            : 'Nama Pengadaan'}
+                    </Label>
                     <Input
                         id="name"
                         value={data.name}
@@ -355,39 +396,52 @@ export function ProcurementForm({
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                    <div className="grid gap-2">
-                        <Label htmlFor="work_director_id">
-                            Direksi Pekerjaan
-                        </Label>
-                        <Select
-                            value={
-                                data.work_director_id === null
-                                    ? undefined
-                                    : String(data.work_director_id)
-                            }
-                            onValueChange={(value) =>
-                                setData('work_director_id', Number(value))
-                            }
-                        >
-                            <SelectTrigger
-                                id="work_director_id"
-                                className="w-full"
+                    {isProposal && proposal?.workDirectorId ? (
+                        <div className="grid gap-2">
+                            <Label>Direksi Pekerjaan (yang menyetujui)</Label>
+                            <div className="flex h-9 items-center rounded-md border border-border bg-muted/40 px-3 text-sm font-medium">
+                                {proposal.division ?? '-'}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                Usulan dikirim ke Direksi Pekerjaan bidang Anda
+                                untuk disetujui.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="grid gap-2">
+                            <Label htmlFor="work_director_id">
+                                Direksi Pekerjaan
+                            </Label>
+                            <Select
+                                value={
+                                    data.work_director_id === null
+                                        ? undefined
+                                        : String(data.work_director_id)
+                                }
+                                onValueChange={(value) =>
+                                    setData('work_director_id', Number(value))
+                                }
                             >
-                                <SelectValue placeholder="Pilih direksi pekerjaan" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {options.workDirectors.map((option) => (
-                                    <SelectItem
-                                        key={option.value}
-                                        value={String(option.value)}
-                                    >
-                                        {option.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <InputError message={errors.work_director_id} />
-                    </div>
+                                <SelectTrigger
+                                    id="work_director_id"
+                                    className="w-full"
+                                >
+                                    <SelectValue placeholder="Pilih direksi pekerjaan" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {options.workDirectors.map((option) => (
+                                        <SelectItem
+                                            key={option.value}
+                                            value={String(option.value)}
+                                        >
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <InputError message={errors.work_director_id} />
+                        </div>
+                    )}
 
                     <div className="grid gap-2 md:row-span-3">
                         <div className="flex items-baseline justify-between gap-2">
@@ -502,63 +556,72 @@ export function ProcurementForm({
                 </div>
             </section>
 
-            <section className="space-y-4 rounded-md border border-border bg-card p-5">
-                <p className="section-label">Calon Mitra</p>
+            {!isProposal && (
+                <section className="space-y-4 rounded-md border border-border bg-card p-5">
+                    <p className="section-label">Calon Mitra</p>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                    <TextField
-                        id="partner_name"
-                        label="Nama Calon Mitra"
-                        value={data.partner_name}
-                        onChange={(value) => setData('partner_name', value)}
-                        placeholder="Contoh: PT Konstruksi Indonesia"
-                        error={errors.partner_name}
-                    />
-
-                    <TextField
-                        id="partner_director_name"
-                        label="Nama Direktur"
-                        value={data.partner_director_name}
-                        onChange={(value) =>
-                            setData('partner_director_name', value)
-                        }
-                        error={errors.partner_director_name}
-                    />
-
-                    <TextField
-                        id="quotation_number"
-                        label="Nomor Surat Penawaran"
-                        value={data.quotation_number}
-                        onChange={(value) => setData('quotation_number', value)}
-                        placeholder="Contoh: 012/PMR/X/2026"
-                        error={errors.quotation_number}
-                    />
-
-                    <DateField
-                        id="quotation_date"
-                        label="Tanggal Surat Penawaran"
-                        value={data.quotation_date}
-                        onChange={(value) => setData('quotation_date', value)}
-                        error={errors.quotation_date}
-                    />
-
-                    <div className="grid gap-2 md:col-span-2">
-                        <Label htmlFor="partner_address">
-                            Alamat Perusahaan
-                        </Label>
-                        <Textarea
-                            id="partner_address"
-                            value={data.partner_address}
-                            onChange={(event) =>
-                                setData('partner_address', event.target.value)
-                            }
-                            rows={3}
-                            placeholder="Alamat lengkap kantor / perusahaan calon mitra"
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <TextField
+                            id="partner_name"
+                            label="Nama Calon Mitra"
+                            value={data.partner_name}
+                            onChange={(value) => setData('partner_name', value)}
+                            placeholder="Contoh: PT Konstruksi Indonesia"
+                            error={errors.partner_name}
                         />
-                        <InputError message={errors.partner_address} />
+
+                        <TextField
+                            id="partner_director_name"
+                            label="Nama Direktur"
+                            value={data.partner_director_name}
+                            onChange={(value) =>
+                                setData('partner_director_name', value)
+                            }
+                            error={errors.partner_director_name}
+                        />
+
+                        <TextField
+                            id="quotation_number"
+                            label="Nomor Surat Penawaran"
+                            value={data.quotation_number}
+                            onChange={(value) =>
+                                setData('quotation_number', value)
+                            }
+                            placeholder="Contoh: 012/PMR/X/2026"
+                            error={errors.quotation_number}
+                        />
+
+                        <DateField
+                            id="quotation_date"
+                            label="Tanggal Surat Penawaran"
+                            value={data.quotation_date}
+                            onChange={(value) =>
+                                setData('quotation_date', value)
+                            }
+                            error={errors.quotation_date}
+                        />
+
+                        <div className="grid gap-2 md:col-span-2">
+                            <Label htmlFor="partner_address">
+                                Alamat Perusahaan
+                            </Label>
+                            <Textarea
+                                id="partner_address"
+                                value={data.partner_address}
+                                onChange={(event) =>
+                                    setData(
+                                        'partner_address',
+                                        event.target.value,
+                                    )
+                                }
+                                rows={3}
+                                placeholder="Alamat lengkap kantor / perusahaan calon mitra"
+                            />
+                            <InputError message={errors.partner_address} />
+                        </div>
                     </div>
-                </div>
-            </section>
+                </section>
+            )}
 
             <section className="space-y-4 rounded-md border border-border bg-card p-5">
                 <p className="section-label">Usulan Pekerjaan</p>
@@ -635,7 +698,11 @@ export function ProcurementForm({
                     />
 
                     <div className="grid gap-2">
-                        <Label htmlFor="hpe_value">Nilai (Sebelum Nego)</Label>
+                        <Label htmlFor="hpe_value">
+                            {isProposal
+                                ? 'Perkiraan Nilai Pekerjaan'
+                                : 'Nilai (Sebelum Nego)'}
+                        </Label>
                         <CurrencyInput
                             id="hpe_value"
                             value={data.hpe_value}
@@ -647,63 +714,76 @@ export function ProcurementForm({
                         <InputError message={errors.hpe_value} />
                     </div>
 
-                    <div className="grid gap-2">
-                        <Label htmlFor="value_after_negotiation">
-                            Nilai Setelah Nego
-                        </Label>
-                        <CurrencyInput
-                            id="value_after_negotiation"
-                            value={data.value_after_negotiation ?? 0}
-                            onValueChange={(next) =>
-                                setData(
-                                    'value_after_negotiation',
-                                    next === 0 ? null : next,
-                                )
-                            }
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            Kosongkan bila negosiasi belum dilakukan.
-                        </p>
-                        <InputError message={errors.value_after_negotiation} />
-                    </div>
+                    {!isProposal && (
+                        <>
+                            <div className="grid gap-2">
+                                <Label htmlFor="value_after_negotiation">
+                                    Nilai Setelah Nego
+                                </Label>
+                                <CurrencyInput
+                                    id="value_after_negotiation"
+                                    value={data.value_after_negotiation ?? 0}
+                                    onValueChange={(next) =>
+                                        setData(
+                                            'value_after_negotiation',
+                                            next === 0 ? null : next,
+                                        )
+                                    }
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Kosongkan bila negosiasi belum dilakukan.
+                                </p>
+                                <InputError
+                                    message={errors.value_after_negotiation}
+                                />
+                            </div>
 
-                    <div className="grid gap-2">
-                        <Label htmlFor="progress_status_id">
-                            Status Progres
-                        </Label>
-                        <Select
-                            value={
-                                data.progress_status_id === null
-                                    ? undefined
-                                    : String(data.progress_status_id)
-                            }
-                            onValueChange={(value) =>
-                                setData('progress_status_id', Number(value))
-                            }
-                        >
-                            <SelectTrigger
-                                id="progress_status_id"
-                                className="w-full"
-                            >
-                                <SelectValue placeholder="Pilih status progres" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {options.progressStatuses.map((option) => (
-                                    <SelectItem
-                                        key={option.value}
-                                        value={String(option.value)}
+                            <div className="grid gap-2">
+                                <Label htmlFor="progress_status_id">
+                                    Status Progres
+                                </Label>
+                                <Select
+                                    value={
+                                        data.progress_status_id === null
+                                            ? undefined
+                                            : String(data.progress_status_id)
+                                    }
+                                    onValueChange={(value) =>
+                                        setData(
+                                            'progress_status_id',
+                                            Number(value),
+                                        )
+                                    }
+                                >
+                                    <SelectTrigger
+                                        id="progress_status_id"
+                                        className="w-full"
                                     >
-                                        {option.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <InputError message={errors.progress_status_id} />
-                    </div>
+                                        <SelectValue placeholder="Pilih status progres" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {options.progressStatuses.map(
+                                            (option) => (
+                                                <SelectItem
+                                                    key={option.value}
+                                                    value={String(option.value)}
+                                                >
+                                                    {option.label}
+                                                </SelectItem>
+                                            ),
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                                <InputError
+                                    message={errors.progress_status_id}
+                                />
+                            </div>
+                        </>
+                    )}
                 </div>
             </section>
 
-            {withPlanner && (
+            {withPlanner && !isProposal && (
                 <section className="space-y-4 rounded-md border border-border bg-card p-5">
                     <p className="section-label">Penunjukan PIC Perencana</p>
 
@@ -729,6 +809,86 @@ export function ProcurementForm({
                             <InputError message={errors.planner_id} />
                         </div>
                     </div>
+                </section>
+            )}
+
+            {isProposal && (
+                <section className="space-y-3 rounded-md border border-border bg-card p-5">
+                    <div>
+                        <p className="section-label">Lampiran Usulan</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            Lampirkan dokumen pendukung yang akan ditinjau
+                            Direksi Pekerjaan, misalnya Nota Dinas usulan, TOR,
+                            foto kondisi, atau perhitungan kebutuhan. PDF, JPG,
+                            PNG, Word, atau Excel, maksimal 20 MB per berkas.
+                        </p>
+                    </div>
+                    <label
+                        htmlFor="attachments"
+                        className="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-border bg-muted/30 px-4 py-6 text-center text-sm transition-colors hover:border-primary hover:bg-primary/5"
+                    >
+                        <span className="font-medium text-foreground">
+                            Klik untuk memilih berkas
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                            Bisa pilih beberapa berkas sekaligus
+                        </span>
+                        <input
+                            id="attachments"
+                            type="file"
+                            multiple
+                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                            className="sr-only"
+                            onChange={(event) => {
+                                const chosen = Array.from(
+                                    event.target.files ?? [],
+                                );
+                                setData('attachments', [
+                                    ...(data.attachments ?? []),
+                                    ...chosen,
+                                ]);
+                                event.target.value = '';
+                            }}
+                        />
+                    </label>
+                    {(data.attachments ?? []).length > 0 && (
+                        <ul className="divide-y divide-border rounded-md border border-border">
+                            {(data.attachments ?? []).map((file, index) => (
+                                <li
+                                    key={`${file.name}-${index}`}
+                                    className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                                >
+                                    <span className="truncate">
+                                        {file.name}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        className="shrink-0 text-xs font-medium text-destructive hover:underline"
+                                        onClick={() =>
+                                            setData(
+                                                'attachments',
+                                                (data.attachments ?? []).filter(
+                                                    (_, position) =>
+                                                        position !== index,
+                                                ),
+                                            )
+                                        }
+                                    >
+                                        Hapus
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                    <InputError
+                        message={
+                            (errors as Record<string, string | undefined>)
+                                .attachments ??
+                            Object.entries(errors).find(([key]) =>
+                                key.startsWith('attachments.'),
+                            )?.[1]
+                        }
+                    />
                 </section>
             )}
 

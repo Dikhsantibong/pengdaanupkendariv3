@@ -5,6 +5,9 @@ namespace App\Enums;
 enum ActivityType: string
 {
     case Dibuat = 'dibuat';
+    case UsulanDiajukan = 'usulan_diajukan';
+    case UsulanDisetujui = 'usulan_disetujui';
+    case UsulanDikembalikan = 'usulan_dikembalikan';
     case Diperbarui = 'diperbarui';
     case StatusDiubah = 'status_diubah';
     case PicDitunjuk = 'pic_ditunjuk';
@@ -24,6 +27,9 @@ enum ActivityType: string
     {
         return match ($this) {
             self::Dibuat => 'Pengadaan Dibuat',
+            self::UsulanDiajukan => 'Usulan Diajukan',
+            self::UsulanDisetujui => 'Usulan Disetujui Direksi Pekerjaan',
+            self::UsulanDikembalikan => 'Usulan Dikembalikan',
             self::Diperbarui => 'Data Diperbarui',
             self::StatusDiubah => 'Status Diubah',
             self::PicDitunjuk => 'PIC Ditunjuk',

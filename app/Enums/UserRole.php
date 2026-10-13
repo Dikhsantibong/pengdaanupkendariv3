@@ -9,6 +9,8 @@ enum UserRole: string
     case TeamLeaderIcc = 'team_leader_icc';
     case PicPerencana = 'pic_perencana';
     case PicPelaksana = 'pic_pelaksana';
+    case DireksiPekerjaan = 'direksi_pekerjaan';
+    case Pengusul = 'pengusul';
 
     /**
      * Get the human readable label for the role.
@@ -21,6 +23,8 @@ enum UserRole: string
             self::TeamLeaderIcc => 'Team Leader ICC',
             self::PicPerencana => 'PIC Perencana',
             self::PicPelaksana => 'PIC Pelaksana',
+            self::DireksiPekerjaan => 'Direksi Pekerjaan (Asman/TL)',
+            self::Pengusul => 'Pengusul (Staf/TL Bidang)',
         };
     }
 

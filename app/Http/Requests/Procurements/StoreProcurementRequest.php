@@ -35,6 +35,9 @@ class StoreProcurementRequest extends FormRequest
     {
         return [
             ...$this->procurementRules(),
+            // Supporting files for the Direksi Pekerjaan to review.
+            'attachments' => ['nullable', 'array', 'max:10'],
+            'attachments.*' => ['file', 'mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx', 'max:20480'],
             'planner_id' => [
                 'nullable',
                 Rule::exists('users', 'id')
@@ -58,6 +61,8 @@ class StoreProcurementRequest extends FormRequest
         return [
             ...$this->procurementAttributes(),
             'planner_id' => 'PIC perencana',
+            'attachments' => 'lampiran usulan',
+            'attachments.*' => 'lampiran usulan',
         ];
     }
 }

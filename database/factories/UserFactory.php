@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Models\WorkDirector;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -106,6 +107,22 @@ class UserFactory extends Factory
     public function executor(): static
     {
         return $this->role(UserRole::PicPelaksana);
+    }
+
+    /**
+     * Indicate that the user proposes work for a division.
+     */
+    public function proposer(WorkDirector $division): static
+    {
+        return $this->role(UserRole::Pengusul)->state(['work_director_id' => $division->id]);
+    }
+
+    /**
+     * Indicate that the user approves the work proposals of a division.
+     */
+    public function workDirector(WorkDirector $division): static
+    {
+        return $this->role(UserRole::DireksiPekerjaan)->state(['work_director_id' => $division->id]);
     }
 
     /**

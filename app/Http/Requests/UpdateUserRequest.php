@@ -32,6 +32,7 @@ class UpdateUserRequest extends FormRequest
             ],
             'role' => ['required', Rule::enum(UserRole::class)],
             'position' => ['nullable', 'string', 'max:255'],
+            'work_director_id' => [Rule::requiredIf(fn (): bool => in_array($this->input('role'), [UserRole::Pengusul->value, UserRole::DireksiPekerjaan->value], true)), 'nullable', 'integer', Rule::exists('work_directors', 'id')],
             'is_active' => ['required', 'boolean'],
             'password' => ['nullable', 'string', Password::default(), 'confirmed'],
         ];
@@ -49,6 +50,7 @@ class UpdateUserRequest extends FormRequest
             'email' => 'alamat email',
             'role' => 'peran',
             'position' => 'jabatan',
+            'work_director_id' => 'bidang',
             'is_active' => 'status aktif',
             'password' => 'kata sandi',
         ];

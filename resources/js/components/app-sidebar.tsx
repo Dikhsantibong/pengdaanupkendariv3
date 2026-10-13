@@ -11,6 +11,7 @@ import {
     FileText,
     Gauge,
     Hash,
+    Inbox,
     KeyRound,
     LayoutDashboard,
     ListChecks,
@@ -46,6 +47,7 @@ import monitoring from '@/routes/monitoring';
 import picAssignments from '@/routes/pic-assignments';
 import planning from '@/routes/planning';
 import procurements from '@/routes/procurements';
+import proposals from '@/routes/proposals';
 import publicMonitoring from '@/routes/public-monitoring';
 import reports from '@/routes/reports';
 import users from '@/routes/users';
@@ -74,9 +76,21 @@ export function AppSidebar() {
                 ...(permissions.createProcurement
                     ? [
                           {
-                              title: 'Buat Perencanaan Pengadaan',
+                              title: permissions.proposeOnly
+                                  ? 'Usulkan Pekerjaan'
+                                  : 'Buat Perencanaan Pengadaan',
                               href: procurements.create(),
                               icon: FileSignature,
+                          },
+                      ]
+                    : []),
+                ...(menus.proposals
+                    ? [
+                          {
+                              title: 'Usulan Pekerjaan',
+                              href: proposals.index(),
+                              icon: Inbox,
+                              matchNested: true,
                           },
                       ]
                     : []),

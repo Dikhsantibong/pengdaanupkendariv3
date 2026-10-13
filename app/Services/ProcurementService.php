@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Enums\ActivityType;
+use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
+use App\Enums\ProposalState;
 use App\Enums\UserRole;
 use App\Models\ChecklistItem;
 use App\Models\ContractNumberFormat;
@@ -15,6 +17,9 @@ use App\Models\User;
 use App\Notifications\PlanningReviewed;
 use App\Notifications\PlanningSubmitted;
 use App\Notifications\ProcurementAssigned;
+use App\Notifications\ProposalReviewed;
+use App\Notifications\ProposalSubmitted;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 
 class ProcurementService
@@ -33,6 +38,19 @@ class ProcurementService
             $plannerId = $attributes['planner_id'] ?? null;
             unset($attributes['planner_id']);
 
+            // Someone who may only propose raises a proposal for their own
+            // division; it waits for that division's Direksi Pekerjaan.
+            $isProposal = ! $author->hasPermission(Permission::CreateProcurement)
+                && $author->hasPermission(Permission::ProposeWork);
+
+            if ($isProposal) {
+                $plannerId = null;
+
+                if ($author->work_director_id !== null) {
+                    $attributes['work_director_id'] = $author->work_director_id;
+                }
+            }
+
             /** @var array<int, int|string> $unitIds */
             $unitIds = $attributes['target_unit_ids'] ?? [];
             unset($attributes['target_unit_ids']);
@@ -50,6 +68,18 @@ class ProcurementService
                 : $this->nextNumber($procurement->contractNumberFormat);
 
             $procurement->created_by = $author->id;
+
+            // The Direksi Pekerjaan proposing for their own division needs
+            // no second signature.
+            $selfApproved = $author->hasPermission(Permission::ApproveProposal)
+                && $author->work_director_id !== null
+                && $author->work_director_id === (int) $procurement->work_director_id;
+
+            if ($isProposal && ! $selfApproved) {
+                $procurement->proposal_state = ProposalState::MenungguPersetujuan;
+                $procurement->proposal_submitted_at = now();
+            }
+
             $procurement->save();
 
             $this->syncTargetUnits($procurement, $unitIds);
@@ -65,6 +95,17 @@ class ProcurementService
 
             if ($plannerId !== null) {
                 $this->assignPic($procurement, $author, (int) $plannerId, $procurement->executor_id);
+            }
+
+            if ($procurement->proposal_state === ProposalState::MenungguPersetujuan) {
+                $this->recordActivity(
+                    $procurement,
+                    $author,
+                    ActivityType::UsulanDiajukan,
+                    'Usulan pekerjaan diajukan ke Direksi Pekerjaan untuk disetujui.',
+                );
+
+                $this->notifyDivisionApprovers($procurement);
             }
 
             return $procurement;
@@ -391,6 +432,95 @@ class ProcurementService
         );
 
         return $procurement;
+    }
+
+    /**
+     * Approve a work proposal, or return it to the proposer with a note.
+     *
+     * Approval hands the job to procurement: it appears for planning and the
+     * procurement supervisors are told so they can appoint a planner.
+     */
+    public function decideProposal(Procurement $procurement, User $reviewer, bool $approved, ?string $note = null): Procurement
+    {
+        $procurement->proposal_state = $approved ? ProposalState::Disetujui : ProposalState::Dikembalikan;
+        $procurement->proposal_reviewed_at = now();
+        $procurement->proposal_reviewed_by = $reviewer->id;
+        $procurement->proposal_review_note = $note;
+        $procurement->save();
+
+        $this->recordActivity(
+            $procurement,
+            $reviewer,
+            $approved ? ActivityType::UsulanDisetujui : ActivityType::UsulanDikembalikan,
+            $approved
+                ? 'Usulan pekerjaan disetujui Direksi Pekerjaan dan diteruskan ke perencanaan.'
+                : 'Usulan pekerjaan dikembalikan ke pengusul.'.($note !== null ? " Catatan: {$note}" : ''),
+        );
+
+        $notification = new ProposalReviewed($procurement, $approved, $note);
+        $procurement->creator?->notify($notification);
+
+        if ($approved) {
+            $this->notifySupervisors($notification);
+        }
+
+        return $procurement;
+    }
+
+    /**
+     * Send a returned proposal back for approval after the proposer revised it.
+     */
+    public function resubmitProposal(Procurement $procurement, User $proposer): Procurement
+    {
+        $procurement->proposal_state = ProposalState::MenungguPersetujuan;
+        $procurement->proposal_submitted_at = now();
+        $procurement->proposal_reviewed_at = null;
+        $procurement->proposal_reviewed_by = null;
+        $procurement->save();
+
+        $this->recordActivity(
+            $procurement,
+            $proposer,
+            ActivityType::UsulanDiajukan,
+            'Usulan pekerjaan diperbaiki dan diajukan ulang.',
+        );
+
+        $this->notifyDivisionApprovers($procurement);
+
+        return $procurement;
+    }
+
+    /**
+     * Keep the supporting files sent with a proposal.
+     *
+     * @param  array<int, UploadedFile>  $files
+     */
+    public function attachFiles(Procurement $procurement, array $files, User $uploader): int
+    {
+        foreach ($files as $file) {
+            $procurement->attachments()->create([
+                'path' => $file->store('proposal-attachments/'.$procurement->id, 'local'),
+                'file_name' => $file->getClientOriginalName(),
+                'mime' => $file->getClientMimeType(),
+                'size' => $file->getSize(),
+                'uploaded_by' => $uploader->id,
+            ]);
+        }
+
+        return count($files);
+    }
+
+    /**
+     * Tell the Direksi Pekerjaan of the proposal's division that it waits on them.
+     */
+    protected function notifyDivisionApprovers(Procurement $procurement): void
+    {
+        User::query()
+            ->active()
+            ->where('work_director_id', $procurement->work_director_id)
+            ->get()
+            ->filter(fn (User $user): bool => $user->hasPermission(Permission::ApproveProposal))
+            ->each(fn (User $user) => $user->notify(new ProposalSubmitted($procurement)));
     }
 
     /**

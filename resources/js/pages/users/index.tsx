@@ -36,6 +36,7 @@ import users from '@/routes/users';
 import type { EnumOption } from '@/types';
 
 const ALL = 'all';
+const NO_DIVISION = 'none';
 
 type ManagedUser = {
     id: number;
@@ -44,6 +45,8 @@ type ManagedUser = {
     role: string;
     role_label: string;
     position: string | null;
+    work_director_id: number | null;
+    work_director: string | null;
     is_active: boolean;
     planned_count: number;
     executed_count: number;
@@ -54,6 +57,7 @@ type UserFormValues = {
     email: string;
     role: string;
     position: string;
+    work_director_id: string;
     is_active: boolean;
     password: string;
     password_confirmation: string;
@@ -63,10 +67,12 @@ export default function UserIndex({
     users: records,
     filters,
     roles,
+    divisions,
 }: {
     users: ManagedUser[];
     filters: { search: string | null; role: string | null };
     roles: EnumOption[];
+    divisions: Array<{ value: number; label: string }>;
 }) {
     const [search, setSearch] = useState(filters.search ?? '');
     const [editing, setEditing] = useState<ManagedUser | null>(null);
@@ -78,6 +84,7 @@ export default function UserIndex({
         email: '',
         role: roles[0]?.value ?? 'pic_perencana',
         position: '',
+        work_director_id: NO_DIVISION,
         is_active: true,
         password: '',
         password_confirmation: '',
@@ -131,6 +138,10 @@ export default function UserIndex({
             email: user.email,
             role: user.role,
             position: user.position ?? '',
+            work_director_id:
+                user.work_director_id === null
+                    ? NO_DIVISION
+                    : String(user.work_director_id),
             is_active: user.is_active,
             password: '',
             password_confirmation: '',
@@ -148,6 +159,14 @@ export default function UserIndex({
             preserveScroll: true,
             onSuccess: () => setOpen(false),
         };
+
+        form.transform((data) => ({
+            ...data,
+            work_director_id:
+                data.work_director_id === NO_DIVISION
+                    ? null
+                    : Number(data.work_director_id),
+        }));
 
         if (editing === null) {
             form.post(users.store().url, options);
@@ -236,6 +255,7 @@ export default function UserIndex({
                                     <TableHead>Nama</TableHead>
                                     <TableHead>Peran</TableHead>
                                     <TableHead>Jabatan</TableHead>
+                                    <TableHead>Bidang</TableHead>
                                     <TableHead>Penugasan</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead className="text-right">
@@ -258,6 +278,9 @@ export default function UserIndex({
                                         <TableCell>{user.role_label}</TableCell>
                                         <TableCell>
                                             {user.position ?? '—'}
+                                        </TableCell>
+                                        <TableCell>
+                                            {user.work_director ?? '—'}
                                         </TableCell>
                                         <TableCell className="tabular text-xs text-muted-foreground">
                                             {user.planned_count} perencanaan ·{' '}
@@ -415,6 +438,46 @@ export default function UserIndex({
                                 />
                                 <InputError message={form.errors.position} />
                             </div>
+                        </div>
+
+                        <div className="grid gap-2">
+                            <Label htmlFor="user-division">
+                                Bidang (Direksi Pekerjaan)
+                            </Label>
+                            <Select
+                                value={form.data.work_director_id}
+                                onValueChange={(value) =>
+                                    form.setData('work_director_id', value)
+                                }
+                            >
+                                <SelectTrigger
+                                    id="user-division"
+                                    className="w-full"
+                                >
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={NO_DIVISION}>
+                                        Tidak terikat bidang
+                                    </SelectItem>
+                                    {divisions.map((division) => (
+                                        <SelectItem
+                                            key={division.value}
+                                            value={String(division.value)}
+                                        >
+                                            {division.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                                Wajib untuk Pengusul dan Direksi Pekerjaan:
+                                usulan diteruskan ke Direksi Pekerjaan bidang
+                                ini.
+                            </p>
+                            <InputError
+                                message={form.errors.work_director_id}
+                            />
                         </div>
 
                         <div className="grid gap-4 sm:grid-cols-2">

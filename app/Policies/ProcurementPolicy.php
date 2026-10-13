@@ -4,6 +4,8 @@ namespace App\Policies;
 
 use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
+use App\Enums\ProposalState;
+use App\Enums\UserRole;
 use App\Models\Procurement;
 use App\Models\User;
 
@@ -24,7 +26,46 @@ class ProcurementPolicy
     {
         return $user->hasPermission(Permission::ViewAllProcurements)
             || $procurement->isAssignedTo($user)
-            || $procurement->created_by === $user->id;
+            || $procurement->created_by === $user->id
+            || $this->leadsDivisionOf($user, $procurement);
+    }
+
+    /**
+     * Whether the user is the Direksi Pekerjaan of the procurement's division.
+     */
+    protected function leadsDivisionOf(User $user, Procurement $procurement): bool
+    {
+        return $user->work_director_id !== null
+            && $user->work_director_id === $procurement->work_director_id
+            && $user->hasPermission(Permission::ApproveProposal);
+    }
+
+    /**
+     * Determine whether the user may approve or return a work proposal.
+     *
+     * Only the Direksi Pekerjaan of the proposal's own division decides on it
+     * (the administrator may stand in), and never on their own proposal.
+     */
+    public function approveProposal(User $user, Procurement $procurement): bool
+    {
+        if ($procurement->proposal_state !== ProposalState::MenungguPersetujuan) {
+            return false;
+        }
+
+        if ($user->role === UserRole::Administrator) {
+            return true;
+        }
+
+        return $this->leadsDivisionOf($user, $procurement) && $procurement->created_by !== $user->id;
+    }
+
+    /**
+     * Determine whether the proposer may revise and resubmit a returned proposal.
+     */
+    public function reviseProposal(User $user, Procurement $procurement): bool
+    {
+        return $procurement->proposal_state !== ProposalState::Disetujui
+            && $procurement->created_by === $user->id;
     }
 
     /**
@@ -32,7 +73,8 @@ class ProcurementPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasPermission(Permission::CreateProcurement);
+        return $user->hasPermission(Permission::CreateProcurement)
+            || $user->hasPermission(Permission::ProposeWork);
     }
 
     /**
@@ -40,6 +82,11 @@ class ProcurementPolicy
      */
     public function update(User $user, Procurement $procurement): bool
     {
+        // A proposer corrects their own proposal until it is approved.
+        if ($this->reviseProposal($user, $procurement)) {
+            return true;
+        }
+
         return $user->hasPermission(Permission::UpdateProcurement) && $this->view($user, $procurement);
     }
 
@@ -56,7 +103,10 @@ class ProcurementPolicy
      */
     public function assignPic(User $user, Procurement $procurement): bool
     {
-        return $user->hasPermission(Permission::AssignPic) && $this->view($user, $procurement);
+        // Nobody is put on a job the Direksi Pekerjaan has not approved.
+        return $procurement->isProposalApproved()
+            && $user->hasPermission(Permission::AssignPic)
+            && $this->view($user, $procurement);
     }
 
     /**
@@ -89,7 +139,8 @@ class ProcurementPolicy
      */
     public function updatePlanningChecklist(User $user, Procurement $procurement): bool
     {
-        if ($procurement->planning_approval_state === PlanningApprovalState::Disetujui) {
+        if (! $procurement->isProposalApproved()
+            || $procurement->planning_approval_state === PlanningApprovalState::Disetujui) {
             return false;
         }
 

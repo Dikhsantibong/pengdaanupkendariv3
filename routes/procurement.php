@@ -13,6 +13,7 @@ use App\Http\Controllers\Procurements\CompletionController;
 use App\Http\Controllers\Procurements\DocumentController;
 use App\Http\Controllers\Procurements\PicAssignmentController;
 use App\Http\Controllers\Procurements\PlanningIdentityController;
+use App\Http\Controllers\Procurements\ProposalController;
 use App\Http\Controllers\Procurements\StatusController;
 use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
@@ -50,6 +51,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::get('penunjukan-pic', [PicAssignmentController::class, 'index'])->name('pic-assignments.index');
+
+    // Work proposals: raised by a division, approved by its Direksi Pekerjaan.
+    Route::prefix('usulan')->name('proposals.')->group(function () {
+        Route::get('/', [ProposalController::class, 'index'])->middleware('can:menu.proposals')->name('index');
+        Route::get('{procurement}', [ProposalController::class, 'show'])->name('show');
+        Route::post('{procurement}/keputusan', [ProposalController::class, 'decide'])->name('decide');
+        Route::post('{procurement}/ajukan-ulang', [ProposalController::class, 'resubmit'])->name('resubmit');
+        Route::post('{procurement}/lampiran', [ProposalController::class, 'attach'])->name('attachments.store');
+        Route::get('{procurement}/lampiran/{attachment}', [ProposalController::class, 'attachment'])->name('attachments.show');
+        Route::delete('{procurement}/lampiran/{attachment}', [ProposalController::class, 'detach'])->name('attachments.destroy');
+    });
     // Each menu is a right set on the "Hak Akses" screen.
     Route::get('planning', [PlanningController::class, 'index'])
         ->middleware('can:menu.planning')->name('planning.index');

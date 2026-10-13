@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\UserRole;
 use App\Models\Procurement;
 use App\Models\User;
+use App\Models\WorkDirector;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -32,6 +33,34 @@ class UserManagementTest extends TestCase
 
         $this->assertSame(UserRole::PicPerencana, $user->role);
         $this->assertTrue($user->is_active);
+    }
+
+    public function test_a_proposer_must_belong_to_a_division(): void
+    {
+        $administrator = User::factory()->administrator()->create();
+        $division = WorkDirector::factory()->create();
+        $payload = [
+            'name' => 'Akmal Hidayat',
+            'email' => 'akmal.hidayat@upkendari.test',
+            'role' => UserRole::Pengusul->value,
+            'position' => 'TL Operasi',
+            'is_active' => true,
+            'password' => 'rahasia-sekali',
+            'password_confirmation' => 'rahasia-sekali',
+        ];
+
+        $this->actingAs($administrator)
+            ->post(route('users.store'), $payload)
+            ->assertSessionHasErrors('work_director_id');
+
+        $this->actingAs($administrator)
+            ->post(route('users.store'), [...$payload, 'work_director_id' => $division->id])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(
+            $division->id,
+            User::query()->where('email', 'akmal.hidayat@upkendari.test')->value('work_director_id'),
+        );
     }
 
     public function test_administrator_can_change_a_user_role_without_touching_the_password(): void

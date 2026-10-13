@@ -5,6 +5,8 @@ namespace App\Support;
 use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
+use App\Enums\ProposalState;
+use App\Enums\UserRole;
 use App\Models\Procurement;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -31,6 +33,10 @@ class DashboardTasks
     public static function for(User $user): array
     {
         return [
+            'proposals' => $user->hasPermission(Permission::ApproveProposal)
+                ? self::proposalsToApprove($user)
+                : null,
+            'myProposals' => self::myProposals($user),
             'approvals' => $user->hasPermission(Permission::ReviewPlanning)
                 ? self::approvals($user)
                 : null,
@@ -74,6 +80,7 @@ class DashboardTasks
     {
         $query = Procurement::query()
             ->visibleTo($user)
+            ->proposalApproved()
             ->inProgress()
             ->where(fn (Builder $inner) => $inner
                 ->whereNull('planner_id')
@@ -88,6 +95,55 @@ class DashboardTasks
 
             return 'Belum ada '.implode(' & ', $missing);
         }, fn (Procurement $procurement): ?string => $procurement->created_at?->toDateTimeString());
+    }
+
+    /**
+     * Work proposals of the user's division waiting for their approval.
+     *
+     * @return array{total: int, items: array<int, array{id: int, number: string, name: string, note: string, date: string|null}>}
+     */
+    protected static function proposalsToApprove(User $user): array
+    {
+        $query = Procurement::query()
+            ->where('proposal_state', ProposalState::MenungguPersetujuan->value)
+            ->when($user->role !== UserRole::Administrator, fn (Builder $query) => $query
+                ->where('work_director_id', $user->work_director_id ?? 0)
+                ->where('created_by', '!=', $user->id))
+            ->with('creator')
+            ->oldest('proposal_submitted_at');
+
+        return self::collect(
+            $query,
+            fn (Procurement $procurement): string => 'Diusulkan oleh '.($procurement->creator->name ?? '-'),
+            fn (Procurement $procurement): ?string => $procurement->proposal_submitted_at?->toDateTimeString(),
+        );
+    }
+
+    /**
+     * The user's own proposals that still need attention: waiting for the
+     * Direksi Pekerjaan, or returned to be revised.
+     *
+     * @return array{total: int, items: array<int, array{id: int, number: string, name: string, note: string, date: string|null}>}
+     */
+    protected static function myProposals(User $user): array
+    {
+        $query = Procurement::query()
+            ->where('created_by', $user->id)
+            ->whereIn('proposal_state', [
+                ProposalState::MenungguPersetujuan->value,
+                ProposalState::Dikembalikan->value,
+            ])
+            // Returned proposals first: they wait on the proposer.
+            ->orderByRaw('case when proposal_state = ? then 0 else 1 end', [ProposalState::Dikembalikan->value])
+            ->latest('proposal_submitted_at');
+
+        return self::collect(
+            $query,
+            fn (Procurement $procurement): string => $procurement->proposal_state === ProposalState::Dikembalikan
+                ? 'Dikembalikan: '.($procurement->proposal_review_note ?? 'perlu diperbaiki')
+                : 'Menunggu persetujuan Direksi Pekerjaan',
+            fn (Procurement $procurement): ?string => $procurement->proposal_submitted_at?->toDateTimeString(),
+        );
     }
 
     /**

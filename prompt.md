@@ -336,9 +336,23 @@ Agar template standar ini nantinya dapat diganti dengan template resmi **tanpa m
 
 Setiap pengadaan mengikuti tahapan yang telah ditentukan. Setiap tahapan memiliki PIC, status, checklist dokumen, serta histori aktivitas yang dapat dipantau.
 
-## 0. Tahap Pembuatan Pengadaan
+## 0. Tahap Usulan Pekerjaan (Bidang)
 
-Team Leader Pengadaan mengisi **Form Input Awal Pembuatan Pengadaan** (lihat bagian di atas) untuk mendaftarkan pengadaan baru ke dalam sistem.
+Pekerjaan dapat berawal dari bidang pengguna:
+
+1. **Pengusul** (Staf/TL bidang, peran `pengusul`) membuka menu **Usulkan Pekerjaan** (form yang sama dengan form pembuatan pengadaan, versi ringkas): nama pekerjaan, unit tujuan, metode, sumber anggaran, perkiraan nilai, PRK, nota dinas usulan, catatan, dan **Lampiran Usulan** (PDF/gambar/Word/Excel, maks. 10 berkas @20 MB). Bidang (Direksi Pekerjaan) otomatis mengikuti bidang akun pengusul dan tidak dapat diganti. Status usulan: **Menunggu Persetujuan**.
+2. **Direksi Pekerjaan** (Asman bidang, atau TL untuk K3 KAM dan Lingkungan, peran `direksi_pekerjaan`) menerima notifikasi dan melihat usulan pada menu **Usulan Pekerjaan** dan kartu dashboard. Halaman **Tinjau Usulan** menampilkan lampiran berukuran besar di kiri (PDF/gambar langsung terbaca) dan ringkasan data serta tombol **Setujui Usulan** / **Kembalikan ke Pengusul** di kanan. Mengembalikan wajib disertai catatan.
+3. Usulan yang **dikembalikan** dapat diperbaiki pengusul (ubah data, tambah/hapus lampiran) lalu **Ajukan Ulang**.
+4. Usulan yang **disetujui** baru masuk ke pipeline pengadaan: muncul di Penunjukan PIC, Perencanaan, Monitoring Publik, dan TL Pengadaan/TL ICC mendapat notifikasi. Sebelum disetujui, usulan tidak tampil di perencanaan dan PIC tidak dapat ditunjuk.
+5. Direksi Pekerjaan yang mengusulkan untuk bidangnya sendiri langsung berstatus disetujui. Direksi Pekerjaan tidak dapat menyetujui usulan bidang lain maupun usulannya sendiri.
+
+Hak akses terkait (dapat diatur di menu Hak Akses): `procurement.propose` (Mengusulkan Pekerjaan), `procurement.approve-proposal` (Menyetujui Usulan), `menu.proposals` (menu Usulan Pekerjaan). Bidang setiap akun diatur pada **Manajemen Pengguna → Bidang (Direksi Pekerjaan)**, wajib untuk peran Pengusul dan Direksi Pekerjaan.
+
+Akun bidang dibuat oleh `DivisionUserSeeder` (`php artisan db:seed --class=DivisionUserSeeder`), hanya membuat akun yang belum ada (password awal `password`, email `nama.lengkap@upkendari.test`). Akun Asman dibuat atas nama jabatan (`asman.operasi@`, `asman.engineering@`, `asman.pemeliharaan@`, `asman.bs@`) karena nama orangnya belum ditentukan, dan dapat diganti lewat Manajemen Pengguna. TL K3 KAM (Musriadi) dan TL Lingkungan (Sadri) berperan sebagai Direksi Pekerjaan bidangnya; Muhammad Amrullah sebagai Team Leader Pengadaan; Bastial tetap PIC Perencana.
+
+## 0b. Tahap Pembuatan Pengadaan
+
+Team Leader Pengadaan mengisi **Form Input Awal Pembuatan Pengadaan** (lihat bagian di atas) untuk mendaftarkan pengadaan baru ke dalam sistem secara langsung (tanpa tahap usulan).
 
 ## 1. Tahap Perencanaan
 
@@ -558,6 +572,17 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 - Bertanggung jawab melaksanakan seluruh proses pengadaan hingga pengadaan siap diselesaikan.
 - Secara bawaan hanya dapat melihat dan mengakses data pengadaan yang ditugaskan kepadanya (lihat **Prinsip Hak Akses: Visibilitas Data Per PIC**).
 - Dapat diberikan wewenang penutupan pengadaan atau peran TL oleh Administrator melalui menu Hak Akses / Pengguna jika ditugaskan sebagai pengelola approve.
+
+---
+
+## Direksi Pekerjaan (`direksi_pekerjaan`)
+
+- Asman bidang (atau TL K3 KAM / TL Lingkungan). Meninjau lampiran usulan pekerjaan bidangnya lalu menyetujui atau mengembalikan.
+- Melihat seluruh pengadaan milik bidangnya (berdasarkan Direksi Pekerjaan pengadaan).
+
+## Pengusul (`pengusul`)
+
+- Staf/TL bidang. Hanya dapat mengusulkan pekerjaan untuk bidangnya sendiri, memantau status usulan, memperbaiki usulan yang dikembalikan, dan melihat pengadaan yang ia usulkan.
 
 ---
 

@@ -7,7 +7,9 @@ import {
     CircleDashed,
     CircleDot,
     ClipboardCheck,
+    FilePlus2,
     FolderKanban,
+    Inbox,
     ListChecks,
     PartyPopper,
     RotateCcw,
@@ -41,6 +43,7 @@ import execution from '@/routes/execution';
 import picAssignments from '@/routes/pic-assignments';
 import planning from '@/routes/planning';
 import procurements from '@/routes/procurements';
+import proposals from '@/routes/proposals';
 import type { Auth, ProcurementRow } from '@/types';
 
 type Breakdown = { label: string; total: number };
@@ -56,6 +59,8 @@ type TaskItem = {
 type TaskList = { total: number; items: TaskItem[] };
 
 type DashboardTasks = {
+    proposals: TaskList | null;
+    myProposals: TaskList;
     approvals: TaskList | null;
     assignments: TaskList | null;
     planning: TaskList;
@@ -274,6 +279,36 @@ function TaskInbox({
         allHref: string | null;
         tone: string;
     }> = [];
+
+    if (tasks.proposals !== null) {
+        cards.push({
+            key: 'proposals',
+            title: 'Usulan Menunggu Persetujuan Anda',
+            icon: Inbox,
+            list: tasks.proposals,
+            emptyText: 'Tidak ada usulan pekerjaan yang menunggu.',
+            itemHref: (item) => proposals.show(item.id).url,
+            dateLabel: (item) =>
+                item.date ? `Diajukan ${formatDateTime(item.date)}` : null,
+            allHref: menus.proposals ? proposals.index().url : null,
+            tone: 'bg-violet-500/10 text-violet-700 dark:text-violet-400',
+        });
+    }
+
+    if (tasks.myProposals.total > 0) {
+        cards.push({
+            key: 'myProposals',
+            title: 'Usulan Saya',
+            icon: FilePlus2,
+            list: tasks.myProposals,
+            emptyText: '',
+            itemHref: (item) => proposals.show(item.id).url,
+            dateLabel: (item) =>
+                item.date ? `Diajukan ${formatDateTime(item.date)}` : null,
+            allHref: menus.proposals ? proposals.index().url : null,
+            tone: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+        });
+    }
 
     if (tasks.approvals !== null) {
         cards.push({

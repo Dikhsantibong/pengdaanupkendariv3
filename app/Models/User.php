@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -38,13 +39,28 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property CarbonImmutable|null $deleted_at
  * @property-read int|null $planned_procurements_count
  * @property-read int|null $executed_procurements_count
+ * @property int|null $work_director_id
+ * @property-read WorkDirector|null $workDirector
  */
-#[Fillable(['name', 'email', 'password', 'role', 'position', 'is_active'])]
+#[Fillable(['name', 'email', 'password', 'role', 'position', 'work_director_id', 'is_active'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, PasskeyAuthenticatable, SoftDeletes, TwoFactorAuthenticatable;
+
+    /**
+     * The division the user works in, named by its Direksi Pekerjaan.
+     *
+     * A proposer's proposals go to this Direksi Pekerjaan for approval; a
+     * user with the Direksi Pekerjaan role approves the proposals of it.
+     *
+     * @return BelongsTo<WorkDirector, $this>
+     */
+    public function workDirector(): BelongsTo
+    {
+        return $this->belongsTo(WorkDirector::class)->withTrashed();
+    }
 
     /**
      * The procurements this user plans.

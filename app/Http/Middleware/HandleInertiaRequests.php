@@ -53,6 +53,10 @@ class HandleInertiaRequests extends Middleware
                     'manageUsers' => $user !== null && Gate::forUser($user)->allows('manage-users'),
                     'viewAllProcurements' => $user !== null && Gate::forUser($user)->allows('view-all-procurements'),
                     'createProcurement' => $user !== null && Gate::forUser($user)->allows('create', Procurement::class),
+                    // May only propose work: the create screen is the proposal form.
+                    'proposeOnly' => $user !== null
+                        && ! $user->hasPermission(Permission::CreateProcurement)
+                        && $user->hasPermission(Permission::ProposeWork),
                     'assignPic' => $user !== null && Gate::forUser($user)->allows('assign-pic'),
                     'manageVendorAssessments' => $user !== null && Gate::forUser($user)->allows('manage-vendor-assessments'),
                     // Which menus to show, keyed by the right's name.

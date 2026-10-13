@@ -20,6 +20,8 @@ namespace App\Enums;
 enum Permission: string
 {
     case CreateProcurement = 'procurement.create';
+    case ProposeWork = 'procurement.propose';
+    case ApproveProposal = 'procurement.approve-proposal';
     case UpdateProcurement = 'procurement.update';
     case DeleteProcurement = 'procurement.delete';
     case AssignPic = 'procurement.assign-pic';
@@ -28,6 +30,7 @@ enum Permission: string
     case ViewAllProcurements = 'procurement.view-all';
     case ManageVendorAssessments = 'vendor-assessments.manage';
     case ManageMasterData = 'master-data.manage';
+    case MenuProposals = 'menu.proposals';
     case MenuPlanning = 'menu.planning';
     case MenuExecution = 'menu.execution';
     case MenuApprovals = 'menu.approvals';
@@ -43,6 +46,8 @@ enum Permission: string
     {
         return match ($this) {
             self::CreateProcurement => 'Buat perencanaan pengadaan',
+            self::ProposeWork => 'Usulkan pekerjaan',
+            self::ApproveProposal => 'Setujui usulan pekerjaan bidangnya',
             self::UpdateProcurement => 'Ubah data pengadaan',
             self::DeleteProcurement => 'Arsipkan pengadaan',
             self::AssignPic => 'Tunjuk PIC perencana & pelaksana',
@@ -51,6 +56,7 @@ enum Permission: string
             self::ViewAllProcurements => 'Lihat seluruh pengadaan',
             self::ManageVendorAssessments => 'Kelola penilaian penyedia',
             self::ManageMasterData => 'Kelola data master',
+            self::MenuProposals => 'Menu Usulan Pekerjaan',
             self::MenuPlanning => 'Menu Perencanaan',
             self::MenuExecution => 'Menu Pelaksanaan',
             self::MenuApprovals => 'Menu Approval',
@@ -68,6 +74,8 @@ enum Permission: string
     {
         return match ($this) {
             self::CreateProcurement => 'Membuka menu Buat Perencanaan Pengadaan dan mendaftarkan pengadaan baru.',
+            self::ProposeWork => 'Mengajukan usulan pekerjaan untuk bidangnya. Usulan baru masuk perencanaan setelah disetujui Direksi Pekerjaan bidang tersebut.',
+            self::ApproveProposal => 'Meninjau lalu menyetujui atau mengembalikan usulan pekerjaan dari bidang yang dipimpinnya, serta melihat seluruh pengadaan bidang tersebut.',
             self::UpdateProcurement => 'Mengubah identitas dan usulan pekerjaan pada pengadaan yang dapat dilihat.',
             self::DeleteProcurement => 'Mengarsipkan pengadaan yang dapat dilihat.',
             self::AssignPic => 'Membuka menu Penunjukan PIC dan mengganti PIC pada pengadaan.',
@@ -76,6 +84,7 @@ enum Permission: string
             self::ViewAllProcurements => 'Melihat seluruh pengadaan, bukan hanya yang ditugaskan atau dibuat sendiri.',
             self::ManageVendorAssessments => 'Membuat, mengisi, dan mengirim formulir penilaian kinerja penyedia.',
             self::ManageMasterData => 'Mengubah seluruh data master.',
+            self::MenuProposals => 'Menampilkan dan membuka halaman Usulan Pekerjaan (usulan sendiri dan antrean persetujuan).',
             self::MenuPlanning => 'Menampilkan dan membuka papan Perencanaan.',
             self::MenuExecution => 'Menampilkan dan membuka papan Pelaksanaan.',
             self::MenuApprovals => 'Menampilkan dan membuka antrean Approval.',
@@ -93,6 +102,8 @@ enum Permission: string
     {
         return match ($this) {
             self::CreateProcurement,
+            self::ProposeWork,
+            self::ApproveProposal,
             self::UpdateProcurement,
             self::DeleteProcurement,
             self::AssignPic,
@@ -101,6 +112,7 @@ enum Permission: string
             self::ViewAllProcurements => 'Pengadaan',
             self::ManageVendorAssessments => 'Penilaian Penyedia',
             self::ManageMasterData => 'Administrasi',
+            self::MenuProposals,
             self::MenuPlanning,
             self::MenuExecution,
             self::MenuApprovals,
@@ -128,6 +140,14 @@ enum Permission: string
             self::AssignPic,
             self::CompleteProcurement => [UserRole::TeamLeaderPengadaan],
             self::ReviewPlanning => [UserRole::TeamLeaderIcc],
+            self::ProposeWork => [UserRole::Pengusul, UserRole::DireksiPekerjaan],
+            self::ApproveProposal => [UserRole::DireksiPekerjaan],
+            self::MenuProposals => [
+                UserRole::Pengusul,
+                UserRole::DireksiPekerjaan,
+                UserRole::TeamLeaderPengadaan,
+                UserRole::TeamLeaderIcc,
+            ],
             self::ViewAllProcurements => [UserRole::TeamLeaderPengadaan, UserRole::TeamLeaderIcc],
             self::ManageVendorAssessments,
             self::ManageMasterData => [],

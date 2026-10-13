@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
+use App\Enums\ProposalState;
 use App\Enums\StatusCategory;
 use App\Enums\WorkCategory;
 use App\Observers\ProcurementDocumentObserver;
@@ -35,11 +36,18 @@ use Illuminate\Support\Collection;
  * @property int|null $budget_source_id
  * @property int|null $contract_type_id
  * @property WorkCategory|null $work_category
+ * @property ProposalState $proposal_state
+ * @property CarbonImmutable|null $proposal_submitted_at
+ * @property CarbonImmutable|null $proposal_reviewed_at
+ * @property int|null $proposal_reviewed_by
+ * @property string|null $proposal_review_note
  * @property string|null $manager_memo_number
  * @property string|null $pr_po_number
  * @property string|null $prk_number
  * @property string|null $proposal_memo_number
+ * @property CarbonImmutable|null $proposal_memo_date
  * @property string|null $icc_memo_number
+ * @property CarbonImmutable|null $icc_memo_date
  * @property string|null $coa_number
  * @property string|null $wo_number
  * @property string|null $quotation_number
@@ -107,6 +115,16 @@ class Procurement extends Model
 {
     /** @use HasFactory<ProcurementFactory> */
     use HasFactory, SoftDeletes;
+
+    /**
+     * Defaults before the row is read back: anything not raised as a
+     * proposal is approved from the start.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'proposal_state' => 'disetujui',
+    ];
 
     /**
      * The official directing this procurement.
@@ -267,6 +285,46 @@ class Procurement extends Model
     }
 
     /**
+     * The Direksi Pekerjaan account that decided on the proposal.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function proposalReviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'proposal_reviewed_by');
+    }
+
+    /**
+     * The supporting files sent with the work proposal.
+     *
+     * @return HasMany<ProcurementAttachment, $this>
+     */
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(ProcurementAttachment::class)->oldest('id');
+    }
+
+    /**
+     * Whether the Direksi Pekerjaan has approved the proposal, so that the
+     * procurement may be planned.
+     */
+    public function isProposalApproved(): bool
+    {
+        return $this->proposal_state === ProposalState::Disetujui;
+    }
+
+    /**
+     * Limit the query to procurements past the proposal step.
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeProposalApproved(Builder $query): Builder
+    {
+        return $query->where('proposal_state', ProposalState::Disetujui->value);
+    }
+
+    /**
      * The user who registered this procurement.
      *
      * @return BelongsTo<User, $this>
@@ -335,11 +393,20 @@ class Procurement extends Model
         }
 
         // Whoever registered a procurement keeps sight of it, so a PIC given
-        // the right to create one can follow it up.
-        return $query->where(function (Builder $builder) use ($user): void {
+        // the right to create one can follow it up. A Direksi Pekerjaan sees
+        // every procurement of the division they lead.
+        $leadsDivision = $user->work_director_id !== null
+            && $user->hasPermission(Permission::ApproveProposal);
+
+        return $query->where(function (Builder $builder) use ($user, $leadsDivision): void {
             $builder->where('planner_id', $user->id)
                 ->orWhere('executor_id', $user->id)
                 ->orWhere('created_by', $user->id);
+
+            if ($leadsDivision) {
+                // Qualified: report queries join tables that share the column.
+                $builder->orWhere($builder->qualifyColumn('work_director_id'), $user->work_director_id);
+            }
         });
     }
 
@@ -464,6 +531,9 @@ class Procurement extends Model
             'execution_duration_days' => 'integer',
             'warranty_months' => 'integer',
             'work_category' => WorkCategory::class,
+            'proposal_state' => ProposalState::class,
+            'proposal_submitted_at' => 'datetime',
+            'proposal_reviewed_at' => 'datetime',
         ];
     }
 

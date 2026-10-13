@@ -20,6 +20,8 @@ class DatabaseSeeder extends Seeder
             DocumentTemplateLibrarySeeder::class,
             VendorAssessmentSeeder::class,
             UserSeeder::class,
+            // Proposers and Direksi Pekerjaan of every division.
+            DivisionUserSeeder::class,
         ]);
     }
 }

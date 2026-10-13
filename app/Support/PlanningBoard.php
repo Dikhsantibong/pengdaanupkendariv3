@@ -54,6 +54,7 @@ class PlanningBoard
     protected function scope(): Builder
     {
         return Procurement::query()
+            ->proposalApproved()
             ->whereNull('completed_at')
             ->where('planning_approval_state', '!=', PlanningApprovalState::Disetujui->value)
             ->whereHas(

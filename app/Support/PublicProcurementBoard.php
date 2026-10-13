@@ -47,12 +47,13 @@ class PublicProcurementBoard
             ->toBase()
             ->join('progress_statuses', 'progress_statuses.id', '=', 'procurements.progress_status_id')
             ->whereNull('procurements.deleted_at')
+            ->where('procurements.proposal_state', 'disetujui')
             ->selectRaw('progress_statuses.category as category, count(*) as total')
             ->groupBy('progress_statuses.category')
             ->pluck('total', 'category');
 
         return [
-            'total' => Procurement::query()->count(),
+            'total' => Procurement::query()->proposalApproved()->count(),
             'perencanaan' => $this->stillPlanning()->count(),
             'pelaksanaan' => $this->inExecution()->count(),
             'menungguApproval' => Procurement::query()
@@ -113,6 +114,7 @@ class PublicProcurementBoard
     protected function stillPlanning(): Builder
     {
         return Procurement::query()
+            ->proposalApproved()
             ->whereNull('completed_at')
             ->where('planning_approval_state', '!=', PlanningApprovalState::Disetujui->value)
             ->whereHas(

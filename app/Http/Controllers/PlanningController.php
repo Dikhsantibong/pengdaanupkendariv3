@@ -23,6 +23,8 @@ class PlanningController extends Controller
         $procurements = ProcurementFilters::apply(
             Procurement::query()
                 ->visibleTo($request->user())
+                // A proposal reaches planning once its Direksi Pekerjaan approves.
+                ->proposalApproved()
                 ->whereIn('planning_approval_state', [
                     PlanningApprovalState::BelumDiajukan->value,
                     PlanningApprovalState::MenungguPersetujuan->value,

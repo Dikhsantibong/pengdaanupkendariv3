@@ -26,10 +26,13 @@ export type AuthPermissions = {
     manageUsers: boolean;
     viewAllProcurements: boolean;
     createProcurement: boolean;
+    /** May only propose work; the create screen is the proposal form. */
+    proposeOnly: boolean;
     assignPic: boolean;
     manageVendorAssessments: boolean;
     /** Which menus are visible, as set on the Hak Akses screen. */
     menus: {
+        proposals: boolean;
         planning: boolean;
         execution: boolean;
         approvals: boolean;

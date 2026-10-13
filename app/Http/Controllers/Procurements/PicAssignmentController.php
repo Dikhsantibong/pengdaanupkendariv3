@@ -28,6 +28,8 @@ class PicAssignmentController extends Controller
         $procurements = ProcurementFilters::apply(
             Procurement::query()
                 ->visibleTo($request->user())
+                // Nobody is appointed to a proposal its division has not approved.
+                ->proposalApproved()
                 ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor'])
                 ->when(
                     $request->boolean('unassigned'),

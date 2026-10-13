@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ActivityType;
+use App\Enums\Permission;
 use App\Enums\ProcurementStage;
 use App\Http\Requests\Procurements\StoreProcurementRequest;
 use App\Http\Requests\Procurements\UpdateProcurementRequest;
@@ -59,7 +60,11 @@ class ProcurementController extends Controller
     {
         $this->authorize('create', Procurement::class);
 
+        /** @var User $user */
+        $user = request()->user();
+
         return Inertia::render('procurements/create', [
+            'proposal' => $this->proposalContext($user),
             'options' => MasterDataOptions::forProcurementForm(),
             // One suggestion per format, so switching between SPK and PJ fills
             // in the right running number without another round trip.
@@ -74,7 +79,22 @@ class ProcurementController extends Controller
     {
         $this->authorize('create', Procurement::class);
 
-        $procurement = $this->procurements->create($request->validated(), $request->user());
+        $procurement = $this->procurements->create(
+            $request->safe()->except('attachments'),
+            $request->user(),
+        );
+
+        $this->procurements->attachFiles($procurement, $request->file('attachments', []), $request->user());
+
+        // A proposal waits on the Direksi Pekerjaan: show it where it is followed.
+        if (! $procurement->isProposalApproved()) {
+            Inertia::flash('toast', [
+                'type' => 'success',
+                'message' => 'Usulan pekerjaan terkirim ke Direksi Pekerjaan untuk disetujui.',
+            ]);
+
+            return to_route('proposals.show', $procurement);
+        }
 
         Inertia::flash('toast', [
             'type' => 'success',
@@ -82,6 +102,21 @@ class ProcurementController extends Controller
         ]);
 
         return to_route('procurements.show', $procurement);
+    }
+
+    /**
+     * How the form should behave for a user who may only propose work.
+     *
+     * @return array{enabled: bool, workDirectorId: int|null, division: string|null}
+     */
+    protected function proposalContext(User $user): array
+    {
+        return [
+            'enabled' => ! $user->hasPermission(Permission::CreateProcurement)
+                && $user->hasPermission(Permission::ProposeWork),
+            'workDirectorId' => $user->work_director_id,
+            'division' => $user->workDirector?->name,
+        ];
     }
 
     /**
@@ -190,7 +225,16 @@ class ProcurementController extends Controller
     {
         $this->authorize('update', $procurement);
 
+        /** @var User $editor */
+        $editor = request()->user();
+
         return Inertia::render('procurements/edit', [
+            // A proposer revising their own proposal sees the proposal form.
+            'proposal' => [
+                ...$this->proposalContext($editor),
+                'enabled' => ! $procurement->isProposalApproved() && $procurement->created_by === $editor->id
+                    && ! $editor->hasPermission(Permission::CreateProcurement),
+            ],
             'procurement' => [
                 'id' => $procurement->id,
                 'number' => $procurement->number,
@@ -266,6 +310,12 @@ class ProcurementController extends Controller
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Data pengadaan diperbarui.']);
+
+        // A proposal still with its proposer goes back to the proposal page,
+        // where it is resubmitted.
+        if (! $procurement->isProposalApproved()) {
+            return to_route('proposals.show', $procurement);
+        }
 
         return to_route('procurements.show', $procurement);
     }
