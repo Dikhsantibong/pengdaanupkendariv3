@@ -1,5 +1,5 @@
 import { useForm } from '@inertiajs/react';
-import { FileText, Plus, X } from 'lucide-react';
+import { FileText, Plus, Upload, X } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { CurrencyInput } from '@/components/currency-input';
@@ -17,18 +17,18 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 import type { Option, PicOption, StatusOption } from '@/types';
 
 const NONE = 'none';
 
-/** A contract number format, and whether it asks for barang or jasa. */
+/** A contract number format, and whether it asks for a category. */
 export type ContractFormatOption = Option & { usesWorkCategory?: boolean };
-
-export type WorkCategory = 'barang' | 'jasa';
 
 export type ProcurementFormOptions = {
     contractNumberFormats: ContractFormatOption[];
-    workCategories?: { value: WorkCategory; label: string }[];
+    /** The categories of an SPK or PJ, from the Jenis Kontrak master data. */
+    contractTypes: Option[];
     workDirectors: Option[];
     targetUnits: Option[];
     procurementMethods: Option[];
@@ -40,7 +40,7 @@ export type ProcurementFormOptions = {
 
 export type ProcurementFormValues = {
     contract_number_format_id: number | null;
-    work_category: WorkCategory | null;
+    contract_type_id: number | null;
     number: string;
     name: string;
     partner_name: string;
@@ -120,8 +120,9 @@ export function ProcurementForm({
         ...(withPlanner && !isProposal
             ? { planner_id: initialValues?.planner_id ?? null }
             : {}),
+        ...(asksForTor ? { attachments: [] } : {}),
         contract_number_format_id: startingFormatId,
-        work_category: initialValues?.work_category ?? null,
+        contract_type_id: initialValues?.contract_type_id ?? null,
         number:
             initialValues?.number ??
             (startingFormatId === null
@@ -204,20 +205,15 @@ export function ProcurementForm({
             (option) => option.value === formatId,
         )?.usesWorkCategory === true;
 
-    const workCategories = options.workCategories ?? [
-        { value: 'barang' as const, label: 'Barang' },
-        { value: 'jasa' as const, label: 'Jasa' },
-    ];
-
     const chooseFormat = (formatId: number | null) => {
         const untouched = Object.values(nextNumbers).includes(data.number);
 
         setData((current) => ({
             ...current,
             contract_number_format_id: formatId,
-            // Barang/jasa only belongs to the formats that ask for it.
-            work_category: usesWorkCategory(formatId)
-                ? current.work_category
+            // The category only belongs to the formats that ask for it.
+            contract_type_id: usesWorkCategory(formatId)
+                ? current.contract_type_id
                 : null,
             number:
                 untouched || current.number === ''
@@ -323,59 +319,79 @@ export function ProcurementForm({
 
                         {usesWorkCategory(data.contract_number_format_id) && (
                             <div className="grid gap-2">
-                                <Label id="work_category_label">
+                                <Label id="contract_type_label">
                                     Kategori{' '}
                                     {options.contractNumberFormats.find(
                                         (option) =>
                                             option.value ===
                                             data.contract_number_format_id,
                                     )?.label ?? ''}
+                                    <span className="text-destructive">*</span>
                                 </Label>
-                                <div
-                                    role="radiogroup"
-                                    aria-labelledby="work_category_label"
-                                    className="grid gap-2 sm:max-w-md sm:grid-cols-2"
-                                >
-                                    {workCategories.map((category) => {
-                                        const selected =
-                                            data.work_category ===
-                                            category.value;
+                                {options.contractTypes.length === 0 ? (
+                                    <p className="rounded-md border border-dashed border-border px-3 py-2.5 text-sm text-muted-foreground">
+                                        Belum ada Jenis Kontrak aktif. Tambahkan
+                                        di Data Master → Jenis Kontrak.
+                                    </p>
+                                ) : (
+                                    <div
+                                        role="radiogroup"
+                                        aria-labelledby="contract_type_label"
+                                        className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"
+                                    >
+                                        {options.contractTypes.map((type) => {
+                                            const selected =
+                                                data.contract_type_id ===
+                                                type.value;
 
-                                        return (
-                                            <button
-                                                key={category.value}
-                                                type="button"
-                                                role="radio"
-                                                aria-checked={selected}
-                                                onClick={() =>
-                                                    setData(
-                                                        'work_category',
-                                                        category.value,
-                                                    )
-                                                }
-                                                className={
-                                                    selected
-                                                        ? 'flex items-center gap-2.5 rounded-md border border-primary bg-primary/5 px-3 py-2.5 text-left text-sm font-medium text-primary ring-1 ring-primary'
-                                                        : 'flex items-center gap-2.5 rounded-md border border-border bg-card px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-muted'
-                                                }
-                                            >
-                                                <span
+                                            return (
+                                                <button
+                                                    key={type.value}
+                                                    type="button"
+                                                    role="radio"
+                                                    aria-checked={selected}
+                                                    onClick={() =>
+                                                        setData(
+                                                            'contract_type_id',
+                                                            type.value,
+                                                        )
+                                                    }
                                                     className={
                                                         selected
-                                                            ? 'flex size-4 items-center justify-center rounded-full border-4 border-primary'
-                                                            : 'size-4 rounded-full border border-muted-foreground/50'
+                                                            ? 'flex items-start gap-2.5 rounded-md border border-primary bg-primary/5 px-3 py-2.5 text-left text-sm font-medium text-primary ring-1 ring-primary'
+                                                            : 'flex items-start gap-2.5 rounded-md border border-border bg-card px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-muted'
                                                     }
-                                                />
-                                                {category.label}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+                                                >
+                                                    <span
+                                                        className={
+                                                            selected
+                                                                ? 'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border-4 border-primary'
+                                                                : 'mt-0.5 size-4 shrink-0 rounded-full border border-muted-foreground/50'
+                                                        }
+                                                    />
+                                                    <span className="min-w-0">
+                                                        <span className="block">
+                                                            {type.label}
+                                                        </span>
+                                                        {type.description && (
+                                                            <span className="block text-xs font-normal text-muted-foreground">
+                                                                {
+                                                                    type.description
+                                                                }
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                                 <p className="text-xs text-muted-foreground">
-                                    Menentukan format dokumen kontrak yang
-                                    digenerate (mis. SPK Barang atau SPK Jasa).
+                                    Pilihan diambil dari Data Master → Jenis
+                                    Kontrak, yang juga menentukan format dokumen
+                                    SPK/PJ yang digenerate.
                                 </p>
-                                <InputError message={errors.work_category} />
+                                <InputError message={errors.contract_type_id} />
                             </div>
                         )}
                     </>
@@ -877,6 +893,20 @@ export function ProcurementForm({
                 </section>
             )}
 
+            {asksForTor && (
+                <SupportingFilesField
+                    files={data.attachments ?? []}
+                    onChange={(files) => setData('attachments', files)}
+                    error={
+                        (errors as Record<string, string | undefined>)
+                            .attachments ??
+                        Object.entries(errors).find(([key]) =>
+                            key.startsWith('attachments.'),
+                        )?.[1]
+                    }
+                />
+            )}
+
             {!isProposal && (
                 <section className="space-y-4 rounded-md border border-border bg-card p-5">
                     <p className="section-label">Informasi Tambahan</p>
@@ -1076,6 +1106,138 @@ function MultiValueField({
             </button>
             <InputError message={error} />
         </div>
+    );
+}
+
+/** The most supporting files one proposal may carry. */
+const MAX_SUPPORTING_FILES = 10;
+
+/**
+ * Optional supporting files sent with a proposal.
+ *
+ * Several files can be picked at once, and picking again adds to the list
+ * rather than replacing it, so files from different folders can be combined.
+ */
+function SupportingFilesField({
+    files,
+    onChange,
+    error,
+}: {
+    files: File[];
+    onChange: (files: File[]) => void;
+    error?: string;
+}) {
+    const [dragging, setDragging] = useState(false);
+
+    const add = (chosen: File[]) => {
+        const known = new Set(files.map((file) => `${file.name}:${file.size}`));
+        const fresh = chosen.filter(
+            (file) => !known.has(`${file.name}:${file.size}`),
+        );
+
+        onChange([...files, ...fresh].slice(0, MAX_SUPPORTING_FILES));
+    };
+
+    const full = files.length >= MAX_SUPPORTING_FILES;
+
+    return (
+        <section className="space-y-3 rounded-md border border-border bg-card p-5">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div>
+                    <p className="section-label">
+                        Dokumen Pendukung{' '}
+                        <span className="font-normal normal-case">
+                            (opsional)
+                        </span>
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                        Misalnya foto kondisi, spesifikasi, atau perhitungan
+                        kebutuhan. Bisa lebih dari satu berkas — PDF, JPG, PNG,
+                        Word, atau Excel, maksimal 20 MB per berkas.
+                    </p>
+                </div>
+                <span className="tabular text-xs text-muted-foreground">
+                    {files.length}/{MAX_SUPPORTING_FILES} berkas
+                </span>
+            </div>
+
+            {!full && (
+                <label
+                    htmlFor="attachments"
+                    onDragOver={(event) => {
+                        event.preventDefault();
+                        setDragging(true);
+                    }}
+                    onDragLeave={() => setDragging(false)}
+                    onDrop={(event) => {
+                        event.preventDefault();
+                        setDragging(false);
+                        add(Array.from(event.dataTransfer.files));
+                    }}
+                    className={cn(
+                        'flex cursor-pointer flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed px-4 py-6 text-center text-sm transition-colors hover:border-primary hover:bg-primary/5',
+                        dragging
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border bg-muted/30',
+                    )}
+                >
+                    <Upload className="size-5 text-muted-foreground" />
+                    <span className="font-medium text-foreground">
+                        Klik atau seret berkas ke sini
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                        Pilih beberapa berkas sekaligus (Ctrl/Shift + klik)
+                    </span>
+                    <input
+                        id="attachments"
+                        type="file"
+                        multiple
+                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                        className="sr-only"
+                        onChange={(event) => {
+                            add(Array.from(event.target.files ?? []));
+                            event.target.value = '';
+                        }}
+                    />
+                </label>
+            )}
+
+            {files.length > 0 && (
+                <ul className="divide-y divide-border rounded-md border border-border">
+                    {files.map((file, index) => (
+                        <li
+                            key={`${file.name}-${file.size}`}
+                            className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                        >
+                            <span className="flex min-w-0 items-center gap-2">
+                                <FileText className="size-4 shrink-0 text-muted-foreground" />
+                                <span className="truncate">{file.name}</span>
+                                <span className="tabular shrink-0 text-xs text-muted-foreground">
+                                    {file.size > 1024 * 1024
+                                        ? `${(file.size / 1024 / 1024).toFixed(1)} MB`
+                                        : `${Math.max(1, Math.round(file.size / 1024))} KB`}
+                                </span>
+                            </span>
+                            <button
+                                type="button"
+                                className="shrink-0 text-xs font-medium text-destructive hover:underline"
+                                onClick={() =>
+                                    onChange(
+                                        files.filter(
+                                            (_, position) => position !== index,
+                                        ),
+                                    )
+                                }
+                            >
+                                Hapus
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            )}
+
+            <InputError message={error} />
+        </section>
     );
 }
 

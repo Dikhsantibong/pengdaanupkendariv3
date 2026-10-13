@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\ChecklistInput;
 use App\Enums\ProcurementStage;
 use App\Enums\StatusCategory;
+use App\Enums\WorkCategory;
 use App\Models\BudgetSource;
 use App\Models\ChecklistItem;
 use App\Models\ContractNumberFormat;
@@ -164,17 +165,21 @@ class MasterDataSeeder extends Seeder
      */
     protected function seedContractTypes(): void
     {
+        // The last column is the SPK/PJ document format the type picks.
         $types = [
-            ['khs', 'KHS', 'Kontrak Harga Satuan.'],
-            ['lumsum', 'Lumsum', 'Kontrak lumsum (harga borongan tetap).'],
+            ['khs', 'KHS', 'Kontrak Harga Satuan.', null],
+            ['lumsum', 'Lumsum', 'Kontrak lumsum (harga borongan tetap).', null],
+            ['barang', 'Barang', 'Format dokumen Barang.', WorkCategory::Barang],
+            ['jasa', 'Jasa', 'Format dokumen Jasa.', WorkCategory::Jasa],
         ];
 
-        foreach ($types as $index => [$code, $name, $description]) {
+        foreach ($types as $index => [$code, $name, $description, $category]) {
             ContractType::query()->updateOrCreate(
                 ['code' => $code],
                 [
                     'name' => $name,
                     'description' => $description,
+                    'work_category' => $category,
                     'sort_order' => $index + 1,
                     'is_active' => true,
                 ],

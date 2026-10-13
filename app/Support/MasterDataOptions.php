@@ -5,7 +5,6 @@ namespace App\Support;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Enums\UserRole;
-use App\Enums\WorkCategory;
 use App\Models\BudgetSource;
 use App\Models\ContractNumberFormat;
 use App\Models\ContractType;
@@ -38,7 +37,8 @@ class MasterDataOptions
                     'description' => $format->name,
                     'usesWorkCategory' => $format->uses_work_category,
                 ])->all(),
-            'workCategories' => WorkCategory::options(),
+            // The category of an SPK or PJ: the Jenis Kontrak master data.
+            'contractTypes' => self::contractTypes(),
             'workDirectors' => self::workDirectors(true),
             'targetUnits' => self::targetUnits(true),
             'procurementMethods' => self::procurementMethods(true),

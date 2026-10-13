@@ -267,7 +267,7 @@ class ProcurementController extends Controller
                 'id' => $procurement->id,
                 'number' => $procurement->number,
                 'contract_number_format_id' => $procurement->contract_number_format_id,
-                'work_category' => $procurement->work_category?->value,
+                'contract_type_id' => $procurement->contract_type_id,
                 'name' => $procurement->name,
                 'partner_name' => $procurement->partner_name ?? '',
                 'partner_director_name' => $procurement->partner_director_name ?? '',

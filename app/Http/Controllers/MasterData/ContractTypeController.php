@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\MasterData;
 
+use App\Enums\WorkCategory;
 use App\Models\ContractType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
@@ -12,11 +13,17 @@ use Illuminate\Validation\Rule;
 class ContractTypeController extends MasterDataController
 {
     /**
+     * The select value for a jenis kontrak without its own document format.
+     */
+    protected const GENERAL = 'umum';
+
+    /**
      * Store a new jenis kontrak.
      */
     public function store(Request $request): RedirectResponse
     {
         $this->slugifyCode($request);
+        $this->normaliseWorkCategory($request);
 
         return parent::store($request);
     }
@@ -27,6 +34,7 @@ class ContractTypeController extends MasterDataController
     public function update(Request $request, ContractType $contractType): RedirectResponse
     {
         $this->slugifyCode($request);
+        $this->normaliseWorkCategory($request);
 
         return $this->updateRecord($request, $contractType);
     }
@@ -71,6 +79,8 @@ class ContractTypeController extends MasterDataController
                 'code' => $record->code,
                 'name' => $record->name,
                 'description' => $record->description,
+                'work_category' => $record->work_category->value ?? self::GENERAL,
+                'work_category_label' => $record->work_category?->label() ?? 'Umum',
                 'sort_order' => $record->sort_order,
                 'is_active' => $record->is_active,
                 'usage_count' => $record->procurements_count,
@@ -103,9 +113,20 @@ class ContractTypeController extends MasterDataController
                 Rule::unique('contract_types', 'code')->ignore($record?->getKey())->whereNull('deleted_at'),
             ],
             'description' => ['nullable', 'string', 'max:255'],
+            'work_category' => ['nullable', Rule::enum(WorkCategory::class)],
             'sort_order' => ['required', 'integer', 'min:0', 'max:999'],
             'is_active' => ['required', 'boolean'],
         ];
+    }
+
+    /**
+     * Turn the form's "Umum" choice into no format.
+     */
+    protected function normaliseWorkCategory(Request $request): void
+    {
+        if ($request->input('work_category') === self::GENERAL) {
+            $request->merge(['work_category' => null]);
+        }
     }
 
     /**

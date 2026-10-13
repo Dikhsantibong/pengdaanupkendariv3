@@ -93,7 +93,7 @@ export default function ShowProcurement({
         ...(procurement.work_category
             ? [
                   {
-                      label: 'Kategori Barang/Jasa',
+                      label: 'Format Dokumen',
                       value: procurement.work_category,
                   },
               ]

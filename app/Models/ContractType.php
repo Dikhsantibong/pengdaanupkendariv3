@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\MasterDataScopes;
+use App\Enums\WorkCategory;
 use Database\Factories\ContractTypeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -16,6 +17,7 @@ use Illuminate\Support\Carbon;
  * @property string $code
  * @property string $name
  * @property string|null $description
+ * @property WorkCategory|null $work_category
  * @property int $sort_order
  * @property bool $is_active
  * @property Carbon|null $created_at
@@ -23,7 +25,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $deleted_at
  * @property-read int|null $procurements_count
  */
-#[Fillable(['code', 'name', 'description', 'sort_order', 'is_active'])]
+#[Fillable(['code', 'name', 'description', 'work_category', 'sort_order', 'is_active'])]
 class ContractType extends Model
 {
     /** @use HasFactory<ContractTypeFactory> */
@@ -48,6 +50,7 @@ class ContractType extends Model
     {
         return [
             'is_active' => 'boolean',
+            'work_category' => WorkCategory::class,
         ];
     }
 }

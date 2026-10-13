@@ -246,6 +246,13 @@
       "_wayfinder-Bh70ToPC.js"
     ]
   },
+  "_external-link-Ba5YXvw9.js": {
+    "file": "assets/external-link-Ba5YXvw9.js",
+    "name": "external-link",
+    "imports": [
+      "_createLucideIcon-Du2MnApG.js"
+    ]
+  },
   "_eye-2LQ-PE_V.js": {
     "file": "assets/eye-2LQ-PE_V.js",
     "name": "eye",
@@ -537,8 +544,8 @@
       "_label-Bu9P0MGx.js"
     ]
   },
-  "_procurement-form-DOFgiAS3.js": {
-    "file": "assets/procurement-form-DOFgiAS3.js",
+  "_procurement-form-D5Sjhk1d.js": {
+    "file": "assets/procurement-form-D5Sjhk1d.js",
     "name": "procurement-form",
     "imports": [
       "_jsx-runtime-CTQSNLil.js",
@@ -548,6 +555,7 @@
       "_select-BNFBZAiL.js",
       "_file-text-zxmI8nlj.js",
       "_plus-D-LNfkaj.js",
+      "_upload-DGLB681n.js",
       "_x-BqAxmNNf.js",
       "_input-CQtMo0tR.js",
       "_input-error-Bvn9tGnL.js",
@@ -830,8 +838,8 @@
       "_createLucideIcon-Du2MnApG.js"
     ]
   },
-  "_upload-5KQCEKW6.js": {
-    "file": "assets/upload-5KQCEKW6.js",
+  "_upload-DGLB681n.js": {
+    "file": "assets/upload-DGLB681n.js",
     "name": "upload",
     "imports": [
       "_createLucideIcon-Du2MnApG.js"
@@ -892,7 +900,7 @@
     ]
   },
   "resources/css/app.css": {
-    "file": "assets/app-CGQ0hSSm.css",
+    "file": "assets/app-Cj2SixWO.css",
     "name": "app",
     "names": [
       "app.css"
@@ -901,7 +909,7 @@
     "isEntry": true
   },
   "resources/js/app.tsx": {
-    "file": "assets/app-BYX-p9R2.js",
+    "file": "assets/app-NCf32BhV.js",
     "name": "app",
     "src": "resources/js/app.tsx",
     "isEntry": true,
@@ -1317,7 +1325,7 @@
     ]
   },
   "resources/js/pages/master-data/contract-types.tsx": {
-    "file": "assets/contract-types-Bqb8xB19.js",
+    "file": "assets/contract-types-BPdbiRc4.js",
     "name": "contract-types",
     "src": "resources/js/pages/master-data/contract-types.tsx",
     "isDynamicEntry": true,
@@ -1530,7 +1538,7 @@
     ]
   },
   "resources/js/pages/procurements/create.tsx": {
-    "file": "assets/create-58d-t7GF.js",
+    "file": "assets/create-B9k_chdD.js",
     "name": "create",
     "src": "resources/js/pages/procurements/create.tsx",
     "isDynamicEntry": true,
@@ -1542,7 +1550,7 @@
       "_procurements-CWeW7p3n.js",
       "_proposals-DxsFpHxL.js",
       "_page-header-aeF00bxt.js",
-      "_procurement-form-DOFgiAS3.js"
+      "_procurement-form-D5Sjhk1d.js"
     ]
   },
   "resources/js/pages/procurements/document-editor.tsx": {
@@ -1581,7 +1589,7 @@
     ]
   },
   "resources/js/pages/procurements/edit.tsx": {
-    "file": "assets/edit-CrPODNHT.js",
+    "file": "assets/edit-B-06X4dU.js",
     "name": "edit",
     "src": "resources/js/pages/procurements/edit.tsx",
     "isDynamicEntry": true,
@@ -1593,7 +1601,7 @@
       "_procurements-CWeW7p3n.js",
       "_proposals-DxsFpHxL.js",
       "_page-header-aeF00bxt.js",
-      "_procurement-form-DOFgiAS3.js"
+      "_procurement-form-D5Sjhk1d.js"
     ]
   },
   "resources/js/pages/procurements/index.tsx": {
@@ -1614,7 +1622,7 @@
     ]
   },
   "resources/js/pages/procurements/show.tsx": {
-    "file": "assets/show-D-m04fRM.js",
+    "file": "assets/show-AkIFTQVD.js",
     "name": "show",
     "src": "resources/js/pages/procurements/show.tsx",
     "isDynamicEntry": true,
@@ -1627,7 +1635,7 @@
       "_circle-alert-DfZ3XfnC.js",
       "_circle-check-ei7nutjv.js",
       "_download-yzf3f1xC.js",
-      "_upload-5KQCEKW6.js",
+      "_external-link-Ba5YXvw9.js",
       "_eye-2LQ-PE_V.js",
       "_file-check-2-QzNp2E6F.js",
       "_file-plus-2-vR5xWkS5.js",
@@ -1637,6 +1645,7 @@
       "_save-y57my2IF.js",
       "_trash-2-BtIlylMq.js",
       "_undo-2-BzCjtMRM.js",
+      "_upload-DGLB681n.js",
       "_input-CQtMo0tR.js",
       "_routes-Btsr50jI.js",
       "_procurements-CWeW7p3n.js",
@@ -1678,7 +1687,7 @@
     ]
   },
   "resources/js/pages/proposals/show.tsx": {
-    "file": "assets/show-NIYR6ef8.js",
+    "file": "assets/show-DU2-myRy.js",
     "name": "show",
     "src": "resources/js/pages/proposals/show.tsx",
     "isDynamicEntry": true,
@@ -1690,12 +1699,13 @@
       "_arrow-left-BNPmA03j.js",
       "_circle-check-ei7nutjv.js",
       "_download-yzf3f1xC.js",
-      "_upload-5KQCEKW6.js",
+      "_external-link-Ba5YXvw9.js",
       "_file-text-zxmI8nlj.js",
       "_pencil-BDN7UnVh.js",
       "_rotate-ccw-E_lSSYsV.js",
       "_send-BKE_nKHh.js",
       "_trash-2-BtIlylMq.js",
+      "_upload-DGLB681n.js",
       "_routes-Btsr50jI.js",
       "_procurements-CWeW7p3n.js",
       "_proposals-DxsFpHxL.js",

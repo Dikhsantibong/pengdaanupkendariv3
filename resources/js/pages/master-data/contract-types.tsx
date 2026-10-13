@@ -7,6 +7,8 @@ type ContractType = MasterRecord & {
     code: string;
     name: string;
     description: string | null;
+    work_category: string;
+    work_category_label: string;
     sort_order: number;
 };
 
@@ -18,13 +20,17 @@ export default function ContractTypes({
     return (
         <MasterDataPage<ContractType>
             title="Jenis Kontrak"
-            description="Bentuk kontrak pengadaan, diisi PIC Perencana pada identitas pengadaan setelah penunjukan PIC."
+            description="Pilihan kategori yang muncul saat memilih jenis no kontrak SPK atau PJ pada form pengadaan. Format dokumen menentukan template SPK/PJ yang dipakai (Barang atau Jasa)."
             addLabel="Tambah Jenis Kontrak"
             records={records}
             nameKey="name"
             columns={[
                 { key: 'name', label: 'Jenis', className: 'font-medium' },
                 { key: 'code', label: 'Kode', className: 'tabular' },
+                {
+                    key: 'work_category_label',
+                    label: 'Format Dokumen',
+                },
                 { key: 'description', label: 'Keterangan' },
                 { key: 'sort_order', label: 'Urutan', className: 'tabular' },
             ]}
@@ -50,6 +56,17 @@ export default function ContractTypes({
                     type: 'text',
                     placeholder: 'Contoh: Kontrak Harga Satuan',
                 },
+                {
+                    name: 'work_category',
+                    label: 'Format Dokumen',
+                    type: 'select',
+                    options: [
+                        { value: 'umum', label: 'Umum' },
+                        { value: 'barang', label: 'Barang' },
+                        { value: 'jasa', label: 'Jasa' },
+                    ],
+                    hint: 'Template SPK/PJ yang digenerate untuk pengadaan dengan jenis kontrak ini.',
+                },
                 { name: 'sort_order', label: 'Urutan Tampil', type: 'number' },
                 {
                     name: 'is_active',
@@ -62,6 +79,7 @@ export default function ContractTypes({
                 name: '',
                 code: '',
                 description: '',
+                work_category: 'umum',
                 sort_order: 0,
                 is_active: true,
             }}

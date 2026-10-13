@@ -84,11 +84,17 @@ class PlanningIdentityController extends Controller
             ? null
             : $procurement->contractType->name;
 
+        $contractType = $contractTypeId === null ? null : ContractType::query()->findOrFail($contractTypeId);
+
         $procurement->contract_type_id = $contractTypeId;
 
-        $current = $contractTypeId === null
-            ? 'kosong'
-            : ContractType::query()->findOrFail($contractTypeId)->name;
+        // The jenis kontrak decides the barang/jasa document format of the
+        // formats that ask for one, exactly as on the procurement form.
+        if ($procurement->contractNumberFormat?->uses_work_category === true) {
+            $procurement->work_category = $contractType?->work_category;
+        }
+
+        $current = $contractType === null ? 'kosong' : $contractType->name;
 
         return $previous === null
             ? "Jenis kontrak ditetapkan: {$current}."

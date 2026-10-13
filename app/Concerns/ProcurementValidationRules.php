@@ -5,6 +5,7 @@ namespace App\Concerns;
 use App\Enums\Permission;
 use App\Enums\WorkCategory;
 use App\Models\ContractNumberFormat;
+use App\Models\ContractType;
 use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rule;
@@ -41,13 +42,16 @@ trait ProcurementValidationRules
                 'nullable',
                 Rule::exists('contract_number_formats', 'id')->whereNull('deleted_at'),
             ],
-            // Barang or jasa, asked for by the formats set up to need it
-            // (SPK and PJ); it picks the matching contract template.
-            'work_category' => [
+            // The category asked for by the formats set up to need it (SPK
+            // and PJ), picked from the Jenis Kontrak master data.
+            'contract_type_id' => [
                 Rule::requiredIf(fn (): bool => $this->formatUsesWorkCategory()),
                 'nullable',
-                Rule::enum(WorkCategory::class),
+                Rule::exists('contract_types', 'id')->whereNull('deleted_at'),
             ],
+            // Derived from the jenis kontrak: it picks the barang or jasa
+            // template, and is never typed in.
+            'work_category' => ['nullable', Rule::enum(WorkCategory::class)],
             'number' => [
                 'nullable', 'string', 'max:100',
                 Rule::unique('procurements', 'number')->ignore($ignoreId)->whereNull('deleted_at'),
@@ -146,13 +150,34 @@ trait ProcurementValidationRules
     }
 
     /**
-     * Drop a category sent along with a format that does not use one.
+     * Derive the document category from the chosen jenis kontrak.
+     *
+     * A format that does not ask for a category has none. A caller that still
+     * sends a bare `work_category` gets the jenis kontrak carrying it.
      */
     protected function normaliseWorkCategory(): void
     {
         if (! $this->formatUsesWorkCategory()) {
             $this->merge(['work_category' => null]);
+
+            return;
         }
+
+        if (! $this->filled('contract_type_id') && $this->filled('work_category')) {
+            $this->merge([
+                'contract_type_id' => ContractType::query()
+                    ->active()
+                    ->where('work_category', (string) $this->input('work_category'))
+                    ->ordered()
+                    ->value('id'),
+            ]);
+        }
+
+        $contractType = $this->filled('contract_type_id')
+            ? ContractType::query()->find($this->input('contract_type_id'))
+            : null;
+
+        $this->merge(['work_category' => $contractType?->work_category?->value]);
     }
 
     /**
@@ -180,6 +205,7 @@ trait ProcurementValidationRules
         return [
             'contract_number_format_id' => 'jenis no kontrak',
             'number' => 'no kontrak',
+            'contract_type_id' => 'kategori kontrak',
             'work_category' => 'kategori barang/jasa',
             'name' => 'nama pengadaan',
             'partner_name' => 'nama calon mitra',

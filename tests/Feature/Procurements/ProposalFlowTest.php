@@ -68,7 +68,10 @@ class ProposalFlowTest extends TestCase
                 ...$this->proposalPayload(),
                 // A proposer cannot raise work for another division.
                 'work_director_id' => WorkDirector::factory()->create()->id,
-                'attachments' => [UploadedFile::fake()->create('tor.pdf', 120, 'application/pdf')],
+                'attachments' => [
+                    UploadedFile::fake()->create('spesifikasi.pdf', 120, 'application/pdf'),
+                    UploadedFile::fake()->image('foto-kondisi.jpg'),
+                ],
             ])
             ->assertRedirect();
 
@@ -77,7 +80,7 @@ class ProposalFlowTest extends TestCase
         $this->assertSame(ProposalState::MenungguPersetujuan, $procurement->proposal_state);
         $this->assertSame($this->division->id, $procurement->work_director_id);
         $this->assertNotNull($procurement->proposal_submitted_at);
-        $this->assertCount(1, $procurement->attachments);
+        $this->assertCount(2, $procurement->attachments);
         Storage::disk('local')->assertExists($procurement->attachments->first()->path);
 
         Notification::assertSentTo($director, ProposalSubmitted::class);

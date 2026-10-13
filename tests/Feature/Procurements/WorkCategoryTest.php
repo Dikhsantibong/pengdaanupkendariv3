@@ -4,6 +4,7 @@ namespace Tests\Feature\Procurements;
 
 use App\Enums\WorkCategory;
 use App\Models\ContractNumberFormat;
+use App\Models\ContractType;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
 use App\Models\Procurement;
@@ -42,7 +43,7 @@ class WorkCategoryTest extends TestCase
         ];
     }
 
-    public function test_spk_and_pj_ask_for_barang_or_jasa(): void
+    public function test_spk_and_pj_ask_for_a_jenis_kontrak(): void
     {
         $this->seed(MasterDataSeeder::class);
         $teamLeader = User::factory()->teamLeaderPengadaan()->create();
@@ -52,7 +53,9 @@ class WorkCategoryTest extends TestCase
 
             $this->actingAs($teamLeader)
                 ->post(route('procurements.store'), $this->payload($format, null))
-                ->assertSessionHasErrors('work_category');
+                ->assertSessionHasErrors('contract_type_id');
+
+            // A caller still sending a bare category gets the matching type.
 
             $this->actingAs($teamLeader)
                 ->post(route('procurements.store'), [...$this->payload($format, 'barang'), 'name' => "Pengadaan {$code}"])
@@ -63,6 +66,48 @@ class WorkCategoryTest extends TestCase
                 Procurement::query()->where('name', "Pengadaan {$code}")->firstOrFail()->work_category,
             );
         }
+    }
+
+    public function test_the_jenis_kontrak_master_data_decides_the_document_format(): void
+    {
+        $this->seed(MasterDataSeeder::class);
+        $spk = ContractNumberFormat::query()->where('code', 'SPK')->firstOrFail();
+        $teamLeader = User::factory()->teamLeaderPengadaan()->create();
+
+        $jasa = ContractType::query()->where('code', 'jasa')->firstOrFail();
+        $khs = ContractType::query()->where('code', 'khs')->firstOrFail();
+
+        $this->actingAs($teamLeader)
+            ->post(route('procurements.store'), [
+                ...$this->payload($spk, null),
+                'name' => 'SPK Jasa',
+                'contract_type_id' => $jasa->id,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $procurement = Procurement::query()->where('name', 'SPK Jasa')->firstOrFail();
+        $this->assertSame($jasa->id, $procurement->contract_type_id);
+        $this->assertSame(WorkCategory::Jasa, $procurement->work_category);
+
+        // An administrator can give any jenis kontrak a document format.
+        $khs->update(['work_category' => WorkCategory::Barang]);
+
+        $this->actingAs($teamLeader)
+            ->post(route('procurements.store'), [
+                ...$this->payload($spk, null),
+                'name' => 'SPK KHS',
+                'contract_type_id' => $khs->id,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(WorkCategory::Barang, Procurement::query()->where('name', 'SPK KHS')->firstOrFail()->work_category);
+
+        // Changing it on the identity panel moves the format along.
+        $this->actingAs(User::factory()->administrator()->create())
+            ->put(route('procurements.planning-identity.update', $procurement), ['contract_type_id' => $khs->id])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(WorkCategory::Barang, $procurement->refresh()->work_category);
     }
 
     public function test_a_format_without_categories_drops_one_sent_along(): void
