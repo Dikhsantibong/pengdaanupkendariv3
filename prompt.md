@@ -348,7 +348,7 @@ Pekerjaan dapat berawal dari bidang pengguna:
 
 Hak akses terkait (dapat diatur di menu Hak Akses): `procurement.propose` (Mengusulkan Pekerjaan), `procurement.approve-proposal` (Menyetujui Usulan), `menu.proposals` (menu Usulan Pekerjaan). Bidang setiap akun diatur pada **Manajemen Pengguna → Bidang (Direksi Pekerjaan)**, wajib untuk peran Pengusul dan Direksi Pekerjaan.
 
-Akun bidang dibuat oleh `DivisionUserSeeder` (`php artisan db:seed --class=DivisionUserSeeder`), hanya membuat akun yang belum ada (password awal `password`, email `nama.lengkap@upkendari.test`). Akun Asman dibuat atas nama jabatan (`asman.operasi@`, `asman.engineering@`, `asman.pemeliharaan@`, `asman.bs@`) karena nama orangnya belum ditentukan, dan dapat diganti lewat Manajemen Pengguna. TL K3 KAM (Musriadi) dan TL Lingkungan (Sadri) berperan sebagai Direksi Pekerjaan bidangnya; Muhammad Amrullah sebagai Team Leader Pengadaan; Bastial tetap PIC Perencana.
+Akun bidang dibuat oleh `DivisionUserSeeder` (`php artisan db:seed --class=DivisionUserSeeder`), hanya membuat akun yang belum ada (password awal `password`, email `nama.lengkap@upkendari.go.id`). Akun Asman dibuat atas nama jabatan (`asman.operasi@`, `asman.engineering@`, `asman.pemeliharaan@`, `asman.bs@`) karena nama orangnya belum ditentukan, dan dapat diganti lewat Manajemen Pengguna. TL K3 KAM (Musriadi) dan TL Lingkungan (Sadri) berperan sebagai Direksi Pekerjaan bidangnya; Muhammad Amrullah sebagai Team Leader Pengadaan; Bastial tetap PIC Perencana.
 
 ## 0b. Tahap Pembuatan Pengadaan
 

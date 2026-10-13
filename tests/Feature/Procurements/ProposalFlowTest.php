@@ -265,8 +265,8 @@ class ProposalFlowTest extends TestCase
         $count = User::query()->count();
         $this->assertSame(count(DivisionUserSeeder::emails()), $count);
 
-        $director = User::query()->where('email', 'asman.operasi@upkendari.test')->firstOrFail();
-        $proposer = User::query()->where('email', 'akmal.hidayat@upkendari.test')->firstOrFail();
+        $director = User::query()->where('email', 'asman.operasi@upkendari.go.id')->firstOrFail();
+        $proposer = User::query()->where('email', 'akmal.hidayat@upkendari.go.id')->firstOrFail();
 
         $this->assertSame($director->work_director_id, $proposer->work_director_id);
         $this->assertTrue($proposer->can('create', Procurement::class));
