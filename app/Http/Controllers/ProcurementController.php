@@ -17,6 +17,7 @@ use App\Services\DocumentGenerator;
 use App\Services\ProcurementService;
 use App\Support\MasterDataOptions;
 use App\Support\ProcurementFilters;
+use App\Support\ProposalDocuments;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -81,7 +82,7 @@ class ProcurementController extends Controller
         $this->authorize('create', Procurement::class);
 
         $procurement = $this->procurements->create(
-            $request->safe()->except('attachments'),
+            $request->safe()->except(['attachments', 'tor_file', 'memo_file']),
             $request->user(),
         );
 
@@ -91,6 +92,13 @@ class ProcurementController extends Controller
         // proposer to complete and the Direksi Pekerjaan to review.
         if ($this->proposalContext($request->user())['enabled']) {
             $this->generateProposalTor($procurement, $request->user());
+
+            app(ProposalDocuments::class)->file(
+                $procurement,
+                $request->file('tor_file'),
+                $request->file('memo_file'),
+                $request->user(),
+            );
         }
 
         // A proposal waits on the Direksi Pekerjaan: show it where it is followed.
@@ -193,15 +201,24 @@ class ProcurementController extends Controller
                 'created_by' => $procurement->creator?->name,
                 // Named so the planning PIC can see exactly what is holding the
                 // submission back instead of just finding the button missing.
-                'pending_required_planning' => $procurement->pendingRequiredPlanningChecklists()
-                    ->map(fn ($checklist): string => $checklist->checklistItem->name)
-                    ->all(),
+                'pending_required_planning' => [
+                    ...array_map(fn (string $name): string => "{$name} (tab dokumen pengguna)", ProposalDocuments::missing($procurement)),
+                    ...$procurement->pendingRequiredPlanningChecklists()
+                        ->map(fn ($checklist): string => $checklist->checklistItem->name)
+                        ->all(),
+                ],
                 'is_planner' => $procurement->planner_id === $user->id,
                 'planner_name' => $procurement->planner?->name,
                 'planning_revision' => $procurement->planning_revision,
                 // What procurement still has to fill in before a proposed job
                 // can have its planning documents drawn and submitted.
                 'missing_planning_data' => $procurement->missingPlanningData(),
+                // The TOR and Nota Dinas Usulan, shown on a tab of their own
+                // named after whoever proposed or registered the work.
+                'proposal_documents' => [
+                    'proposer' => $procurement->creator->name ?? 'Pengusul',
+                    'documents' => ProposalDocuments::payload($procurement),
+                ],
                 'finance' => [
                     'submitted_at' => $procurement->finance_submitted_at?->toDateTimeString(),
                     'submitted_by' => $procurement->financeSubmitter?->name,
@@ -263,6 +280,7 @@ class ProcurementController extends Controller
                 'revertPlanningRejection' => $user->can('revertPlanningRejection', $procurement),
                 'complete' => $user->can('complete', $procurement),
                 'generateDocument' => $user->can('generateDocument', $procurement),
+                'editDocument' => $user->can('editDocument', $procurement),
             ],
         ]);
     }

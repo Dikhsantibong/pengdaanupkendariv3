@@ -68,6 +68,10 @@ export type ProcurementFormValues = {
     planner_id?: number | null;
     /** Supporting files, sent with a work proposal. */
     attachments?: File[];
+    /** The signed TOR scan, when the proposer already has one. */
+    tor_file?: File | null;
+    /** The Nota Dinas Usulan scan. */
+    memo_file?: File | null;
 };
 
 /** How the form behaves for someone who may only propose work. */
@@ -120,7 +124,7 @@ export function ProcurementForm({
         ...(withPlanner && !isProposal
             ? { planner_id: initialValues?.planner_id ?? null }
             : {}),
-        ...(asksForTor ? { attachments: [] } : {}),
+        ...(asksForTor ? { tor_file: null, memo_file: null } : {}),
         contract_number_format_id: startingFormatId,
         contract_type_id: initialValues?.contract_type_id ?? null,
         number:
@@ -877,34 +881,42 @@ export function ProcurementForm({
             )}
 
             {asksForTor && (
-                <section className="flex items-start gap-3 rounded-md border border-primary/30 bg-primary/5 p-5">
-                    <FileText className="mt-0.5 size-5 shrink-0 text-primary" />
-                    <div className="space-y-1">
-                        <p className="text-sm font-semibold text-foreground">
-                            TOR digenerate otomatis
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                            Setelah usulan dikirim, dokumen TOR dibuat dari
-                            template dengan data di atas. Lengkapi isinya lewat
-                            tombol <b>Edit TOR</b> di halaman usulan sebelum
-                            ditinjau Direksi Pekerjaan.
+                <section className="space-y-4 rounded-md border border-border bg-card p-5">
+                    <div>
+                        <p className="section-label">Dokumen Usulan</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                            Dua dokumen yang diunggah pengusul. TOR otomatis
+                            dibuat dari template setelah usulan dikirim:
+                            lengkapi lewat <b>Edit TOR</b>, cetak, tanda
+                            tangani, lalu unggah di halaman usulan. Bila sudah
+                            punya scan TOR bertanda tangan, boleh langsung
+                            diunggah di sini. Usulan baru dapat disetujui
+                            setelah keduanya terunggah.
                         </p>
                     </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <SingleFileField
+                            id="tor_file"
+                            label="TOR (bertanda tangan)"
+                            file={data.tor_file ?? null}
+                            onChange={(file) => setData('tor_file', file)}
+                            error={
+                                (errors as Record<string, string | undefined>)
+                                    .tor_file
+                            }
+                        />
+                        <SingleFileField
+                            id="memo_file"
+                            label="Nota Dinas Usulan"
+                            file={data.memo_file ?? null}
+                            onChange={(file) => setData('memo_file', file)}
+                            error={
+                                (errors as Record<string, string | undefined>)
+                                    .memo_file
+                            }
+                        />
+                    </div>
                 </section>
-            )}
-
-            {asksForTor && (
-                <SupportingFilesField
-                    files={data.attachments ?? []}
-                    onChange={(files) => setData('attachments', files)}
-                    error={
-                        (errors as Record<string, string | undefined>)
-                            .attachments ??
-                        Object.entries(errors).find(([key]) =>
-                            key.startsWith('attachments.'),
-                        )?.[1]
-                    }
-                />
             )}
 
             {!isProposal && (
@@ -1109,61 +1121,30 @@ function MultiValueField({
     );
 }
 
-/** The most supporting files one proposal may carry. */
-const MAX_SUPPORTING_FILES = 10;
-
 /**
- * Optional supporting files sent with a proposal.
- *
- * Several files can be picked at once, and picking again adds to the list
- * rather than replacing it, so files from different folders can be combined.
+ * One scanned document of a proposal: pick or drop a file, replace or remove it.
  */
-function SupportingFilesField({
-    files,
+function SingleFileField({
+    id,
+    label,
+    file,
     onChange,
     error,
 }: {
-    files: File[];
-    onChange: (files: File[]) => void;
+    id: string;
+    label: string;
+    file: File | null;
+    onChange: (file: File | null) => void;
     error?: string;
 }) {
     const [dragging, setDragging] = useState(false);
 
-    const add = (chosen: File[]) => {
-        const known = new Set(files.map((file) => `${file.name}:${file.size}`));
-        const fresh = chosen.filter(
-            (file) => !known.has(`${file.name}:${file.size}`),
-        );
-
-        onChange([...files, ...fresh].slice(0, MAX_SUPPORTING_FILES));
-    };
-
-    const full = files.length >= MAX_SUPPORTING_FILES;
-
     return (
-        <section className="space-y-3 rounded-md border border-border bg-card p-5">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <div>
-                    <p className="section-label">
-                        Dokumen Pendukung{' '}
-                        <span className="font-normal normal-case">
-                            (opsional)
-                        </span>
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                        Misalnya foto kondisi, spesifikasi, atau perhitungan
-                        kebutuhan. Bisa lebih dari satu berkas — PDF, JPG, PNG,
-                        Word, atau Excel, maksimal 20 MB per berkas.
-                    </p>
-                </div>
-                <span className="tabular text-xs text-muted-foreground">
-                    {files.length}/{MAX_SUPPORTING_FILES} berkas
-                </span>
-            </div>
-
-            {!full && (
+        <div className="grid content-start gap-2">
+            <Label htmlFor={id}>{label}</Label>
+            {file === null ? (
                 <label
-                    htmlFor="attachments"
+                    htmlFor={id}
                     onDragOver={(event) => {
                         event.preventDefault();
                         setDragging(true);
@@ -1172,10 +1153,10 @@ function SupportingFilesField({
                     onDrop={(event) => {
                         event.preventDefault();
                         setDragging(false);
-                        add(Array.from(event.dataTransfer.files));
+                        onChange(event.dataTransfer.files[0] ?? null);
                     }}
                     className={cn(
-                        'flex cursor-pointer flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed px-4 py-6 text-center text-sm transition-colors hover:border-primary hover:bg-primary/5',
+                        'flex cursor-pointer flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed px-4 py-5 text-center text-sm transition-colors hover:border-primary hover:bg-primary/5',
                         dragging
                             ? 'border-primary bg-primary/5'
                             : 'border-border bg-muted/30',
@@ -1183,61 +1164,39 @@ function SupportingFilesField({
                 >
                     <Upload className="size-5 text-muted-foreground" />
                     <span className="font-medium text-foreground">
-                        Klik atau seret berkas ke sini
+                        Klik atau seret berkas
                     </span>
                     <span className="text-xs text-muted-foreground">
-                        Pilih beberapa berkas sekaligus (Ctrl/Shift + klik)
+                        PDF, JPG, atau PNG, maks. 20 MB
                     </span>
-                    <input
-                        id="attachments"
-                        type="file"
-                        multiple
-                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
-                        className="sr-only"
-                        onChange={(event) => {
-                            add(Array.from(event.target.files ?? []));
-                            event.target.value = '';
-                        }}
-                    />
                 </label>
+            ) : (
+                <div className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2.5 text-sm">
+                    <span className="flex min-w-0 items-center gap-2">
+                        <FileText className="size-4 shrink-0 text-primary" />
+                        <span className="truncate">{file.name}</span>
+                    </span>
+                    <button
+                        type="button"
+                        className="shrink-0 text-xs font-medium text-destructive hover:underline"
+                        onClick={() => onChange(null)}
+                    >
+                        Hapus
+                    </button>
+                </div>
             )}
-
-            {files.length > 0 && (
-                <ul className="divide-y divide-border rounded-md border border-border">
-                    {files.map((file, index) => (
-                        <li
-                            key={`${file.name}-${file.size}`}
-                            className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
-                        >
-                            <span className="flex min-w-0 items-center gap-2">
-                                <FileText className="size-4 shrink-0 text-muted-foreground" />
-                                <span className="truncate">{file.name}</span>
-                                <span className="tabular shrink-0 text-xs text-muted-foreground">
-                                    {file.size > 1024 * 1024
-                                        ? `${(file.size / 1024 / 1024).toFixed(1)} MB`
-                                        : `${Math.max(1, Math.round(file.size / 1024))} KB`}
-                                </span>
-                            </span>
-                            <button
-                                type="button"
-                                className="shrink-0 text-xs font-medium text-destructive hover:underline"
-                                onClick={() =>
-                                    onChange(
-                                        files.filter(
-                                            (_, position) => position !== index,
-                                        ),
-                                    )
-                                }
-                            >
-                                Hapus
-                            </button>
-                        </li>
-                    ))}
-                </ul>
-            )}
-
+            <input
+                id={id}
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                className="sr-only"
+                onChange={(event) => {
+                    onChange(event.target.files?.[0] ?? null);
+                    event.target.value = '';
+                }}
+            />
             <InputError message={error} />
-        </section>
+        </div>
     );
 }
 

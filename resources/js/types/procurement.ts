@@ -115,6 +115,13 @@ export type ChecklistDocument = {
     is_alternative: boolean;
 };
 
+/** A proposal document (TOR or Nota Dinas Usulan) with readable links. */
+export type ProposalDocument = Omit<ChecklistDocument, 'uploads'> & {
+    uploads: Array<SignedUpload & { url: string; is_image: boolean }>;
+    /** The TOR drafted from its template, as a PDF. */
+    preview_url: string | null;
+};
+
 export type ChecklistRow = {
     id: number;
     name: string;

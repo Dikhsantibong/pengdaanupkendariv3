@@ -31,7 +31,6 @@ class SpplExecutionTest extends TestCase
     public function test_sppl_runs_its_own_execution_steps(): void
     {
         $this->assertSame([
-            'Evaluasi Dokumen',
             'BA Negosiasi',
             'Surat Pesanan',
             'Rekening Pelaksana',
@@ -44,7 +43,6 @@ class SpplExecutionTest extends TestCase
     public function test_spk_and_pj_keep_their_steps_without_penyusunan_kontrak(): void
     {
         $expected = [
-            'Evaluasi Dokumen',
             'Penyusunan HPS',
             'Proses SMART SCM',
             'Berita Acara',
@@ -149,20 +147,23 @@ class SpplExecutionTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_either_surat_pesanan_barang_or_jasa_is_enough_for_the_surat_pesanan_step(): void
+    public function test_one_lampiran_sp_for_goods_and_services_completes_the_step(): void
     {
         Storage::fake('local');
 
         [$procurement, $executor, $checklist] = $this->spplStep('Lampiran Surat Pesanan');
 
-        // Neither alternative is signed yet: the step cannot be completed.
+        $this->assertSame(['lampiran-sp'], $checklist->checklistItem->documentTypes->pluck('code')->all());
+        $this->assertSame('Lampiran SP Barang dan Jasa', $checklist->checklistItem->documentTypes->first()?->name);
+
+        // Not signed yet: the step cannot be completed.
         $this->actingAs($executor)
             ->put(route('procurements.checklists.update', [$procurement, $checklist]), ['is_completed' => true])
             ->assertSessionHasErrors('is_completed');
 
-        $this->sign($procurement, $executor, 'surat-pesanan-jasa');
+        $this->sign($procurement, $executor, 'lampiran-sp');
 
-        // Jasa alone completes the choice; Barang is not needed.
+        // The one appendix completes it.
         $this->actingAs($executor)
             ->put(route('procurements.checklists.update', [$procurement, $checklist]), ['is_completed' => true])
             ->assertSessionHasNoErrors();
@@ -205,8 +206,8 @@ class SpplExecutionTest extends TestCase
         $this->seed(MasterDataSeeder::class);
 
         $item = ChecklistItem::query()->where('name', 'Surat Pesanan')->firstOrFail();
-        $barang = DocumentType::query()->where('code', 'lampiran-sp-barang')->firstOrFail();
-        $jasa = DocumentType::query()->where('code', 'lampiran-sp-jasa')->firstOrFail();
+        $barang = DocumentType::query()->where('code', 'surat-pesanan')->firstOrFail();
+        $jasa = DocumentType::query()->where('code', 'lampiran-sp')->firstOrFail();
 
         $this->actingAs(User::factory()->administrator()->create())
             ->put(route('master-data.checklist-items.update', $item), [
@@ -493,7 +494,7 @@ HTML;
         $procurement = Procurement::factory()->create();
         $address = 'Jl. Chairil Anwar No.2, Mataiwoi, Kec. Wua-Wua, Kota Kendari, Sulawesi Tenggara 93117';
 
-        foreach (['ba-negosiasi-sppl' => true, 'surat-pesanan' => true, 'lampiran-sp-barang' => false, 'lampiran-sp-jasa' => false] as $code => $hasHeading) {
+        foreach (['ba-negosiasi-sppl' => true, 'surat-pesanan' => true, 'lampiran-sp' => false] as $code => $hasHeading) {
             $type = DocumentType::query()->where('code', $code)->firstOrFail();
             $document = $generator->generate($procurement, $type, $user);
 
@@ -522,7 +523,7 @@ HTML;
             'bank_account_holder' => 'PT. MULTI FAKTORIAL',
         ]);
 
-        foreach (['lampiran-sp-barang', 'lampiran-sp-jasa'] as $code) {
+        foreach (['lampiran-sp'] as $code) {
             $type = DocumentType::query()->where('code', $code)->firstOrFail();
             $template = DocumentTemplate::query()->where('document_type_id', $type->id)->firstOrFail();
             $rendered = strip_tags(app(DocumentGenerator::class)->render($template, $procurement));
@@ -557,11 +558,8 @@ HTML;
             'number' => 'KDD999.SPPL/612/UPKD/2026',
         ]);
 
-        foreach (['surat-pesanan-barang', 'surat-pesanan-jasa', 'lampiran-sp-barang', 'lampiran-sp-jasa'] as $code) {
-            $type = DocumentType::query()->where('code', $code)->first();
-            if ($type === null) {
-                continue;
-            }
+        foreach (['lampiran-sp'] as $code) {
+            $type = DocumentType::query()->where('code', $code)->firstOrFail();
 
             $template = DocumentTemplate::query()->where('document_type_id', $type->id)->firstOrFail();
             $rendered = $generator->render($template, $procurement);

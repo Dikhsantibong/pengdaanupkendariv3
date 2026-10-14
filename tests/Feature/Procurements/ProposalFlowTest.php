@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\WorkDirector;
 use App\Notifications\ProposalReviewed;
 use App\Notifications\ProposalSubmitted;
+use App\Support\ProposalDocuments;
 use Database\Seeders\DivisionUserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -369,6 +370,124 @@ class ProposalFlowTest extends TestCase
         $this->assertSame($count, User::query()->count());
     }
 
+    public function test_a_proposal_is_only_approved_once_its_tor_and_nota_dinas_are_filed(): void
+    {
+        $this->proposalDocumentTypes();
+        $proposer = User::factory()->proposer($this->division)->create();
+        $director = User::factory()->workDirector($this->division)->create();
+
+        $this->actingAs($proposer)
+            ->post(route('procurements.store'), collect($this->proposalPayload())->except(['tor_file', 'memo_file'])->all())
+            ->assertSessionHasNoErrors();
+
+        $procurement = Procurement::query()->sole();
+
+        $this->actingAs($director)
+            ->get(route('proposals.show', $procurement))
+            ->assertInertia(fn ($page) => $page
+                ->where('can.approve', false)
+                ->where('proposal.missing_documents', ['TOR', 'Nota Dinas Usulan']));
+
+        $this->actingAs($director)
+            ->post(route('proposals.decide', $procurement), ['decision' => 'approve'])
+            ->assertForbidden();
+
+        // The proposer uploads the Nota Dinas, then the signed TOR.
+        $memo = DocumentType::query()->where('code', 'nota-dinas-usulan')->firstOrFail();
+
+        $this->actingAs($proposer)
+            ->post(route('procurements.documents.upload', $procurement), [
+                'document_type_id' => $memo->id,
+                'files' => [UploadedFile::fake()->create('nota-dinas.pdf', 40, 'application/pdf')],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(['TOR'], ProposalDocuments::missing($procurement->refresh()));
+
+        app(ProposalDocuments::class)->file(
+            $procurement,
+            UploadedFile::fake()->create('tor-ttd.pdf', 80, 'application/pdf'),
+            null,
+            $proposer,
+        );
+
+        $this->actingAs($director)
+            ->post(route('proposals.decide', $procurement->refresh()), ['decision' => 'approve'])
+            ->assertRedirect();
+
+        $this->assertTrue($procurement->refresh()->isProposalApproved());
+    }
+
+    public function test_the_proposal_documents_have_a_tab_named_after_the_proposer(): void
+    {
+        $this->proposalDocumentTypes();
+        $procurement = $this->proposal();
+        $proposer = $procurement->creator;
+
+        $this->actingAs(User::factory()->workDirector($this->division)->create())
+            ->post(route('proposals.decide', $procurement), ['decision' => 'approve']);
+
+        $this->actingAs(User::factory()->teamLeaderPengadaan()->create())
+            ->get(route('procurements.show', $procurement))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('detail.proposal_documents.proposer', $proposer->name)
+                ->has('detail.proposal_documents.documents', 2)
+                ->where('detail.proposal_documents.documents.0.type_name', 'TOR')
+                ->where('detail.proposal_documents.documents.0.is_signed', true)
+                ->where('detail.proposal_documents.documents.1.type_name', 'Nota Dinas Usulan')
+                ->where('detail.proposal_documents.documents.1.is_signed', true));
+
+        // A procurement registered directly files them there too, under the
+        // name of whoever registered it.
+        $this->actingAs(User::factory()->teamLeaderPengadaan()->create())
+            ->post(route('procurements.store'), $this->payload());
+
+        $direct = Procurement::query()->latest('id')->firstOrFail();
+
+        $this->actingAs(User::factory()->teamLeaderPengadaan()->create())
+            ->get(route('procurements.show', $direct))
+            ->assertInertia(fn ($page) => $page
+                ->where('detail.proposal_documents.proposer', $direct->creator->name)
+                ->has('detail.proposal_documents.documents', 2));
+    }
+
+    public function test_planning_is_submitted_only_once_the_tor_and_nota_dinas_are_filed(): void
+    {
+        $this->proposalDocumentTypes();
+
+        $planner = User::factory()->planner()->create();
+        $procurement = Procurement::factory()->plannedBy($planner)->create();
+
+        // No checklist step asks for them any more, yet they are still needed.
+        $this->assertFalse($planner->can('submitPlanning', $procurement));
+
+        $this->actingAs($planner)
+            ->get(route('procurements.show', $procurement))
+            ->assertInertia(fn ($page) => $page->where('detail.pending_required_planning', [
+                'TOR (tab dokumen pengguna)',
+                'Nota Dinas Usulan (tab dokumen pengguna)',
+            ]));
+
+        app(ProposalDocuments::class)->file(
+            $procurement,
+            UploadedFile::fake()->create('tor-ttd.pdf', 80, 'application/pdf'),
+            UploadedFile::fake()->create('nota-dinas.pdf', 40, 'application/pdf'),
+            $planner,
+        );
+
+        $this->assertTrue($planner->can('submitPlanning', $procurement->refresh()));
+    }
+
+    /**
+     * The TOR and Nota Dinas Usulan document types, as the master data has them.
+     */
+    protected function proposalDocumentTypes(): void
+    {
+        DocumentType::factory()->create(['code' => 'tor', 'name' => 'TOR (Term of Reference)']);
+        DocumentType::factory()->create(['code' => 'nota-dinas-usulan', 'name' => 'Nota Dinas Usulan', 'upload_only' => true]);
+    }
+
     /**
      * A pending proposal raised by a proposer of the test division.
      */
@@ -401,6 +520,9 @@ class ProposalFlowTest extends TestCase
             'coa_number' => '5110100000',
             'proposal_memo_number' => 'ND-021/USL/2026',
             'proposal_memo_date' => '2026-10-13',
+            // The two documents a proposal files.
+            'tor_file' => UploadedFile::fake()->create('tor-ttd.pdf', 80, 'application/pdf'),
+            'memo_file' => UploadedFile::fake()->create('nota-dinas.pdf', 40, 'application/pdf'),
         ];
     }
 

@@ -36,8 +36,12 @@ class StoreProcurementRequest extends FormRequest
     {
         return [
             ...$this->procurementRules(),
-            // Optional supporting files for the Direksi Pekerjaan to review;
-            // the TOR itself is generated, not uploaded.
+            // The two documents a proposal files: the signed TOR (drafted
+            // from its template) and the Nota Dinas Usulan. Both can also be
+            // uploaded afterwards on the proposal page.
+            'tor_file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:20480'],
+            'memo_file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:20480'],
+            // Supporting files from callers that still send them.
             'attachments' => ['nullable', 'array', 'max:10'],
             'attachments.*' => ['file', 'mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx', 'max:20480'],
             'planner_id' => [
@@ -63,6 +67,8 @@ class StoreProcurementRequest extends FormRequest
         return [
             ...$this->procurementAttributes(),
             'planner_id' => 'PIC perencana',
+            'tor_file' => 'TOR',
+            'memo_file' => 'nota dinas usulan',
             'attachments' => 'lampiran usulan',
             'attachments.*' => 'lampiran usulan',
         ];

@@ -135,7 +135,7 @@ export default function ChecklistItems({
                     label: 'Dokumen Pilihan (cukup salah satu)',
                     type: 'multiselect',
                     options: documentTypes,
-                    hint: 'Dokumen yang dicentang di sini adalah pilihan: cukup salah satu yang diunggah. Contoh: Lampiran SP Barang atau Lampiran SP Jasa.',
+                    hint: 'Dokumen yang dicentang di sini adalah pilihan: cukup salah satu yang diunggah. Contoh: Jaminan Bank atau Surat Garansi.',
                 },
                 {
                     name: 'input_kind',

@@ -9,9 +9,9 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\Procurement;
 use App\Models\ProcurementAttachment;
-use App\Models\ProcurementDocument;
 use App\Models\User;
 use App\Services\ProcurementService;
+use App\Support\ProposalDocuments;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -120,17 +120,10 @@ class ProposalController extends Controller
                     : $procurement->proposalReviewer?->name,
                 'reviewed_at' => $procurement->proposal_reviewed_at?->toIso8601String(),
                 'review_note' => $procurement->proposal_review_note,
-                // The generated TOR, read as a PDF and completed by the proposer.
-                'documents' => $procurement->documents()
-                    ->with('documentType')
-                    ->oldest('id')
-                    ->get()
-                    ->map(fn (ProcurementDocument $document): array => [
-                        'id' => $document->id,
-                        'title' => $document->documentType->name,
-                        'url' => route('procurements.documents.show', [$procurement, $document, 'preview' => 1]),
-                        'edit_url' => route('procurements.documents.edit', [$procurement, $document]),
-                    ])->all(),
+                // The TOR (drafted from its template, then uploaded signed) and
+                // the Nota Dinas Usulan: the two documents a proposal files.
+                'documents' => ProposalDocuments::payload($procurement),
+                'missing_documents' => ProposalDocuments::missing($procurement),
                 'attachments' => $procurement->attachments->map(fn (ProcurementAttachment $file): array => [
                     'id' => $file->id,
                     'file_name' => $file->file_name,

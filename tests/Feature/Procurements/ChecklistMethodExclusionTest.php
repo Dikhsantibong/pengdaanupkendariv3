@@ -43,8 +43,13 @@ class ChecklistMethodExclusionTest extends TestCase
             $this->assertNotContains($skipped, $names, "[{$skipped}] seharusnya dilewati Surat Pesanan.");
         }
 
-        $this->assertContains('Nota Dinas Usulan', $names);
-        $this->assertContains('TOR / KAK', $names);
+        // Steps the method does not skip are still there.
+        $this->assertContains('RAB (Rencana Anggaran Biaya)', $names);
+        $this->assertContains('Penawaran', $names);
+
+        // The Nota Dinas Usulan and TOR are filed on the proposer's tab.
+        $this->assertNotContains('Nota Dinas Usulan', $names);
+        $this->assertNotContains('TOR / KAK', $names);
     }
 
     public function test_other_methods_keep_the_full_checklist(): void

@@ -352,7 +352,7 @@ Pekerjaan dapat berawal dari bidang pengguna:
    9. Nomor WO — opsional (bisa lebih dari satu)
    10. Nomor Nota Dinas Usulan
    11. Tanggal Nota Dinas Usulan
-   12. **TOR** — tidak diunggah, melainkan **digenerate otomatis** dari template TOR saat usulan dikirim. Pengusul melengkapi isinya lewat tombol **Edit TOR** di halaman usulan (selama usulan belum disetujui).
+   12. **Dokumen Usulan** — pengusul hanya mengunggah **dua dokumen**: **TOR** dan **Nota Dinas Usulan** (PDF/JPG/PNG, maks. 20 MB). TOR otomatis **digenerate** dari template saat usulan dikirim; pengusul melengkapinya lewat **Edit TOR**, mencetak, menandatangani, lalu mengunggah TOR bertanda tangan. Keduanya boleh diunggah di form atau sesudahnya di halaman usulan. **Usulan baru dapat disetujui TL/Asman setelah kedua dokumen terunggah.** Kedua dokumen ini menggantikan tahapan *TOR / KAK* dan *Nota Dinas Usulan* yang dihapus dari checklist perencanaan, dan tetap wajib terunggah sebelum perencanaan diajukan (juga untuk pengadaan yang dibuat langsung oleh TL Pengadaan).
 
    Nomor yang lebih dari satu diisi per baris (tombol *Tambah*) dan disimpan sebagai satu daftar dipisah koma (`{{nomor_prk}}`, `{{nomor_sr}}`, dst. di dokumen menampilkan seluruh daftar). Metode pengadaan, nilai, calon mitra, nota dinas ke manager, dan catatan diisi kemudian oleh pengadaan/perencana setelah usulan disetujui (inputan perencana akan disesuaikan lagi). Status usulan: **Menunggu Persetujuan**.
 2. **Persetujuan dua tingkat.** Usulan staf lebih dulu disetujui **TL atasan langsung** pengusul (status *Menunggu Persetujuan TL*), lalu **Direksi Pekerjaan / Asman** bidang (status *Menunggu Persetujuan Asman*). TL atasan diatur per akun di **Manajemen Pengguna → TL / Atasan Langsung** (`users.team_leader_id`); siapa pun yang menjadi atasan staf otomatis mendapat antrean persetujuan di menu Usulan Pekerjaan dan dashboard. Usulan dari TL sendiri, atau dari staf tanpa TL, langsung ke Asman. Jika TL atasan sekaligus Direksi Pekerjaan bidangnya (K3 KAM, Lingkungan), cukup satu kali persetujuan.
@@ -368,6 +368,8 @@ Akun bidang dibuat oleh `DivisionUserSeeder` (`php artisan db:seed --class=Divis
 Nomor usulan: usulan mendapat nomor sementara berawalan **USL/** (mis. `USL/2026/10/0001`) sampai pengadaan memberi nomor kontrak.
 
 Setelah usulan disetujui, **TL Pengadaan** melengkapi data yang tidak diketahui bidang (Metode Pengadaan, Jenis No Kontrak & Kategori, nomor kontrak, nilai, calon mitra) lewat **Ubah Data**. Selama Metode, Jenis No Kontrak, dan Kategori (untuk SPK/PJ) belum terisi, dokumen perencanaan belum bisa digenerate dan perencanaan belum bisa diajukan — tab Perencanaan menampilkan peringatan data apa yang kurang. *(Inputan lanjutan untuk perencana menunggu daftar dari pengguna.)*
+
+Di setiap detail pengadaan ada tab bernama **pengusul / pembuat pengadaan** (di kiri tab Perencanaan) berisi kedua dokumen tersebut: pratinjau/edit draf TOR, berkas TOR bertanda tangan, dan scan Nota Dinas Usulan.
 
 ## 0b. Tahap Pembuatan Pengadaan
 
@@ -397,8 +399,6 @@ Sebelum proses perencanaan dimulai, **Team Leader Pengadaan** wajib menunjuk **1
 
 | Tahapan | Cara penyelesaian |
 |---------|-------------------|
-| Nota Dinas Usulan | **Unggah saja** |
-| TOR / KAK | Digenerate otomatis saat usulan dikirim (dilengkapi pengusul), lalu unggah hasil tanda tangan |
 | RAB (Rencana Anggaran Biaya) | **Unggah saja** — dilewati untuk format SPPL |
 | Penawaran | **Unggah saja** — untuk SPPL sekaligus mencakup RAB |
 | CSMS (Sertifikat) — opsional | **Unggah saja** |
@@ -411,6 +411,7 @@ Sebelum proses perencanaan dimulai, **Team Leader Pengadaan** wajib menunjuk **1
 
 - Tahapan **unggah saja** tidak menampilkan tombol generate maupun edit: dokumen disiapkan di luar sistem, diunggah (boleh beberapa berkas, PDF/JPG/PNG), lalu tahapan dapat dicentang dan lanjut ke tahap berikutnya.
 - Tahapan wajib yang memiliki dokumen tetap **wajib diunggah** sebelum dapat dicentang.
+- Tahapan **Checklist Perencanaan**, **Nota Dinas Usulan**, dan **TOR / KAK** (perencanaan) serta **Evaluasi Dokumen** (pelaksanaan) dinonaktifkan; TOR dan Nota Dinas Usulan kini diunggah di tab dokumen pengguna. Tahapan tersebut masih ada di Data Master dan dapat diaktifkan kembali.
 - Tahapan **opsional** (mis. CSMS, Amandemen) dapat langsung dicentang tanpa dokumen; dokumennya tetap bisa diunggah bila pekerjaan memerlukannya. Sifat opsional diatur di **Data Master → Item Checklist**.
 - Sifat "unggah saja" diatur per jenis dokumen di **Data Master → Jenis Dokumen** (saklar *Hanya diunggah (tanpa generate)*).
 
@@ -449,7 +450,6 @@ Setelah dokumen perencanaan disetujui, **Team Leader Pengadaan** menunjuk **1 or
 
 | Tahapan | Cara penyelesaian |
 |---------|-------------------|
-| Evaluasi Dokumen | Centang |
 | Penyusunan HPS | Unggah saja |
 | Proses SMART SCM | Unggah saja |
 | Berita Acara | **Generate** 6 dokumen (Aanwijzing, Lampiran BAPP, Evaluasi Teknis, Evaluasi Harga, Hasil Evaluasi, Klarifikasi) lalu unggah hasil TTD |
@@ -510,19 +510,18 @@ SPK disusun sebagai perjanjian lengkap mengikuti format kontrak UP Kendari (±9�
 
 | Tahapan | Cara penyelesaian |
 |---------|-------------------|
-| Evaluasi Dokumen | Centang |
 | BA Negosiasi | **Generate** Berita Acara Negosiasi (format SPPL, Landscape) lalu unggah hasil TTD |
 | Surat Pesanan | **Generate** Surat Pesanan lalu unggah hasil TTD |
 | Rekening Pelaksana | **Isian**: nomor rekening, bank, dan nama pelaksana (pemilik rekening) |
-| Lampiran Surat Pesanan | **Pilih salah satu**: Lampiran SP Barang **atau** Lampiran SP Jasa; unggah hasil TTD |
+| Lampiran Surat Pesanan | Generate **Lampiran SP Barang dan Jasa** (satu dokumen untuk barang maupun jasa); unggah hasil TTD |
 | Rentang Waktu Pelaksanaan | **Isian**: tanggal mulai + jumlah hari; **tanggal akhir dihitung otomatis** (tanggal mulai dihitung hari ke-1, mis. 1 Okt + 30 hari = 30 Okt) |
 | Masa Garansi | **Isian**: jumlah bulan (mis. 2 atau 3 bulan) — menggantikan Masa Pemeliharaan |
 
 - Tidak ada pada SPPL: Penyusunan HPS, Proses SMART SCM, Berita Acara (6 dokumen), Kontrak (SPK), Jaminan Bank, Rentang Waktu (centang biasa), Amandemen, Masa Pemeliharaan, Penyusunan Kontrak.
 - **Surat Pesanan mengikuti BA Negosiasi**: template Surat Pesanan dan lampirannya otomatis memuat nilai hasil negosiasi (Nilai Setelah Nego) beserta terbilangnya, rekening pelaksana, jangka waktu dan tanggal mulai–akhir pelaksanaan, serta masa garansi.
-- **Kop BA Negosiasi SPPL dan Surat Pesanan** (bukan lampiran): logo di kiri, dan di kanan header tercantum **PT. PLN Nusantara Power UP Kendari** beserta alamat *Jl. Chairil Anwar No.2, Mataiwoi, Kec. Wua-Wua, Kota Kendari, Sulawesi Tenggara 93117*. Lampiran SP Barang/Jasa tetap memakai logo di tengah tanpa alamat.
+- **Kop BA Negosiasi SPPL dan Surat Pesanan** (bukan lampiran): logo di kiri, dan di kanan header tercantum **PT. PLN Nusantara Power UP Kendari** beserta alamat *Jl. Chairil Anwar No.2, Mataiwoi, Kec. Wua-Wua, Kota Kendari, Sulawesi Tenggara 93117*. Lampiran SP Barang dan Jasa tetap memakai logo di tengah tanpa alamat.
 - **Format BA Negosiasi SPPL (Harga Pembayaran Langsung)**: kop logo PLN Nusantara Power + UP KENDARI, di kanan nama & alamat perusahaan lalu Tanggal & Perusahaan; tabel NO | NAMA BARANG/JASA | VOLUME | SATUAN | HARGA SEBELUM NEGO (Harga Satuan, Jumlah Harga) | HARGA SETELAH NEGO (Harga Satuan, Jumlah Harga); baris **TOTAL HARGA**; **tanpa baris DPP 11/12, PPN 12%, dan Jumlah Total** — diganti keterangan *"\*Harga belum termasuk PPN"* di bawah tabel; tanda tangan {{nama_mitra}} / DIREKTUR dan PLN NP UP KENDARI / TL PELAKSANA PENGADAAN. Baris kelompok (mis. "A  Fabrikasi Material") dan baris kosong boleh ditambahkan; baris tanpa volume dan harga tidak dihitung sebagai item saat sinkron ke Surat Pesanan.
-- **Lampiran SP Barang / Jasa (Syarat Umum, 2 halaman)** memakai narasi formulir UP Kendari: A. Umum, B. Penerimaan Barang / Pekerjaan, C. Pemeriksaan Barang / Pekerjaan, D. Pembayaran (daftar lampiran tagihan a–o dan rekening Bank/Nomor Rekening/Atas Nama dari isian Rekening Pelaksana), E. Sanksi Keterlambatan, F. Kepatuhan terhadap Peraturan dan Kebijakan Anti Penyuapan, G. Lain-lain. Barang dan Jasa memakai narasi yang sama ("barang / pekerjaan").
+- **Lampiran SP Barang dan Jasa (Syarat Umum, 2 halaman)** — satu jenis dokumen saja (kode `lampiran-sp`), tidak lagi dipisah Barang dan Jasa; memakai narasi formulir UP Kendari: A. Umum, B. Penerimaan Barang / Pekerjaan, C. Pemeriksaan Barang / Pekerjaan, D. Pembayaran (daftar lampiran tagihan a–o dan rekening Bank/Nomor Rekening/Atas Nama dari isian Rekening Pelaksana), E. Sanksi Keterlambatan, F. Kepatuhan terhadap Peraturan dan Kebijakan Anti Penyuapan, G. Lain-lain. Narasinya berlaku untuk barang maupun jasa ("barang / pekerjaan"). Dokumen yang sebelumnya dibuat sebagai Lampiran SP Barang/Jasa otomatis dipindah ke jenis gabungan ini.
 - Tahapan berisian tidak dapat dicentang sebelum isiannya lengkap; tahapan berdokumen tidak dapat dicentang sebelum dokumennya diunggah.
 
 ### Menyusun tahapan secara modular (Data Master → Item Checklist)
@@ -534,11 +533,11 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 | Dilewati oleh Format Kontrak | Tahapan tidak dipakai oleh format tertentu (SPK, PJ, SPPL, atau format baru). |
 | Dilewati oleh Metode Pengadaan | Tahapan tidak dipakai oleh metode tertentu. |
 | Dokumen yang Dihasilkan | Dokumen wajib — semuanya harus diunggah. |
-| Dokumen Pilihan (cukup salah satu) | Dokumen alternatif — cukup satu yang diunggah (mis. Lampiran SP Barang / Jasa). |
+| Dokumen Pilihan (cukup salah satu) | Dokumen alternatif — cukup satu yang diunggah (mis. Jaminan Bank atau Surat Garansi). |
 | Isian Tahapan | Data wajib sebelum dicentang: Rentang waktu, Masa garansi, atau Rekening pelaksana. |
 
 - Sifat **generate** atau **unggah saja** diatur per jenis dokumen di **Data Master → Jenis Dokumen**.
-- Isi template (termasuk BA Negosiasi SPPL, Surat Pesanan, Lampiran SP Barang/Jasa) diubah di **Data Master → Template Dokumen**.
+- Isi template (termasuk BA Negosiasi SPPL, Surat Pesanan, Lampiran SP Barang dan Jasa) diubah di **Data Master → Template Dokumen**.
 - Placeholder baru untuk template: `{{nilai_setelah_nego_terbilang}}`, `{{tanggal_mulai_pelaksanaan}}`, `{{jangka_waktu_hari}}`, `{{tanggal_selesai_pelaksanaan}}`, `{{masa_garansi_bulan}}`, `{{nomor_rekening}}`, `{{nama_bank}}`, `{{nama_pemilik_rekening}}`.
 
 ### Output
@@ -645,7 +644,7 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 - Tombol Preview memunculkan modal dialog responsif yang menampilkan dokumen secara langsung di dalam browser (menggunakan `iframe` untuk berkas PDF dan tag `img` untuk berkas PNG/JPG), sehingga pengguna tidak perlu mengunduh file untuk memeriksa kelengkapan dokumen.
 
 ### 2. Standarisasi Logo Perusahaan pada Dokumen
-- Seluruh template dokumen (Nota Dinas Usulan, TOR, UPB, RKS, SPK, BA Negosiasi, Surat Pesanan, Lampiran SP Barang/Jasa) menggunakan logo korporat resmi PLN yang bersumber dari `public/logo/sidebar-logo.png`.
+- Seluruh template dokumen (Nota Dinas Usulan, TOR, UPB, RKS, SPK, BA Negosiasi, Surat Pesanan, Lampiran SP Barang dan Jasa) menggunakan logo korporat resmi PLN yang bersumber dari `public/logo/sidebar-logo.png`.
 - Mendukung embedding gambar base64 otomatis pada render DOMPDF/HTML untuk memastikan logo selalu tampil sempurna baik di lingkungan lokal maupun server production tanpa terhalang konfigurasi allow-url-fopen atau path asset.
 
 ### 3. Penataan Form Usulan Pekerjaan & Nota Dinas
@@ -717,8 +716,6 @@ Penunjukan PIC Perencana
             ▼
 Tahap Perencanaan
 │
-├── Nota Dinas Usulan        (unggah)
-├── TOR / KAK                (generate)
 ├── RAB                      (unggah; dilewati SPPL)
 ├── Penawaran                (unggah)
 ├── CSMS (Sertifikat)        (unggah)
@@ -738,7 +735,6 @@ Penunjukan PIC Pelaksana
             ▼
 Tahap Pelaksanaan — SPK & PJ
 │
-├── Evaluasi Dokumen
 ├── Penyusunan HPS            (unggah)
 ├── Proses SMART SCM          (unggah)
 ├── Berita Acara              (generate 6 dokumen)
@@ -751,11 +747,10 @@ Tahap Pelaksanaan — SPK & PJ
 
 Tahap Pelaksanaan — SPPL
 │
-├── Evaluasi Dokumen
 ├── BA Negosiasi              (generate, landscape)
 ├── Surat Pesanan             (generate)
 ├── Rekening Pelaksana        (isian: no rekening, bank, nama)
-├── Lampiran Surat Pesanan    (pilih Lampiran SP Barang/Jasa)
+├── Lampiran Surat Pesanan    (Lampiran SP Barang dan Jasa)
 ├── Rentang Waktu Pelaksanaan (isian: tanggal mulai + hari → tanggal akhir otomatis)
 └── Masa Garansi              (isian: bulan)
             │

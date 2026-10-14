@@ -185,7 +185,7 @@ export function ChecklistPanel({
  * The step cannot be ticked until the signed copy is here, so the whole round
  * trip lives on the step itself rather than on a separate screen.
  */
-function ChecklistDocumentActions({
+export function ChecklistDocumentActions({
     procurementId,
     document,
     canManage,

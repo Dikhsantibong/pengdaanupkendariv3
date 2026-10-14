@@ -14,6 +14,7 @@ import {
     ContractTypePicker,
     TargetDateField,
 } from '@/components/procurement/planning-identity-fields';
+import { ProposalDocuments } from '@/components/procurement/proposal-documents';
 import { StatusCard } from '@/components/procurement/status-card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -26,6 +27,7 @@ import type {
     DocumentTypeOption,
     Option,
     ProcurementRow,
+    ProposalDocument,
     StatusOption,
 } from '@/types';
 
@@ -44,6 +46,10 @@ type ShowProps = {
         planning_revision: number;
         missing_planning_data: string[];
         finance: FinanceDetail;
+        proposal_documents: {
+            proposer: string;
+            documents: ProposalDocument[];
+        } | null;
     };
     checklists: {
         perencanaan: ChecklistRow[];
@@ -73,6 +79,7 @@ type ShowProps = {
         revertPlanningRejection: boolean;
         complete: boolean;
         generateDocument: boolean;
+        editDocument: boolean;
     };
 };
 
@@ -92,7 +99,7 @@ export default function ShowProcurement({
     const initialTab =
         requestedTab ??
         {
-            usulan: 'perencanaan',
+            usulan: detail.proposal_documents ? 'usulan' : 'perencanaan',
             perencanaan: 'perencanaan',
             pelaksanaan: 'pelaksanaan',
             keuangan: 'keuangan',
@@ -364,7 +371,12 @@ export default function ShowProcurement({
                         </section>
 
                         <Tabs defaultValue={initialTab}>
-                            <TabsList>
+                            <TabsList className="h-auto flex-wrap">
+                                {detail.proposal_documents && (
+                                    <TabsTrigger value="usulan">
+                                        {detail.proposal_documents.proposer}
+                                    </TabsTrigger>
+                                )}
                                 <TabsTrigger value="perencanaan">
                                     Perencanaan
                                 </TabsTrigger>
@@ -378,6 +390,21 @@ export default function ShowProcurement({
                                     Aktivitas
                                 </TabsTrigger>
                             </TabsList>
+
+                            {detail.proposal_documents && (
+                                <TabsContent value="usulan">
+                                    <ProposalDocuments
+                                        procurementId={procurement.id}
+                                        proposer={
+                                            detail.proposal_documents.proposer
+                                        }
+                                        documents={
+                                            detail.proposal_documents.documents
+                                        }
+                                        canManage={can.editDocument}
+                                    />
+                                </TabsContent>
+                            )}
 
                             <TabsContent
                                 value="perencanaan"

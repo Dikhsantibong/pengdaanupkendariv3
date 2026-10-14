@@ -9,6 +9,7 @@ use App\Enums\ProposalState;
 use App\Enums\UserRole;
 use App\Models\Procurement;
 use App\Models\User;
+use App\Support\ProposalDocuments;
 
 class ProcurementPolicy
 {
@@ -65,6 +66,11 @@ class ProcurementPolicy
         $level = $procurement->proposal_state;
 
         if (! in_array($level, [ProposalState::MenungguPersetujuanTl, ProposalState::MenungguPersetujuan], true)) {
+            return false;
+        }
+
+        // Nothing is approved before its TOR and Nota Dinas are filed.
+        if (ProposalDocuments::missing($procurement) !== []) {
             return false;
         }
 
@@ -191,7 +197,10 @@ class ProcurementPolicy
             return false;
         }
 
+        // The TOR and Nota Dinas Usulan are filed on the proposer's tab
+        // rather than as checklist steps, but are still required.
         return $procurement->missingPlanningData() === []
+            && ProposalDocuments::missing($procurement) === []
             && $procurement->isPlanningChecklistComplete();
     }
 

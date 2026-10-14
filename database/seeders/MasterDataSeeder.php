@@ -311,8 +311,9 @@ class MasterDataSeeder extends Seeder
                     'is_optional' => $isOptional,
                     'sort_order' => $index + 1,
                     // The bare "Checklist Perencanaan" tick duplicated the
-                    // stage heading and is no longer asked for.
-                    'is_active' => $name !== 'Checklist Perencanaan',
+                    // stage heading; the Nota Dinas Usulan and TOR are filed
+                    // on the proposer's tab instead.
+                    'is_active' => ! in_array($name, ['Checklist Perencanaan', 'Nota Dinas Usulan', 'TOR / KAK'], true),
                 ],
             );
         }
@@ -324,8 +325,9 @@ class MasterDataSeeder extends Seeder
                     'is_optional' => $isOptional,
                     'input_kind' => $inputs[$name] ?? null,
                     'sort_order' => $index + 1,
-                    // Penyusunan Kontrak is no longer part of any format.
-                    'is_active' => $name !== 'Penyusunan Kontrak',
+                    // Penyusunan Kontrak is no longer part of any format, and
+                    // Evaluasi Dokumen is no longer a step of its own.
+                    'is_active' => ! in_array($name, ['Penyusunan Kontrak', 'Evaluasi Dokumen'], true),
                 ],
             );
         }
@@ -378,14 +380,13 @@ class MasterDataSeeder extends Seeder
                 // SPPL.
                 'BA Negosiasi' => ['ba-negosiasi-sppl'],
                 'Surat Pesanan' => ['purchase-order'],
-                'Lampiran Surat Pesanan' => [],
+                // One appendix for goods and services alike.
+                'Lampiran Surat Pesanan' => ['lampiran-sp'],
             ],
         ];
 
         /** @var array<string, array<int, string>> $alternatives */
-        $alternatives = [
-            'Lampiran Surat Pesanan' => ['surat-pesanan-barang', 'surat-pesanan-jasa'],
-        ];
+        $alternatives = [];
 
         $typeIds = DocumentType::query()->pluck('id', 'code');
 
@@ -568,11 +569,8 @@ class MasterDataSeeder extends Seeder
             ['kontrak', 'Kontrak', ProcurementStage::Pelaksanaan],
             ['ba-negosiasi-sppl', 'Berita Acara Negosiasi (SPPL)', ProcurementStage::Pelaksanaan],
             ['purchase-order', 'Surat Pesanan', ProcurementStage::Pelaksanaan],
-            ['surat-pesanan-barang', 'Lampiran SP Barang', ProcurementStage::Pelaksanaan],
-            ['surat-pesanan-jasa', 'Lampiran SP Jasa', ProcurementStage::Pelaksanaan],
+            ['lampiran-sp', 'Lampiran SP Barang dan Jasa', ProcurementStage::Pelaksanaan],
             ['surat-pesanan', 'Surat Pesanan', ProcurementStage::Pelaksanaan],
-            ['lampiran-sp-barang', 'Lampiran SP Barang', ProcurementStage::Pelaksanaan],
-            ['lampiran-sp-jasa', 'Lampiran SP Jasa', ProcurementStage::Pelaksanaan],
         ];
 
         foreach ($types as $index => [$code, $name, $stage]) {

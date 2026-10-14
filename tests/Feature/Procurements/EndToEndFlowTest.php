@@ -70,6 +70,8 @@ class EndToEndFlowTest extends TestCase
                 'proposal_memo_number' => 'ND-021/USL/2026',
                 'proposal_memo_date' => '2026-10-13',
                 'progress_status_id' => ProgressStatus::defaultStatus()?->id,
+                'tor_file' => UploadedFile::fake()->create('tor-ttd.pdf', 80, 'application/pdf'),
+                'memo_file' => UploadedFile::fake()->create('nota-dinas.pdf', 40, 'application/pdf'),
             ])
             ->assertSessionHasNoErrors();
 

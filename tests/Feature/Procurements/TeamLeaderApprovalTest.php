@@ -14,7 +14,9 @@ use App\Notifications\ProposalReviewed;
 use App\Notifications\ProposalSubmitted;
 use Database\Seeders\DivisionUserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -36,6 +38,8 @@ class TeamLeaderApprovalTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        Storage::fake('local');
 
         $this->division = WorkDirector::factory()->create(['name' => 'Asman Operasi']);
         $this->teamLeader = User::factory()->proposer($this->division)->create(['position' => 'TL Operasi']);
@@ -229,6 +233,9 @@ class TeamLeaderApprovalTest extends TestCase
             'coa_number' => '5110100000',
             'proposal_memo_number' => 'ND-021/USL/2026',
             'proposal_memo_date' => '2026-10-13',
+            // The two documents a proposal files.
+            'tor_file' => UploadedFile::fake()->create('tor-ttd.pdf', 80, 'application/pdf'),
+            'memo_file' => UploadedFile::fake()->create('nota-dinas.pdf', 40, 'application/pdf'),
             'progress_status_id' => ProgressStatus::factory()->asDefault()->create()->id,
         ])->assertSessionHasNoErrors();
 

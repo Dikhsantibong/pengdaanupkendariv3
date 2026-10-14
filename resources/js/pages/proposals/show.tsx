@@ -10,10 +10,10 @@ import {
     RotateCcw,
     Send,
     Trash2,
-    Upload,
 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import InputError from '@/components/input-error';
+import { ProposalDocuments } from '@/components/procurement/proposal-documents';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { formatDate, formatDateTime } from '@/lib/format';
@@ -23,6 +23,7 @@ import type { ProposalRow } from '@/pages/proposals/index';
 import { dashboard } from '@/routes';
 import procurements from '@/routes/procurements';
 import proposals from '@/routes/proposals';
+import type { ProposalDocument } from '@/types';
 
 type Attachment = {
     id: number;
@@ -32,13 +33,6 @@ type Attachment = {
     is_image: boolean;
     uploaded_by: string | null;
     url: string;
-};
-
-type GeneratedDocument = {
-    id: number;
-    title: string;
-    url: string;
-    edit_url: string;
 };
 
 type HistoryItem = {
@@ -65,7 +59,8 @@ type Proposal = ProposalRow & {
     reviewed_by: string | null;
     reviewed_at: string | null;
     review_note: string | null;
-    documents: GeneratedDocument[];
+    documents: ProposalDocument[];
+    missing_documents: string[];
     attachments: Attachment[];
     history: HistoryItem[];
 };
@@ -327,16 +322,38 @@ export default function ProposalShow({
     };
 }) {
     const viewerItems: ViewerItem[] = [
-        ...proposal.documents.map((document) => ({
-            key: `document-${document.id}`,
-            name: document.title,
-            url: document.url,
-            previewable: true,
-            isImage: false,
-            meta: 'Digenerate dari template TOR',
-            editUrl: can.editDocuments ? document.edit_url : null,
-            attachmentId: null,
-        })),
+        ...proposal.documents.flatMap((document) => [
+            ...(document.preview_url !== null
+                ? [
+                      {
+                          key: `draft-${document.type_id}`,
+                          name: `${document.type_name} (draf)`,
+                          url: document.preview_url,
+                          previewable: true,
+                          isImage: false,
+                          meta: 'Draf dari template TOR',
+                          editUrl:
+                              can.editDocuments && document.id !== null
+                                  ? procurements.documents.edit({
+                                        procurement: proposal.id,
+                                        document: document.id,
+                                    }).url
+                                  : null,
+                          attachmentId: null,
+                      },
+                  ]
+                : []),
+            ...document.uploads.map((upload) => ({
+                key: `upload-${upload.id}`,
+                name: `${document.type_name} · ${upload.file_name}`,
+                url: upload.url,
+                previewable: true,
+                isImage: upload.is_image,
+                meta: `${formatSize(upload.size)}${upload.uploaded_by ? ` · diunggah ${upload.uploaded_by}` : ''}`,
+                editUrl: null,
+                attachmentId: null,
+            })),
+        ]),
         ...proposal.attachments.map((file) => ({
             key: `attachment-${file.id}`,
             name: file.file_name,
@@ -349,8 +366,9 @@ export default function ProposalShow({
         })),
     ];
 
-    const fileInput = useRef<HTMLInputElement>(null);
-    const upload = useForm<{ attachments: File[] }>({ attachments: [] });
+    const awaitingDecision =
+        proposal.state === 'menunggu_persetujuan_tl' ||
+        proposal.state === 'menunggu_persetujuan';
 
     const details: Array<[string, string | null]> = [
         ['Bidang / Direksi Pekerjaan', proposal.division],
@@ -441,78 +459,48 @@ export default function ProposalShow({
                             </section>
                         )}
 
+                        {awaitingDecision &&
+                            proposal.missing_documents.length > 0 && (
+                                <section className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-sm">
+                                    <p className="font-semibold text-amber-800 dark:text-amber-300">
+                                        Menunggu dokumen dari pengusul
+                                    </p>
+                                    <p className="mt-1 text-muted-foreground">
+                                        Usulan baru dapat disetujui setelah{' '}
+                                        <b>
+                                            {proposal.missing_documents.join(
+                                                ' dan ',
+                                            )}
+                                        </b>{' '}
+                                        bertanda tangan diunggah.
+                                    </p>
+                                </section>
+                            )}
+
+                        {can.revise && (
+                            <ProposalDocuments
+                                procurementId={proposal.id}
+                                proposer={proposal.proposer ?? 'Pengusul'}
+                                documents={proposal.documents}
+                                canManage={can.editDocuments}
+                            />
+                        )}
+
                         {can.revise && (
                             <section className="grid gap-2 rounded-lg border border-border bg-card p-4">
                                 <p className="text-sm font-semibold">
                                     Perbaiki Usulan
                                 </p>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <Button asChild variant="outline">
-                                        <Link
-                                            href={
-                                                procurements.edit(proposal.id)
-                                                    .url
-                                            }
-                                        >
-                                            <Pencil className="size-4" />
-                                            Ubah Data
-                                        </Link>
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        disabled={upload.processing}
-                                        onClick={() =>
-                                            fileInput.current?.click()
+                                <Button asChild variant="outline">
+                                    <Link
+                                        href={
+                                            procurements.edit(proposal.id).url
                                         }
                                     >
-                                        <Upload className="size-4" />
-                                        Tambah Lampiran
-                                    </Button>
-                                </div>
-                                <input
-                                    ref={fileInput}
-                                    type="file"
-                                    multiple
-                                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
-                                    className="hidden"
-                                    onChange={(event) => {
-                                        const files = Array.from(
-                                            event.target.files ?? [],
-                                        );
-                                        event.target.value = '';
-
-                                        if (files.length === 0) {
-                                            return;
-                                        }
-
-                                        upload.transform(() => ({
-                                            attachments: files,
-                                        }));
-                                        upload.post(
-                                            proposals.attachments.store(
-                                                proposal.id,
-                                            ).url,
-                                            {
-                                                forceFormData: true,
-                                                preserveScroll: true,
-                                            },
-                                        );
-                                    }}
-                                />
-                                <InputError
-                                    message={
-                                        (
-                                            upload.errors as Record<
-                                                string,
-                                                string | undefined
-                                            >
-                                        ).attachments ??
-                                        Object.entries(upload.errors).find(
-                                            ([key]) =>
-                                                key.startsWith('attachments.'),
-                                        )?.[1]
-                                    }
-                                />
+                                        <Pencil className="size-4" />
+                                        Ubah Data Usulan
+                                    </Link>
+                                </Button>
                                 {proposal.state === 'dikembalikan' && (
                                     <Button
                                         size="lg"
