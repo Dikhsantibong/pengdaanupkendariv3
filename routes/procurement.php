@@ -10,6 +10,7 @@ use App\Http\Controllers\ProcurementController;
 use App\Http\Controllers\Procurements\ApprovalController;
 use App\Http\Controllers\Procurements\ChecklistController;
 use App\Http\Controllers\Procurements\CompletionController;
+use App\Http\Controllers\Procurements\DocumentArchiveDownloadController;
 use App\Http\Controllers\Procurements\DocumentController;
 use App\Http\Controllers\Procurements\FinanceController;
 use App\Http\Controllers\Procurements\PicAssignmentController;
@@ -35,6 +36,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Keuangan: hand over the executed job, then record its payment.
         Route::post('keuangan', [FinanceController::class, 'submit'])->name('finance.submit');
         Route::post('keuangan/lunas', [FinanceController::class, 'complete'])->name('finance.complete');
+        // Every file of the procurement at once, as a ZIP.
+        Route::get('arsip-zip', DocumentArchiveDownloadController::class)->name('documents.archive');
         Route::post('documents', [DocumentController::class, 'store'])->name('documents.store');
         Route::post('documents/upload', [DocumentController::class, 'storeUpload'])->name('documents.upload');
         Route::get('documents/{document}', [DocumentController::class, 'show'])->name('documents.show');

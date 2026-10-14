@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { FileSearch } from 'lucide-react';
+import { FileArchive, FileSearch } from 'lucide-react';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
 import { ApprovalBadge, StatusBadge } from '@/components/status-badge';
@@ -28,7 +28,8 @@ export type ProcurementColumn =
     | 'executor'
     | 'planningProgress'
     | 'executionProgress'
-    | 'target';
+    | 'target'
+    | 'download';
 
 const columnHeadings: Record<ProcurementColumn, string> = {
     unit: 'Unit Tujuan',
@@ -43,6 +44,7 @@ const columnHeadings: Record<ProcurementColumn, string> = {
     planningProgress: 'Progres Perencanaan',
     executionProgress: 'Progres Pelaksanaan',
     target: 'Target Selesai',
+    download: 'Dokumen',
 };
 
 export function ProcurementTable({
@@ -204,7 +206,29 @@ function renderCell(column: ProcurementColumn, row: ProcurementRow) {
                     {formatDate(row.target_completion_date)}
                 </span>
             );
+        case 'download':
+            return <DownloadAllButton procurementId={row.id} />;
     }
+}
+
+/** Every file of a procurement in one ZIP. */
+export function DownloadAllButton({
+    procurementId,
+    label = 'ZIP',
+}: {
+    procurementId: number;
+    label?: string;
+}) {
+    return (
+        <a
+            href={procurements.documents.archive(procurementId).url}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-foreground transition-colors hover:bg-accent"
+            title="Unduh seluruh dokumen pengadaan dalam satu ZIP"
+        >
+            <FileArchive className="size-3.5" />
+            {label}
+        </a>
+    );
 }
 
 function ProgressCell({ progress }: { progress?: ChecklistProgress }) {

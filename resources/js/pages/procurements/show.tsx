@@ -16,6 +16,7 @@ import {
 } from '@/components/procurement/planning-identity-fields';
 import { ProposalDocuments } from '@/components/procurement/proposal-documents';
 import { StatusCard } from '@/components/procurement/status-card';
+import { DownloadAllButton } from '@/components/procurement-table';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatCurrency, formatDate } from '@/lib/format';
@@ -228,37 +229,45 @@ export default function ShowProcurement({
                     title={procurement.name}
                     description={`${procurement.target_unit} · ${procurement.work_director}`}
                     actions={
-                        can.update && (
-                            <>
-                                <Button asChild variant="outline">
-                                    <Link
-                                        href={procurements.edit(procurement.id)}
+                        <>
+                            <DownloadAllButton
+                                procurementId={procurement.id}
+                                label="Unduh Semua Dokumen (ZIP)"
+                            />
+                            {can.update && (
+                                <>
+                                    <Button asChild variant="outline">
+                                        <Link
+                                            href={procurements.edit(
+                                                procurement.id,
+                                            )}
+                                        >
+                                            <Pencil className="size-4" />
+                                            Edit Identitas Pengadaan
+                                        </Link>
+                                    </Button>
+                                    <Button
+                                        variant="destructive"
+                                        onClick={() => {
+                                            if (
+                                                window.confirm(
+                                                    `Arsipkan pengadaan ${procurement.number}?`,
+                                                )
+                                            ) {
+                                                router.delete(
+                                                    procurements.destroy(
+                                                        procurement.id,
+                                                    ).url,
+                                                );
+                                            }
+                                        }}
                                     >
-                                        <Pencil className="size-4" />
-                                        Edit Identitas Pengadaan
-                                    </Link>
-                                </Button>
-                                <Button
-                                    variant="destructive"
-                                    onClick={() => {
-                                        if (
-                                            window.confirm(
-                                                `Arsipkan pengadaan ${procurement.number}?`,
-                                            )
-                                        ) {
-                                            router.delete(
-                                                procurements.destroy(
-                                                    procurement.id,
-                                                ).url,
-                                            );
-                                        }
-                                    }}
-                                >
-                                    <Trash2 className="size-4" />
-                                    Arsipkan
-                                </Button>
-                            </>
-                        )
+                                        <Trash2 className="size-4" />
+                                        Arsipkan
+                                    </Button>
+                                </>
+                            )}
+                        </>
                     }
                 />
 

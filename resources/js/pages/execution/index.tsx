@@ -28,7 +28,7 @@ export default function ExecutionIndex({
                 <PageHeader
                     eyebrow="Tahap 2"
                     title="Pelaksanaan Pengadaan"
-                    description="Pengadaan yang dokumen perencanaannya sudah disetujui dan siap dilaksanakan."
+                    description="Pengadaan yang dokumen perencanaannya sudah disetujui dan siap dilaksanakan. Tombol ZIP mengunduh seluruh dokumen satu pengadaan sekaligus."
                 />
 
                 <ProcurementFilterBar
@@ -46,6 +46,7 @@ export default function ExecutionIndex({
                         'executor',
                         'executionProgress',
                         'target',
+                        'download',
                     ]}
                     emptyTitle="Belum ada pengadaan pada tahap pelaksanaan"
                     emptyDescription="Pengadaan akan muncul di sini setelah dokumen perencanaannya disetujui TL ICC."
