@@ -455,7 +455,7 @@ Setelah dokumen perencanaan disetujui, **Team Leader Pengadaan** menunjuk **1 or
 | Berita Acara | **Generate** 6 dokumen (Aanwijzing, Lampiran BAPP, Evaluasi Teknis, Evaluasi Harga, Hasil Evaluasi, Klarifikasi) lalu unggah hasil TTD |
 | Surat Pesanan | Centang |
 | Jaminan Bank | Unggah saja |
-| Kontrak | **Generate** SPK, Lampiran SPK, BA Negosiasi lalu unggah hasil TTD |
+| Kontrak | **Generate SPK** (berisi pasal-pasal kontrak) lalu unggah hasil TTD — hanya satu dokumen; Lampiran SPK dan BA Negosiasi tidak lagi diminta |
 | Rentang Waktu | Centang |
 | Amandemen — opsional | Unggah saja |
 | Masa Pemeliharaan | Unggah saja |
@@ -521,7 +521,7 @@ SPK disusun sebagai perjanjian lengkap mengikuti format kontrak UP Kendari (±9�
 - **Surat Pesanan mengikuti BA Negosiasi**: template Surat Pesanan dan lampirannya otomatis memuat nilai hasil negosiasi (Nilai Setelah Nego) beserta terbilangnya, rekening pelaksana, jangka waktu dan tanggal mulai–akhir pelaksanaan, serta masa garansi.
 - **Kop BA Negosiasi SPPL dan Surat Pesanan** (bukan lampiran): logo di kiri, dan di kanan header tercantum **PT. PLN Nusantara Power UP Kendari** beserta alamat *Jl. Chairil Anwar No.2, Mataiwoi, Kec. Wua-Wua, Kota Kendari, Sulawesi Tenggara 93117*. Lampiran SP Barang dan Jasa tetap memakai logo di tengah tanpa alamat.
 - **Format BA Negosiasi SPPL (Harga Pembayaran Langsung)**: kop logo PLN Nusantara Power + UP KENDARI, di kanan nama & alamat perusahaan lalu Tanggal & Perusahaan; tabel NO | NAMA BARANG/JASA | VOLUME | SATUAN | HARGA SEBELUM NEGO (Harga Satuan, Jumlah Harga) | HARGA SETELAH NEGO (Harga Satuan, Jumlah Harga); baris **TOTAL HARGA**; **tanpa baris DPP 11/12, PPN 12%, dan Jumlah Total** — diganti keterangan *"\*Harga belum termasuk PPN"* di bawah tabel; tanda tangan {{nama_mitra}} / DIREKTUR dan PLN NP UP KENDARI / TL PELAKSANA PENGADAAN. Baris kelompok (mis. "A  Fabrikasi Material") dan baris kosong boleh ditambahkan; baris tanpa volume dan harga tidak dihitung sebagai item saat sinkron ke Surat Pesanan.
-- **Lampiran SP Barang dan Jasa (Syarat Umum, 2 halaman)** — satu jenis dokumen saja (kode `lampiran-sp`), tidak lagi dipisah Barang dan Jasa; memakai narasi formulir UP Kendari: A. Umum, B. Penerimaan Barang / Pekerjaan, C. Pemeriksaan Barang / Pekerjaan, D. Pembayaran (daftar lampiran tagihan a–o dan rekening Bank/Nomor Rekening/Atas Nama dari isian Rekening Pelaksana), E. Sanksi Keterlambatan, F. Kepatuhan terhadap Peraturan dan Kebijakan Anti Penyuapan, G. Lain-lain. Narasinya berlaku untuk barang maupun jasa ("barang / pekerjaan"). Dokumen yang sebelumnya dibuat sebagai Lampiran SP Barang/Jasa otomatis dipindah ke jenis gabungan ini.
+- **Lampiran SP Barang dan Jasa (Syarat Umum, 2 halaman)** — satu jenis dokumen saja (kode `lampiran-sp`), tidak lagi dipisah Barang dan Jasa; memakai narasi formulir UP Kendari: A. Umum, B. Penerimaan Barang / Pekerjaan, C. Pemeriksaan Barang / Pekerjaan, D. Pembayaran (daftar lampiran tagihan a–o dan rekening Bank/Nomor Rekening/Atas Nama dari isian Rekening Pelaksana), E. Sanksi Keterlambatan, F. Kepatuhan terhadap Peraturan dan Kebijakan Anti Penyuapan, G. Lain-lain. Narasinya berlaku untuk barang maupun jasa ("barang / pekerjaan"). Dokumen yang sebelumnya dibuat sebagai Lampiran SP Barang/Jasa otomatis dipindah ke jenis gabungan ini. Isinya mengalir tanpa paksaan pindah halaman, sehingga halaman 1 terisi penuh (A–D) dan sisanya (E–G) di halaman 2.
 - Tahapan berisian tidak dapat dicentang sebelum isiannya lengkap; tahapan berdokumen tidak dapat dicentang sebelum dokumennya diunggah.
 
 ### Menyusun tahapan secara modular (Data Master → Item Checklist)
@@ -740,7 +740,7 @@ Tahap Pelaksanaan — SPK & PJ
 ├── Berita Acara              (generate 6 dokumen)
 ├── Surat Pesanan
 ├── Jaminan Bank              (unggah)
-├── Kontrak                   (generate SPK, Lampiran SPK, BA Nego)
+├── Kontrak                   (generate SPK saja)
 ├── Rentang Waktu
 ├── Amandemen                 (unggah, opsional)
 └── Masa Pemeliharaan         (unggah)

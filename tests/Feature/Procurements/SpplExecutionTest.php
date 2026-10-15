@@ -528,6 +528,9 @@ HTML;
             $template = DocumentTemplate::query()->where('document_type_id', $type->id)->firstOrFail();
             $rendered = strip_tags(app(DocumentGenerator::class)->render($template, $procurement));
 
+            // The sections flow on: no forced break leaves page 1 half empty.
+            $this->assertStringNotContainsString('page-break-before: always', $template->body);
+
             foreach ([
                 'A. UMUM',
                 'B. PENERIMAAN BARANG / PEKERJAAN',

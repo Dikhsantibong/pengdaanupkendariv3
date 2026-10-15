@@ -346,7 +346,7 @@ class ChecklistDocumentRequirementTest extends TestCase
         ], $item->documentTypes->pluck('code')->all());
     }
 
-    public function test_the_kontrak_step_requires_the_spk_set(): void
+    public function test_the_kontrak_step_asks_only_for_the_spk(): void
     {
         $this->seed(MasterDataSeeder::class);
 
@@ -355,10 +355,7 @@ class ChecklistDocumentRequirementTest extends TestCase
             ->where('name', 'Kontrak')
             ->firstOrFail();
 
-        $this->assertSame(
-            ['spk', 'lampiran-spk', 'ba-negosiasi'],
-            $item->documentTypes->pluck('code')->all(),
-        );
+        $this->assertSame(['spk'], $item->documentTypes->pluck('code')->all());
     }
 
     public function test_a_multi_document_step_needs_every_signed_copy(): void
@@ -366,7 +363,7 @@ class ChecklistDocumentRequirementTest extends TestCase
         Storage::fake('local');
 
         $this->seed(MasterDataSeeder::class);
-        $this->seed(KontrakTemplateSeeder::class);
+        $this->seed(BeritaAcaraTemplateSeeder::class);
 
         $executor = User::factory()->executor()->create();
         $procurement = Procurement::factory()->executedBy($executor)->create([
@@ -378,16 +375,16 @@ class ChecklistDocumentRequirementTest extends TestCase
 
         $item = ChecklistItem::query()
             ->forStage(ProcurementStage::Pelaksanaan)
-            ->where('name', 'Kontrak')
+            ->where('name', 'Berita Acara')
             ->firstOrFail();
 
         $checklist = $procurement->checklists()
             ->where('checklist_item_id', $item->id)
             ->firstOrFail();
 
-        // File two of the three, then check the step is still refused and the
+        // File all but the last, then check the step is still refused and the
         // message names the one that is missing.
-        foreach ($item->documentTypes->take(2) as $type) {
+        foreach ($item->documentTypes->slice(0, -1) as $type) {
             $this->actingAs($executor)->post(route('procurements.documents.store', $procurement), [
                 'document_type_id' => $type->id,
             ]);
@@ -409,7 +406,7 @@ class ChecklistDocumentRequirementTest extends TestCase
             ->assertSessionHasErrors('is_completed');
 
         $this->assertStringContainsString(
-            'Berita Acara Negosiasi dan Lampiran',
+            $item->documentTypes->last()->name,
             session('errors')->first('is_completed'),
         );
 

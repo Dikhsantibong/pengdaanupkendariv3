@@ -374,7 +374,8 @@ class MasterDataSeeder extends Seeder
                 ],
                 'Penyusunan Kontrak' => ['penyusunan-kontrak'],
                 'Jaminan Bank' => ['jaminan-bank'],
-                'Kontrak' => ['spk', 'lampiran-spk', 'ba-negosiasi'],
+                // Only the SPK with its articles is uploaded for the contract.
+                'Kontrak' => ['spk'],
                 'Amandemen' => ['amandemen'],
                 'Masa Pemeliharaan' => ['masa-pemeliharaan'],
                 // SPPL.
