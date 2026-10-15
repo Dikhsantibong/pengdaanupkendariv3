@@ -680,8 +680,10 @@ class DocumentGenerator
                 continue;
             }
 
-            $name = trim(html_entity_decode(strip_tags($cells[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-            $name = trim(str_replace("\xc2\xa0", ' ', $name));
+            // A line break typed inside the cell separates words, not glues them.
+            $nameHtml = (string) preg_replace('/<br\s*\/?>|<\/(p|div)>/i', ' ', $cells[1]);
+            $name = trim(html_entity_decode(strip_tags($nameHtml), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+            $name = trim((string) preg_replace('/\s+/u', ' ', str_replace("\xc2\xa0", ' ', $name)));
             if ($name === '' || $name === '&nbsp;') {
                 $name = 'Item Pengadaan '.$itemIndex;
             }
@@ -834,8 +836,8 @@ HTML;
         $cleanThead = <<<HTML
 <thead>
                     <tr style="text-align: center; font-weight: bold; background-color: #ffffff;">
-                        <th style="border: 1px solid #000; padding: 6px 2px; width: 6%; vertical-align: middle; white-space: nowrap; font-size: 8pt;">NOMOR</th>
-                        <th style="border: 1px solid #000; padding: 6px 6px; width: 33%; vertical-align: middle;">{$colItemHeader}</th>
+                        <th style="border: 1px solid #000; padding: 6px 2px; width: 4%; vertical-align: middle; white-space: nowrap; font-size: 8pt;">NO</th>
+                        <th style="border: 1px solid #000; padding: 6px 6px; width: 35%; vertical-align: middle;">{$colItemHeader}</th>
                         <th style="border: 1px solid #000; padding: 6px 2px; width: 8%; vertical-align: middle; white-space: nowrap; font-size: 8pt;">VOLUME</th>
                         <th style="border: 1px solid #000; padding: 6px 2px; width: 8%; vertical-align: middle; white-space: nowrap; font-size: 8pt;">SATUAN</th>
                         <th style="border: 1px solid #000; padding: 6px 4px; width: 14%; vertical-align: middle; white-space: nowrap; font-size: 8pt;">HARGA SATUAN</th>

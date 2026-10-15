@@ -7,9 +7,7 @@ import {
     ListOrdered,
     Minus,
     PenLine,
-    Plus,
     Redo2,
-    RotateCcw,
     Rows3,
     Scissors,
     SquareDashed,
@@ -1321,21 +1319,20 @@ export function VisualEditor({
                         onInput={emit}
                         onKeyDown={(event) => {
                             if (event.key === 'Enter') {
-                                const cell = currentCell();
-
-                                if (cell) {
+                                // Inside a table cell, Enter starts a new line
+                                // in the same cell, as in Word. Moving between
+                                // cells is what Tab / Shift+Tab are for.
+                                if (currentCell()) {
                                     event.preventDefault();
-                                    const nextCell =
-                                        (cell.nextElementSibling as HTMLTableCellElement) ??
-                                        null;
 
-                                    if (nextCell) {
-                                        const range = document.createRange();
-                                        range.selectNodeContents(nextCell);
-                                        range.collapse(false);
-                                        const sel = window.getSelection();
-                                        sel?.removeAllRanges();
-                                        sel?.addRange(range);
+                                    if (
+                                        !document.execCommand('insertLineBreak')
+                                    ) {
+                                        document.execCommand(
+                                            'insertHTML',
+                                            false,
+                                            '<br>',
+                                        );
                                     }
                                 }
                             } else if (event.key === 'Tab') {

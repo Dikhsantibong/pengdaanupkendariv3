@@ -483,6 +483,46 @@ HTML;
         $this->assertSame(44492000.0, array_sum(array_column($items, 'total_after')));
     }
 
+    public function test_the_surat_pesanan_number_column_is_a_narrow_no(): void
+    {
+        $this->seed(MasterDataSeeder::class);
+        $this->seed(SpplDocumentTemplateSeeder::class);
+
+        $type = DocumentType::query()->where('code', 'surat-pesanan')->firstOrFail();
+        $template = DocumentTemplate::query()->where('document_type_id', $type->id)->firstOrFail();
+
+        $noHeader = 'width: 4%; vertical-align: middle; white-space: nowrap; font-size: 8pt;">NO</th>';
+
+        $this->assertStringContainsString($noHeader, $template->body);
+        $this->assertStringNotContainsString('>NOMOR</th>', $template->body);
+
+        // Copying the BA Negosiasi items rebuilds the header the same way.
+        $synced = app(DocumentGenerator::class)->syncItemsIntoSuratPesanan(
+            $template->body,
+            [['no' => 1, 'name' => 'Uji CMM', 'volume' => 1, 'satuan' => 'Lot', 'price_after' => 1000.0, 'total_after' => 1000.0]],
+            Procurement::factory()->create(),
+        );
+
+        $this->assertStringContainsString($noHeader, $synced);
+        $this->assertStringNotContainsString('>NOMOR</th>', $synced);
+    }
+
+    public function test_a_line_break_in_an_item_name_keeps_the_words_apart(): void
+    {
+        // Enter inside a cell of the editor inserts a <br>.
+        $html = <<<'HTML'
+        <table>
+            <tr><th colspan="2">HARGA SEBELUM NEGO</th><th colspan="2">HARGA SETELAH NEGO</th></tr>
+            <tr><td>1</td><td>Uji CMM + Kekerasan<br>(Shaft Idle Gear)</td><td>1</td><td>Lot</td><td>16.500.000</td><td>16.500.000</td><td>16.000.000</td><td>16.000.000</td></tr>
+            <tr><td colspan="4">TOTAL HARGA</td><td colspan="2">16.500.000</td><td colspan="2">16.000.000</td></tr>
+        </table>
+        HTML;
+
+        $items = app(DocumentGenerator::class)->parseNegotiationItems($html);
+
+        $this->assertSame(['Uji CMM + Kekerasan (Shaft Idle Gear)'], array_column($items, 'name'));
+    }
+
     public function test_ba_and_surat_pesanan_letterheads_carry_the_company_address_but_attachments_do_not(): void
     {
         $this->seed(MasterDataSeeder::class);
