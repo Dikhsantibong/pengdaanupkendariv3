@@ -10,6 +10,7 @@ use App\Models\AssessmentAspect;
 use App\Models\AssessmentForm;
 use App\Models\Procurement;
 use App\Models\VendorAssessment;
+use App\Models\VendorAssessmentRequest;
 use App\Services\AssessmentSigningService;
 use App\Services\VendorAssessmentRenderer;
 use App\Services\VendorAssessmentService;
@@ -71,6 +72,8 @@ class VendorAssessmentController extends Controller
 
         return Inertia::render('vendor-assessments/index', [
             'assessments' => $assessments,
+            'requests' => $this->requestsPayload(),
+            'requestFormUrl' => VendorAssessmentRequest::formUrl(),
             'filters' => [
                 'search' => $request->string('search')->trim()->value() ?: null,
             ],
@@ -168,8 +171,12 @@ class VendorAssessmentController extends Controller
             ? Procurement::query()->find($request->integer('procurement_id'))
             : null;
 
+        $detailsRequest = $request->integer('request_id')
+            ? VendorAssessmentRequest::query()->find($request->integer('request_id'))
+            : null;
+
         return Inertia::render('vendor-assessments/create', [
-            'defaults' => $this->assessments->defaultsFrom($procurement),
+            'defaults' => $this->assessments->defaultsFrom($procurement, $detailsRequest),
             'procurements' => Procurement::query()
                 ->latest('created_at')
                 ->limit(200)
@@ -194,7 +201,17 @@ class VendorAssessmentController extends Controller
      */
     public function store(StoreVendorAssessmentRequest $request): RedirectResponse
     {
-        $assessment = $this->assessments->create($request->validated(), $request->user());
+        $assessment = $this->assessments->create(
+            $request->safe()->except('vendor_assessment_request_id'),
+            $request->user(),
+        );
+
+        // The request the header was filled in from is now dealt with.
+        if ($request->filled('vendor_assessment_request_id')) {
+            VendorAssessmentRequest::query()
+                ->whereKey($request->integer('vendor_assessment_request_id'))
+                ->update(['vendor_assessment_id' => $assessment->id]);
+        }
 
         Inertia::flash('toast', [
             'type' => 'success',
@@ -449,6 +466,42 @@ class VendorAssessmentController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Formulir penilaian diarsipkan.']);
 
         return to_route('vendor-assessments.index');
+    }
+
+    /**
+     * The invoice detail requests shown above the assessment list.
+     *
+     * Every request still waiting comes first; ones already turned into an
+     * assessment stay listed for a while so the administrator can see where
+     * they went.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function requestsPayload(): array
+    {
+        return VendorAssessmentRequest::query()
+            ->orderByRaw('vendor_assessment_id is not null')
+            ->latest('created_at')
+            ->limit(50)
+            ->get()
+            ->map(fn (VendorAssessmentRequest $row): array => [
+                'id' => $row->id,
+                'status' => $row->status(),
+                'project' => $row->project,
+                'vendor_name' => $row->vendor_name,
+                'contract_number' => $row->contract_number,
+                'contract_date' => $row->contract_date->toDateString(),
+                'term' => $row->term,
+                'invoice_amount' => (float) $row->invoice_amount,
+                'bastp_number' => $row->bastp_number,
+                'bastp_date' => $row->bastp_date->toDateString(),
+                'has_penalty' => $row->has_penalty,
+                'submitter_name' => $row->submitter_name,
+                'submitter_phone' => $row->submitter_phone,
+                'submitted_at' => $row->created_at?->toDateTimeString(),
+                'vendor_assessment_id' => $row->vendor_assessment_id,
+            ])
+            ->all();
     }
 
     /**

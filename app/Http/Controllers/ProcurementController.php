@@ -484,7 +484,7 @@ class ProcurementController extends Controller
 
         return [
             'type_id' => $type->id,
-            'type_name' => $type->name,
+            'type_name' => $type->nameFor($procurement),
             'id' => $document?->id,
             'title' => $document?->title,
             'is_signed' => $document?->isSigned() ?? false,

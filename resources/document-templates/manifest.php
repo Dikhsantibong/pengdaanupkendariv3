@@ -330,6 +330,18 @@ return [
         'work_category' => 'jasa',
         'name' => 'RKS PJ Jasa (Penunjukan Langsung) - Template Standar UP Kendari',
     ],
+    // The contract the "Kontrak" step draws for the PJ format: it serves the
+    // SPK document type, but a PJ procurement gets this Surat Perjanjian
+    // instead of the Surat Perintah Kerja.
+    'pj.surat-perjanjian' => [
+        'group' => 'pj',
+        'file' => 'pj/surat-perjanjian.html',
+        'document_type' => 'spk',
+        'procurement_method' => null,
+        'contract_format' => 'PJ',
+        'work_category' => null,
+        'name' => 'Surat Perjanjian (PJ) - Template Standar UP Kendari',
+    ],
     'pj.upb' => [
         'group' => 'pj',
         'file' => 'pj/upb.html',

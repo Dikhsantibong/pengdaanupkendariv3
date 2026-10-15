@@ -26,6 +26,9 @@ type Defaults = {
     po_date: string | null;
     bastp_date: string | null;
     vendor_name: string;
+    has_penalty: boolean;
+    notes: string;
+    vendor_assessment_request_id: number | null;
     form_number: string;
     revision_number: string;
     form_date: string | null;
@@ -48,12 +51,13 @@ export default function CreateVendorAssessment({
         po_date: defaults.po_date ?? '',
         bastp_date: defaults.bastp_date ?? '',
         vendor_name: defaults.vendor_name,
-        has_penalty: false,
+        has_penalty: defaults.has_penalty,
         form_number: defaults.form_number,
         revision_number: defaults.revision_number,
         form_date: '2024-06-10',
         place: defaults.place,
-        notes: '',
+        notes: defaults.notes,
+        vendor_assessment_request_id: defaults.vendor_assessment_request_id,
     });
 
     return (
@@ -84,6 +88,14 @@ export default function CreateVendorAssessment({
                     }}
                     className="space-y-6"
                 >
+                    {defaults.vendor_assessment_request_id !== null && (
+                        <p className="rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-200">
+                            Data diisi dari rincian tagihan yang dikirim lewat
+                            tautan permintaan. Termin, nilai tagihan dan No
+                            BAPP/BASTP disimpan pada Catatan.
+                        </p>
+                    )}
+
                     <section className="space-y-4 rounded-md border border-border bg-card p-5">
                         <p className="section-label">Identitas Penilaian</p>
 
@@ -186,14 +198,23 @@ export default function CreateVendorAssessment({
                             <Label htmlFor="has_penalty">Denda</Label>
                             <Select
                                 value={form.data.has_penalty ? 'ada' : 'tidak'}
-                                onValueChange={(v) => form.setData('has_penalty', v === 'ada')}
+                                onValueChange={(v) =>
+                                    form.setData('has_penalty', v === 'ada')
+                                }
                             >
-                                <SelectTrigger id="has_penalty" className="w-full">
+                                <SelectTrigger
+                                    id="has_penalty"
+                                    className="w-full"
+                                >
                                     <SelectValue placeholder="Pilih denda" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="ada">Ada Denda</SelectItem>
-                                    <SelectItem value="tidak">Tidak Ada Denda</SelectItem>
+                                    <SelectItem value="ada">
+                                        Ada Denda
+                                    </SelectItem>
+                                    <SelectItem value="tidak">
+                                        Tidak Ada Denda
+                                    </SelectItem>
                                 </SelectContent>
                             </Select>
                             <InputError message={form.errors.has_penalty} />

@@ -49,6 +49,22 @@ class DocumentType extends Model
     }
 
     /**
+     * The name this document goes by on one procurement.
+     *
+     * The "Kontrak" step asks for the SPK document type on both the SPK and
+     * the PJ format, but under the PJ format the contract drawn is a Surat
+     * Perjanjian, so it is called that.
+     */
+    public function nameFor(?Procurement $procurement): string
+    {
+        if ($this->code === 'spk' && $procurement?->contractNumberFormat?->code === 'PJ') {
+            return 'Surat Perjanjian (PJ)';
+        }
+
+        return $this->name;
+    }
+
+    /**
      * Every template ever registered for this document type.
      *
      * @return HasMany<DocumentTemplate, $this>

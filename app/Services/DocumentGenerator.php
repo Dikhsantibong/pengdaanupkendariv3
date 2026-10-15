@@ -10,6 +10,7 @@ use App\Models\Procurement;
 use App\Models\ProcurementDocument;
 use App\Models\UnitManager;
 use App\Models\User;
+use App\Models\VendorAssessmentRequest;
 use App\Support\IndonesianNumber;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Cache;
@@ -93,6 +94,7 @@ class DocumentGenerator
             'target_penyelesaian' => 'Target penyelesaian pengadaan',
             'tanggal_dokumen' => 'Tanggal dokumen digenerate',
             'tahun' => 'Tahun berjalan',
+            'tautan_penilaian_vendor' => 'Tautan tetap untuk vendor mengisi rincian tagihan (request penilaian vendor)',
             'checklist_perencanaan' => 'Daftar checklist tahap perencanaan',
             'checklist_pelaksanaan' => 'Daftar checklist tahap pelaksanaan',
         ];
@@ -247,6 +249,7 @@ class DocumentGenerator
                 : $procurement->target_completion_date->translatedFormat('d F Y'),
             'tanggal_dokumen' => $issuedAt->translatedFormat('d F Y'),
             'tahun' => $issuedAt->format('Y'),
+            'tautan_penilaian_vendor' => VendorAssessmentRequest::formUrl(),
             'checklist_perencanaan' => $this->checklistMarkup($procurement, ProcurementStage::Perencanaan),
             'checklist_pelaksanaan' => $this->checklistMarkup($procurement, ProcurementStage::Pelaksanaan),
         ];
@@ -543,7 +546,7 @@ class DocumentGenerator
         $document = $procurement->documents()->create([
             'document_type_id' => $documentType->id,
             'document_template_id' => $template->id,
-            'title' => "{$documentType->name} - {$procurement->name}",
+            'title' => "{$documentType->nameFor($procurement)} - {$procurement->name}",
             'file_name' => Str::slug("{$procurement->number}-{$documentType->code}").'.html',
             'template_version' => $template->version,
             'rendered_body' => $this->render($template, $procurement),

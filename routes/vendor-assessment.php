@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\AssessmentRequestFormController;
 use App\Http\Controllers\AssessmentSigningController;
 use App\Http\Controllers\VendorAssessmentController;
+use App\Http\Controllers\VendorAssessmentRequestController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'verified', 'can:manage-vendor-assessments'])
@@ -11,6 +13,9 @@ Route::middleware(['auth', 'verified', 'can:manage-vendor-assessments'])
         Route::get('/', [VendorAssessmentController::class, 'index'])->name('index');
         Route::get('ekspor', [VendorAssessmentController::class, 'export'])->name('export');
         Route::get('buat', [VendorAssessmentController::class, 'create'])->name('create');
+        // Invoice details sent in by vendors through the fixed request link.
+        Route::delete('permintaan/{assessmentRequest}', [VendorAssessmentRequestController::class, 'destroy'])
+            ->name('requests.destroy');
         Route::post('/', [VendorAssessmentController::class, 'store'])->name('store');
         Route::get('{assessment}', [VendorAssessmentController::class, 'show'])->name('show');
         Route::put('{assessment}', [VendorAssessmentController::class, 'update'])->name('update');
@@ -48,4 +53,18 @@ Route::middleware('throttle:30,1')
     ->group(function () {
         Route::get('{token}', [AssessmentSigningController::class, 'show'])->name('show');
         Route::post('{token}', [AssessmentSigningController::class, 'store'])->name('store');
+    });
+
+// The fixed link printed in the contract, where every vendor sends in the
+// invoice details for their assessment. Open to anyone and write-only, so
+// submissions are throttled harder than page views.
+Route::prefix('permintaan-penilaian')
+    ->name('assessment-requests.')
+    ->group(function () {
+        Route::get('/', [AssessmentRequestFormController::class, 'show'])
+            ->middleware('throttle:60,1')
+            ->name('show');
+        Route::post('/', [AssessmentRequestFormController::class, 'store'])
+            ->middleware('throttle:10,1')
+            ->name('store');
     });

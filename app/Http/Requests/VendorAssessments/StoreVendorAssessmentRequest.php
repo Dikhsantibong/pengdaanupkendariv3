@@ -29,6 +29,7 @@ class StoreVendorAssessmentRequest extends FormRequest
             'form_date' => ['nullable', 'date'],
             'place' => ['required', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'vendor_assessment_request_id' => ['nullable', 'integer', Rule::exists('vendor_assessment_requests', 'id')],
         ];
     }
 

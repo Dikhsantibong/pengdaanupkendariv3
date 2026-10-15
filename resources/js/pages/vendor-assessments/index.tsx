@@ -1,6 +1,8 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { ClipboardCheck, Plus, Search, FileSpreadsheet } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { AssessmentRequestsPanel } from '@/components/assessment-requests-panel';
+import type { AssessmentRequestRow } from '@/components/assessment-requests-panel';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
@@ -36,9 +38,13 @@ type AssessmentRow = {
 
 export default function VendorAssessmentIndex({
     assessments,
+    requests,
+    requestFormUrl,
     filters,
 }: {
     assessments: Paginated<AssessmentRow>;
+    requests: AssessmentRequestRow[];
+    requestFormUrl: string;
     filters: { search: string | null };
 }) {
     const [search, setSearch] = useState(filters.search ?? '');
@@ -81,8 +87,13 @@ export default function VendorAssessmentIndex({
                     }
                 />
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="relative max-w-sm w-full">
+                <AssessmentRequestsPanel
+                    requests={requests}
+                    formUrl={requestFormUrl}
+                />
+
+                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                    <div className="relative w-full max-w-sm">
                         <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             value={search}
@@ -91,8 +102,15 @@ export default function VendorAssessmentIndex({
                             className="pl-9"
                         />
                     </div>
-                    <Button asChild variant="outline" className="w-full sm:w-auto border-green-600 text-green-600 hover:bg-green-600 hover:text-white dark:border-green-500 dark:text-green-500 dark:hover:bg-green-600 dark:hover:text-white">
-                        <a href={vendorAssessments.export().url} target="_blank">
+                    <Button
+                        asChild
+                        variant="outline"
+                        className="w-full border-green-600 text-green-600 hover:bg-green-600 hover:text-white sm:w-auto dark:border-green-500 dark:text-green-500 dark:hover:bg-green-600 dark:hover:text-white"
+                    >
+                        <a
+                            href={vendorAssessments.export().url}
+                            target="_blank"
+                        >
                             <FileSpreadsheet className="mr-2 size-4" />
                             Ekspor Excel
                         </a>
@@ -142,7 +160,7 @@ export default function VendorAssessmentIndex({
                                                 </div>
                                             )}
                                             {row.amendment_number && (
-                                                <div className="text-muted-foreground mt-1">
+                                                <div className="mt-1 text-muted-foreground">
                                                     Amd: {row.amendment_number}
                                                 </div>
                                             )}

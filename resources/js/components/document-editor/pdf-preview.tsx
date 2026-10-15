@@ -1,4 +1,11 @@
-import { LoaderCircle, RefreshCw, TriangleAlert } from 'lucide-react';
+import {
+    Download,
+    ExternalLink,
+    FileText,
+    LoaderCircle,
+    RefreshCw,
+    TriangleAlert,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 
@@ -21,6 +28,26 @@ function xsrfHeader(): Record<string, string> {
     return match === null
         ? {}
         : { 'X-XSRF-TOKEN': decodeURIComponent(match[1]) };
+}
+
+/**
+ * Whether this browser can show a PDF inside the page.
+ *
+ * Chrome on Android has no built-in PDF viewer at all, and browsers on iOS
+ * only paint the first page of an embedded PDF as a picture. Desktop Chrome
+ * reports false too when it is set to download PDFs instead of opening them.
+ */
+function canShowPdfInline(): boolean {
+    if (typeof navigator === 'undefined') {
+        return true;
+    }
+
+    const isPhoneOrTablet =
+        /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+        // iPadOS presents itself as a Mac, but a Mac has no touch screen.
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    return !isPhoneOrTablet && navigator.pdfViewerEnabled !== false;
 }
 
 /** Turn a failed response into a sentence the author can act on. */
@@ -67,6 +94,7 @@ export function PdfPreview({
 }) {
     const [draft, setDraft] = useState<Draft>(() => ({ title, body }));
     const [rendered, setRendered] = useState<Rendered | null>(null);
+    const [inline] = useState(canShowPdfInline);
 
     const loading = rendered === null || rendered.draft !== draft;
     const stale = draft.title !== title || draft.body !== body;
@@ -160,6 +188,37 @@ export function PdfPreview({
                             <RefreshCw className="size-3.5" />
                             Coba Lagi
                         </Button>
+                    </div>
+                ) : !inline ? (
+                    <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+                        <FileText className="size-8 text-muted-foreground" />
+                        <p className="max-w-md text-sm">
+                            Pratinjau PDF sudah siap, tetapi browser ini tidak
+                            bisa menampilkan PDF di dalam halaman (umumnya
+                            Chrome di Android / iOS). Buka atau unduh PDF untuk
+                            melihatnya.
+                        </p>
+                        <div className="flex flex-wrap justify-center gap-2">
+                            <Button asChild size="sm">
+                                <a
+                                    href={rendered?.url ?? '#'}
+                                    target="_blank"
+                                    rel="noopener"
+                                >
+                                    <ExternalLink className="size-3.5" />
+                                    Buka PDF
+                                </a>
+                            </Button>
+                            <Button asChild size="sm" variant="outline">
+                                <a
+                                    href={rendered?.url ?? '#'}
+                                    download={`pratinjau-${(draft.title || 'dokumen').replace(/[\\/:*?"<>|]+/g, '-')}.pdf`}
+                                >
+                                    <Download className="size-3.5" />
+                                    Unduh PDF
+                                </a>
+                            </Button>
+                        </div>
                     </div>
                 ) : (
                     <iframe

@@ -1,0 +1,411 @@
+<section class="spk">
+    <style>
+        @page { size: A4 portrait; margin: 18mm 20mm 30mm 22mm; }
+        .spk { font-family: Arial, Helvetica, sans-serif; font-size: 9.5pt; line-height: 1.4; color: #000; text-align: justify; }
+        .spk .title { text-align: center; font-weight: bold; font-size: 10.5pt; line-height: 1.6; margin-bottom: 14px; }
+        .spk .title .gap { margin-top: 10px; }
+        .spk .upper { text-transform: uppercase; }
+        .spk p { margin: 6px 0; }
+        .spk .pasal { text-align: center; font-weight: bold; margin: 18px 0 6px; page-break-after: avoid; }
+        .spk .pasal div + div { margin-top: 3px; }
+        .spk table { border-collapse: collapse; width: 100%; margin: 4px 0; font-size: 9.5pt; }
+        .spk table.ayat td { border: none; padding: 1.5px 0; vertical-align: top; text-align: justify; }
+        .spk table.ayat td.no { width: 30px; }
+        .spk table.plain-rows td { border: none; padding: 1px 0; }
+        .spk table.rekening { width: auto; margin: 6px 0 2px; }
+        .spk table.rekening td:first-child { width: 150px; }
+        .spk ol.huruf { list-style-type: lower-alpha; margin: 3px 0 3px 18px; padding: 0; }
+        .spk ol.angka { list-style-type: decimal; margin: 3px 0 3px 18px; padding: 0; }
+        .spk ol.romawi { list-style-type: lower-roman; margin: 3px 0 3px 18px; padding: 0; }
+        .spk ol li { margin: 1.5px 0; padding-left: 2px; }
+        .spk .party td { border: none; padding: 2px 0; vertical-align: top; text-align: justify; }
+        .spk .party td.no { width: 30px; }
+        .spk .sign td { border: none; text-align: center; vertical-align: top; font-weight: bold; width: 50%; padding: 0 8px; }
+    </style>
+
+    <div style="margin-bottom: 6px;"><img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 34px; width: auto;"></div>
+
+    <div class="title">
+        <div>SURAT PERJANJIAN</div>
+        <div class="gap">tentang</div>
+        <div class="gap upper">{{nama_pengadaan}}</div>
+        <div class="gap">UNTUK</div>
+        <div>PT PLN NUSANTARA POWER</div>
+        <div>UNIT PEMBANGKITAN KENDARI</div>
+        <div class="gap">NOMOR : {{nomor_pengadaan}}</div>
+    </div>
+
+    <p>Pada hari ini, <span class="fill">....................</span> tanggal <b>{{tanggal_dokumen}}</b> di Kendari kami yang bertanda tangan di bawah ini oleh dan antara:</p>
+
+    <table class="party">
+        <tr>
+            <td class="no">I.</td>
+            <td><b>PT PLN NUSANTARA POWER</b>, suatu Perseroan Terbatas yang didirikan dan tunduk pada hukum Negara Republik Indonesia berdasarkan Akta No. 16 tanggal 3 Oktober 1995 yang dibuat dihadapan Notaris Poerbaningsih Adi Warsito, SH sebagaimana telah diubah dan terakhir dengan Akta Notaris Muhammad Hanafi, SH., Nomor 40 tanggal 29 Maret 2023, dan telah disahkan Menteri Hukum dan Hak Asasi Manusia Republik Indonesia berdasarkan keputusan nomor AHU-0020884.AH.01.02 tanggal 10 April 2023 beserta seluruh perubahannya, berkedudukan di Jalan Ketintang Baru No. 11, Surabaya 60293, Indonesia, dalam hal ini diwakili oleh <b>{{nama_manager}}</b> selaku <b>MANAGER</b> dari <b>PT PLN Nusantara Power Unit Pembangkitan Kendari</b> berdasarkan Surat Keputusan Direksi Nomor <span class="fill">....................</span> tanggal <span class="fill">....................</span>, dan oleh karenanya sah bertindak untuk dan atas nama <b>PT PLN NUSANTARA POWER Unit Pembangkitan Kendari</b>, selanjutnya disebut <b>PIHAK KESATU</b>;</td>
+        </tr>
+        <tr><td colspan="2" style="text-align: center; padding: 8px 0;">Dan</td></tr>
+        <tr>
+            <td class="no">II.</td>
+            <td><b class="upper">{{nama_mitra}}</b>, suatu perseroan terbatas yang didirikan berdasarkan Hukum Indonesia, berkantor di {{alamat_perusahaan}} yang dalam hal ini diwakili oleh <b class="upper">{{nama_direktur}}</b>, dalam kedudukannya selaku <b>DIREKTUR</b>, dari dan oleh karenanya sah bertindak untuk dan atas nama <b class="upper">{{nama_mitra}}</b> selanjutnya dalam Perjanjian ini disebut <b>PIHAK KEDUA</b>.</td>
+        </tr>
+    </table>
+
+    <p>PIHAK KESATU dan PIHAK KEDUA secara bersama-sama selanjutnya disebut PARA PIHAK.</p>
+
+    <p>PARA PIHAK terlebih dahulu menerangkan hal-hal sebagai berikut:</p>
+    <ol class="angka">
+        <li>Bahwa untuk keperluan operasi pembangkit miliknya, PIHAK KESATU telah mengundang PIHAK KEDUA untuk mengikuti Pengadaan <b class="upper">{{nama_pengadaan}}</b> untuk PT PLN NUSANTARA POWER Unit Pembangkitan Kendari sesuai Undangan Nomor <span class="fill">....................</span> tanggal <span class="fill">....................</span> dan menerbitkan Rencana Kerja dan Syarat-syarat (RKS) Nomor {{nomor_rks}} tanggal <span class="fill">....................</span>;</li>
+        <li>Bahwa PIHAK KEDUA telah mengirimkan Surat Penawaran Harga Nomor <b>{{nomor_surat_penawaran}}</b> tanggal {{tanggal_surat_penawaran}} kepada PIHAK KESATU;</li>
+        <li>Bahwa untuk menindaklanjuti Pengadaan <span class="upper">{{nama_pengadaan}}</span> untuk PT PLN NUSANTARA POWER Unit Pembangkitan Kendari tersebut telah dilakukan Penjelasan Pengadaan, Evaluasi Administrasi, Keuangan, Teknis dan Harga, Penetapan pemenang dan Penunjukan <span class="upper">{{nama_pengadaan}}</span>.</li>
+        <li>Bahwa masing-masing kegiatan dalam butir 3 di atas telah dituangkan dalam:
+            <ol class="huruf">
+                <li>Berita Acara Penjelasan Nomor <span class="fill">....................</span> tanggal <span class="fill">....................</span>.</li>
+                <li>Berita Acara Negosiasi Harga Nomor {{nomor_ba_nego}} tanggal <span class="fill">....................</span>.</li>
+                <li>Berita Acara Hasil Pengadaan Nomor <span class="fill">....................</span> tanggal <span class="fill">....................</span>.</li>
+                <li>Surat Penunjukan Pelaksanaan Nomor <span class="fill">....................</span> tanggal <span class="fill">....................</span>.</li>
+            </ol>
+        </li>
+    </ol>
+
+    <p>Berdasarkan hal-hal tersebut di atas, PARA PIHAK sepakat untuk membuat Perjanjian tentang <span class="upper">{{nama_pengadaan}}</span> untuk PT PLN NUSANTARA POWER Unit Pembangkitan Kendari (selanjutnya disebut &rdquo;Perjanjian&rdquo;) dengan syarat-syarat dan ketentuan-ketentuan sebagaimana tercantum pada pasal-pasal di bawah ini:</p>
+
+    <div class="pasal"><div>Pasal 1</div><div>DEFINISI</div></div>
+    <p>Dalam Perjanjian ini, pernyataan berikut mempunyai arti sebagai berikut :</p>
+    <ol class="angka">
+        <li><b>Franco Gudang</b> adalah kondisi penyerahan barang di gudang PIHAK KESATU (PT PLN NUSANTARA POWER Unit Pembangkitan Kendari) dan segala risiko beralih dari PIHAK KEDUA kepada PIHAK KESATU ketika barang sudah berada di gudang PIHAK KESATU, sebagaimana dimaksud dalam Incoterms 2010.</li>
+        <li><b>Hari Kalender</b> adalah semua hari dalam sebulan termasuk akhir pekan dan hari libur nasional yang ditetapkan oleh Pemerintah Indonesia.</li>
+        <li><b>Hari Kerja</b> adalah hari senin sampai dengan jumat dikurangi hari libur nasional yang ditetapkan oleh Pemerintah Indonesia.</li>
+        <li><b>Jaminan Pelaksanaan</b> adalah jaminan untuk menjamin unjuk kerja (<i>performance</i>) dari Barang/Jasa yang diperjanjikan, diberikan oleh PIHAK KEDUA pada PIHAK KESATU berupa bank garansi yang diterbitkan oleh Bank Umum Nasional (tidak termasuk Bank Perkreditan Rakyat) atau Kantor Cabang/Perwakilan Bank Umum Asing yang berkedudukan di Indonesia atau dapat pula berbentuk tunai.</li>
+        <li><b>Jaminan Garansi</b> adalah jaminan untuk menjamin hasil pengadaan Barang/Material yang diperjanjikan setelah proses pelaksanaannya dinyatakan selesai 100%, diberikan oleh PIHAK KEDUA pada PIHAK KESATU berupa bank garansi yang diterbitkan oleh Bank Umum Nasional (tidak termasuk Bank Perkreditan Rakyat) atau Kantor Cabang/Perwakilan Bank Umum Asing yang berkedudukan di Indonesia atau dapat pula berbentuk tunai.</li>
+        <li><b>Masa Garansi</b> adalah Maksimum akumulasi masa berlakunya sertifikat garansi yang relevan yang diberikan oleh produsen/perakit sebagaimana diatur dalam Pasal 8 Perjanjian ini.</li>
+        <li><b>Negara asal Barang</b> adalah Negara yang merupakan tempat barang diperoleh, antara lain tempat barang ditambang, tumbuh, atau diproduksi dan bukan merupakan negara penjual barang.</li>
+        <li><b>Sertifikat Garansi</b> adalah sertifikat terhadap kelaikan penggunaan barang hingga jangka waktu tertentu sesuai kesepakatan PARA PIHAK yang diterbitkan oleh produsen/perakit atau pihak yang ditunjuk secara sah oleh produsen.</li>
+        <li><b>Pekerjaan</b> adalah <span class="upper">{{nama_pengadaan}}</span>, yang di dalamnya mencakup pengadaan Barang atau pekerjaan Jasa sesuai ketentuan yang diatur dalam Perjanjian.</li>
+        <li><b>Perjanjian</b> adalah Perjanjian ini termasuk perubahan-perubahan, tambahan-tambahan dan lampiran-lampirannya.</li>
+        <li><b>Digitalisasi Pembayaran</b> adalah Implementasi Sistem Pemeriksaan dan Pembayaran Pekerjaan secara Digital di PT PLN Nusantara Power.</li>
+        <li><b>Proses Pemeriksaan Pekerjaan secara Manual</b> adalah proses penyusunan dan pengajuan dokumen penyerahan atas pemeriksaan, proses pemeriksaan pekerjaan, verifikasi data pekerjaan, penerbitan berita acara penyelesaian pekerjaan atau penerimaan barang dan proses penerimaan barang atau jasa yang dilakukan tanpa menggunakan Sistem Pemeriksaan Pekerjaan Secara Digital.</li>
+        <li><b>Proses Pembayaran Pekerjaan Secara Manual</b> adalah proses penyusunan dan pengajuan dokumen syarat bayar, verifikasi dokumen syarat bayar rekanan hingga proses pembayaran pekerjaan tanpa menggunakan Sistem Pembayaran Pekerjaan Secara Digital.</li>
+        <li><b>Sistem Pemeriksaan Pekerjaan Secara Digital</b> adalah platform digital yang dibangun oleh PIHAK KESATU dan digunakan oleh PARA PIHAK untuk melakukan penyusunan dan pengajuan dokumen penyerahan atau pemeriksaan barang/jasa, pemeriksaan barang/pekerjaan, verifikasi data barang/pekerjaan, penerbitan berita acara penyelesaian pekerjaan atau penerimaan barang dan proses penerimaan barang atau jasa.</li>
+        <li><b>Sistem Pembayaran Pekerjaan Secara Digital</b> adalah platform digital yang dibangun oleh PIHAK KESATU dan digunakan oleh PARA PIHAK untuk melakukan proses penyusunan dan pengajuan dokumen syarat bayar, verifikasi dokumen syarat bayar PIHAK KEDUA hingga proses pembayaran pekerjaan.</li>
+        <li><b>Tanda Tangan Elektronik Tersertifikasi</b> adalah tanda tangan yang terdiri atas informasi elektronik yang diletakkan, terasosiasi, atau terkait dengan informasi elektronik lainnya yang digunakan sebagai alat verifikasi dan autentikasi melalui sistem elektronik yang berlaku pada Perusahaan yang diselenggarakan oleh penyelenggara sertifikasi elektronik.</li>
+    </ol>
+
+    <div class="pasal"><div>Pasal 2</div><div>LINGKUP PERJANJIAN</div></div>
+    <table class="ayat">
+        <tr><td class="no">(1)</td><td>PIHAK KESATU setuju untuk memberi tugas kepada PIHAK KEDUA dan PIHAK KEDUA setuju untuk menerima pekerjaan dari PIHAK KESATU mengenai <span class="upper">{{nama_pengadaan}}</span> untuk PT PLN NUSANTARA POWER Unit Pembangkitan Kendari yang sah secara hukum dan didukung oleh dokumen barang yang resmi, dalam arti kata bebas dari tuntutan Pihak Lain dan penyitaan yang resmi.</td></tr>
+        <tr><td class="no">(2)</td><td>Lingkup pekerjaan sebagaimana dimaksud dalam ayat (1) pasal ini merupakan <span class="upper">{{nama_pengadaan}}</span>, dengan segala kelengkapannya sesuai dengan spesifikasi pekerjaan yang tercantum dalam Lampiran Surat Perjanjian ini, RKS dan TOR.</td></tr>
+    </table>
+
+    <div class="pasal"><div>Pasal 3</div><div>SPESIFIKASI DAN MUTU PEKERJAAN</div></div>
+    <table class="ayat">
+        <tr><td class="no">(1)</td><td><span class="upper">{{nama_pengadaan}}</span> sebagaimana dimaksud pada Pasal 2 Perjanjian ini mempunyai jumlah, standar produk dan spesifikasi teknik sebagaimana tercantum dalam Lampiran Perjanjian ini.</td></tr>
+        <tr><td class="no">(2)</td><td>Lingkup perjanjian ini secara terinci sebagaimana dimaksud pada Pasal 2 Perjanjian ini adalah sesuai dalam Lampiran RKS No. {{nomor_rks}} tentang spesifikasi teknis dengan Berita Acara Penjelasan No. <span class="fill">....................</span> tanggal <span class="fill">....................</span>, yang merupakan bagian yang tidak terpisahkan dari Perjanjian ini dan mengikat PARA PIHAK. Apabila PIHAK KEDUA tidak memenuhi ketentuan dalam Pasal ini, maka PIHAK KEDUA akan membebaskan PIHAK KESATU dari segala kerugian yang terjadi dan melindungi PIHAK KESATU dari gugatan pihak ketiga atas biaya PIHAK KEDUA.</td></tr>
+        <tr><td class="no">(3)</td><td>Barang sebagaimana dimaksud dalam Pasal 2 Perjanjian ini harus dalam keadaan baik, 100% baru, bebas dari cacat, baik yang kelihatan maupun yang tersembunyi.</td></tr>
+        <tr><td class="no">(4)</td><td>Barang tersebut yang diserahkan oleh PIHAK KEDUA kepada PIHAK KESATU harus dapat dan layak dipakai dengan baik oleh PIHAK KESATU.</td></tr>
+    </table>
+
+    <div class="pasal"><div>Pasal 4</div><div>HARGA BARANG</div></div>
+    <table class="ayat">
+        <tr><td class="no">(1)</td><td>PARA PIHAK sepakat bahwa harga <span class="upper">{{nama_pengadaan}}</span> sebagaimana dimaksud dalam Pasal 2 Perjanjian ini adalah sebesar <b>{{nilai_setelah_nego}} ({{nilai_setelah_nego_terbilang}})</b> dengan rincian sebagaimana tercantum dalam Lampiran Perjanjian ini. Harga tersebut <b>belum termasuk PPN</b>, besaran PPN adalah mengikuti regulasi yang berlaku.</td></tr>
+        <tr><td class="no">(2)</td><td>Harga yang dimaksud dalam ayat (1) Pasal ini adalah harga di dalam Gudang PT PLN NUSANTARA POWER Unit Pembangkitan Kendari (Franco Gudang) sudah termasuk biaya pengepakan, biaya pengangkutan, biaya handling barang dari tempat asal barang sampai di tempat penyerahan barang, serta seluruh pajak-pajak yang berlaku.</td></tr>
+        <tr><td class="no">(3)</td><td>Jumlah harga sebagaimana dimaksud dalam ayat (1) Pasal ini tetap atau tidak berubah (<i>fixed price</i>) sampai dengan PARA PIHAK selesai melaksanakan hak dan kewajibannya berdasarkan Perjanjian ini.</td></tr>
+        <tr><td class="no">(4)</td><td>PIHAK KEDUA tidak dapat menuntut perubahan harga sebagaimana dimaksud dalam ayat (1) Pasal ini dan/atau tambahan biaya apapun juga walaupun terjadi kenaikan harga yang berhubungan dengan pelaksanaan Perjanjian ini kecuali atas persetujuan/penetapan Pemerintah.</td></tr>
+    </table>
+
+    <div class="pasal"><div>Pasal 5</div><div>WAKTU DAN TEMPAT PENYERAHAN BARANG</div></div>
+    <table class="ayat">
+        <tr><td class="no">(1)</td><td>PARA PIHAK menyetujui dengan <b><i>Implementasi Sistem Pemeriksaan Pekerjaan Secara Digital</i></b>, maka penyerahan pekerjaan dilakukan melalui Sistem Pemeriksaan Secara Digital (BA-Fast).</td></tr>
+        <tr><td class="no">(2)</td><td><span class="upper">{{nama_pengadaan}}</span> sebagaimana dimaksud dalam Pasal 2 Perjanjian ini harus diserahkan seluruhnya beserta dokumen penyerahannya secara lengkap sebagaimana dimaksud dalam ayat (3) Pasal ini oleh PIHAK KEDUA kepada PIHAK KESATU.</td></tr>
+        <tr><td class="no">(3)</td><td>Penyerahan barang beserta dokumen penyerahannya sebagaimana dimaksud dalam ayat (1) Pasal ini kepada Tim Pemeriksa Barang/Jasa harus dilakukan selambat-lambatnya <b>{{jangka_waktu_hari}} ({{jangka_waktu_hari_terbilang}}) hari kalender</b> terhitung sejak tanggal Surat Penunjukan atau selambat-lambatnya pada tanggal <b>{{tanggal_selesai_pelaksanaan}}</b>.</td></tr>
+        <tr><td class="no">(4)</td><td>Jangka waktu sebagaimana dimaksud pada ayat (2) Pasal ini sudah memperhitungkan waktu yang dipergunakan oleh PIHAK KEDUA untuk melaksanakan seluruh pekerjaan sampai dengan selesainya pekerjaan, termasuk waktu yang dibutuhkan untuk melaksanakan pengiriman/pengangkutan, pengamanan dalam alat angkutan dan pengujian-pengujian yang diperlukan, serta sudah termasuk antisipasi dan perhitungan kebutuhan libur nasional/internasional lainnya.</td></tr>
+        <tr><td class="no">(5)</td><td>Barang sebagaimana dimaksud dalam Perjanjian ini yang diserahkan oleh PIHAK KEDUA kepada PIHAK KESATU dalam hal ini Tim Pemeriksa Barang harus sesuai dengan ketentuan sebagaimana dimaksud dalam Pasal 2 Perjanjian ini pada hari dan jam kerja (Senin s/d Jum&rsquo;at Pukul 08.30 &ndash; 15.00 WITA). Penyerahan barang dimaksud harus dilengkapi dengan:
+            <ol class="huruf">
+                <li><b>Asli Surat Keterangan Asal Barang bermaterai Rp 10.000,- (TTE tersertifikasi dan e-meterai)</b></li>
+                <li><b><i>Copy</i> Surat Asal Barang / <i>Packing List</i> / <i>Air Waybill</i></b></li>
+                <li><b>Asli Surat Jalan Pengiriman/DO</b></li>
+                <li><b>Surat dukungan manufacture</b></li>
+                <li><b>Asli <i>Certificate of manufacture (COM) dan atau Certificate of origin (COO)</i></b></li>
+                <li><b>Brosur/katalog barang</b></li>
+                <li><b>Surat Garansi Barang bermaterai selama {{masa_garansi_bulan}} ({{masa_garansi_bulan_terbilang}}) bulan (TTE tersertifikasi dan e-meterai)</b></li>
+            </ol>
+            Pengesahan sebagian atau seluruh kelengkapan dokumen tersebut dapat dilakukan dengan metode Tanda Tangan Elektronik Tersertifikasi.</td></tr>
+        <tr><td class="no">(6)</td><td>Apabila terdapat syarat dokumen penyerahan barang/jasa yang tidak dapat dilakukan dengan metode Tanda Tangan Elektronik Tersertifikasi oleh <b>PIHAK KEDUA</b>, maka <b>PIHAK KESATU</b> akan menerbitkan Form Penyataan Kesesuaian Dokumen.</td></tr>
+        <tr><td class="no">(7)</td><td>Hasil dari pemeriksaan akan dituangkan dalam Berita Acara Pemeriksaan Barang/ Penyerahan Pekerjaan Jasa <b><i>Secara Digital</i></b> yang disahkan oleh Tim Pemeriksa Barang/Jasa PT PLN Nusantara Power UP Kendari. Namun demikian penerbitan Berita Acara Pemeriksaan Barang/ Penyerahan Pekerjaan Jasa tidak melepaskan tanggung jawab PIHAK KEDUA terhadap pekerjaan tersebut, jika pada saat dilakukan pemeriksaan ternyata tidak memenuhi ketentuan Pasal 2 Perjanjian ini.</td></tr>
+        <tr><td class="no">(8)</td><td>Apabila terjadi gangguan atau <i>down system</i> pada Sistem Pemeriksaan Barang/Jasa Secara Digital <b>PIHAK KESATU</b> yang ditandai dengan surat pemberitahuan gangguan sistem atas Sistem Pemeriksaan Pekerjaan Secara Digital dari <b>PIHAK KESATU</b> dengan durasi gangguan / <i>down system</i> lebih dari 2 hari kerja terhitung sejak tanggal surat pemberitahuan gangguan sistem, maka akan dilakukan Proses Pemeriksaan Barang/Jasa Secara Manual.</td></tr>
+        <tr><td class="no">(9)</td><td>Segala risiko kehilangan, kerusakan atas <span class="upper">{{nama_pengadaan}}</span> yang dititipkan sementara di Gudang PT PLN NUSANTARA POWER Unit Pembangkitan Kendari menjadi beban dan tanggung jawab PIHAK KEDUA.</td></tr>
+        <tr><td class="no">(10)</td><td>Risiko pengiriman dan proses penurunan barang sampai diserahkan ke gudang menjadi tanggung jawab PIHAK KEDUA.</td></tr>
+    </table>
+
+    <div class="pasal"><div>Pasal 6</div><div>JAMINAN PRODUK</div></div>
+    <table class="ayat">
+        <tr><td class="no">(1)</td><td>Semua barang yang disediakan dan dijual oleh PIHAK KEDUA berdasarkan Perjanjian ini diproduksi berdasarkan standar mutu yang berlaku secara internasional. Standar mutu tersebut merupakan hasil pengalaman yang diperoleh dalam pekerjaan suplai stasiun &ndash; stasiun tenaga listrik di seluruh dunia dan peralatan terkaitnya secara praktek dan standar internasional terapan terpadu dengan tekanan pada suplai peralatan yang di desain secara khusus untuk pembangkit &ndash; pembangkit tenaga listrik.</td></tr>
+        <tr><td class="no">(2)</td><td>PIHAK KEDUA menjamin bahwa semua barang yang diserahkan berdasarkan Perjanjian ini adalah benar &ndash; benar baru dan belum pernah dipakai serta bebas dari pelanggaran hak paten, merk terdaftar, desain, hak cipta atau hak milik intelektual lainnya.</td></tr>
+        <tr><td class="no">(3)</td><td>Apabila PIHAK KEDUA tidak memenuhi ketentuan dalam ayat (1) dan (2) pasal ini, maka PIHAK KEDUA akan membebaskan PIHAK KESATU dari kerugian dan melindungi PIHAK KESATU dari gugatan pihak ketiga atas biaya PIHAK KEDUA.</td></tr>
+    </table>
+
+    <div class="pasal"><div>Pasal 7</div><div>JAMINAN PELAKSANAAN</div></div>
+    <table class="ayat">
+        <tr><td class="no">(1)</td><td>Untuk menjamin pelaksanaan pengadaan sesuai Perjanjian ini, maka PIHAK KEDUA wajib menyerahkan kepada PIHAK KESATU Jaminan Pelaksanaan sebesar 5% dari total nilai perjanjian sudah termasuk PPN yang berlaku atau sebesar <b>Rp<span class="fill">....................</span> (<span class="fill">....................</span> Rupiah)</b> berupa/dalam bentuk Bank Garansi yang diterbitkan oleh <span class="fill">....................</span> Nomor Bank Garansi <b><span class="fill">....................</span></b> tanggal <b><span class="fill">....................</span></b> dengan masa berlaku minimal selama <b><span class="fill">....................</span> hari kalender</b> sejak tanggal terbit Surat Penunjukan atau sejak tanggal <b><span class="fill">....................</span></b> sampai dengan <b><span class="fill">....................</span></b>. Asli Jaminan Pelaksanaan tersebut diserahkan oleh PIHAK KEDUA kepada PIHAK KESATU selambat-lambatnya 5 (lima) hari kerja sejak tanggal terbit Surat Penunjukan.</td></tr>
+        <tr><td class="no">(2)</td><td>Apabila Jaminan Pelaksanaan berupa Bank Garansi, maka harus dapat dicairkan tanpa syarat (<i>unconditional</i>) sebesar nilai Jaminan Pelaksanaan dalam waktu paling lambat 14 (empat belas) hari kerja setelah pernyataan <i>wanprestatie</i> dari PIHAK KESATU diterima oleh Bank Penerbit Jaminan Pelaksanaan. Jaminan Pelaksanaan sekurang-kurangnya harus memuat hal-hal sebagai berikut:
+            <ol class="huruf">
+                <li>Nama dan alamat jelas Pemberi Pekerjaan;</li>
+                <li>Nama dan alamat jelas Penyedia Barang;</li>
+                <li>Nama dan alamat pihak Penjamin;</li>
+                <li>Nama paket pekerjaan yang dijamin;</li>
+                <li>Besarnya jumlah jaminan dalam angka dan huruf;</li>
+                <li>Pernyataan pihak Penjamin bahwa Jaminan Pelaksanaan dapat dicairkan dengan segera sesuai ketentuan dalam Jaminan Pelaksanaan;</li>
+                <li>Masa berlakunya Jaminan Pelaksanaan;</li>
+                <li>Batas akhir waktu pengajuan tuntutan pencairan Jaminan Pelaksanaan oleh Pemberi Pekerjaan kepada pihak Penjamin;</li>
+                <li>Secara tegas menyatakan bahwa penjamin mengacu pada Pasal 1832 KUHPerdata dan mengesampingkan ketentuan pasal 1831 KUHPerdata;</li>
+                <li>Tanda tangan pihak Penjamin.</li>
+            </ol></td></tr>
+        <tr><td class="no">(3)</td><td>Jaminan Pelaksanaan sebagaimana dimaksud dalam ayat (1) Pasal ini akan dikembalikan oleh PIHAK KESATU kepada PIHAK KEDUA setelah dilakukannya penyerahan seluruh <span class="upper">{{nama_pengadaan}}</span> berikut kelengkapan dokumen penyerahannya dan diterbitkannya Berita Acara Pemeriksaan Barang dan Bon Penerimaan Barang oleh Gudang PT PLN NUSANTARA POWER Unit Pembangkitan Kendari yang menyatakan bahwa barang beserta dokumen penyerahannya sebagaimana dimaksud dalam Perjanjian ini telah diterima secara lengkap oleh PIHAK KESATU.</td></tr>
+        <tr><td class="no">(4)</td><td>Apabila pada saat 14 (empat belas) hari kalender menjelang berakhirnya Jaminan Pelaksanaan sebagaimana dimaksud dalam ayat (1) Pasal ini, PIHAK KEDUA diperkirakan belum dapat menyelesaikan seluruh penyerahan barang dan kelengkapan dokumen penyerahannya, sampai dengan berakhirnya Jaminan Pelaksanaan, maka PIHAK KEDUA wajib memperpanjang masa berlakunya Jaminan Pelaksanaan tersebut atau mengganti dengan Jaminan Pelaksanaan yang baru sehingga tidak ada waktu penjaminan yang luang atau terputus antara Jaminan Pelaksanaan lama dengan Jaminan Pelaksanaan baru selama waktu perpanjangan/penggantian tersebut.</td></tr>
+        <tr><td class="no">(5)</td><td>Apabila PIHAK KEDUA tidak bersedia memperpanjang masa berlakunya Jaminan Pelaksanaan sebagaimana dimaksud pada ayat (3) Pasal ini, maka PIHAK KESATU berhak memutus Perjanjian ini secara sepihak dan selanjutnya Jaminan Pelaksanaan akan dicairkan dan menjadi milik PIHAK KESATU serta PIHAK KEDUA tidak diperbolehkan mengikuti proses pengadaan di wilayah kerja PT PLN (Persero) selama minimum 12 (dua belas) bulan terhitung sejak tanggal pemutusan Perjanjian ini oleh PIHAK KESATU.</td></tr>
+        <tr><td class="no">(6)</td><td>Apabila dalam waktu berjalannya perjanjian terdapat perubahan nilai Pajak Pertambahan Nilai (PPN), maka PIHAK KEDUA wajib melakukan perubahan nilai Jaminan Pelaksanaan mengikuti besaran PPN yang berlaku.</td></tr>
+    </table>
+
+    <div class="pasal"><div>Pasal 8</div><div>MASA GARANSI</div></div>
+    <table class="ayat">
+        <tr><td class="no">(1)</td><td>PIHAK KEDUA menjamin bahwa semua barang yang diserahkan berdasarkan perjanjian ini adalah sesuai dengan spesifikasi teknik dan bebas dari segala kerusakan sekurang &ndash; kurangnya selama {{masa_garansi_bulan}} ({{masa_garansi_bulan_terbilang}}) bulan sejak barang diterima dengan baik sesuai Berita Acara Pemeriksaan Barang, sebagaimana dimaksud dalam pasal 5 ayat 2 perjanjian ini, yang selanjutnya disebut Masa Garansi.</td></tr>
+        <tr><td class="no">(2)</td><td>PIHAK KEDUA menyerahkan <b>Jaminan Garansi/Jaminan Pemeliharaan</b> sebesar <b>5%</b> dari total nilai kontrak sudah termasuk PPN yang berlaku atau sebesar <b>Rp<span class="fill">....................</span> (<span class="fill">....................</span> Rupiah)</b> berupa bank garansi dengan masa berlaku sejak tanggal Berita Acara Pemeriksaan Barang sampai dengan berakhirnya masa garansi, Jaminan Masa Garansi/Jaminan Pemeliharaan diserahkan selambat-lambatnya 14 (empat belas) Hari Kalender sejak tanggal Berita Pemeriksaan Barang.</td></tr>
+        <tr><td class="no">(3)</td><td>Apabila dalam masa garansi sebagaimana dimaksud dalam ayat (1) pasal ini terjadi kerusakan berulang atas barang tersebut hingga 2x (dua kali) perbaikan yang sama dalam 1 (satu) tahun, sebagai akibat kesalahan teknik pabrik atau sebagai akibat pengangkutan sampai di tempat penyerahan barang sebagimana dimaksud dalam pasal 6 perjanjian ini, maka PIHAK KEDUA wajib memperbaiki atau mengganti barang sebagaimana dimaksud dengan yang baru yang sesuai dengan ketentuan sebagaimana dimaksud dalam pasal 2 perjanjian ini.</td></tr>
+        <tr><td class="no">(4)</td><td>PIHAK KEDUA dengan biayanya sendiri akan memperbaiki barang sebagaimana dimaksud dalam Pasal 2 Perjanjian ini yang mengalami kerusakan selama masa garansi. Perbaikan tersebut merupakan satu &ndash; satunya penyelesaian bagi PIHAK KESATU dan menjadi kewajiban PIHAK KEDUA.</td></tr>
+        <tr><td class="no">(5)</td><td>Apabila PIHAK KEDUA tidak melakukan perbaikan atau penggantian barang sebagai akibat kerusakan dalam waktu selambat &ndash; lambatnya 7 (tujuh) hari kalender terhitung sejak pemberitahuan dari PIHAK KESATU kepada PIHAK KEDUA, maka PIHAK KESATU berhak untuk memutus perjanjian ini dan PIHAK KEDUA dikenakan sanksi tidak diperbolehkan untuk mengikuti pengadaan barang/jasa di seluruh wilayah PT PLN Nusantara Power selama minimal 24 (dua puluh empat) bulan sejak tanggal surat pemberitahuan blacklist dari PIHAK KESATU.</td></tr>
+        <tr><td class="no">(6)</td><td>Semua biaya yang dikeluarkan atau diperlukan sebagai akibat dari kejadian sebagaimana dimaksud dalam ayat (4) pasal ini menjadi beban dan tanggung jawab PIHAK KEDUA.</td></tr>
+        <tr><td class="no">(7)</td><td>Sebagai pengecualian, PIHAK KEDUA akan dibebaskan dari jaminan mutu atas tindakan / pekerjaan perbaikan yang dilakukan baik oleh PIHAK KESATU sendiri atau oleh pihak ketiga atas dasar mandat yang diberikan oleh PIHAK KESATU.</td></tr>
+        <tr><td class="no">(8)</td><td>Surat Jaminan masa garansi barang yang berasal dari PIHAK KEDUA dengan masa berlaku selama {{masa_garansi_bulan}} ({{masa_garansi_bulan_terbilang}}) bulan sejak tanggal Berita Acara Pemeriksaan Barang.</td></tr>
+        <tr><td class="no">(9)</td><td>Jaminan sebagaimana dimaksud dalam Pasal ini tidak berlaku pada hal &ndash; hal sebagai berikut:
+            <ol class="huruf">
+                <li>Rusak atau cacat yang diakibatkan dari modifikasi oleh PIHAK KESATU terhadap barang sebagaimana dimaksud dalam Pasal 2 Perjanjian ini;</li>
+                <li>Rusak atau cacat yang diakibatkan dari perawatan / pengoperasian dari service yang dilakukan tidak menurut pedoman pengoperasian dan / atau buku &ndash; buku instruksi yang relevan dari PIHAK KEDUA;</li>
+                <li>Rusak atau cacat yang timbul oleh sebab &ndash; sebab yang diakibatkan oleh PIHAK KESATU dan/atau Pihak Ketiga;</li>
+                <li>Rusak atau cacat yang disebabkan oleh Force Majeur.</li>
+            </ol></td></tr>
+    </table>
+
+    <div class="pasal"><div>Pasal 9</div><div>PEMENUHAN ASPEK SISTEM MANAJEMEN</div></div>
+    <table class="ayat">
+        <tr><td class="no">(1)</td><td>Sistem Manajemen Lingkungan (ISO 14001 : 2004)
+            <ol class="angka">
+                <li>Dalam melaksanakan Pekerjaan/Pengadaan Barang atau Jasa, PIHAK KEDUA wajib selalu mengadakan pengawasan tentang kebersihan, keamanan dan keselamatan di tempat pekerjaan.</li>
+                <li>Kelebihan material dan sisa-sisa bahan lainnya yang bersifat mencemari lingkungan wajib selalu dibersihkan untuk menghindari terjadinya pencemaran lingkungan.</li>
+                <li>Kendaraan operasional yang digunakan untuk memasuki area PT PLN NUSANTARA POWER Unit Pembangkitan Kendari wajib lulus Uji Emisi.</li>
+            </ol></td></tr>
+        <tr><td class="no">(2)</td><td>Sistem Manajemen Keselamatan dan Kesehatan Kerja (ISO 45001 : 2018)
+            <ol class="angka">
+                <li>Sebelum pekerjaan dilaksanakan :<br>PIHAK KEDUA wajib mengurus Safety dan Working Permit ke Bidang K3 PT PLN NUSANTARA POWER Unit Pembangkitan Kendari dengan melampirkan persyaratan pendukung, yaitu :
+                    <ol class="huruf">
+                        <li>Daftar peralatan kerja dan Alat Pelindung Diri (APD) yang digunakan.</li>
+                        <li>Daftar Pelaksana Tenaga Kerja yang melaksanakan pekerjaan, dibuktikan dengan foto copy indentitas.</li>
+                        <li>Penanggung jawab dan atau pengawas pekerjaan.</li>
+                        <li>Copy bukti Asuransi Tenaga Kerja.</li>
+                        <li>Job Safety Analysis untuk pekerjaan berisiko tinggi.</li>
+                    </ol></li>
+                <li>Saat pelaksanaan pekerjaan :
+                    <ol class="huruf">
+                        <li>PIHAK KEDUA wajib menyiapkan sarana bantu kerja yang diperlukan dan dilarang keras bertumpu langsung ke peralatan unit yang dinilai akan membahayakan baik saat unit mati maupun beroperasi.</li>
+                        <li>PIHAK KEDUA wajib menggunakan Alat Pelindung Diri (APD) untuk tenaga kerjanya yang diperlukan sesuai jenis dan resiko pekerjaannya, seperti : Safety Helmet, Safety Belt, Safety Shoes, Sarung Tangan, Masker/Tutup Hidung dan lain-lain.</li>
+                        <li>PIHAK KEDUA wajib melaporkan segala kondisi potensi bahaya di area kerja kepada Pengawas/Direksi pekerjaan.</li>
+                    </ol></li>
+                <li>PIHAK KEDUA wajib untuk selalu mengadakan pengawasan tentang kebersihan, keamanan dan keselamatan di tempat pekerjaan.</li>
+                <li>PIHAK KEDUA wajib bertanggung jawab apabila terjadi kecelakaan kerja dan pencemaran lingkungan akibat kelalaian dalam pelaksanaan pekerjaan dan semua biaya yang timbul menjadi tanggung jawab PIHAK KEDUA, baik kerugian terhadap tenaga kerja maupun kerusakan peralatan/lingkungan dan adanya kecelakaan kerja ini harus tidak mempengaruhi jadwal pelaksanaan pekerjaan.</li>
+                <li>Selama melaksanakan pekerjaan PIHAK KEDUA tidak diperkenankan merokok di seluruh area PT PLN NUSANTARA POWER Unit Pembangkitan Kendari.</li>
+            </ol></td></tr>
+        <tr><td class="no">(3)</td><td>Sistem Manajemen Mutu (ISO 9001 : 2015)
+            <ol class="angka">
+                <li>PIHAK KEDUA wajib melaporkan kegiatan pekerjaan baik sebelum dan sesudah pelaksanaan pekerjaan kepada Direksi/Pengawas pekerjaan.</li>
+                <li>Semua peralatan yang digunakan harus sudah maupun dalam masa kalibrasi.</li>
+            </ol></td></tr>
+        <tr><td class="no">(4)</td><td>Sistem Manajemen Pengamanan (SMP)
+            <ol class="angka">
+                <li>PIHAK KEDUA wajib mengenakan Identitas perusahaan (Pakaian Kerja, Kartu Identitas, Kartu Tamu) selama didalam area PT PLN NUSANTARA POWER Unit Pembangkitan Kendari.</li>
+                <li>Tidak memasuki area yang bukan menjadi area kerjanya.</li>
+                <li>PIHAK KEDUA wajib melaporkan kegiatan pekerjaan baik sebelum dan sesudah pelaksanaan pekerjaan kepada Posko Satpam.</li>
+                <li>Apabila pekerjaan dilaksanakan lebih dari 1 (satu) minggu di dalam area PT PLN NUSANTARA POWER Unit Pembangkitan Kendari, PIHAK KEDUA wajib mengurus kartu identitas sementara ke bidang Umum.</li>
+                <li>Apabila pekerjaan dilaksanakan di luar jam kerja normal (Pk. 08.00 &ndash; 16.00 WITA), PIHAK KEDUA wajib mengurus ijin kerja di luar jam kerja ke bidang Umum.</li>
+                <li>Selama melaksanakan pekerjaan PIHAK KEDUA tidak diperkenankan membawa kendaraan non Operasional ke lokasi pekerjaan, mengaktifkan HP di area larangan, dan lain-lain.</li>
+                <li>Setiap peralatan dan material/bahan yang dibawa keluar area kerja harus memiliki surat jalan yang diketahui dan ditandatangani oleh Pihak perusahaan dan menyerahkan salinan surat jalan tersebut kepada PT PLN NUSANTARA POWER Unit Pembangkitan Kendari.</li>
+                <li>Tidak diperkenankan melakukan aktivitas lain, selain dalam lingkup yang tertulis dalam Kontrak/Perjanjian.</li>
+            </ol></td></tr>
+        <tr><td class="no">(5)</td><td>Sistem Manajemen Energi
+            <ol class="angka">
+                <li>Menggunakan peralatan hemat energi.</li>
+                <li>Melakukan penghematan air dan listrik selama di Area PT PLN NUSANTARA POWER Unit Pembangkitan Kendari.</li>
+                <li>PIHAK KEDUA dalam menggunakan sumber energi listrik, sumber udara bertekanan, air dan bahan bakar harus dapat menggunakannya sehemat mungkin.</li>
+            </ol></td></tr>
+    </table>
+
+    <div class="pasal"><div>Pasal 10</div><div>CARA PEMBAYARAN</div></div>
+    <table class="ayat">
+        <tr><td class="no">(1)</td><td>PARA PIHAK menyetujui dengan implementasi sistem pembayaran pekerjaan secara digital, pembayaran dilakukan setelah PIHAK KEDUA menyelesaikan penyerahan barang dan PIHAK KEDUA menyampaikan permintaan pembayaran ditujukan kepada PIHAK KESATU dengan membuat dan menyampaikan syarat bayar pada sistem pembayaran secara digital (E-invoicing), dengan dilampiri:
+            <ol class="huruf">
+                <li>Surat permohonan pembayaran;</li>
+                <li>Invoice;</li>
+                <li>Kwitansi tagihan bermaterai Rp 10.000;</li>
+                <li>Bon Penerimaan Barang;</li>
+                <li>Berita Acara Pemeriksaan Barang yang telah disetujui oleh PIHAK KESATU, termasuk rekomendasi jumlah hari keterlambatan/pengurang pembayaran (jika ada) yang ter-<i>create</i> dari Sistem Pemeriksaan Pekerjaan Secara Digital dan sudah dilengkapi dengan tanda tangan elektronik yang telah tersertifikasi;</li>
+                <li>E-Faktur Pajak;</li>
+                <li>Surat keterangan bebas potong (jika ada);</li>
+                <li>Copy Jaminan Masa Garansi/Jaminan Pemeliharaan.</li>
+            </ol></td></tr>
+        <tr><td class="no">(2)</td><td>Pembayaran oleh PIHAK KESATU kepada PIHAK KEDUA berdasarkan nilai sebagaimana dimaksud dalam Pasal 4 ayat (1) Surat Perjanjian ini dengan besaran Pajak Pertambahan Nilai (PPN) mengikuti regulasi yang berlaku.</td></tr>
+        <tr><td class="no">(3)</td><td>Pembayaran oleh PIHAK KESATU kepada PIHAK KEDUA dilakukan dengan ditransfer melalui:
+            <table class="plain-rows rekening">
+                <tr><td>Bank</td><td>: {{nama_bank}}</td></tr>
+                <tr><td>No. Rekening</td><td>: {{nomor_rekening}}</td></tr>
+                <tr><td>Atas Nama</td><td>: <b>{{nama_pemilik_rekening}}</b></td></tr>
+            </table></td></tr>
+        <tr><td class="no">(4)</td><td>Biaya-biaya yang timbul pada Bank PIHAK KEDUA sehubungan dengan transaksi pembayaran yang dilakukan PIHAK KESATU kepada PIHAK KEDUA berdasarkan Perjanjian ini menjadi beban dan tanggung jawab PIHAK KEDUA.</td></tr>
+        <tr><td class="no">(5)</td><td>Apabila terjadi gangguan atau <i>down system</i> pada Sistem Pembayaran Secara Digital <b>PIHAK KESATU</b> yang ditandai dengan surat pemberitahuan gangguan sistem atas Sistem Pembayaran Secara Digital dari <b>PIHAK KESATU</b> dengan durasi gangguan atau <i>down system</i> lebih dari 2 (dua) hari kerja terhitung sejak tanggal surat pemberitahuan gangguan sistem, maka akan dilakukan Proses Pembayaran Secara Manual.</td></tr>
+        <tr><td class="no">(6)</td><td>Apabila terjadi gangguan atau <i>down system</i> pada Sistem Pembayaran Secara Digital <b>PIHAK KESATU</b> dan mengakibatkan dilakukannya Proses Pembayaran Pekerjaan Secara Manual sebagaimana dimaksud dalam ayat (5) Pasal ini, maka Berita Acara Pemeriksaan Barang dan Bon Penerimaan Barang yang telah ter-<i>create</i> dari Sistem Pemeriksaan Pekerjaan Secara Digital dan sudah dilengkapi Tanda Tangan Elektronik Tersertifikasi dapat digunakan sebagai dokumen syarat pembayaran pada Proses Pembayaran Secara Manual.</td></tr>
+    </table>
+
+    <div class="pasal"><div>Pasal 11</div><div>SANKSI KETERLAMBATAN</div></div>
+    <table class="ayat">
+        <tr><td class="no">(1)</td><td>Dalam hal terjadi keterlambatan penyerahan barang dan jasa sebagaimana dalam pasal 2 perjanjian ini berikut dokumen penyerahannya secara lengkap sesuai waktu yang telah ditentukan dalam Pasal 5 ayat (2) Perjanjian ini maka PIHAK KEDUA dikenakan denda keterlambatan sebesar 1&permil; (satu permil) per hari kalender dari nilai Perjanjian yang terlambat dengan batas maksimum denda keterlambatan sebesar 5% (lima perseratus) dari Perjanjian, kecuali keterlambatan penyerahan <span class="upper">{{nama_pengadaan}}</span> berikut dokumen penyerahannya disebabkan oleh Force Majeure atau alasan yang berhubungan dengan kesalahan PIHAK KESATU.</td></tr>
+        <tr><td class="no">(2)</td><td>Apabila sampai dengan batas waktu penyerahan barang sebagaimana dimaksud dalam Pasal 5 ayat (2) Perjanjian ini, PIHAK KEDUA belum menyerahkan barang berikut dokumen penyerahannya, maka PIHAK KESATU berhak untuk memutus Perjanjian secara sepihak berdasarkan ketentuan Pasal 13 Perjanjian ini dan Jaminan Pelaksanaan akan dicairkan dan sepenuhnya menjadi milik PIHAK KESATU serta PIHAK KEDUA dikenakan sanksi tidak diperbolehkan untuk mengikuti pengadaan barang dan/atau jasa di wilayah kerja PT PLN (Persero) selama minimum 24 (dua puluh empat) bulan sejak tanggal pemutusan Perjanjian.<br>Namun apabila PIHAK KEDUA masih sanggup untuk memenuhi kewajibannya berdasarkan Perjanjian ini dan PIHAK KESATU menyetujui, maka PIHAK KEDUA wajib memberikan Jaminan Pelaksanaan sehingga tidak ada waktu penjaminan yang luang atau terputus dan kepada PIHAK KEDUA tetap dikenakan sanksi keterlambatan sebagaimana dimaksud dalam ayat (1) Pasal ini.</td></tr>
+        <tr><td class="no">(3)</td><td>Apabila setelah disetujui oleh PIHAK KESATU, PIHAK KEDUA tidak bersedia memberikan Jaminan Pelaksanaan sebagaimana dimaksud dalam ayat (2) Pasal ini, maka PIHAK KESATU berhak memutus Perjanjian berdasarkan ketentuan Pasal 13 Perjanjian dan Jaminan Pelaksanaan akan dicairkan dan sepenuhnya menjadi milik PIHAK KESATU serta PIHAK KEDUA dikenakan sanksi tidak diperbolehkan untuk mengikuti pengadaan barang dan/atau jasa di wilayah kerja PIHAK KESATU selama minimum 12 (dua belas) bulan sejak tanggal pemutusan Perjanjian.</td></tr>
+    </table>
+
+    <div class="pasal"><div>Pasal 12</div><div>PEMBEBASAN TUNTUTAN</div></div>
+    <table class="ayat">
+        <tr><td class="no">(1)</td><td>PIHAK KEDUA menjamin PIHAK KESATU bahwa sejak ditandatanganinya Perjanjian ini maupun di kemudian hari tidak akan mendapat tuntutan dari pihak lain yang menyatakan mempunyai hak atas barang sebagaimana dimaksud dalam Pasal 2 Perjanjian ini sebagaimana dimaksud dalam Pasal 3 ayat (1) Perjanjian ini yang telah diserahkan PIHAK KEDUA kepada PIHAK KESATU.</td></tr>
+        <tr><td class="no">(2)</td><td>Apabila kemudian hari PIHAK KESATU mendapat tuntutan dari pihak lain yang menyatakan mempunyai hak terlebih dahulu atau mempunyai hak atas barang tersebut sebagaimana dimaksud dalam Pasal 3 ayat (1) Perjanjian ini yang telah diserahkan oleh PIHAK KEDUA kepada PIHAK KESATU, maka semua biaya yang diperlukan oleh PIHAK KESATU sebagai akibat tuntutan tersebut menjadi beban dan tanggung jawab PIHAK KEDUA.</td></tr>
+    </table>
+
+    <div class="pasal"><div>Pasal 13</div><div>PEMUTUSAN PERJANJIAN</div></div>
+    <table class="ayat">
+        <tr><td class="no">(1)</td><td>Pemutusan Tanpa Peringatan<br>Apabila PIHAK KEDUA mengundurkan diri setelah penandatanganan Perjanjian atau telah dinyatakan pailit oleh Pengadilan Niaga atau tidak dapat menyerahkan barang sebagaimana dimaksud dalam pasal 2 perjanjian ini berikut dokumen penyerahannya secara lengkap dalam batas waktu perpanjangan yang disetujui oleh PIHAK KESATU sebagaimana dimaksud dalam Pasal 5 Perjanjian ini atau melakukan pengalihan tanpa persetujuan tertulis terlebih dahulu dari PIHAK KESATU sebagaimana dimaksud pada Pasal 16 ayat (1) Perjanjian ini, maka PIHAK KESATU berhak memutus Perjanjian secara sepihak, baik sebagian atau seluruhnya tanpa memberikan peringatan tertulis kepada PIHAK KEDUA.</td></tr>
+        <tr><td class="no">(2)</td><td>Pemutusan dengan memberikan peringatan secara tertulis
+            <ol class="huruf">
+                <li>Apabila PIHAK KEDUA tidak dapat menyerahkan <span class="upper">{{nama_pengadaan}}</span> pada batas waktu penyerahan yang ditentukan dalam Perjanjian ini atau tidak dapat memenuhi ketentuan-ketentuan dalam Perjanjian, maka PIHAK KESATU akan memberikan peringatan tertulis kepada PIHAK KEDUA sebagai Surat Peringatan Pertama.</li>
+                <li>Apabila dalam jangka waktu 7 (tujuh) hari kalender setelah tanggal diterimanya Surat Peringatan Pertama sebagaimana dimaksud pada butir (a) Ayat ini, PIHAK KEDUA tidak memberikan respon/jawaban secara tertulis maka PIHAK KESATU akan memberikan Surat Peringatan Kedua sekaligus merupakan Surat Peringatan terakhir.</li>
+                <li>Apabila dalam jangka waktu 7 (tujuh) hari kalender setelah tanggal diterimanya Surat Peringatan Kedua sebagaimana dimaksud dalam butir (b) Ayat ini PIHAK KEDUA tidak memberikan respon/jawaban secara tertulis, maka PIHAK KESATU berhak memutus Perjanjian.</li>
+            </ol></td></tr>
+        <tr><td class="no">(3)</td><td>Apabila terjadi pemutusan Perjanjian sebagaimana dimaksud dalam Pasal ini, PIHAK KESATU berhak mencairkan Jaminan Pelaksanaan sebagaimana dimaksud dalam Pasal 7 Perjanjian dan Jaminan Pelaksanaan tersebut akan sepenuhnya menjadi hak milik PIHAK KESATU serta PIHAK KEDUA dikenakan sanksi tidak diperbolehkan untuk mengikuti pengadaan barang dan/atau jasa di wilayah kerja PT PLN (Persero) selama minimum 24 (dua puluh empat) bulan sejak tanggal pemutusan Perjanjian.</td></tr>
+        <tr><td class="no">(4)</td><td>Dalam hal terjadi pemutusan Perjanjian sebagaimana dimaksud dalam Pasal ini, maka PARA PIHAK sepakat untuk tidak memberlakukan ketentuan-ketentuan Pasal 1266 dan Pasal 1267 Kitab Undang-Undang Hukum Perdata.</td></tr>
+    </table>
+
+    <div class="pasal"><div>Pasal 14</div><div>FORCE MAJEURE</div></div>
+    <table class="ayat">
+        <tr><td class="no">(1)</td><td>Kejadian Kahar (Force Majeure) adalah setiap keadaan yang berada di luar kontrol yang wajar, langsung ataupun tidak langsung dari pihak yang terkena (termasuk tetapi tidak terbatas pada kerusuhan, perang, bencana alam, pemogokan nasional, terorisme, embargo, perang tarif, barang sudah tidak diproduksi), tetapi jika hanya dan sejauh bahwa:
+            <ol class="huruf">
+                <li>situasi tersebut, walaupun telah dilakukan upaya keras yang pantas, tidak dapat dicegah, dihindari atau dipindahkan oleh pihak tersebut;</li>
+                <li>kejadian tersebut mempengaruhi secara materiil kemampuan pihak yang terkena untuk melaksanakan kewajiban berdasarkan Perjanjian ini dan pihak yang terkena telah melakukan seluruh tindakan pencegahan yang pantas, kehati-hatian dan tindakan alternatif yang pantas untuk menghindari akibat dari kejadian tersebut terhadap kemampuan pihak yang terkena tersebut untuk melaksanakan kewajiban berdasarkan Perjanjian ini dan untuk mengurangi konsekuensi konsekuensinya;</li>
+                <li>kejadian tersebut bukan akibat langsung atau tidak langsung kegagalan salah satu pihak untuk melaksanakan setiap kewajiban-kewajibannya berdasarkan Perjanjian ini; dan</li>
+                <li>pihak yang terkena tersebut telah mengirim kepada pihak lainnya pemberitahuan seketika yang menjelaskan kejadian tersebut dan akibat yang terjadi dan tindakan-tindakan yang telah dilakukan untuk memenuhi ketentuan ini dengan ketentuan Kejadian Kahar tidak termasuk pemogokan, penutupan atau tindakan industri lainnya oleh personel dari pihak yang terkena atau agen-agennya.</li>
+            </ol></td></tr>
+        <tr><td class="no">(2)</td><td>Dalam hal terjadi Force Majeure, maka PIHAK KEDUA wajib memberitahukan secara tertulis kepada PIHAK KESATU dalam waktu selambat-lambatnya 14 (empat belas) hari kalender terhitung sejak terjadinya peristiwa sebagaimana dimaksud dalam ayat (1) Pasal ini.</td></tr>
+        <tr><td class="no">(3)</td><td>Apabila dalam jangka waktu sebagaimana dimaksud dalam ayat (2) Pasal ini PIHAK KEDUA tidak memberitahukan kejadian Force Majeure tersebut kepada PIHAK KESATU, maka keterlambatan penyerahan barang berikut dokumen penyerahannya secara lengkap berdasarkan Perjanjian ini dianggap bukan sebagai akibat dari Force Majeure.</td></tr>
+        <tr><td class="no">(4)</td><td>Dalam pemberitahuan mengenai Force Majeure sebagaimana dimaksud dalam ayat (2) Pasal ini harus disertai dengan keterangan dari pihak yang berwenang mengenai peristiwa tersebut dan PIHAK KEDUA dapat sekaligus mengajukan permohonan perpanjangan waktu penyerahan barang berikut dokumen penyerahannya secara lengkap kepada PIHAK KESATU.</td></tr>
+        <tr><td class="no">(5)</td><td>PIHAK KESATU dalam waktu 7 (tujuh) hari kalender terhitung sejak diterimanya permohonan perpanjangan waktu sebagaimana dimaksud dalam ayat (4) Pasal ini akan memberikan jawaban secara tertulis mengenai permohonan dimaksud kepada PIHAK KEDUA.</td></tr>
+        <tr><td class="no">(6)</td><td>Apabila dalam jangka waktu sebagaimana dimaksud dalam ayat (5) Pasal ini PIHAK KESATU tidak memberikan jawaban terhadap permohonan perpanjangan waktu penyerahan <span class="upper">{{nama_pengadaan}}</span> berikut dokumen penyerahannya secara lengkap dari PIHAK KEDUA, maka PIHAK KESATU dianggap telah memberikan persetujuan terhadap permohonan dimaksud.</td></tr>
+        <tr><td class="no">(7)</td><td>PIHAK KEDUA tidak dapat dikenakan sanksi atas keterlambatan penyerahan <span class="upper">{{nama_pengadaan}}</span> berikut dokumen penyerahannya secara lengkap sebagaimana dimaksud dalam Pasal 14 Perjanjian ini yang diakibatkan oleh Force Majeure.</td></tr>
+        <tr><td class="no">(8)</td><td>Kerugian yang timbul akibat terjadinya Force Majeure sebagaimana dimaksud dalam ayat (1) Pasal ini terhadap barang yang akan diserahkan oleh PIHAK KEDUA kepada PIHAK KESATU menjadi tanggung jawab PIHAK KEDUA.</td></tr>
+        <tr><td class="no">(9)</td><td>Tindakan yang diambil untuk mengatasi terjadinya Force Majeure akan dilakukan sesuai dengan kesepakatan PARA PIHAK.</td></tr>
+    </table>
+
+    <div class="pasal"><div>Pasal 15</div><div>PENYELESAIAN PERSELISIHAN</div></div>
+    <table class="ayat">
+        <tr><td class="no">(1)</td><td>Apabila timbul perselisihan dalam rangka pelaksanaan Perjanjian ini, PARA PIHAK sepakat untuk menyelesaikan dengan musyawarah.</td></tr>
+        <tr><td class="no">(2)</td><td>Perjanjian ini tunduk pada Peraturan Perundang-undangan Republik Indonesia.</td></tr>
+        <tr><td class="no">(3)</td><td>Segala sengketa, pertentangan atau perselisihan yang timbul dari atau sehubungan dengan Perjanjian ini, atau pelanggarannya yang tidak dapat diselesaikan dengan musyawarah (dengan jalan damai), akan diselesaikan melalui Badan Arbitrase Nasional Indonesia (BANI) di Jakarta sesuai dengan prosedur dan tata cara penyelesaian perselisihan yang berlaku di Badan Arbitrase Nasional Indonesia (BANI).</td></tr>
+        <tr><td class="no">(4)</td><td>Keputusan Badan Arbitrase Nasional Indonesia (BANI) tidak dapat diganggu gugat dan bersifat terakhir. Keputusan tersebut segera diserahkan kepada pengadilan yang mempunyai wewenang hukum (yurisdiksi) untuk melaksanakannya. PARA PIHAK tidak akan mengajukan banding kepada pengadilan atas keputusan tersebut.</td></tr>
+        <tr><td class="no">(5)</td><td>Selama menunggu penyelesaian atas suatu sengketa sebagaimana dimaksud dalam Pasal ini, PARA PIHAK akan tetap memenuhi kewajibannya berdasarkan Perjanjian ini.</td></tr>
+    </table>
+
+    <div class="pasal"><div>Pasal 16</div><div>PENGALIHAN PEKERJAAN KEPADA PIHAK LAINNYA</div></div>
+    <table class="ayat">
+        <tr><td class="no">(1)</td><td>PIHAK KEDUA tidak diperbolehkan untuk mengalihkan sebagian maupun seluruh hak dan kewajibannya berdasarkan Perjanjian ini kepada pihak lain tanpa persetujuan tertulis terlebih dahulu dari PIHAK KESATU.</td></tr>
+        <tr><td class="no">(2)</td><td>Bilamana terjadi pengalihan sebagian hak dan kewajiban, maka PIHAK KESATU berhak memutus Perjanjian secara sepihak berdasarkan ketentuan Pasal 13 Perjanjian ini dan jaminan pelaksanaan akan dicairkan menjadi milik PIHAK KESATU serta PIHAK KEDUA dikenakan sanksi tidak diperbolehkan untuk mengikuti pengadaan barang dan/atau jasa di wilayah kerja PT PLN (Persero) selama minimum 24 (dua puluh empat) bulan sejak tanggal pemutusan Perjanjian.</td></tr>
+        <tr><td class="no">(3)</td><td>Bilamana terjadi pengalihan atas seluruh hak dan kewajiban, sebagaimana dimaksud pada ayat (1) Pasal ini, maka PIHAK KESATU berhak memutus Perjanjian secara sepihak berdasarkan ketentuan Pasal 13 Perjanjian ini, dan jaminan pelaksanaan akan dicairkan menjadi milik PIHAK KESATU serta PIHAK KEDUA dikenakan sanksi tidak diperbolehkan untuk mengikuti pengadaan barang dan/atau jasa di wilayah kerja PT PLN (Persero) selama minimum 60 (enam puluh) bulan sejak tanggal pemutusan Perjanjian.</td></tr>
+        <tr><td class="no">(4)</td><td>Dalam hal PIHAK KEDUA akan mengalihkan sebagian maupun seluruh hak dan kewajibannya berdasarkan Perjanjian ini kepada pihak lain berdasarkan persetujuan tertulis dari PIHAK KESATU, maka seluruh kerugian yang timbul sebagai akibat penyerahan pekerjaan dimaksud menjadi beban dan tanggung jawab PIHAK KEDUA.</td></tr>
+    </table>
+
+    <div class="pasal"><div>Pasal 17</div><div>PAJAK DAN PUNGUTAN</div></div>
+    <table class="ayat">
+        <tr><td class="no">(1)</td><td>Selain dengan yang telah ditentukan dalam Surat Perjanjian ini, biaya angkutan dan biaya lainnya yang dikeluarkan atau yang diperlukan untuk pengiriman dan penyerahan barang &ndash; barang dari tempat penyimpanan barang atau tempat PIHAK KEDUA hingga ditempatkan yang telah ditentukan oleh PIHAK KESATU ditanggung dan dibebankan oleh PIHAK KEDUA.</td></tr>
+        <tr><td class="no">(2)</td><td>Kehilangan atau kerusakan atas barang &ndash; barang yang terjadi dalam perjalanan atau pengangkutan dari tempat PIHAK KEDUA sampai ditempat yang telah ditentukan oleh PIHAK KESATU menjadi resiko dan tanggung jawab PIHAK KEDUA.</td></tr>
+    </table>
+
+    <div class="pasal"><div>Pasal 18</div><div>TUNTUTAN DAN TAMBAHAN BIAYA</div></div>
+    <table class="ayat">
+        <tr><td class="no">(1)</td><td>PIHAK KEDUA tidak dapat (tidak dibenarkan) menuntut tambahan biaya apapun juga (claim) walaupun ada kenaikan harga barang &ndash; barang atau jasa yang bersangkutan dalam perjanjian ini.</td></tr>
+    </table>
+
+    <div class="pasal"><div>Pasal 19</div><div>PENGGANTIAN BARANG</div></div>
+    <table class="ayat">
+        <tr><td class="no">(1)</td><td>Barang &ndash; barang yang diserahkan harus memenuhi syarat &ndash; syarat dalam pasal 3 perjanjian ini, jika pada penyerahan barang &ndash; barang tersebut terdapat mutu yang tidak baik, maka barang yang tidak baik harus diganti.</td></tr>
+        <tr><td class="no">(2)</td><td>Apabila penggantian barang &ndash; barang seperti yang dimaksud dalam ayat 1 pasal ini melampaui batas waktu yang telah ditetapkan sebagaimana dimaksud dalam pasal 5 ayat (2) dalam perjanjian ini, maka penggantian barang dinyatakan terlambat penyerahannya.</td></tr>
+        <tr><td class="no">(3)</td><td>Semua biaya yang dikeluarkan atau diperlukan sebagai akibat adanya ketentuan tersebut dalam ayat 1 dan ayat 2 pasal ini, ditanggung dan dibebankan kepada PIHAK KEDUA.</td></tr>
+    </table>
+
+    <div class="pasal"><div>Pasal 20</div><div>KEPATUHAN TERHADAP PERATURAN DAN KEBIJAKAN ANTI PENYUAPAN</div></div>
+    <table class="ayat">
+        <tr><td class="no">(1)</td><td>PARA PIHAK menyepakati bahwa pada saat melaksanakan Perjanjian ini berdasarkan pada prinsip itikad baik, tidak saling mempengaruhi baik langsung maupun tidak langsung, menerima serta bertanggungjawab atas segala keputusan yang ditetapkan sesuai dengan kesepakatan PARA PIHAK, menghindari serta mencegah terjadinya pertentangan kepentingan (<i>conflict of interest</i>), menghindari serta mencegah penyalahgunaan wewenang dan/atau kolusi dengan tujuan untuk keuntungan pribadi-golongan-atau pihak lain, dan tidak menerima, tidak menawarkan atau tidak menjanjikan untuk memberi atau menerima hadiah, imbalan berupa apa saja kepada siapapun yang diketahui atau patut diduga berkaitan dengan pelaksanaan Perjanjian ini.</td></tr>
+        <tr><td class="no">(2)</td><td><b>PIHAK KEDUA</b> menyatakan, menjamin dan berkomitmen kepada <b>PIHAK KESATU</b> bahwa dalam melaksanakan Perjanjian akan mematuhi ketentuan hukum yang berlaku termasuk namun tidak terbatas pada peraturan perundang-undangan terkait anti korupsi, anti pencucian uang serta kebijakan <b>PIHAK KESATU</b> mengenai anti-<i>fraud</i> dan sistem manajemen kepatuhan seperti:
+            <ol class="huruf">
+                <li>menerapkan 4 No&rsquo;s:
+                    <ol class="romawi">
+                        <li><i>No bribery</i>, menghindari suap menyuap dan pemerasan;</li>
+                        <li><i>No gift</i>, menghindari hadiah atau gratifikasi yang bertentangan dengan peraturan yang berlaku;</li>
+                        <li><i>No kickback</i>, menghindari komisi, tanda terima kasih baik dalam bentuk uang atau bentuk lainnya;</li>
+                        <li><i>No luxurious hospitality</i>, menghindari jamuan yang berlebihan.</li>
+                    </ol></li>
+                <li>mengikuti prosedur uji kelayakan berbasis integritas (<i>integrity due diligence</i>) yang diterapkan <b>PIHAK KESATU</b>;</li>
+                <li>mengikuti program sosialisasi sistem manajemen kepatuhan yang dilaksanakan <b>PIHAK KESATU</b>;</li>
+                <li>menandatangani dan melaksanakan pakta integritas <b>PIHAK KEDUA</b>;</li>
+            </ol></td></tr>
+        <tr><td class="no">(3)</td><td>PARA PIHAK menyepakati bahwa tidak akan melakukan tindakan-tindakan yang mengakibatkan terjadinya ketidakwajaran dalam pelaksanaan Perjanjian ini termasuk namun tidak terbatas pada tindakan Penipuan, Persekongkolan, Penyuapan, Korupsi, Kecurangan, Pemalsuan dan tindakan lain yang bertentangan dengan peraturan yang berlaku dan tidak sesuai dengan etika bisnis yang baik.</td></tr>
+        <tr><td class="no">(4)</td><td><b>PIHAK KESATU</b> dapat melakukan audit atau menunjuk pihak lain untuk melaksanakan audit terkait tagihan pembayaran dan dokumen pembukuan serta pencatatan <b>PIHAK KEDUA</b> apabila terdapat indikasi ketidakwajaran berupa <i>overcharge</i> atau <i>overprice</i> dari tagihan yang disampaikan oleh <b>PIHAK KEDUA</b> kepada <b>PIHAK KESATU</b>, dimana tujuan pelaksanaan audit tersebut untuk memastikan kesesuaian tagihan <b>PIHAK KEDUA</b> dengan ketentuan yang berlaku termasuk kesesuaian dengan ketentuan dalam Perjanjian. Biaya pelaksanaan audit tersebut menjadi beban <b>PIHAK KESATU</b>.</td></tr>
+        <tr><td class="no">(5)</td><td>Dalam pelaksanaan audit terhadap tagihan pembayaran sebagaimana ayat (4) di atas, <b>PIHAK KESATU</b> berhak melakukan penundaan pembayaran atas tagihan pembayaran tersebut dan <b>PIHAK KEDUA</b> wajib untuk tetap melaksanakan kewajibannya sesuai Perjanjian ini.</td></tr>
+        <tr><td class="no">(6)</td><td>Dalam rangka penerapan sistem manajemen kepatuhan di <b>PIHAK KESATU</b>, jika dalam proses pelaksanaan Perjanjian ini <b>PIHAK KEDUA</b> mengetahui adanya tindakan kecurangan, pelanggaran peraturan atau hukum, konflik kepentingan, penyuapan/gratifikasi maupun perilaku tidak etis yang dilakukan oleh karyawan <b>PIHAK KESATU</b>, agar melaporkan melalui <i>Whistle Blower System</i> dengan media antara lain Telepon/SMS/Whatsapp ke 08119861901, https://cos.pln.co.id atau email wbpln@pln.co.id</td></tr>
+        <tr><td class="no">(7)</td><td>Apabila <b>PIHAK KEDUA</b> terbukti tidak memenuhi ketentuan sebagaimana dimaksud dalam Pasal ini, maka <b>PIHAK KESATU</b> berhak:
+            <ol class="huruf">
+                <li>melakukan pemutusan Perjanjian secara sepihak tanpa Surat Peringatan;</li>
+                <li>melakukan pencairan Jaminan Pelaksanaan dan sepenuhnya menjadi milik <b>PIHAK KESATU</b>; dan</li>
+                <li>melakukan penjatuhan sanksi <i>Blacklist</i> kepada <b>PIHAK KEDUA</b> selama minimum 24 (dua puluh empat) bulan terhitung sejak tanggal penjatuhan sanksi <i>Blacklist</i> tersebut.</li>
+            </ol></td></tr>
+    </table>
+
+    <div class="pasal"><div>Pasal 21</div><div>PERUBAHAN-PERUBAHAN</div></div>
+    <table class="ayat">
+        <tr><td class="no">(1)</td><td>PARA PIHAK sepakat bahwa setiap perubahan dalam Perjanjian ini hanya dapat dilakukan atas persetujuan bersama.</td></tr>
+        <tr><td class="no">(2)</td><td>Usulan perubahan sebagaimana dimaksud dalam ayat (1) Pasal ini harus diajukan secara tertulis oleh pihak yang berkepentingan kepada pihak lainnya sebelum berlakunya perubahan yang diusulkan.</td></tr>
+        <tr><td class="no">(3)</td><td>Perubahan sebagaimana dimaksud dalam ayat (2) Pasal ini disepakati dan ditandatangani oleh PARA PIHAK sebagai Addendum dan merupakan bagian yang tidak terpisahkan dari Perjanjian ini.</td></tr>
+    </table>
+
+    <div class="pasal"><div>Pasal 22</div><div>ADMINISTRASI DAN SURAT MENYURAT</div></div>
+    <table class="ayat">
+        <tr><td class="no">(1)</td><td>Setiap pemberitahuan atau surat menyurat dilakukan dengan cara diserahkan langsung atau dikirim melalui pos atau faksimili atau sarana komunikasi lainnya yang disepakati kepada:
+            <p style="margin-top: 8px;"><b>PIHAK KESATU</b><br>PT PLN NUSANTARA POWER Unit Pembangkitan Kendari</p>
+            <table class="plain-rows rekening">
+                <tr><td>Alamat</td><td>: Jl. Chairil Anwar No.2, Mataiwoi, Kec. Wua-Wua, Kota Kendari, Sulawesi Tenggara 93117</td></tr>
+                <tr><td>Telepon</td><td>: <span class="fill">....................</span></td></tr>
+                <tr><td>Facsimile</td><td>: <span class="fill">....................</span></td></tr>
+                <tr><td>Untuk Perhatian</td><td>: MANAGER PT PLN NUSANTARA POWER UP Kendari</td></tr>
+            </table>
+            <p style="margin-top: 8px;"><b>PIHAK KEDUA</b><br><span class="upper">{{nama_mitra}}</span></p>
+            <table class="plain-rows rekening">
+                <tr><td>Alamat</td><td>: {{alamat_perusahaan}}</td></tr>
+                <tr><td>Telepon</td><td>: <span class="fill">....................</span></td></tr>
+                <tr><td>Facsimile</td><td>: <span class="fill">....................</span></td></tr>
+                <tr><td>Untuk Perhatian</td><td>: DIREKTUR <span class="upper">{{nama_mitra}}</span></td></tr>
+            </table></td></tr>
+        <tr><td class="no">(2)</td><td>Salah satu pihak dapat mengganti alamat, nomor faksimili sebagaimana dimaksud dalam ayat (1) Pasal ini dengan memberikan pemberitahuan terlebih dahulu kepada pihak lainnya.</td></tr>
+    </table>
+
+    <p style="margin-top: 16px;">Perjanjian ini dibuat dalam 2 (dua) rangkap, masing-masing mempunyai kekuatan hukum yang sama, 1 (satu) rangkap untuk PIHAK KESATU dan 1 (satu) rangkap untuk PIHAK KEDUA, setelah dibubuhi meterai yang cukup, ditandatangani di Kendari pada hari, tanggal, bulan dan tahun tersebut pada permulaan Perjanjian ini.</p>
+
+    <table class="sign" style="margin-top: 18px; page-break-inside: avoid;">
+        <tr>
+            <td>PIHAK KEDUA<br><span class="upper">{{nama_mitra}}</span><br>DIREKTUR</td>
+            <td>PIHAK KESATU<br>PT PLN NP UP KENDARI<br>MANAGER</td>
+        </tr>
+        <tr><td style="height: 80px;"></td><td></td></tr>
+        <tr>
+            <td class="upper">{{nama_direktur}}</td>
+            <td class="upper">{{nama_manager}}</td>
+        </tr>
+    </table>
+</section>

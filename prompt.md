@@ -506,6 +506,34 @@ SPK disusun sebagai perjanjian lengkap mengikuti format kontrak UP Kendari (±9�
 - **Footer setiap halaman (PDF)**: nomor SPK di kiri, paraf "PIHAK KESATU : ……" / "PIHAK KEDUA : ……" di kanan, nomor halaman di tengah.
 - Data yang belum ada di sistem (nomor SK Direksi, nomor RFQ, nomor BA Klarifikasi, uraian lingkup) tampil sebagai titik-titik untuk dilengkapi di editor dokumen.
 
+### Format Dokumen Surat Perjanjian (PJ)
+
+- **Pemakaian:** pada format kontrak **PJ**, langkah checklist **Kontrak** menghasilkan **Surat Perjanjian**, bukan SPK. Format SPK tetap menghasilkan Surat Perintah Kerja.
+- **Template:** `pj.surat-perjanjian`, file `resources/document-templates/pj/surat-perjanjian.html`.
+  - Melayani jenis dokumen `spk` yang dibatasi format PJ, sehingga pengadaan PJ otomatis memakainya.
+  - Nama dokumen dan judulnya tampil sebagai **"Surat Perjanjian (PJ)"** (lihat `DocumentType::nameFor()`).
+- **Kepala:** logo PLN, lalu "SURAT PERJANJIAN / tentang / {{nama_pengadaan}} / UNTUK / PT PLN NUSANTARA POWER / UNIT PEMBANGKITAN KENDARI / NOMOR : {{nomor_pengadaan}}".
+- **Pembuka:** "Pada hari ini … tanggal {{tanggal_dokumen}} di Kendari".
+- **Para pihak:**
+  - **PIHAK KESATU:** PT PLN Nusantara Power (data akta), diwakili {{nama_manager}} selaku MANAGER.
+  - **PIHAK KEDUA:** {{nama_mitra}} berkantor di {{alamat_perusahaan}}, diwakili {{nama_direktur}} selaku DIREKTUR.
+- **Pertimbangan:** undangan, RKS {{nomor_rks}}, Surat Penawaran {{nomor_surat_penawaran}}/{{tanggal_surat_penawaran}}, BA Penjelasan, BA Negosiasi {{nomor_ba_nego}}, BA Hasil, dan Surat Penunjukan.
+- **Pasal 1–22** mengikuti narasi standar:
+  - Definisi, Lingkup, Spesifikasi & Mutu.
+  - Harga: {{nilai_setelah_nego}} beserta terbilangnya.
+  - Waktu & Tempat Penyerahan: {{jangka_waktu_hari}} hari kalender, paling lambat {{tanggal_selesai_pelaksanaan}}, dengan dokumen penyerahan a–g.
+  - Jaminan Produk, Jaminan Pelaksanaan 5%.
+  - Masa Garansi: {{masa_garansi_bulan}} bulan.
+  - Pemenuhan Sistem Manajemen.
+  - Cara Pembayaran digital, dengan rekening {{nama_bank}}/{{nomor_rekening}}/{{nama_pemilik_rekening}}.
+  - Sanksi Keterlambatan, Pembebasan Tuntutan, Pemutusan, Force Majeure, Penyelesaian Perselisihan (BANI), Pengalihan, Pajak, Tuntutan Biaya, Penggantian Barang, Anti Penyuapan, Perubahan, Administrasi & Surat Menyurat.
+- **Penutup:** ditandatangani di Kendari oleh PIHAK KEDUA (DIREKTUR) dan PIHAK KESATU (MANAGER). Footer PDF sama dengan SPK.
+- **Data yang belum ada di sistem** tampil sebagai titik-titik untuk dilengkapi di editor: nomor SK Direksi, nomor undangan/BA, nilai dan nomor bank garansi, telepon/faks.
+- **Migration `2026_10_15_080010_add_surat_perjanjian_template_for_pj`:**
+  - Memasang template ini di database yang sudah berjalan.
+  - Mengganti judul dokumen SPK pengadaan PJ yang belum ditandatangani menjadi "Surat Perjanjian (PJ) - …".
+  - Dokumen yang belum diedit otomatis mengikuti template baru.
+
 ### Checklist Pelaksanaan — format SPPL
 
 | Tahapan | Cara penyelesaian |
@@ -825,6 +853,44 @@ Ketentuan tampilan sertifikat:
 - **Tanggal** diambil dari **tanggal BASTP** (fallback tanggal formulir).
 - Ditandatangani oleh **Tim Pengadaan** (menggantikan "Kepala Divisi Supply Chain Management").
 - **Tipografi ringkas** setara ukuran Word (± 9pt body, judul 15pt) dengan gaya korporat bersih, diusahakan muat dalam satu halaman A4. Margin diatur pada `@page` sehingga bila isi melebar ke halaman kedua, teksnya tetap berada di dalam margin kertas; ornamen sudut & watermark tetap full-bleed di setiap halaman.
+
+## Request Penilaian Vendor (tautan rincian tagihan)
+
+Bagian **Request Penilaian Vendor** ada di halaman Penilaian Penyedia, di atas daftar formulir.
+
+- **Tautan tetap:** tautannya satu dan tidak pernah berubah, yaitu `{APP_URL}/permintaan-penilaian`.
+  - Tautan ini dicantumkan di kontrak lewat variabel template `{{tautan_penilaian_vendor}}`.
+  - Di halaman Penilaian Penyedia tautan tampil beserta tombol **Salin Tautan** dan **Buka**.
+  - Vendor cukup mengklik tautan, tidak perlu akun.
+  - Setiap kiriman menjadi satu request baru, dan tautan tetap bisa dipakai vendor berikutnya. Setelah mengirim, vendor melihat layar "terkirim" dengan tombol **Isi Request Lain**.
+  - Batas kiriman 10 per menit per IP.
+- **Pengisian oleh vendor / pelaksana:** semua isian wajib, kecuali No. HP/WhatsApp pengisi yang opsional:
+  - Pekerjaan
+  - Pelaksana
+  - No Kontrak/DO
+  - Tgl. Kontrak
+  - Termin
+  - Nilai tagihan
+  - No BAPP/BASTP
+  - Tgl BAPP/BASTP
+  - Denda (Ada / Tidak ada)
+  - Nama pengisi
+- **Tampilan request:** rincian yang masuk tampil sebagai **Request baru**, lengkap dengan isiannya. Tombol **Buat Penilaian** membuka formulir penilaian yang sudah terisi:
+  - Pekerjaan → Project
+  - Pelaksana → Penyedia
+  - No Kontrak/DO → No Kontrak
+  - Tgl. Kontrak → Tanggal Kontrak
+  - Tgl BAPP/BASTP → Tanggal BASTP
+  - Denda → Denda
+  - Termin, Nilai tagihan, No BAPP/BASTP dan nama pengisi → Catatan internal (tidak tercetak)
+- **Setelah penilaian dibuat:** request berstatus **Sudah dibuat penilaian** dan menautkan ke penilaiannya. Request yang salah atau ganda bisa dihapus dari daftar.
+- **Tanpa request:** pembuatan formulir penilaian berjalan seperti sebelumnya.
+- **Data:** tabel `vendor_assessment_requests`, model `VendorAssessmentRequest` (`formUrl()` memberi tautan tetap). Controller admin `VendorAssessmentRequestController` (hapus), controller publik `AssessmentRequestFormController`. Halaman publik: `assessment-signing/request`.
+
+## Pratinjau PDF di Ponsel
+
+- **Masalahnya:** Chrome di Android tidak punya penampil PDF di dalam halaman, dan browser di iOS hanya menampilkan halaman pertama. Desktop Chrome yang disetel "unduh PDF" juga tidak bisa menampilkannya.
+- **Perilaku sekarang:** di kondisi tersebut, tab Pratinjau Cetak menampilkan tombol **Buka PDF** dan **Unduh PDF** sebagai pengganti iframe kosong.
 
 ---
 
