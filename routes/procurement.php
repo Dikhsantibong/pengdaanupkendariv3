@@ -45,6 +45,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('documents/{document}', [DocumentController::class, 'update'])->name('documents.update');
         Route::post('documents/{document}/preview', [DocumentController::class, 'preview'])
             ->name('documents.preview');
+        Route::post('documents/{document}/pages', [DocumentController::class, 'pages'])
+            ->name('documents.pages');
         Route::post('documents/{document}/regenerate', [DocumentController::class, 'regenerate'])
             ->name('documents.regenerate');
         Route::post('documents/{document}/signed', [DocumentController::class, 'storeSigned'])

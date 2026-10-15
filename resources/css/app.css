@@ -571,6 +571,22 @@
 }
 
 /*
+ * Printed sheets in the visual editor.
+ *
+ * The editor marks the element each PDF sheet starts with and opens a gap
+ * before it, over which it draws the space between two sheets. The marker
+ * is stripped before saving, so the printed document never sees these rules.
+ */
+.document-preview[contenteditable] [data-sheet-start='gap'] {
+    margin-top: 112px !important;
+}
+
+.document-preview[contenteditable] tr[data-sheet-start='row'] > td,
+.document-preview[contenteditable] tr[data-sheet-start='row'] > th {
+    padding-top: calc(112px + 4pt) !important;
+}
+
+/*
  * Long documents (an RKS runs to 40+ pages): the browser skips layout and
  * paint for chapters and attachments that are off screen, and lays each one
  * out the moment it scrolls into view. `auto` remembers the real height once

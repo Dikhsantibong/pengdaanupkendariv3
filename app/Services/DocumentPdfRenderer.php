@@ -3,9 +3,13 @@
 namespace App\Services;
 
 use App\Models\ProcurementDocument;
+use DOMElement;
+use Dompdf\Canvas;
 use Dompdf\Dompdf;
+use Dompdf\Frame;
 use Dompdf\Options;
 use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -105,6 +109,74 @@ class DocumentPdfRenderer
      */
     public function render(ProcurementDocument $document): string
     {
+        $dompdf = $this->laidOut($document);
+
+        $this->stampFooter($dompdf, $document);
+
+        return (string) $dompdf->output();
+    }
+
+    /**
+     * Where each printed sheet of a draft begins, as the PDF engine lays it out.
+     *
+     * The editor numbers the elements of the body with a `data-pg` attribute
+     * before sending it; the answer names, for every sheet after the first,
+     * the lowest numbered element that is first drawn on that sheet. The
+     * layout of the same body never changes, so it is remembered for a day.
+     *
+     * @return array{page_count: int, sheet_starts: list<array{page: int, index: int}>}
+     */
+    public function sheetStarts(ProcurementDocument $draft): array
+    {
+        $key = 'document-sheets:'.sha1($draft->title.'|'.$draft->rendered_body);
+
+        return Cache::remember($key, now()->addDay(), function () use ($draft): array {
+            /** @var array<int, int> $firstPage */
+            $firstPage = [];
+            $pageCount = 1;
+
+            $this->laidOut($draft, function (Frame $frame, Canvas $canvas) use (&$firstPage, &$pageCount): void {
+                $page = $canvas->get_page_number();
+                $pageCount = max($pageCount, $page);
+                $node = $frame->get_node();
+
+                if (! $node instanceof DOMElement || ! $node->hasAttribute('data-pg')) {
+                    return;
+                }
+
+                $index = (int) $node->getAttribute('data-pg');
+                $firstPage[$index] = min($firstPage[$index] ?? $page, $page);
+            });
+
+            /** @var array<int, int> $starts page => index */
+            $starts = [];
+
+            foreach ($firstPage as $index => $page) {
+                if ($page > 1 && $index < ($starts[$page] ?? PHP_INT_MAX)) {
+                    $starts[$page] = $index;
+                }
+            }
+
+            ksort($starts);
+
+            return [
+                'page_count' => $pageCount,
+                'sheet_starts' => array_map(
+                    fn (int $page, int $index): array => ['page' => $page, 'index' => $index],
+                    array_keys($starts),
+                    array_values($starts),
+                ),
+            ];
+        });
+    }
+
+    /**
+     * Lay the document out on A4 sheets, ready to be stamped and written.
+     *
+     * @param  (callable(Frame, Canvas): void)|null  $onFrame  told about every frame as it is drawn
+     */
+    protected function laidOut(ProcurementDocument $document, ?callable $onFrame = null): Dompdf
+    {
         $options = new Options;
         $options->set('defaultFont', 'DejaVu Serif');
         $options->set('isRemoteEnabled', false);
@@ -118,11 +190,17 @@ class DocumentPdfRenderer
         $isLandscape = str_contains(strtolower($document->rendered_body), 'landscape');
         $dompdf->setPaper('A4', $isLandscape ? 'landscape' : 'portrait');
         $dompdf->loadHtml($this->generator->printableHtml($document, forPdf: true), 'UTF-8');
+
+        if ($onFrame !== null) {
+            $dompdf->setCallbacks([[
+                'event' => 'begin_frame',
+                'f' => fn (Frame $frame, Canvas $canvas) => $onFrame($frame, $canvas),
+            ]]);
+        }
+
         $dompdf->render();
 
-        $this->stampFooter($dompdf, $document);
-
-        return (string) $dompdf->output();
+        return $dompdf;
     }
 
     /**

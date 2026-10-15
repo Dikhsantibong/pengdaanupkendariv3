@@ -192,6 +192,11 @@ export default function DocumentEditor({
         document: doc.id,
     }).url;
 
+    const pagesUrl = procurements.documents.pages({
+        procurement: procurement.id,
+        document: doc.id,
+    }).url;
+
     const save = () => {
         form.put(
             procurements.documents.update({
@@ -354,6 +359,8 @@ export default function DocumentEditor({
                         <VisualEditor
                             value={form.data.body}
                             onChange={(html) => form.setData('body', html)}
+                            pagesEndpoint={pagesUrl}
+                            title={form.data.title}
                         />
                         <p className="mt-2 text-xs text-muted-foreground">
                             Ketik langsung pada dokumen seperti mengetik di

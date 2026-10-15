@@ -17,6 +17,10 @@ import {
     Undo2,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    PageBoundaries,
+    withoutSheetMarks,
+} from '@/components/document-editor/page-boundaries';
 import { Button } from '@/components/ui/button';
 import {
     Select,
@@ -397,10 +401,15 @@ export function VisualEditor({
     value,
     onChange,
     disabled = false,
+    pagesEndpoint,
+    title = '',
 }: {
     value: string;
     onChange: (html: string) => void;
     disabled?: boolean;
+    /** Where the PDF engine reports the printed sheets of the draft. */
+    pagesEndpoint?: string;
+    title?: string;
 }) {
     const area = useRef<HTMLDivElement>(null);
     const lastEmitted = useRef(value);
@@ -488,7 +497,7 @@ export function VisualEditor({
             }
         }
 
-        lastEmitted.current = area.current.innerHTML;
+        lastEmitted.current = withoutSheetMarks(area.current.innerHTML);
         onChange(lastEmitted.current);
     }, [onChange]);
 
@@ -1465,6 +1474,12 @@ export function VisualEditor({
                             emit();
                         }}
                         className="document-preview min-h-[60vh] outline-none"
+                    />
+                    <PageBoundaries
+                        area={area}
+                        endpoint={pagesEndpoint}
+                        title={title}
+                        content={value}
                     />
                 </div>
             </div>

@@ -14,6 +14,7 @@ use App\Models\ProcurementDocumentUpload;
 use App\Services\DocumentGenerator;
 use App\Services\DocumentPdfRenderer;
 use App\Services\SignedDocumentStore;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -227,6 +228,30 @@ class DocumentController extends Controller
             'Content-Disposition' => 'inline; filename="pratinjau-'.$this->pdf->fileName($document).'"',
             'Cache-Control' => 'no-store, max-age=0',
         ]);
+    }
+
+    /**
+     * Report where each printed sheet of the draft being edited begins.
+     *
+     * The visual editor draws its sheets from this, so they break exactly
+     * where the PDF does. Like the preview, nothing is saved.
+     */
+    public function pages(
+        UpdateDocumentRequest $request,
+        Procurement $procurement,
+        ProcurementDocument $document,
+    ): JsonResponse {
+        $this->authorize('editDocument', $procurement);
+
+        $this->assertBelongsTo($procurement, $document);
+
+        $draft = clone $document;
+        $draft->forceFill([
+            'title' => $request->string('title')->value(),
+            'rendered_body' => $request->string('body')->value(),
+        ]);
+
+        return response()->json($this->pdf->sheetStarts($draft));
     }
 
     /**

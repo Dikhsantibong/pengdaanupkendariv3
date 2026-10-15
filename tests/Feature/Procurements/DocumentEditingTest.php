@@ -291,6 +291,75 @@ class DocumentEditingTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_the_editor_learns_where_each_printed_sheet_begins(): void
+    {
+        [$procurement, $document] = $this->generate();
+        $originalBody = $document->rendered_body;
+
+        // Enough paragraphs to run onto a second sheet, then a forced break.
+        $body = '';
+        $index = 0;
+
+        for ($line = 0; $line < 80; $line++) {
+            $body .= '<p data-pg="'.$index++.'">Paragraf '.$line.'</p>';
+        }
+
+        $body .= '<div data-pg="'.$index++.'" style="page-break-after: always;"></div>';
+        $lastIndex = $index;
+        $body .= '<p data-pg="'.$lastIndex.'">Halaman terakhir</p>';
+
+        $response = $this->actingAs(User::factory()->teamLeader()->create())
+            ->postJson(route('procurements.documents.pages', [$procurement, $document]), [
+                'title' => 'Judul Draf',
+                'body' => $body,
+            ])
+            ->assertOk();
+
+        $pageCount = $response->json('page_count');
+        $starts = $response->json('sheet_starts');
+
+        $this->assertGreaterThanOrEqual(3, $pageCount);
+        $this->assertCount($pageCount - 1, $starts);
+        $this->assertSame(2, $starts[0]['page']);
+
+        // The second sheet starts part way through the paragraphs, and the
+        // forced break puts the last paragraph at the top of the last sheet.
+        $this->assertGreaterThan(0, $starts[0]['index']);
+        $this->assertLessThan(80, $starts[0]['index']);
+        $this->assertSame(['page' => $pageCount, 'index' => $lastIndex], end($starts));
+
+        // Nothing is saved.
+        $this->assertSame($originalBody, $document->refresh()->rendered_body);
+    }
+
+    public function test_a_one_sheet_draft_has_no_sheet_starts(): void
+    {
+        [$procurement, $document] = $this->generate();
+
+        $this->actingAs(User::factory()->teamLeader()->create())
+            ->postJson(route('procurements.documents.pages', [$procurement, $document]), [
+                'title' => 'Judul',
+                'body' => '<p data-pg="0">Satu halaman saja</p>',
+            ])
+            ->assertOk()
+            ->assertExactJson(['page_count' => 1, 'sheet_starts' => []]);
+    }
+
+    public function test_an_unassigned_pic_cannot_ask_for_the_sheets(): void
+    {
+        $planner = User::factory()->planner()->create();
+        $outsider = User::factory()->planner()->create();
+
+        [$procurement, $document] = $this->generate([], $planner);
+
+        $this->actingAs($outsider)
+            ->postJson(route('procurements.documents.pages', [$procurement, $document]), [
+                'title' => $document->title,
+                'body' => '<p>Mengintip</p>',
+            ])
+            ->assertForbidden();
+    }
+
     public function test_rich_document_markup_survives_a_save(): void
     {
         [$procurement, $document] = $this->generate();

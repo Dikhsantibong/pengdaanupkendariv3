@@ -678,6 +678,11 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 - Bagian **KEPADA** pada dokumen Surat Pesanan kini memanggil alamat calon mitra secara dinamis menggunakan tag `{{alamat_mitra}}` (atau `{{alamat_perusahaan}}`) yang bersumber dari inputan **Alamat Perusahaan** pada form Calon Mitra.
 - Jika alamat belum diisi, sistem secara cerdas menampilkan teks default `"DI TEMPAT"`. Begitu alamat diisi pada Edit Identitas Pengadaan, dokumen Surat Pesanan yang telah digenerate otomatis tersinkronisasi tanpa harus menekan tombol muat ulang secara manual.
 
+### 8. Lembar Halaman Terpisah di Editor Visual
+- Dokumen yang lebih dari satu halaman tampil sebagai lembar-lembar terpisah di Editor Visual. Di antara lembar ada jeda abu-abu berlabel **Halaman N**. Dokumen satu halaman tidak berubah.
+- Batas halaman tidak ditebak di browser karena font dan margin di layar berbeda dengan PDF. Editor menomori setiap elemen, lalu mengirim draf ke `POST procurements/{p}/documents/{d}/pages` (`documents.pages`). Mesin PDF (dompdf, `DocumentPdfRenderer::sheetStarts`) menata draf itu dan melaporkan elemen pertama di setiap halaman. Hasilnya di-cache 1 hari per isi dokumen. Permintaan ini dikirim ulang ±0,8 detik setelah penulis berhenti mengetik.
+- Elemen awal lembar diberi atribut `data-sheet-start` sehingga editor membuka jeda di atasnya; aturan CSS ada di `app.css`. Atribut ini dibuang sebelum disimpan atau dipratinjau, jadi tidak pernah masuk ke dokumen maupun PDF. Baris tabel yang pindah halaman ikut dipisah. Teks yang terpotong di tengah sel atau paragraf hanya diberi garis putus-putus. Penanda manual **Batas Halaman** tetap memakai tampilannya sendiri.
+
 ---
 
 # Fitur Utama
