@@ -851,6 +851,16 @@ HTML;
             $suratPesananHtml = preg_replace($headerPattern, $cleanThead, $suratPesananHtml);
         }
 
+        // Fixed layout makes the browser and the PDF keep the column widths
+        // above (a narrow NO column) instead of sharing out the spare room.
+        $suratPesananHtml = (string) preg_replace_callback(
+            '/<table([^>]*?)style="([^"]*)"([^>]*)>(\s*<thead>)/i',
+            fn (array $match): string => str_contains($match[2], 'table-layout')
+                ? $match[0]
+                : '<table'.$match[1].'style="'.rtrim($match[2], '; ').'; table-layout: fixed;"'.$match[3].'>'.$match[4],
+            $suratPesananHtml,
+        );
+
         return $suratPesananHtml;
     }
 

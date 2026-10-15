@@ -505,6 +505,14 @@ HTML;
 
         $this->assertStringContainsString($noHeader, $synced);
         $this->assertStringNotContainsString('>NOMOR</th>', $synced);
+
+        // Fixed layout keeps the narrow NO column narrow in the editor and PDF.
+        $this->assertStringContainsString('table-layout: fixed', $template->body);
+        $this->assertStringContainsString('table-layout: fixed', $synced);
+        $this->assertSame(
+            substr_count($template->body, 'table-layout: fixed'),
+            substr_count($synced, 'table-layout: fixed'),
+        );
     }
 
     public function test_a_line_break_in_an_item_name_keeps_the_words_apart(): void
