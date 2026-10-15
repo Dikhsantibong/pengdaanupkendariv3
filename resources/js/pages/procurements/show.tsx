@@ -93,9 +93,10 @@ export default function ShowProcurement({
     can,
 }: ShowProps) {
     const { url } = usePage();
-    const requestedTab = new URLSearchParams(url.split('?')[1] ?? '').get(
-        'tab',
-    );
+    const linkedTab = new URLSearchParams(url.split('?')[1] ?? '').get('tab');
+    // The Keuangan tab became Penyerahan and Pembayaran; older links that
+    // still ask for "keuangan" open on Penyerahan.
+    const requestedTab = linkedTab === 'keuangan' ? 'penyerahan' : linkedTab;
     // Open on the stage the job is in, unless a link asked for a tab.
     const initialTab =
         requestedTab ??
@@ -103,9 +104,37 @@ export default function ShowProcurement({
             usulan: detail.proposal_documents ? 'usulan' : 'perencanaan',
             perencanaan: 'perencanaan',
             pelaksanaan: 'pelaksanaan',
-            keuangan: 'keuangan',
-            selesai: detail.finance.paid_at ? 'keuangan' : 'pelaksanaan',
+            keuangan: 'penyerahan',
+            selesai: detail.finance.paid_at ? 'pembayaran' : 'pelaksanaan',
         }[procurement.current_stage];
+
+    const financeRows = (section: 'penyerahan' | 'pembayaran') =>
+        checklists.keuangan.filter(
+            (row) => (row.section ?? 'pembayaran') === section,
+        );
+
+    const requirementsNotice =
+        detail.finance.requirements_waiting_for.length > 0 ? (
+            <p className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm">
+                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                <span>
+                    Syarat penyerahan dan pembayaran mengikuti kontrak pengadaan
+                    ini (SPK Barang, SPK Jasa, Surat Perjanjian, atau Surat
+                    Pesanan). Lengkapi dulu{' '}
+                    <b>
+                        {detail.finance.requirements_waiting_for.join(' dan ')}
+                    </b>{' '}
+                    lewat tombol Ubah Data.
+                </span>
+            </p>
+        ) : null;
+
+    const financeLockedReason =
+        detail.finance.paid_at !== null
+            ? 'Checklist terkunci karena pembayaran sudah dicatat.'
+            : detail.finance.submitted_at === null
+              ? 'Tahap ini terbuka setelah pengadaan diserahkan oleh PIC Pelaksana.'
+              : 'Hanya Keuangan yang dapat mengubah checklist ini.';
 
     const identitySummary: Array<{
         label: string;
@@ -392,8 +421,11 @@ export default function ShowProcurement({
                                 <TabsTrigger value="pelaksanaan">
                                     Pelaksanaan
                                 </TabsTrigger>
-                                <TabsTrigger value="keuangan">
-                                    Keuangan
+                                <TabsTrigger value="penyerahan">
+                                    Penyerahan
+                                </TabsTrigger>
+                                <TabsTrigger value="pembayaran">
+                                    Pembayaran
                                 </TabsTrigger>
                                 <TabsTrigger value="aktivitas">
                                     Aktivitas
@@ -477,28 +509,42 @@ export default function ShowProcurement({
                                 />
                             </TabsContent>
 
-                            <TabsContent value="keuangan" className="space-y-3">
+                            <TabsContent
+                                value="penyerahan"
+                                className="space-y-3"
+                            >
+                                {requirementsNotice}
+                                <ChecklistPanel
+                                    procurementId={procurement.id}
+                                    description="Kelengkapan dokumen penyerahan barang / pekerjaan sesuai pasal penyerahan pada kontrak (SPK, Surat Perjanjian, atau Lampiran Surat Pesanan)."
+                                    rows={financeRows('penyerahan')}
+                                    editable={can.updateFinanceChecklist}
+                                    canManageDocuments={
+                                        can.updateFinanceChecklist
+                                    }
+                                    lockedReason={financeLockedReason}
+                                />
+                            </TabsContent>
+
+                            <TabsContent
+                                value="pembayaran"
+                                className="space-y-3"
+                            >
                                 <FinanceStatus
                                     procurementId={procurement.id}
                                     finance={detail.finance}
                                     canComplete={can.completePayment}
                                 />
+                                {requirementsNotice}
                                 <ChecklistPanel
                                     procurementId={procurement.id}
-                                    description="Dokumen tagihan dan pembayaran yang dilengkapi Keuangan sebelum pengadaan ditutup."
-                                    rows={checklists.keuangan}
+                                    description="Kelengkapan dokumen permintaan pembayaran sesuai pasal cara pembayaran pada kontrak, diperiksa Keuangan sebelum pengadaan ditutup."
+                                    rows={financeRows('pembayaran')}
                                     editable={can.updateFinanceChecklist}
                                     canManageDocuments={
                                         can.updateFinanceChecklist
                                     }
-                                    lockedReason={
-                                        detail.finance.paid_at !== null
-                                            ? 'Checklist terkunci karena pembayaran sudah dicatat.'
-                                            : detail.finance.submitted_at ===
-                                                null
-                                              ? 'Tahap Keuangan terbuka setelah pengadaan diserahkan oleh PIC Pelaksana.'
-                                              : 'Hanya Keuangan yang dapat mengubah checklist ini.'
-                                    }
+                                    lockedReason={financeLockedReason}
                                 />
                             </TabsContent>
 

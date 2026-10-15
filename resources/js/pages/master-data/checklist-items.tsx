@@ -7,6 +7,10 @@ import type { EnumOption, ProcurementStage } from '@/types';
 type ChecklistItem = MasterRecord & {
     stage: ProcurementStage;
     stage_label: string;
+    section: string;
+    section_label: string | null;
+    work_category: string;
+    work_category_label: string | null;
     name: string;
     description: string | null;
     is_optional: boolean;
@@ -23,6 +27,8 @@ type ChecklistItem = MasterRecord & {
 export default function ChecklistItems({
     records,
     stages,
+    sections,
+    workCategories,
     inputKinds,
     procurementMethods,
     contractNumberFormats,
@@ -30,6 +36,8 @@ export default function ChecklistItems({
 }: {
     records: ChecklistItem[];
     stages: EnumOption[];
+    sections: EnumOption[];
+    workCategories: EnumOption[];
     inputKinds: EnumOption[];
     procurementMethods: EnumOption[];
     contractNumberFormats: EnumOption[];
@@ -45,12 +53,24 @@ export default function ChecklistItems({
     return (
         <MasterDataPage<ChecklistItem>
             title="Item Checklist"
-            description="Daftar dokumen dan tahapan yang harus dilengkapi pada tahap perencanaan maupun pelaksanaan."
+            description="Daftar dokumen dan tahapan yang harus dilengkapi pada tahap perencanaan, pelaksanaan, serta penyerahan dan pembayaran (Keuangan)."
             addLabel="Tambah Item"
             records={records}
             nameKey="name"
             columns={[
-                { key: 'stage_label', label: 'Tahap' },
+                {
+                    key: 'stage_label',
+                    label: 'Tahap',
+                    render: (record) =>
+                        record.section_label
+                            ? `${record.stage_label} — ${record.section_label}`
+                            : record.stage_label,
+                },
+                {
+                    key: 'work_category_label',
+                    label: 'Kategori',
+                    render: (record) => record.work_category_label ?? 'Semua',
+                },
                 { key: 'name', label: 'Item', className: 'font-medium' },
                 { key: 'description', label: 'Keterangan' },
                 {
@@ -103,6 +123,20 @@ export default function ChecklistItems({
                     type: 'select',
                     options: stages,
                     placeholder: 'Pilih tahap',
+                },
+                {
+                    name: 'section',
+                    label: 'Tab Keuangan',
+                    type: 'select',
+                    options: sections,
+                    hint: 'Hanya untuk tahap Keuangan: tampil di tab Penyerahan (kelengkapan penyerahan barang/pekerjaan) atau Pembayaran (kelengkapan permintaan pembayaran).',
+                },
+                {
+                    name: 'work_category',
+                    label: 'Kategori Pekerjaan',
+                    type: 'select',
+                    options: workCategories,
+                    hint: 'Batasi item ini untuk pengadaan barang atau jasa saja. Pilih "Barang dan Jasa" bila berlaku untuk keduanya.',
                 },
                 {
                     name: 'name',
@@ -163,6 +197,8 @@ export default function ChecklistItems({
             ]}
             defaults={{
                 stage: 'perencanaan',
+                section: 'none',
+                work_category: 'none',
                 name: '',
                 description: '',
                 is_optional: false,

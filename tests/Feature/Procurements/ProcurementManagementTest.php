@@ -53,11 +53,16 @@ class ProcurementManagementTest extends TestCase
         $this->assertSame($budgetSource->id, $procurement->budget_source_id);
         $this->assertSame($teamLeader->id, $procurement->created_by);
         $this->assertMatchesRegularExpression('#^PGD/\d{4}/\d{2}/0001$#', $procurement->number);
-        // The planning and execution steps above, plus the default Keuangan steps.
+        // The planning and execution steps above. The Keuangan steps are the
+        // delivery and payment requirements of a contract format, and none is
+        // set up here.
         $this->assertCount(5, $procurement->checklists->where('stage', '!=', ProcurementStage::Keuangan));
         $this->assertCount(3, $procurement->checklists->where('stage', ProcurementStage::Perencanaan));
         $this->assertCount(2, $procurement->checklists->where('stage', ProcurementStage::Pelaksanaan));
-        $this->assertNotEmpty($procurement->checklists->where('stage', ProcurementStage::Keuangan));
+        $this->assertCount(
+            ChecklistItem::query()->forStage(ProcurementStage::Keuangan)->active()->count(),
+            $procurement->checklists->where('stage', ProcurementStage::Keuangan),
+        );
         $this->assertDatabaseHas('procurement_activities', [
             'procurement_id' => $procurement->id,
             'type' => 'dibuat',

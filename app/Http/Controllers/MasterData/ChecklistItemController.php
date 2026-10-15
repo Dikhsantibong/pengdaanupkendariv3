@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\MasterData;
 
 use App\Enums\ChecklistInput;
+use App\Enums\FinanceSection;
 use App\Enums\ProcurementStage;
+use App\Enums\WorkCategory;
 use App\Models\ChecklistItem;
 use App\Models\ContractNumberFormat;
 use App\Models\DocumentType;
@@ -81,6 +83,10 @@ class ChecklistItemController extends MasterDataController
                 'id' => $record->id,
                 'stage' => $record->stage->value,
                 'stage_label' => $record->stage->label(),
+                'section' => $record->section === null ? 'none' : $record->section->value,
+                'section_label' => $record->section?->label(),
+                'work_category' => $record->work_category === null ? 'none' : $record->work_category->value,
+                'work_category_label' => $record->work_category?->label(),
                 'name' => $record->name,
                 'description' => $record->description,
                 'is_optional' => $record->is_optional,
@@ -122,6 +128,20 @@ class ChecklistItemController extends MasterDataController
         // "none" is the select's way of saying the step asks for nothing.
         $kind = $validated['input_kind'] ?? null;
         $validated['input_kind'] = $kind === null || $kind === 'none' ? null : $kind;
+
+        // Left alone when the form does not send them, so an older form
+        // cannot wipe them. A tab only means something on the Keuangan stage.
+        if (array_key_exists('section', $validated)) {
+            $section = $validated['section'];
+            $validated['section'] = $section === null || $section === 'none' || $validated['stage'] !== ProcurementStage::Keuangan->value
+                ? null
+                : $section;
+        }
+
+        if (array_key_exists('work_category', $validated)) {
+            $category = $validated['work_category'];
+            $validated['work_category'] = $category === null || $category === 'none' ? null : $category;
+        }
 
         return $validated;
     }
@@ -201,6 +221,14 @@ class ChecklistItemController extends MasterDataController
     {
         return [
             'stages' => ProcurementStage::options(),
+            'sections' => [
+                ['value' => 'none', 'label' => 'Tanpa tab (Pembayaran)'],
+                ...FinanceSection::options(),
+            ],
+            'workCategories' => [
+                ['value' => 'none', 'label' => 'Barang dan Jasa'],
+                ...WorkCategory::options(),
+            ],
             'inputKinds' => [
                 ['value' => 'none', 'label' => 'Tanpa isian'],
                 ...ChecklistInput::options(),
@@ -232,6 +260,8 @@ class ChecklistItemController extends MasterDataController
     {
         return [
             'stage' => ['required', Rule::enum(ProcurementStage::class)],
+            'section' => ['nullable', Rule::in(['none', ...array_column(FinanceSection::cases(), 'value')])],
+            'work_category' => ['nullable', Rule::in(['none', ...array_column(WorkCategory::cases(), 'value')])],
             'name' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:255'],
             'is_optional' => ['required', 'boolean'],

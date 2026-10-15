@@ -16,6 +16,8 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             MasterDataSeeder::class,
+            // Penyerahan and Pembayaran requirements of each contract format.
+            FinanceRequirementSeeder::class,
             // Every default template, from resources/document-templates.
             DocumentTemplateLibrarySeeder::class,
             VendorAssessmentSeeder::class,

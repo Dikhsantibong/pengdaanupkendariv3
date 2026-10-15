@@ -5,12 +5,14 @@ namespace Tests\Feature\Procurements;
 use App\Enums\ProcurementStage;
 use App\Enums\UserRole;
 use App\Models\ChecklistItem;
+use App\Models\ContractNumberFormat;
 use App\Models\Procurement;
 use App\Models\ProcurementChecklist;
 use App\Models\User;
 use App\Notifications\ProcurementAssigned;
 use App\Notifications\ProcurementMilestone;
 use App\Services\ProcurementService;
+use Database\Seeders\FinanceRequirementSeeder;
 use Database\Seeders\FinanceStageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -39,27 +41,40 @@ class FinanceStageTest extends TestCase
 
         ChecklistItem::factory()->stage(ProcurementStage::Pelaksanaan)->count(2)->create();
 
+        foreach (['SPK', 'PJ', 'SPPL'] as $code) {
+            ContractNumberFormat::factory()->create(['code' => $code]);
+        }
+
+        $this->seed(FinanceRequirementSeeder::class);
+
         $this->procurement = Procurement::factory()
             ->planningApproved()
             ->executedBy($this->executor)
-            ->create(['procurement_method_id' => null]);
+            ->create([
+                'procurement_method_id' => null,
+                'contract_number_format_id' => ContractNumberFormat::query()->where('code', 'SPK')->value('id'),
+                'work_category' => 'jasa',
+            ]);
 
         app(ProcurementService::class)->syncChecklists($this->procurement);
     }
 
-    public function test_the_default_keuangan_steps_are_master_data(): void
+    public function test_the_generic_keuangan_steps_are_switched_off(): void
     {
-        $names = ChecklistItem::query()
-            ->forStage(ProcurementStage::Keuangan)
-            ->ordered()
-            ->pluck('name')
-            ->all();
-
-        $this->assertSame(array_column(FinanceStageSeeder::STEPS, 0), $names);
+        // Laid out by the earlier migration, replaced by the requirements.
+        $this->assertSame(
+            0,
+            ChecklistItem::query()
+                ->forStage(ProcurementStage::Keuangan)
+                ->active()
+                ->whereIn('name', array_column(FinanceStageSeeder::STEPS, 0))
+                ->count(),
+        );
 
         // Seeding again adds nothing new.
-        $this->seed(FinanceStageSeeder::class);
-        $this->assertSame(count(FinanceStageSeeder::STEPS), ChecklistItem::query()->forStage(ProcurementStage::Keuangan)->count());
+        $count = ChecklistItem::query()->forStage(ProcurementStage::Keuangan)->count();
+        $this->seed(FinanceRequirementSeeder::class);
+        $this->assertSame($count, ChecklistItem::query()->forStage(ProcurementStage::Keuangan)->count());
     }
 
     public function test_the_executor_hands_over_only_a_finished_execution(): void
@@ -105,7 +120,7 @@ class FinanceStageTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->where('can.updateFinanceChecklist', true)
                 ->where('can.completePayment', false)
-                ->has('checklists.keuangan', count(FinanceStageSeeder::STEPS)));
+                ->has('checklists.keuangan', $this->spkJasaRequirementCount()));
 
         $this->actingAs($this->finance)
             ->get(route('finance.index'))
@@ -132,7 +147,7 @@ class FinanceStageTest extends TestCase
             ->post(route('procurements.finance.complete', $this->procurement))
             ->assertForbidden();
 
-        // Optional steps (Faktur Pajak) do not hold the payment back.
+        // Optional steps (those "apabila ada") do not hold the payment back.
         $this->procurement->checklists()
             ->where('stage', ProcurementStage::Keuangan)
             ->whereHas('checklistItem', fn ($item) => $item->where('is_optional', false))
@@ -178,6 +193,16 @@ class FinanceStageTest extends TestCase
         app(ProcurementService::class)->reviewPlanning($procurement, User::factory()->teamLeaderIcc()->create(), true);
 
         Notification::assertSentTo($this->executor, ProcurementAssigned::class);
+    }
+
+    /**
+     * How many Penyerahan and Pembayaran requirements the SPK Jasa carries.
+     */
+    protected function spkJasaRequirementCount(): int
+    {
+        $items = FinanceRequirementSeeder::SOURCES['SPK Jasa']['items'];
+
+        return count($items['penyerahan']) + count($items['pembayaran']);
     }
 
     /**

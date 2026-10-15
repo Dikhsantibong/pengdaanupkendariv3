@@ -292,6 +292,13 @@ class ProcurementService
             ->active()
             ->forProcurementMethod($procurement->procurement_method_id)
             ->forContractNumberFormat($procurement->contract_number_format_id)
+            ->forWorkCategory($procurement->work_category)
+            // The Penyerahan and Pembayaran requirements are those of one
+            // contract, so they wait until the contract format is known.
+            ->when(
+                $procurement->contract_number_format_id === null,
+                fn ($query) => $query->whereNull('section'),
+            )
             ->ordered()
             ->get();
 

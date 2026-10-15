@@ -578,16 +578,36 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 ## 3. Tahap Keuangan
 
 - Pengadaan yang diserahkan muncul di menu **Keuangan** (antrean *Menunggu Pembayaran*, total nilai tagihan, dan riwayat *Sudah Dibayar*) serta kartu dashboard **Tagihan Menunggu Pembayaran**, dan seluruh akun Keuangan mendapat notifikasi.
-- Peran **Keuangan** (`keuangan`) mengerjakan tab **Keuangan** di detail pengadaan. Tahapan bawaan (dapat diubah di **Data Master → Item Checklist**, tahap *Keuangan*; dokumennya di **Jenis Dokumen**, semua *unggah saja*):
+- Peran **Keuangan** (`keuangan`) mengerjakan dua tab di detail pengadaan, yaitu **Penyerahan** dan **Pembayaran** (dulu satu tab *Keuangan*). Tautan lama `?tab=keuangan` membuka tab Penyerahan.
+- **Isi checklist** diambil dari pasal syarat penyerahan dan syarat pembayaran pada template kontrak masing-masing format:
 
-| Tahapan | Dokumen | Sifat |
-|---------|---------|-------|
-| Penerimaan Tagihan | Invoice / Surat Tagihan, Kuitansi | Wajib |
-| Berita Acara Serah Terima | BAST | Wajib |
-| Faktur Pajak | Faktur Pajak | Opsional |
-| Verifikasi Dokumen Tagihan | — (centang) | Wajib |
-| Pengajuan Pembayaran | Dokumen Pengajuan Pembayaran | Wajib |
-| Pembayaran ke Mitra | Bukti Transfer Pembayaran | Wajib |
+| Kontrak (format / kategori) | Tab Penyerahan | Tab Pembayaran |
+|---|---|---|
+| SPK Barang (SPK / barang) | Pasal 6 ayat (7) huruf a–f | Pasal 5 ayat (1) huruf a–m |
+| SPK Jasa (SPK / jasa) | Pasal 6 ayat (8) huruf a–g | Pasal 5 ayat (1) huruf a–l |
+| Surat Perjanjian (PJ) | Pasal 5 ayat (5) huruf a–g | Pasal 10 ayat (1) huruf a–h |
+| Lampiran Surat Pesanan (SPPL) | Bagian B (Penerimaan) butir 3–4 | Bagian D (Pembayaran) butir 1 huruf a–o |
+
+- **Sifat item:**
+  - Item bertanda "(apabila ada)" atau "(jika ada)" bersifat **opsional**.
+  - Untuk SPPL, item yang khusus barang atau jasa juga opsional.
+  - Keterangan setiap item menyebut sumbernya, misalnya "SPK Jasa Pasal 6 ayat (8) huruf f".
+- **Penyaringan per pengadaan:**
+  - Syarat hanya muncul setelah **format kontrak** diisi. Untuk format yang memakai kategori (SPK), kategori **barang/jasa** juga harus diisi.
+  - Selama belum diisi, kedua tab menampilkan pemberitahuan agar data itu dilengkapi lewat Ubah Data.
+  - Pengadaan tanpa format tidak lagi menampilkan syarat semua format sekaligus.
+  - Format kontrak memakai pengecualian format yang sudah ada.
+  - Kategori barang/jasa memakai kolom baru `checklist_items.work_category` (kosong berarti berlaku untuk keduanya).
+  - Tab ditentukan kolom `checklist_items.section` (`penyerahan` / `pembayaran`, enum `FinanceSection`). Item Keuangan tanpa tab tampil di Pembayaran.
+- **Penjaga kecocokan:** `FinanceRequirementSourceTest` membaca file template dan memastikan daftar syarat sama kata per kata dengan pasalnya.
+  - Pengecualian yang disengaja ada dua: "selama masa garansi" menggantikan placeholder bulan, dan "TTE" menggantikan "tanda tangan elektronik" agar muat 255 karakter.
+  - Bila pasal penyerahan atau pembayaran di template diubah, test ini gagal sampai syaratnya disesuaikan.
+- **Data Master → Item Checklist** sekarang punya isian **Tab Keuangan** dan **Kategori Pekerjaan**, sehingga semua item tetap bisa diubah atau ditambah.
+- **Seeder dan migration:**
+  - Seeder: `FinanceRequirementSeeder`, ikut `DatabaseSeeder`.
+  - Migration `2026_10_15_141204_split_keuangan_into_penyerahan_and_pembayaran`: menambah kedua kolom, memasang syarat, dan menonaktifkan 6 tahapan Keuangan generik lama (Penerimaan Tagihan, BAST, Faktur Pajak, Verifikasi, Pengajuan Pembayaran, Pembayaran ke Mitra).
+  - Centang lama yang sudah selesai tetap tersimpan sebagai riwayat.
+- **Kartu pembayaran:** status dan tombol **Pembayaran Lunas & Tutup Pengadaan** ada di tab Pembayaran.
 
 - Setelah semua tahapan wajib selesai, Keuangan menekan **Pembayaran Lunas & Tutup Pengadaan**: pengadaan ditutup (`completed_at`), status progres otomatis menjadi **Selesai**, dan pengusul, TL, Asman, PIC Pelaksana, serta TL Pengadaan/ICC mendapat notifikasi.
 - Pengadaan tidak lagi bisa ditutup manual sebelum dibayar (hak `procurement.complete` hanya berlaku untuk pengadaan yang sudah lunas).
@@ -890,7 +910,12 @@ Bagian **Request Penilaian Vendor** ada di halaman Penilaian Penyedia, di atas d
 ## Pratinjau PDF di Ponsel
 
 - **Masalahnya:** Chrome di Android tidak punya penampil PDF di dalam halaman, dan browser di iOS hanya menampilkan halaman pertama. Desktop Chrome yang disetel "unduh PDF" juga tidak bisa menampilkannya.
-- **Perilaku sekarang:** di kondisi tersebut, tab Pratinjau Cetak menampilkan tombol **Buka PDF** dan **Unduh PDF** sebagai pengganti iframe kosong.
+- **Perilaku sekarang:** di kondisi tersebut, tab Pratinjau Cetak menggambar PDF memakai **pdf.js** (`pdfjs-dist`, komponen `pdf-canvas-viewer.tsx`).
+  - Setiap halaman digambar ke canvas saat mendekati layar, agar ringan di HP.
+  - Tombol **Buka PDF** dan **Unduh PDF** tetap tersedia di atas halaman.
+  - Bila pdf.js tidak bisa berjalan, misalnya di browser yang sangat lama, yang tampil hanya kedua tombol itu.
+  - Di laptop/desktop tetap memakai penampil PDF bawaan browser.
+  - pdf.js dimuat terpisah, hanya saat dibutuhkan.
 
 ---
 

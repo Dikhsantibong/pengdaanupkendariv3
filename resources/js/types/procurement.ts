@@ -126,6 +126,8 @@ export type ChecklistRow = {
     id: number;
     name: string;
     description: string | null;
+    /** The Keuangan tab of the step: Penyerahan or Pembayaran. */
+    section?: 'penyerahan' | 'pembayaran' | null;
     is_optional: boolean;
     is_completed: boolean;
     notes: string | null;

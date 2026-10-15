@@ -12,6 +12,8 @@ export type FinanceDetail = {
     paid_by: string | null;
     pending_execution: string[];
     pending_finance: string[];
+    /** What has to be filled in before the contract's requirements appear. */
+    requirements_waiting_for: string[];
 };
 
 /** A short list of the steps still holding a hand-over back. */

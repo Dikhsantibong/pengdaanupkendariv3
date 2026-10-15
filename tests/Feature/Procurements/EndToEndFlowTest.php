@@ -18,6 +18,7 @@ use App\Models\TargetUnit;
 use App\Models\User;
 use App\Models\WorkDirector;
 use Database\Seeders\DocumentTemplateLibrarySeeder;
+use Database\Seeders\FinanceRequirementSeeder;
 use Database\Seeders\MasterDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -41,6 +42,7 @@ class EndToEndFlowTest extends TestCase
         Storage::fake('local');
 
         $this->seed(MasterDataSeeder::class);
+        $this->seed(FinanceRequirementSeeder::class);
         $this->seed(DocumentTemplateLibrarySeeder::class);
     }
 

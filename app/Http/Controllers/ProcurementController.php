@@ -230,6 +230,14 @@ class ProcurementController extends Controller
                     'pending_finance' => $procurement->pendingRequiredChecklists(ProcurementStage::Keuangan)
                         ->map(fn ($checklist): string => $checklist->checklistItem->name)
                         ->all(),
+                    // The Penyerahan and Pembayaran requirements follow the
+                    // contract, so they wait for what decides which contract.
+                    'requirements_waiting_for' => array_values(array_filter([
+                        $procurement->contract_number_format_id === null ? 'format kontrak' : null,
+                        $procurement->contractNumberFormat?->uses_work_category && $procurement->work_category === null
+                            ? 'kategori pekerjaan (barang / jasa)'
+                            : null,
+                    ])),
                 ],
             ],
             'checklists' => [
@@ -434,6 +442,9 @@ class ProcurementController extends Controller
                     'id' => $checklist->id,
                     'name' => $item->name,
                     'description' => $item->description,
+                    // The Keuangan tab the step sits on; steps without one
+                    // are shown under Pembayaran.
+                    'section' => $item->section?->value,
                     'is_optional' => $item->is_optional,
                     'is_completed' => $checklist->is_completed,
                     'notes' => $checklist->notes,

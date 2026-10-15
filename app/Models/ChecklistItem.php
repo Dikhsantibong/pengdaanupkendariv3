@@ -4,7 +4,9 @@ namespace App\Models;
 
 use App\Concerns\MasterDataScopes;
 use App\Enums\ChecklistInput;
+use App\Enums\FinanceSection;
 use App\Enums\ProcurementStage;
+use App\Enums\WorkCategory;
 use Database\Factories\ChecklistItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,6 +20,8 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property ProcurementStage $stage
+ * @property FinanceSection|null $section
+ * @property WorkCategory|null $work_category
  * @property string $name
  * @property string|null $description
  * @property bool $is_optional
@@ -29,7 +33,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $deleted_at
  * @property-read int|null $procurement_checklists_count
  */
-#[Fillable(['stage', 'name', 'description', 'is_optional', 'input_kind', 'sort_order', 'is_active'])]
+#[Fillable(['stage', 'section', 'work_category', 'name', 'description', 'is_optional', 'input_kind', 'sort_order', 'is_active'])]
 class ChecklistItem extends Model
 {
     /** @use HasFactory<ChecklistItemFactory> */
@@ -143,6 +147,29 @@ class ChecklistItem extends Model
     }
 
     /**
+     * Limit the query to the steps that apply to goods or to services.
+     *
+     * A step without a category applies to both. A procurement whose
+     * category is not known yet gets only those: a goods-only or
+     * services-only step cannot be told apart for it.
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeForWorkCategory(Builder $query, WorkCategory|string|null $category): Builder
+    {
+        if ($category === null) {
+            return $query->whereNull('work_category');
+        }
+
+        $value = $category instanceof WorkCategory ? $category->value : $category;
+
+        return $query->where(fn (Builder $inner): Builder => $inner
+            ->whereNull('work_category')
+            ->orWhere('work_category', $value));
+    }
+
+    /**
      * Limit the query to a single procurement stage.
      *
      * @param  Builder<static>  $query
@@ -183,6 +210,8 @@ class ChecklistItem extends Model
     {
         return [
             'stage' => ProcurementStage::class,
+            'section' => FinanceSection::class,
+            'work_category' => WorkCategory::class,
             'is_optional' => 'boolean',
             'input_kind' => ChecklistInput::class,
             'is_active' => 'boolean',
