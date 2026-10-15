@@ -6,7 +6,8 @@ import {
     RefreshCw,
     TriangleAlert,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { PdfCanvasViewer } from '@/components/document-editor/pdf-canvas-viewer';
 import { Button } from '@/components/ui/button';
 
 type Draft = { title: string; body: string };
@@ -190,36 +191,12 @@ export function PdfPreview({
                         </Button>
                     </div>
                 ) : !inline ? (
-                    <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-                        <FileText className="size-8 text-muted-foreground" />
-                        <p className="max-w-md text-sm">
-                            Pratinjau PDF sudah siap, tetapi browser ini tidak
-                            bisa menampilkan PDF di dalam halaman (umumnya
-                            Chrome di Android / iOS). Buka atau unduh PDF untuk
-                            melihatnya.
-                        </p>
-                        <div className="flex flex-wrap justify-center gap-2">
-                            <Button asChild size="sm">
-                                <a
-                                    href={rendered?.url ?? '#'}
-                                    target="_blank"
-                                    rel="noopener"
-                                >
-                                    <ExternalLink className="size-3.5" />
-                                    Buka PDF
-                                </a>
-                            </Button>
-                            <Button asChild size="sm" variant="outline">
-                                <a
-                                    href={rendered?.url ?? '#'}
-                                    download={`pratinjau-${(draft.title || 'dokumen').replace(/[\\/:*?"<>|]+/g, '-')}.pdf`}
-                                >
-                                    <Download className="size-3.5" />
-                                    Unduh PDF
-                                </a>
-                            </Button>
-                        </div>
-                    </div>
+                    <PhonePdf
+                        // A fresh viewer for every render of the draft.
+                        key={rendered?.url ?? ''}
+                        url={rendered?.url ?? ''}
+                        fileName={`pratinjau-${(draft.title || 'dokumen').replace(/[\\/:*?"<>|]+/g, '-')}.pdf`}
+                    />
                 ) : (
                     <iframe
                         src={`${rendered?.url ?? ''}#view=FitH`}
@@ -227,6 +204,55 @@ export function PdfPreview({
                         className="h-full w-full bg-white"
                     />
                 )}
+            </div>
+        </div>
+    );
+}
+
+/**
+ * The preview on a phone or tablet: the pages drawn with pdf.js, and the
+ * open / download buttons if even that cannot run on this browser.
+ */
+function PhonePdf({ url, fileName }: { url: string; fileName: string }) {
+    const [failed, setFailed] = useState(false);
+    const fail = useCallback(() => setFailed(true), []);
+
+    const actions = (
+        <div className="flex flex-wrap justify-center gap-2">
+            <Button asChild size="sm" variant={failed ? 'default' : 'outline'}>
+                <a href={url} target="_blank" rel="noopener">
+                    <ExternalLink className="size-3.5" />
+                    Buka PDF
+                </a>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+                <a href={url} download={fileName}>
+                    <Download className="size-3.5" />
+                    Unduh PDF
+                </a>
+            </Button>
+        </div>
+    );
+
+    if (failed) {
+        return (
+            <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+                <FileText className="size-8 text-muted-foreground" />
+                <p className="max-w-md text-sm">
+                    Pratinjau PDF sudah siap, tetapi browser ini tidak bisa
+                    menampilkannya di dalam halaman. Buka atau unduh PDF untuk
+                    melihatnya.
+                </p>
+                {actions}
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex h-full flex-col">
+            <div className="border-b border-border bg-card p-2">{actions}</div>
+            <div className="min-h-0 flex-1">
+                <PdfCanvasViewer url={url} onFailure={fail} />
             </div>
         </div>
     );
