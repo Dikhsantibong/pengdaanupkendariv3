@@ -1,9 +1,14 @@
-import { router } from '@inertiajs/react';
-import { BadgeCheck, Landmark, Send } from 'lucide-react';
+import { router, useForm } from '@inertiajs/react';
+import { BadgeCheck, Landmark, RotateCcw, Send } from 'lucide-react';
 import { useState } from 'react';
+import InputError from '@/components/input-error';
+import { ApprovalBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { formatDateTime } from '@/lib/format';
 import procurements from '@/routes/procurements';
+import type { PlanningApprovalState } from '@/types';
 
 export type FinanceDetail = {
     submitted_at: string | null;
@@ -11,6 +16,18 @@ export type FinanceDetail = {
     paid_at: string | null;
     paid_by: string | null;
     pending_execution: string[];
+    /** The execution PIC's submission to TL Pengadaan. */
+    execution_approval: {
+        state: PlanningApprovalState;
+        label: string;
+        submitted_at: string | null;
+        reviewed_at: string | null;
+        reviewer: string | null;
+        note: string | null;
+        revision: number;
+        is_executor: boolean;
+        executor_name: string | null;
+    };
     pending_finance: string[];
     /** Per tab: the contract the requirements were read from, or null for the template. */
     requirements_source: Record<'penyerahan' | 'pembayaran', string | null>;
@@ -39,67 +56,200 @@ function PendingSteps({ title, steps }: { title: string; steps: string[] }) {
 }
 
 /**
- * Hand the executed job to Keuangan, shown at the end of the execution tab.
+ * The execution PIC submits the finished execution and TL Pengadaan approves
+ * it into Penyerahan and Pembayaran, shown at the end of the execution tab.
  */
-export function FinanceHandover({
+export function ExecutionApproval({
     procurementId,
     finance,
     canSubmit,
+    canReview,
     planningApproved,
 }: {
     procurementId: number;
     finance: FinanceDetail;
     canSubmit: boolean;
+    canReview: boolean;
     planningApproved: boolean;
 }) {
     const [processing, setProcessing] = useState(false);
+    const reviewForm = useForm<{ approved: boolean; note: string }>({
+        approved: true,
+        note: '',
+    });
 
     if (!planningApproved) {
         return null;
     }
 
+    const approval = finance.execution_approval;
+
     if (finance.submitted_at !== null) {
         return (
             <p className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-                <Landmark className="size-4 text-primary" />
-                Diserahkan ke Keuangan {formatDateTime(finance.submitted_at)}
-                {finance.submitted_by ? ` oleh ${finance.submitted_by}` : ''}.
-                Pelaksanaan terkunci.
+                <Landmark className="size-4 shrink-0 text-primary" />
+                <span>
+                    Pelaksanaan disetujui dan diserahkan ke Keuangan{' '}
+                    {formatDateTime(finance.submitted_at)}
+                    {finance.submitted_by
+                        ? ` oleh ${finance.submitted_by}`
+                        : ''}
+                    . Pelaksanaan terkunci.
+                </span>
             </p>
         );
     }
 
+    const isWaiting = approval.state === 'menunggu_persetujuan';
+    const isReturned = approval.state === 'ditolak';
+
+    const submit = () =>
+        router.post(
+            procurements.executionApproval.store(procurementId).url,
+            {},
+            {
+                preserveScroll: true,
+                onStart: () => setProcessing(true),
+                onFinish: () => setProcessing(false),
+            },
+        );
+
+    const decide = (approved: boolean) => {
+        reviewForm.transform((data) => ({ ...data, approved }));
+        reviewForm.put(
+            procurements.executionApproval.update(procurementId).url,
+            { preserveScroll: true },
+        );
+    };
+
     return (
         <section className="space-y-3 rounded-md border border-border bg-card p-4">
-            <div>
-                <p className="text-sm font-semibold">Serahkan ke Keuangan</p>
+            <div className="space-y-1.5">
+                <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold">
+                        Persetujuan Pelaksanaan
+                    </p>
+                    <ApprovalBadge
+                        state={approval.state}
+                        label={approval.label}
+                    />
+                    {approval.revision > 0 && (
+                        <span className="tabular rounded-sm bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                            Revisi ke-{approval.revision}
+                        </span>
+                    )}
+                </div>
                 <p className="text-xs text-muted-foreground">
-                    Setelah semua tahapan wajib pelaksanaan selesai, serahkan
-                    pengadaan ke Keuangan untuk proses pembayaran.
+                    Setelah semua tahapan wajib selesai, PIC Pelaksana
+                    mengajukan pelaksanaan ke TL Pengadaan. Pelaksanaan yang
+                    disetujui diteruskan ke Penyerahan dan Pembayaran
+                    (Keuangan).
                 </p>
+                {approval.submitted_at && (
+                    <p className="tabular text-xs text-muted-foreground">
+                        Diajukan {formatDateTime(approval.submitted_at)}
+                    </p>
+                )}
             </div>
-            <PendingSteps
-                title="Tahapan wajib yang belum selesai:"
-                steps={finance.pending_execution}
-            />
+
+            {isReturned && (
+                <div className="space-y-1.5 rounded-sm border border-destructive/40 bg-destructive/5 p-3">
+                    <p className="flex items-center gap-1.5 text-xs font-semibold text-destructive">
+                        <RotateCcw className="size-3.5" />
+                        Dikembalikan
+                        {approval.reviewer ? ` oleh ${approval.reviewer}` : ''}
+                        {approval.reviewed_at
+                            ? ` · ${formatDateTime(approval.reviewed_at)}`
+                            : ''}
+                    </p>
+                    <p className="text-xs text-foreground">
+                        <span className="font-medium">
+                            Yang harus diperbaiki:{' '}
+                        </span>
+                        {approval.note ?? '—'}
+                    </p>
+                    {!approval.is_executor && (
+                        <p className="text-xs text-muted-foreground">
+                            Tindak lanjut ada pada PIC Pelaksana
+                            {approval.executor_name
+                                ? ` (${approval.executor_name})`
+                                : ''}
+                            .
+                        </p>
+                    )}
+                </div>
+            )}
+
+            {isWaiting && approval.note && (
+                <p className="rounded-sm border border-border bg-muted/40 p-2.5 text-xs text-foreground">
+                    <span className="font-medium">
+                        Catatan revisi yang ditindaklanjuti:{' '}
+                    </span>
+                    {approval.note}
+                </p>
+            )}
+
+            {isWaiting && !canReview && (
+                <p className="text-xs text-muted-foreground">
+                    Menunggu keputusan TL Pengadaan. Checklist pelaksanaan
+                    terkunci selama ditinjau.
+                </p>
+            )}
+
+            {!isWaiting && (
+                <PendingSteps
+                    title="Tahapan wajib yang belum selesai:"
+                    steps={finance.pending_execution}
+                />
+            )}
+
             {canSubmit && (
-                <Button
-                    disabled={processing}
-                    onClick={() =>
-                        router.post(
-                            procurements.finance.submit(procurementId).url,
-                            {},
-                            {
-                                preserveScroll: true,
-                                onStart: () => setProcessing(true),
-                                onFinish: () => setProcessing(false),
-                            },
-                        )
-                    }
-                >
+                <Button disabled={processing} onClick={submit}>
                     <Send className="size-4" />
-                    Serahkan ke Keuangan
+                    {isReturned
+                        ? 'Ajukan Ulang ke TL Pengadaan'
+                        : 'Ajukan ke TL Pengadaan'}
                 </Button>
+            )}
+
+            {canReview && (
+                <div className="space-y-3 border-t border-border pt-3">
+                    <div className="grid gap-2">
+                        <Label htmlFor="execution-review-note">
+                            Catatan Persetujuan
+                        </Label>
+                        <Textarea
+                            id="execution-review-note"
+                            rows={2}
+                            value={reviewForm.data.note}
+                            onChange={(event) =>
+                                reviewForm.setData('note', event.target.value)
+                            }
+                            placeholder="Wajib diisi bila dikembalikan"
+                        />
+                        <InputError message={reviewForm.errors.note} />
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                        <Button
+                            type="button"
+                            size="sm"
+                            disabled={reviewForm.processing}
+                            onClick={() => decide(true)}
+                        >
+                            Setujui &amp; Teruskan ke Keuangan
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            disabled={reviewForm.processing}
+                            onClick={() => decide(false)}
+                        >
+                            Kembalikan
+                        </Button>
+                    </div>
+                </div>
             )}
         </section>
     );
@@ -139,8 +289,8 @@ export function FinanceStatus({
     if (finance.submitted_at === null) {
         return (
             <p className="rounded-md border border-dashed border-border px-4 py-3 text-sm text-muted-foreground">
-                Tahap Keuangan terbuka setelah PIC Pelaksana menyerahkan
-                pengadaan yang pelaksanaannya selesai.
+                Tahap Keuangan terbuka setelah TL Pengadaan menyetujui
+                pelaksanaan yang diajukan PIC Pelaksana.
             </p>
         );
     }

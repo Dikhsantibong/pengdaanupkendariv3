@@ -127,13 +127,37 @@ class ProcurementPolicy
     }
 
     /**
-     * Determine whether the user may appoint the planning and execution PICs.
+     * Determine whether the user may appoint at least one of the two PICs.
      */
     public function assignPic(User $user, Procurement $procurement): bool
     {
-        // Nobody is put on a job the Direksi Pekerjaan has not approved.
+        return $this->assignPlanner($user, $procurement)
+            || $this->assignExecutor($user, $procurement);
+    }
+
+    /**
+     * Determine whether the user may appoint the planning PIC.
+     *
+     * TL ICC by default, once the Asman has approved the proposal: nobody is
+     * put on a job the Direksi Pekerjaan has not approved.
+     */
+    public function assignPlanner(User $user, Procurement $procurement): bool
+    {
         return $procurement->isProposalApproved()
-            && $user->hasPermission(Permission::AssignPic)
+            && $user->hasPermission(Permission::AssignPlanner)
+            && $this->view($user, $procurement);
+    }
+
+    /**
+     * Determine whether the user may appoint the execution PIC.
+     *
+     * TL Pengadaan by default, and only after ICC approved the planning:
+     * execution is handed over once there is an approved plan to carry out.
+     */
+    public function assignExecutor(User $user, Procurement $procurement): bool
+    {
+        return $procurement->isPlanningApproved()
+            && $user->hasPermission(Permission::AssignExecutor)
             && $this->view($user, $procurement);
     }
 
@@ -236,8 +260,11 @@ class ProcurementPolicy
      */
     public function updateExecutionChecklist(User $user, Procurement $procurement): bool
     {
-        // Execution is final once the job is with Keuangan.
-        if (! $procurement->isPlanningApproved() || $procurement->finance_submitted_at !== null) {
+        // Held while TL Pengadaan reviews it, final once the job is with
+        // Keuangan.
+        if (! $procurement->isPlanningApproved()
+            || $procurement->isExecutionAwaitingApproval()
+            || $procurement->finance_submitted_at !== null) {
             return false;
         }
 
@@ -258,24 +285,42 @@ class ProcurementPolicy
     }
 
     /**
-     * Determine whether the user may hand the executed job to Keuangan.
+     * Determine whether the user may submit the execution for approval.
      *
-     * Only once every mandatory execution step is ticked, by the execution
-     * PIC or a supervisor.
+     * Like the planning, only the appointed PIC submits, and only once every
+     * mandatory execution step is ticked. TL Pengadaan then decides; the job
+     * reaches Keuangan only through that approval.
      */
-    public function submitToFinance(User $user, Procurement $procurement): bool
+    public function submitExecution(User $user, Procurement $procurement): bool
     {
         if (! $procurement->isPlanningApproved()
             || $procurement->finance_submitted_at !== null
-            || $procurement->completed_at !== null) {
+            || $procurement->completed_at !== null
+            || in_array($procurement->execution_approval_state, [
+                PlanningApprovalState::MenungguPersetujuan,
+                PlanningApprovalState::Disetujui,
+            ], true)) {
             return false;
         }
 
-        if (! $user->isSupervisor() && $procurement->executor_id !== $user->id) {
+        if ($procurement->executor_id !== $user->id) {
             return false;
         }
 
         return $procurement->pendingRequiredChecklists(ProcurementStage::Pelaksanaan)->isEmpty();
+    }
+
+    /**
+     * Determine whether the user may approve or return the execution.
+     *
+     * Approving hands the job to Keuangan for Penyerahan and Pembayaran.
+     */
+    public function reviewExecution(User $user, Procurement $procurement): bool
+    {
+        return $user->hasPermission(Permission::ReviewExecution)
+            && $this->view($user, $procurement)
+            && $procurement->isExecutionAwaitingApproval()
+            && $procurement->finance_submitted_at === null;
     }
 
     /**

@@ -12,7 +12,8 @@ use Inertia\Response;
 class ApprovalQueueController extends Controller
 {
     /**
-     * Show the procurements waiting for a team leader decision.
+     * Show the procurements waiting for a team leader decision: planning
+     * submissions for TL ICC, execution submissions for TL Pengadaan.
      */
     public function index(Request $request): Response
     {
@@ -24,6 +25,14 @@ class ApprovalQueueController extends Controller
             ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor', 'checklists'])
             ->orderBy('planning_submitted_at')
             ->paginate(15);
+
+        $executions = Procurement::query()
+            ->visibleTo($request->user())
+            ->where('execution_approval_state', PlanningApprovalState::MenungguPersetujuan->value)
+            ->whereNull('finance_submitted_at')
+            ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor', 'checklists'])
+            ->orderBy('execution_submitted_at')
+            ->paginate(15, pageName: 'execution_page');
 
         $decided = Procurement::query()
             ->visibleTo($request->user())
@@ -38,6 +47,7 @@ class ApprovalQueueController extends Controller
 
         return Inertia::render('approvals/index', [
             'procurements' => ProcurementResource::collection($procurements),
+            'executions' => ProcurementResource::collection($executions),
             'recentDecisions' => ProcurementResource::collection($decided)->resolve(),
         ]);
     }

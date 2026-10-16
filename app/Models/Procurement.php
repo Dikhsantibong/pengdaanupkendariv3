@@ -70,6 +70,12 @@ use Illuminate\Support\Collection;
  * @property int|null $planning_reviewed_by
  * @property string|null $planning_review_note
  * @property int $planning_revision
+ * @property PlanningApprovalState $execution_approval_state
+ * @property CarbonImmutable|null $execution_submitted_at
+ * @property CarbonImmutable|null $execution_reviewed_at
+ * @property int|null $execution_reviewed_by
+ * @property string|null $execution_review_note
+ * @property int $execution_revision
  * @property CarbonImmutable|null $completed_at
  * @property CarbonImmutable|null $target_completion_date
  * @property CarbonImmutable|null $execution_start_date
@@ -132,6 +138,8 @@ class Procurement extends Model
      */
     protected $attributes = [
         'proposal_state' => 'disetujui',
+        'execution_approval_state' => 'belum_diajukan',
+        'execution_revision' => 0,
     ];
 
     /**
@@ -290,6 +298,16 @@ class Procurement extends Model
     public function planningReviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'planning_reviewed_by');
+    }
+
+    /**
+     * The team leader who reviewed the execution.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function executionReviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'execution_reviewed_by')->withTrashed();
     }
 
     /**
@@ -576,6 +594,14 @@ class Procurement extends Model
     }
 
     /**
+     * Determine whether the execution PIC's submission waits for a decision.
+     */
+    public function isExecutionAwaitingApproval(): bool
+    {
+        return $this->execution_approval_state === PlanningApprovalState::MenungguPersetujuan;
+    }
+
+    /**
      * Determine whether the planning stage was sent back for revision.
      */
     public function needsPlanningRevision(): bool
@@ -650,6 +676,10 @@ class Procurement extends Model
             'planning_approval_state' => PlanningApprovalState::class,
             'planning_submitted_at' => 'datetime',
             'planning_reviewed_at' => 'datetime',
+            'execution_approval_state' => PlanningApprovalState::class,
+            'execution_submitted_at' => 'datetime',
+            'execution_reviewed_at' => 'datetime',
+            'execution_revision' => 'integer',
             'completed_at' => 'datetime',
             'finance_submitted_at' => 'datetime',
             'payment_completed_at' => 'datetime',

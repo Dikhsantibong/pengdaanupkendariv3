@@ -4,9 +4,12 @@ namespace App\Providers;
 
 use App\Enums\Permission;
 use App\Models\User;
+use App\Support\Impersonation;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -28,6 +31,22 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureGates();
+        $this->configureImpersonation();
+    }
+
+    /**
+     * Close the audit entry of a "Pindah Akun" session that signs out
+     * without coming back first.
+     */
+    protected function configureImpersonation(): void
+    {
+        Event::listen(Logout::class, function (): void {
+            $request = request();
+
+            if ($request->hasSession() && Impersonation::isActive($request)) {
+                Impersonation::close($request);
+            }
+        });
     }
 
     /**
@@ -42,7 +61,10 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('view-all-procurements', fn (User $user): bool => $user->hasPermission(Permission::ViewAllProcurements));
 
-        Gate::define('assign-pic', fn (User $user): bool => $user->hasPermission(Permission::AssignPic));
+        // The Penunjukan PIC board serves both team leaders: TL ICC appoints
+        // planners, TL Pengadaan executors.
+        Gate::define('assign-pic', fn (User $user): bool => $user->hasPermission(Permission::AssignPlanner)
+            || $user->hasPermission(Permission::AssignExecutor));
 
         // Every right is also a gate under its own name, so a route can be
         // closed with `can:menu.reports` and the like.

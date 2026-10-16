@@ -65,6 +65,8 @@ class ProcurementResource extends JsonResource
             'executor' => $this->executor?->only(['id', 'name']),
             'planning_approval_state' => $this->planning_approval_state->value,
             'planning_approval_label' => $this->planning_approval_state->label(),
+            'execution_approval_state' => $this->execution_approval_state->value,
+            'execution_approval_label' => $this->execution_approval_state->label(),
             'current_stage' => $this->resource->currentStage()['key'],
             'current_stage_label' => $this->resource->currentStage()['label'],
             'finance_submitted_at' => $this->finance_submitted_at?->toDateTimeString(),

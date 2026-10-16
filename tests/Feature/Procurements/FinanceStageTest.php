@@ -19,8 +19,8 @@ use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 /**
- * After execution the job goes to Keuangan, who pays the partner and closes
- * the procurement.
+ * After execution, approved by TL Pengadaan, the job goes to Keuangan, who
+ * pays the partner and closes the procurement.
  */
 class FinanceStageTest extends TestCase
 {
@@ -77,30 +77,44 @@ class FinanceStageTest extends TestCase
         $this->assertSame($count, ChecklistItem::query()->forStage(ProcurementStage::Keuangan)->count());
     }
 
-    public function test_the_executor_hands_over_only_a_finished_execution(): void
+    public function test_the_executor_submits_only_a_finished_execution_and_tl_pengadaan_hands_it_over(): void
     {
         Notification::fake();
 
+        $teamLeader = User::factory()->teamLeaderPengadaan()->create();
+
         $this->actingAs($this->executor)
-            ->post(route('procurements.finance.submit', $this->procurement))
+            ->post(route('procurements.execution-approval.store', $this->procurement))
             ->assertForbidden();
 
         $this->tick(ProcurementStage::Pelaksanaan);
 
         $this->actingAs($this->executor)
-            ->post(route('procurements.finance.submit', $this->procurement))
+            ->post(route('procurements.execution-approval.store', $this->procurement))
+            ->assertRedirect();
+
+        // Submitting is not handing over: TL Pengadaan decides first, and
+        // execution is held while it is reviewed.
+        $this->procurement->refresh();
+        $this->assertFalse($this->procurement->isInFinance());
+        $this->assertFalse($this->executor->can('updateExecutionChecklist', $this->procurement));
+        Notification::assertSentTo($teamLeader, ProcurementMilestone::class);
+        Notification::assertNotSentTo($this->finance, ProcurementMilestone::class);
+
+        $this->actingAs($teamLeader)
+            ->put(route('procurements.execution-approval.update', $this->procurement), ['approved' => true])
             ->assertRedirect();
 
         $this->procurement->refresh();
         $this->assertTrue($this->procurement->isInFinance());
-        $this->assertSame($this->executor->id, $this->procurement->finance_submitted_by);
+        $this->assertSame($teamLeader->id, $this->procurement->finance_submitted_by);
 
         Notification::assertSentTo($this->finance, ProcurementMilestone::class);
 
-        // Execution is final now; nobody hands it over twice.
+        // Execution is final now; nobody submits it twice.
         $this->assertFalse($this->executor->can('updateExecutionChecklist', $this->procurement));
         $this->actingAs($this->executor)
-            ->post(route('procurements.finance.submit', $this->procurement))
+            ->post(route('procurements.execution-approval.store', $this->procurement))
             ->assertForbidden();
     }
 
@@ -206,14 +220,19 @@ class FinanceStageTest extends TestCase
     }
 
     /**
-     * Finish execution and hand the job to Keuangan.
+     * Finish execution, submit it and have TL Pengadaan approve it, which
+     * hands the job to Keuangan.
      */
     protected function handOver(): void
     {
         $this->tick(ProcurementStage::Pelaksanaan);
 
         $this->actingAs($this->executor)
-            ->post(route('procurements.finance.submit', $this->procurement))
+            ->post(route('procurements.execution-approval.store', $this->procurement))
+            ->assertRedirect();
+
+        $this->actingAs(User::factory()->teamLeaderPengadaan()->create())
+            ->put(route('procurements.execution-approval.update', $this->procurement), ['approved' => true])
             ->assertRedirect();
 
         $this->procurement->refresh();

@@ -24,8 +24,15 @@ enum Permission: string
     case ApproveProposal = 'procurement.approve-proposal';
     case UpdateProcurement = 'procurement.update';
     case DeleteProcurement = 'procurement.delete';
-    case AssignPic = 'procurement.assign-pic';
+    case AssignPlanner = 'procurement.assign-planner';
+    /**
+     * Appointing the PIC Pelaksana. It keeps the value of the single
+     * "assign PIC" right it grew out of, so the roles already holding it
+     * keep it without anything being rewritten.
+     */
+    case AssignExecutor = 'procurement.assign-pic';
     case ReviewPlanning = 'procurement.review-planning';
+    case ReviewExecution = 'procurement.review-execution';
     case CompleteProcurement = 'procurement.complete';
     case ProcessPayment = 'procurement.process-payment';
     case ViewAllProcurements = 'procurement.view-all';
@@ -52,8 +59,10 @@ enum Permission: string
             self::ApproveProposal => 'Setujui usulan pekerjaan bidangnya',
             self::UpdateProcurement => 'Ubah data pengadaan',
             self::DeleteProcurement => 'Arsipkan pengadaan',
-            self::AssignPic => 'Tunjuk PIC perencana & pelaksana',
+            self::AssignPlanner => 'Tunjuk PIC perencana',
+            self::AssignExecutor => 'Tunjuk PIC pelaksana',
             self::ReviewPlanning => 'Setujui / tolak perencanaan',
+            self::ReviewExecution => 'Setujui / tolak pelaksanaan',
             self::CompleteProcurement => 'Nyatakan pengadaan selesai',
             self::ProcessPayment => 'Proses pembayaran (Keuangan)',
             self::ViewAllProcurements => 'Lihat seluruh pengadaan',
@@ -82,8 +91,10 @@ enum Permission: string
             self::ApproveProposal => 'Meninjau lalu menyetujui atau mengembalikan usulan pekerjaan dari bidang yang dipimpinnya, serta melihat seluruh pengadaan bidang tersebut.',
             self::UpdateProcurement => 'Mengubah identitas dan usulan pekerjaan pada pengadaan yang dapat dilihat.',
             self::DeleteProcurement => 'Mengarsipkan pengadaan yang dapat dilihat.',
-            self::AssignPic => 'Membuka menu Penunjukan PIC dan mengganti PIC pada pengadaan.',
+            self::AssignPlanner => 'Membuka menu Penunjukan PIC dan menunjuk atau mengganti PIC Perencana pada usulan yang sudah disetujui Asman.',
+            self::AssignExecutor => 'Membuka menu Penunjukan PIC dan menunjuk atau mengganti PIC Pelaksana setelah perencanaan disetujui.',
             self::ReviewPlanning => 'Menyetujui, menolak, atau membuka kembali penolakan perencanaan. Tidak berlaku untuk perencanaan yang diajukan oleh dirinya sendiri.',
+            self::ReviewExecution => 'Menyetujui atau menolak pelaksanaan yang diajukan PIC Pelaksana. Pelaksanaan yang disetujui diteruskan ke Penyerahan dan Pembayaran (Keuangan).',
             self::CompleteProcurement => 'Menutup pengadaan yang sudah selesai.',
             self::ProcessPayment => 'Memverifikasi dokumen tagihan, mencatat pembayaran, lalu menutup pengadaan yang sudah diserahkan ke Keuangan, serta melihat pengadaan tersebut.',
             self::ViewAllProcurements => 'Melihat seluruh pengadaan, bukan hanya yang ditugaskan atau dibuat sendiri.',
@@ -112,8 +123,10 @@ enum Permission: string
             self::ApproveProposal,
             self::UpdateProcurement,
             self::DeleteProcurement,
-            self::AssignPic,
+            self::AssignPlanner,
+            self::AssignExecutor,
             self::ReviewPlanning,
+            self::ReviewExecution,
             self::CompleteProcurement,
             self::ProcessPayment,
             self::ViewAllProcurements => 'Pengadaan',
@@ -145,8 +158,10 @@ enum Permission: string
             self::CreateProcurement,
             self::UpdateProcurement,
             self::DeleteProcurement,
-            self::AssignPic,
+            self::AssignExecutor,
+            self::ReviewExecution,
             self::CompleteProcurement => [UserRole::TeamLeaderPengadaan],
+            self::AssignPlanner,
             self::ReviewPlanning => [UserRole::TeamLeaderIcc],
             self::ProposeWork => [UserRole::Pengusul, UserRole::DireksiPekerjaan, UserRole::Keuangan],
             self::ProcessPayment => [UserRole::Keuangan],

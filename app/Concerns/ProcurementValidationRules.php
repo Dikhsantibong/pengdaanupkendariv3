@@ -87,6 +87,9 @@ trait ProcurementValidationRules
             'value_after_negotiation' => ['nullable', 'numeric', 'min:0', 'max:999999999999999999'],
             'progress_status_id' => ['required', Rule::exists('progress_statuses', 'id')->whereNull('deleted_at')],
             'notes' => ['nullable', 'string', 'max:2000'],
+            // Set by procurement (or by the planning PIC on the detail page),
+            // never by the division proposing the work.
+            'target_completion_date' => [Rule::excludeIf($proposal), 'sometimes', 'nullable', 'date'],
         ];
     }
 

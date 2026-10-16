@@ -298,7 +298,6 @@ class PlanningRevisionLoopTest extends TestCase
     public function test_reassigning_the_pic_hands_the_revision_to_someone_else(): void
     {
         [$procurement, , $teamLeaderIcc] = $this->submitted();
-        $teamLeaderPengadaan = User::factory()->teamLeaderPengadaan()->create();
         $replacement = User::factory()->planner()->create();
 
         $this->actingAs($teamLeaderIcc)->put(route('procurements.approval.update', $procurement), [
@@ -306,7 +305,8 @@ class PlanningRevisionLoopTest extends TestCase
             'note' => 'Perlu revisi.',
         ]);
 
-        $this->actingAs($teamLeaderPengadaan)
+        // TL ICC appoints the planning PIC, the replacement included.
+        $this->actingAs($teamLeaderIcc)
             ->put(route('procurements.pic.update', $procurement), [
                 'planner_id' => $replacement->id,
                 'executor_id' => null,

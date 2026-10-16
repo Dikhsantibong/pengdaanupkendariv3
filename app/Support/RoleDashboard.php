@@ -188,6 +188,7 @@ class RoleDashboard
             ->whereNull('completed_at');
 
         $ready = $running()
+            ->whereIn('execution_approval_state', [PlanningApprovalState::BelumDiajukan->value, PlanningApprovalState::Ditolak->value])
             ->whereDoesntHave('checklists', fn (Builder $checklists) => $checklists
                 ->where('stage', ProcurementStage::Pelaksanaan->value)
                 ->where('is_completed', false)
@@ -198,7 +199,10 @@ class RoleDashboard
 
         return [[
             self::card('running', 'Pekerjaan Berjalan', $running()->count(), 'Planning disetujui, sedang Anda laksanakan', 'sky'),
-            self::card('ready', 'Siap Diserahkan', $ready, 'Tahapan wajib selesai, serahkan ke Keuangan', 'emerald'),
+            self::card('ready', 'Siap Diajukan', $ready, 'Tahapan wajib selesai, ajukan ke TL Pengadaan', 'emerald'),
+            self::card('review', 'Menunggu Approval TL Pengadaan', $running()
+                ->where('execution_approval_state', PlanningApprovalState::MenungguPersetujuan->value)
+                ->count(), 'Sudah diajukan, menunggu keputusan', 'violet'),
             self::card('finance', 'Di Keuangan', $mine()->whereNotNull('finance_submitted_at')->whereNull('payment_completed_at')->count(), 'Menunggu pembayaran', 'amber'),
             self::card('done', 'Selesai', $mine()->whereNotNull('completed_at')->count(), 'Sudah dibayar dan ditutup', 'primary'),
         ], $mine()->whereNull('completed_at')
@@ -221,7 +225,7 @@ class RoleDashboard
             ->sum(fn (Procurement $procurement): float => (float) ($procurement->value_after_negotiation ?? $procurement->hpe_value));
 
         return [[
-            self::card('waiting', 'Menunggu Pembayaran', $waiting()->count(), 'Diserahkan PIC Pelaksana', 'amber'),
+            self::card('waiting', 'Menunggu Pembayaran', $waiting()->count(), 'Pelaksanaan disetujui TL Pengadaan', 'amber'),
             self::card('value', 'Nilai Tagihan Menunggu', $waitingValue, 'Nilai setelah nego (atau HPE)', 'primary', 'currency'),
             self::card('month', 'Dibayar Bulan Ini', $paid()->where('payment_completed_at', '>=', now()->startOfMonth())->count(), now()->translatedFormat('F Y'), 'emerald'),
             self::card('paid', 'Total Sudah Dibayar', $paid()->count(), 'Seluruh pengadaan lunas', 'sky'),
@@ -316,10 +320,17 @@ class RoleDashboard
             $procurement->completed_at !== null => 'Selesai',
             $procurement->payment_completed_at !== null => 'Sudah dibayar',
             $procurement->finance_submitted_at !== null => 'Menunggu pembayaran Keuangan',
-            $procurement->planning_approval_state === PlanningApprovalState::Disetujui => 'Dalam pelaksanaan',
+            $procurement->planning_approval_state === PlanningApprovalState::Disetujui => match (true) {
+                $procurement->executor_id === null => 'Menunggu penunjukan PIC Pelaksana oleh TL Pengadaan',
+                $procurement->execution_approval_state === PlanningApprovalState::MenungguPersetujuan => 'Pelaksanaan menunggu approval TL Pengadaan',
+                $procurement->execution_approval_state === PlanningApprovalState::Ditolak => 'Pelaksanaan dikembalikan untuk diperbaiki',
+                default => 'Dalam pelaksanaan',
+            },
             $procurement->planning_approval_state === PlanningApprovalState::MenungguPersetujuan => 'Perencanaan menunggu approval ICC',
             $procurement->planning_approval_state === PlanningApprovalState::Ditolak => 'Perencanaan dikembalikan untuk revisi',
-            $procurement->proposal_state === ProposalState::Disetujui => 'Dalam perencanaan',
+            $procurement->proposal_state === ProposalState::Disetujui => $procurement->planner_id === null
+                ? 'Menunggu penunjukan PIC Perencana oleh TL ICC'
+                : 'Dalam perencanaan',
             $procurement->proposal_state === ProposalState::Dikembalikan => 'Usulan dikembalikan, perlu diperbaiki',
             $procurement->proposal_state === ProposalState::MenungguPersetujuanTl => 'Menunggu persetujuan TL',
             default => 'Menunggu persetujuan Asman',

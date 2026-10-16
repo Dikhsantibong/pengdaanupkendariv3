@@ -18,9 +18,11 @@ import type { Paginated, ProcurementRow } from '@/types';
 
 export default function ApprovalIndex({
     procurements: page,
+    executions,
     recentDecisions,
 }: {
     procurements: Paginated<ProcurementRow>;
+    executions: Paginated<ProcurementRow>;
     recentDecisions: ProcurementRow[];
 }) {
     return (
@@ -30,10 +32,13 @@ export default function ApprovalIndex({
             <div className="flex flex-col gap-5 p-4 md:p-6">
                 <PageHeader
                     eyebrow="Persetujuan"
-                    title="Antrean Approval Perencanaan"
-                    description="Dokumen perencanaan yang telah diajukan PIC Perencana dan menunggu keputusan TL ICC."
+                    title="Antrean Approval"
+                    description="Perencanaan yang diajukan PIC Perencana menunggu keputusan TL ICC; pelaksanaan yang diajukan PIC Pelaksana menunggu keputusan TL Pengadaan sebelum diteruskan ke Penyerahan dan Pembayaran."
                 />
 
+                <h2 className="text-sm font-semibold text-foreground">
+                    Perencanaan · menunggu TL ICC
+                </h2>
                 <ProcurementTable
                     page={page}
                     columns={[
@@ -43,8 +48,24 @@ export default function ApprovalIndex({
                         'planningProgress',
                         'status',
                     ]}
-                    emptyTitle="Tidak ada antrean persetujuan"
+                    emptyTitle="Tidak ada antrean persetujuan perencanaan"
                     emptyDescription="Semua dokumen perencanaan sudah ditinjau."
+                />
+
+                <h2 className="text-sm font-semibold text-foreground">
+                    Pelaksanaan · menunggu TL Pengadaan
+                </h2>
+                <ProcurementTable
+                    page={executions}
+                    columns={[
+                        'unit',
+                        'hpe',
+                        'executor',
+                        'executionProgress',
+                        'status',
+                    ]}
+                    emptyTitle="Tidak ada antrean persetujuan pelaksanaan"
+                    emptyDescription="Semua pelaksanaan yang diajukan sudah ditinjau."
                 />
 
                 {recentDecisions.length > 0 && (

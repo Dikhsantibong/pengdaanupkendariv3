@@ -65,8 +65,9 @@ class ApprovalHistoryTest extends TestCase
                 ->where('approvalHistory.rows.5.stage', 'Pelaksanaan')
                 ->where('approvalHistory.rows.6.stage', 'Keuangan')
                 ->where('approvalHistory.rows.6.outcome', 'selesai')
-                // Still open: the last row says what it waits for.
-                ->where('approvalHistory.waiting', 'Dalam perencanaan'));
+                // Still open: the last row says what it waits for, here
+                // TL ICC appointing the planning PIC.
+                ->where('approvalHistory.waiting', 'Menunggu penunjukan PIC Perencana oleh TL ICC'));
     }
 
     public function test_appointing_a_pic_belongs_to_the_stage_the_pic_works_on(): void

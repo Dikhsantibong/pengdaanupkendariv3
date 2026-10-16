@@ -12,6 +12,7 @@ use App\Http\Controllers\Procurements\ChecklistController;
 use App\Http\Controllers\Procurements\CompletionController;
 use App\Http\Controllers\Procurements\DocumentArchiveDownloadController;
 use App\Http\Controllers\Procurements\DocumentController;
+use App\Http\Controllers\Procurements\ExecutionApprovalController;
 use App\Http\Controllers\Procurements\FinanceController;
 use App\Http\Controllers\Procurements\PicAssignmentController;
 use App\Http\Controllers\Procurements\PlanningIdentityController;
@@ -33,8 +34,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('approval', [ApprovalController::class, 'update'])->name('approval.update');
         Route::delete('approval', [ApprovalController::class, 'destroy'])->name('approval.destroy');
         Route::post('completion', [CompletionController::class, 'store'])->name('completion.store');
-        // Keuangan: hand over the executed job, then record its payment.
-        Route::post('keuangan', [FinanceController::class, 'submit'])->name('finance.submit');
+        // The executor submits the execution; TL Pengadaan's approval hands
+        // it to Keuangan, who records the payment.
+        Route::post('execution-approval', [ExecutionApprovalController::class, 'store'])->name('execution-approval.store');
+        Route::put('execution-approval', [ExecutionApprovalController::class, 'update'])->name('execution-approval.update');
         Route::post('keuangan/lunas', [FinanceController::class, 'complete'])->name('finance.complete');
         // Every file of the procurement at once, as a ZIP.
         Route::get('arsip-zip', DocumentArchiveDownloadController::class)->name('documents.archive');

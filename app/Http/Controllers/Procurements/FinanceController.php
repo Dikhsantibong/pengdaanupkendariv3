@@ -13,8 +13,9 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * The Keuangan stage: executed jobs are handed over, their invoice papers
- * checked, the partner paid and the procurement closed.
+ * The Keuangan stage: executed jobs approved by TL Pengadaan arrive here,
+ * their invoice papers are checked, the partner paid and the procurement
+ * closed.
  */
 class FinanceController extends Controller
 {
@@ -54,20 +55,6 @@ class FinanceController extends Controller
             ],
             'filters' => ['search' => $search === '' ? null : $search],
         ]);
-    }
-
-    /**
-     * Hand the executed job to Keuangan.
-     */
-    public function submit(Request $request, Procurement $procurement): RedirectResponse
-    {
-        $this->authorize('submitToFinance', $procurement);
-
-        $this->procurements->submitToFinance($procurement, $request->user());
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Pengadaan diserahkan ke Keuangan untuk proses pembayaran.']);
-
-        return back();
     }
 
     /**

@@ -77,6 +77,7 @@ type DashboardTasks = {
     myProposals: TaskList;
     finance: TaskList | null;
     approvals: TaskList | null;
+    executionApprovals: TaskList | null;
     assignments: TaskList | null;
     planning: TaskList;
     execution: TaskList;
@@ -441,7 +442,7 @@ function TaskInbox({
                 procurements.show(item.id, { query: { tab: 'penyerahan' } })
                     .url,
             dateLabel: (item) =>
-                item.date ? `Diserahkan ${formatDateTime(item.date)}` : null,
+                item.date ? `Disetujui ${formatDateTime(item.date)}` : null,
             allHref: menus.finance ? finance.index().url : null,
             tone: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
         });
@@ -450,7 +451,7 @@ function TaskInbox({
     if (tasks.approvals !== null) {
         cards.push({
             key: 'approvals',
-            title: 'Menunggu Persetujuan Anda',
+            title: 'Perencanaan Menunggu Persetujuan Anda',
             icon: ClipboardCheck,
             list: tasks.approvals,
             emptyText: 'Tidak ada perencanaan yang menunggu persetujuan.',
@@ -459,6 +460,23 @@ function TaskInbox({
                 item.date ? `Diajukan ${formatDateTime(item.date)}` : null,
             allHref: menus.approvals ? approvals.index().url : null,
             tone: 'bg-primary/10 text-primary',
+        });
+    }
+
+    if (tasks.executionApprovals !== null) {
+        cards.push({
+            key: 'executionApprovals',
+            title: 'Pelaksanaan Menunggu Persetujuan Anda',
+            icon: ClipboardCheck,
+            list: tasks.executionApprovals,
+            emptyText: 'Tidak ada pelaksanaan yang menunggu persetujuan.',
+            itemHref: (item) =>
+                procurements.show(item.id, { query: { tab: 'pelaksanaan' } })
+                    .url,
+            dateLabel: (item) =>
+                item.date ? `Diajukan ${formatDateTime(item.date)}` : null,
+            allHref: menus.approvals ? approvals.index().url : null,
+            tone: 'bg-violet-500/10 text-violet-700 dark:text-violet-400',
         });
     }
 

@@ -19,6 +19,9 @@ enum ActivityType: string
     case DokumenDigenerate = 'dokumen_digenerate';
     case DokumenDiedit = 'dokumen_diedit';
     case DokumenDitandatangani = 'dokumen_ditandatangani';
+    case PelaksanaanDiajukan = 'pelaksanaan_diajukan';
+    case PelaksanaanDisetujui = 'pelaksanaan_disetujui';
+    case PelaksanaanDitolak = 'pelaksanaan_ditolak';
     case DiajukanKeKeuangan = 'diajukan_ke_keuangan';
     case PembayaranSelesai = 'pembayaran_selesai';
     case PengadaanSelesai = 'pengadaan_selesai';
@@ -44,6 +47,9 @@ enum ActivityType: string
             self::DokumenDigenerate => 'Dokumen Digenerate',
             self::DokumenDiedit => 'Dokumen Diedit',
             self::DokumenDitandatangani => 'Dokumen Bertanda Tangan Diunggah',
+            self::PelaksanaanDiajukan => 'Pelaksanaan Diajukan',
+            self::PelaksanaanDisetujui => 'Pelaksanaan Disetujui',
+            self::PelaksanaanDitolak => 'Pelaksanaan Ditolak',
             self::DiajukanKeKeuangan => 'Diserahkan ke Keuangan',
             self::PembayaranSelesai => 'Pembayaran Selesai',
             self::PengadaanSelesai => 'Pengadaan Selesai',
@@ -63,7 +69,8 @@ enum ActivityType: string
             self::UsulanDisetujui, self::UsulanDikembalikan => 'Usulan',
             self::PicDitunjuk, self::PerencanaanDiajukan,
             self::PerencanaanDisetujui, self::PerencanaanDitolak => 'Perencanaan',
-            self::DiajukanKeKeuangan => 'Pelaksanaan',
+            self::PelaksanaanDiajukan, self::PelaksanaanDisetujui,
+            self::PelaksanaanDitolak, self::DiajukanKeKeuangan => 'Pelaksanaan',
             self::PembayaranSelesai, self::PengadaanSelesai => 'Keuangan',
             default => null,
         };
@@ -75,8 +82,9 @@ enum ActivityType: string
     public function approvalOutcome(): string
     {
         return match ($this) {
-            self::UsulanDisetujuiTl, self::UsulanDisetujui, self::PerencanaanDisetujui => 'disetujui',
-            self::UsulanDikembalikan, self::PerencanaanDitolak => 'dikembalikan',
+            self::UsulanDisetujuiTl, self::UsulanDisetujui, self::PerencanaanDisetujui,
+            self::PelaksanaanDisetujui => 'disetujui',
+            self::UsulanDikembalikan, self::PerencanaanDitolak, self::PelaksanaanDitolak => 'dikembalikan',
             self::PicDitunjuk => 'ditunjuk',
             self::Dibuat => 'dibuat',
             self::PembayaranSelesai, self::PengadaanSelesai => 'selesai',

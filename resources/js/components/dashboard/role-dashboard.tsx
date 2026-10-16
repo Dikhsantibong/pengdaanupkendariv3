@@ -84,8 +84,9 @@ export const PROFILE_DESCRIPTIONS: Record<RoleProfile, string> = {
     perencana:
         'Pengadaan yang ditugaskan kepada Anda sebagai PIC Perencana dan posisi persetujuannya.',
     pelaksana:
-        'Pengadaan yang ditugaskan kepada Anda sebagai PIC Pelaksana, sampai diserahkan ke Keuangan.',
-    keuangan: 'Tagihan yang diserahkan PIC Pelaksana dan menunggu pembayaran.',
+        'Pengadaan yang ditugaskan kepada Anda sebagai PIC Pelaksana, sampai disetujui TL Pengadaan dan diteruskan ke Keuangan.',
+    keuangan:
+        'Tagihan yang pelaksanaannya sudah disetujui TL Pengadaan dan menunggu pembayaran.',
     umum: 'Ringkasan pengadaan yang Anda usulkan atau tangani.',
 };
 

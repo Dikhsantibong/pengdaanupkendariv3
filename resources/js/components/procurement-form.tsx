@@ -65,6 +65,8 @@ export type ProcurementFormValues = {
     value_after_negotiation: number | null;
     progress_status_id: number | null;
     notes: string;
+    /** Set by procurement; a work proposal never carries it. */
+    target_completion_date?: string;
     planner_id?: number | null;
     /** Supporting files, sent with a work proposal. */
     attachments?: File[];
@@ -125,6 +127,12 @@ export function ProcurementForm({
             ? { planner_id: initialValues?.planner_id ?? null }
             : {}),
         ...(asksForTor ? { tor_file: null, memo_file: null } : {}),
+        ...(!isProposal
+            ? {
+                  target_completion_date:
+                      initialValues?.target_completion_date ?? '',
+              }
+            : {}),
         contract_number_format_id: startingFormatId,
         contract_type_id: initialValues?.contract_type_id ?? null,
         number:
@@ -922,6 +930,18 @@ export function ProcurementForm({
             {!isProposal && (
                 <section className="space-y-4 rounded-md border border-border bg-card p-5">
                     <p className="section-label">Informasi Tambahan</p>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <DateField
+                            id="target_completion_date"
+                            label="Target Selesai"
+                            value={data.target_completion_date ?? ''}
+                            onChange={(value) =>
+                                setData('target_completion_date', value)
+                            }
+                            error={errors.target_completion_date}
+                        />
+                    </div>
 
                     <div className="grid gap-2">
                         <Label htmlFor="notes">Catatan</Label>

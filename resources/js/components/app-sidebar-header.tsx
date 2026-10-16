@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import { Bell } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
+import { ImpersonationSwitcher } from '@/components/impersonation-switcher';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import notifications from '@/routes/notifications';
 import type { Auth, BreadcrumbItem as BreadcrumbItemType } from '@/types';
@@ -23,6 +24,8 @@ export function AppSidebarHeader({
             </div>
 
             <div className="flex items-center gap-3">
+                <ImpersonationSwitcher />
+
                 <div className="hidden text-right leading-tight sm:block">
                     <p className="text-sm font-medium text-foreground">
                         {auth.user.name}

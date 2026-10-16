@@ -51,6 +51,12 @@ class DemoProcurementSeederTest extends TestCase
 
         // Execution, Keuangan, paid.
         $this->assertSame(16, $demo()->where('planning_approval_state', PlanningApprovalState::Disetujui)->whereNull('finance_submitted_at')->count());
+        // TL Pengadaan appoints the executor after ICC's approval, then
+        // decides on the execution before it reaches Keuangan.
+        $this->assertSame(2, $demo()->where('planning_approval_state', PlanningApprovalState::Disetujui)->whereNull('executor_id')->count());
+        $this->assertSame(3, $demo()->where('execution_approval_state', PlanningApprovalState::MenungguPersetujuan)->count());
+        $this->assertSame(1, $demo()->where('execution_approval_state', PlanningApprovalState::Ditolak)->count());
+        $this->assertSame(0, $demo()->whereNotNull('finance_submitted_at')->where('execution_approval_state', '!=', PlanningApprovalState::Disetujui)->count());
         $this->assertSame(8, $demo()->whereNotNull('finance_submitted_at')->whereNull('payment_completed_at')->count());
         $this->assertSame(10, $demo()->whereNotNull('payment_completed_at')->whereNotNull('completed_at')->count());
 
@@ -90,7 +96,8 @@ class DemoProcurementSeederTest extends TestCase
         $this->assertSame(['dibuat', 'usulan_diajukan'], $approvals->take(2)->all());
         $this->assertContains('usulan_disetujui', $approvals->all());
         $this->assertContains('perencanaan_disetujui', $approvals->all());
-        $this->assertContains('diajukan_ke_keuangan', $approvals->all());
+        $this->assertContains('pelaksanaan_diajukan', $approvals->all());
+        $this->assertContains('pelaksanaan_disetujui', $approvals->all());
         $this->assertSame('pembayaran_selesai', $approvals->last());
         $this->assertTrue($closed->documents()->get()->every(fn ($document) => $document->generated_at->lessThan($closed->payment_completed_at)));
     }

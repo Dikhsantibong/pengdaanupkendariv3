@@ -43,7 +43,10 @@ class DashboardTasks
             'approvals' => $user->hasPermission(Permission::ReviewPlanning)
                 ? self::approvals($user)
                 : null,
-            'assignments' => $user->hasPermission(Permission::AssignPic)
+            'executionApprovals' => $user->hasPermission(Permission::ReviewExecution)
+                ? self::executionApprovals($user)
+                : null,
+            'assignments' => $user->hasPermission(Permission::AssignPlanner) || $user->hasPermission(Permission::AssignExecutor)
                 ? self::assignments($user)
                 : null,
             'planning' => self::planning($user),
@@ -71,33 +74,60 @@ class DashboardTasks
     }
 
     /**
-     * Unfinished procurements still missing a PIC.
+     * Executions submitted by their PIC and waiting for TL Pengadaan.
      *
-     * A PIC Pelaksana is only needed once the planning has been approved, so
-     * an approved procurement without one is listed even when the planning
-     * PIC is already set.
+     * @return array{total: int, items: array<int, array{id: int, number: string, name: string, note: string, date: string|null}>}
+     */
+    protected static function executionApprovals(User $user): array
+    {
+        $query = Procurement::query()
+            ->visibleTo($user)
+            ->where('execution_approval_state', PlanningApprovalState::MenungguPersetujuan->value)
+            ->whereNull('finance_submitted_at')
+            ->with('executor')
+            ->oldest('execution_submitted_at');
+
+        return self::collect($query, fn (Procurement $procurement): string => 'Diajukan oleh '
+            .($procurement->executor->name ?? 'PIC Pelaksana')
+            .($procurement->execution_revision > 0 ? ' · revisi ke-'.$procurement->execution_revision : ''),
+            fn (Procurement $procurement): ?string => $procurement->execution_submitted_at?->toDateTimeString());
+    }
+
+    /**
+     * Unfinished procurements still missing the PIC the user appoints.
+     *
+     * The PIC Perencana is appointed (by TL ICC) once the Asman approved the
+     * proposal; the PIC Pelaksana (by TL Pengadaan) once ICC approved the
+     * planning.
      *
      * @return array{total: int, items: array<int, array{id: int, number: string, name: string, note: string, date: string|null}>}
      */
     protected static function assignments(User $user): array
     {
+        $assignsPlanner = $user->hasPermission(Permission::AssignPlanner);
+        $assignsExecutor = $user->hasPermission(Permission::AssignExecutor);
+
         $query = Procurement::query()
             ->visibleTo($user)
             ->proposalApproved()
             ->inProgress()
-            ->where(fn (Builder $inner) => $inner
-                ->whereNull('planner_id')
-                ->orWhereNull('executor_id'))
+            ->where(function (Builder $inner) use ($assignsPlanner, $assignsExecutor): void {
+                if ($assignsPlanner) {
+                    $inner->whereNull('planner_id');
+                }
+
+                if ($assignsExecutor) {
+                    $inner->orWhere(fn (Builder $executor) => $executor
+                        ->whereNull('executor_id')
+                        ->where('planning_approval_state', PlanningApprovalState::Disetujui->value));
+                }
+            })
             ->oldest('created_at');
 
-        return self::collect($query, function (Procurement $procurement): string {
-            $missing = array_filter([
-                $procurement->planner_id === null ? 'PIC Perencana' : null,
-                $procurement->executor_id === null ? 'PIC Pelaksana' : null,
-            ]);
-
-            return 'Belum ada '.implode(' & ', $missing);
-        }, fn (Procurement $procurement): ?string => $procurement->created_at?->toDateTimeString());
+        return self::collect($query, fn (Procurement $procurement): string => $procurement->planner_id === null
+            ? 'Belum ada PIC Perencana'
+            : 'Perencanaan disetujui, belum ada PIC Pelaksana',
+            fn (Procurement $procurement): ?string => $procurement->created_at?->toDateTimeString());
     }
 
     /**
@@ -212,9 +242,12 @@ class DashboardTasks
         return self::collect($query, function (Procurement $procurement): string {
             $open = (int) $procurement->getAttribute('open_execution_steps');
 
-            return $open > 0
-                ? "{$open} tahapan pelaksanaan belum selesai"
-                : 'Semua tahapan selesai, siap diserahkan ke Keuangan';
+            return match (true) {
+                $procurement->execution_approval_state === PlanningApprovalState::MenungguPersetujuan => 'Menunggu approval TL Pengadaan',
+                $procurement->execution_approval_state === PlanningApprovalState::Ditolak => 'Dikembalikan: '.($procurement->execution_review_note ?? 'perlu diperbaiki'),
+                $open > 0 => "{$open} tahapan pelaksanaan belum selesai",
+                default => 'Semua tahapan selesai, siap diajukan ke TL Pengadaan',
+            };
         }, fn (Procurement $procurement): ?string => $procurement->target_completion_date?->toDateString());
     }
 

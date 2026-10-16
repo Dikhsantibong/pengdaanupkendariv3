@@ -28,8 +28,9 @@ use Tests\TestCase;
 /**
  * The whole journey of one job with the real master data and templates:
  * a staff member proposes it, their TL and then the Asman approve it,
- * procurement plans it, ICC approves the planning, it is executed, Keuangan
- * pays the partner and the job is closed.
+ * TL ICC appoints the planner and approves the planning, TL Pengadaan
+ * appoints the executor and approves the execution, Keuangan pays the
+ * partner and the job is closed.
  */
 class EndToEndFlowTest extends TestCase
 {
@@ -99,10 +100,20 @@ class EndToEndFlowTest extends TestCase
 
         $this->assertTrue($procurement->refresh()->isProposalApproved());
 
-        // 3. A planning PIC is appointed. Documents wait for the procurement data.
+        // 3. The approved proposal goes straight to TL ICC, who appoints the
+        // planning PIC; TL Pengadaan may not. Documents wait for the
+        // procurement data.
+        $this->assertTrue($icc->notifications()->exists());
+
         $this->actingAs($teamLeader)
             ->put(route('procurements.pic.update', $procurement), ['planner_id' => $planner->id])
+            ->assertForbidden();
+
+        $this->actingAs($icc)
+            ->put(route('procurements.pic.update', $procurement), ['planner_id' => $planner->id])
             ->assertSessionHasNoErrors();
+
+        $this->assertSame($planner->id, $procurement->refresh()->planner_id);
 
         $this->assertSame(['Metode Pengadaan', 'Jenis No Kontrak'], $procurement->refresh()->missingPlanningData());
 
@@ -153,10 +164,19 @@ class EndToEndFlowTest extends TestCase
 
         $this->assertSame(PlanningApprovalState::MenungguPersetujuan, $procurement->refresh()->planning_approval_state);
 
-        // 6. ICC approves the planning; an execution PIC is appointed.
+        // 6. ICC approves the planning; only then does TL Pengadaan appoint
+        // the execution PIC.
+        $this->actingAs($teamLeader)
+            ->put(route('procurements.pic.update', $procurement), ['executor_id' => $executor->id])
+            ->assertForbidden();
+
         $this->actingAs($icc)
             ->put(route('procurements.approval.update', $procurement), ['approved' => true])
             ->assertSessionHasNoErrors();
+
+        $this->actingAs($icc)
+            ->put(route('procurements.pic.update', $procurement), ['executor_id' => $executor->id])
+            ->assertForbidden();
 
         $this->actingAs($teamLeader)
             ->put(route('procurements.pic.update', $procurement), [
@@ -165,20 +185,34 @@ class EndToEndFlowTest extends TestCase
             ])
             ->assertSessionHasNoErrors();
 
-        // 7. The executor cannot hand over before every execution step is done.
+        $this->assertSame($executor->id, $procurement->refresh()->executor_id);
+
+        // 7. The executor cannot submit before every execution step is done.
         $this->actingAs($executor)
-            ->post(route('procurements.finance.submit', $procurement))
+            ->post(route('procurements.execution-approval.store', $procurement))
             ->assertForbidden();
 
         $this->completeStage($procurement->refresh(), ProcurementStage::Pelaksanaan, $executor);
 
         $this->actingAs($executor)
-            ->post(route('procurements.finance.submit', $procurement))
+            ->post(route('procurements.execution-approval.store', $procurement))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(PlanningApprovalState::MenungguPersetujuan, $procurement->refresh()->execution_approval_state);
+        $this->assertFalse($procurement->isInFinance());
+
+        // 8. TL Pengadaan approves the execution into Penyerahan and Pembayaran.
+        $this->actingAs($executor)
+            ->put(route('procurements.execution-approval.update', $procurement), ['approved' => true])
+            ->assertForbidden();
+
+        $this->actingAs($teamLeader)
+            ->put(route('procurements.execution-approval.update', $procurement), ['approved' => true])
             ->assertSessionHasNoErrors();
 
         $this->assertTrue($procurement->refresh()->isInFinance());
 
-        // 8. Keuangan files the invoice papers, records the payment and closes it.
+        // 9. Keuangan files the invoice papers, records the payment and closes it.
         $this->actingAs($finance)
             ->get(route('finance.index'))
             ->assertOk()

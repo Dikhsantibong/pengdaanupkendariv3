@@ -84,7 +84,7 @@ class ProcurementVisibilityTest extends TestCase
 
     public function test_reassigning_a_pic_revokes_the_previous_pic_access(): void
     {
-        $teamLeader = User::factory()->teamLeader()->create();
+        $teamLeader = User::factory()->teamLeaderIcc()->create();
         $previousPlanner = User::factory()->planner()->create();
         $newPlanner = User::factory()->planner()->create();
 

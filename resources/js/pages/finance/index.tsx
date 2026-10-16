@@ -196,7 +196,7 @@ export default function FinanceIndex({
                             <EmptyState
                                 icon={Landmark}
                                 title="Tidak ada tagihan yang menunggu"
-                                description="Pengadaan yang diserahkan PIC Pelaksana ke Keuangan akan muncul di sini."
+                                description="Pengadaan yang pelaksanaannya disetujui TL Pengadaan akan muncul di sini."
                             />
                         </div>
                     ) : (

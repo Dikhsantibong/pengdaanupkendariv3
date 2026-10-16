@@ -30,10 +30,18 @@ import type {
 
 type AssignmentFilters = ProcurementFilters & { unassigned: boolean };
 
+type AssignmentRights = {
+    /** TL ICC: the PIC Perencana of approved proposals. */
+    assignPlanner: boolean;
+    /** TL Pengadaan: the PIC Pelaksana once the planning is approved. */
+    assignExecutor: boolean;
+};
+
 export default function PicAssignmentIndex({
     procurements: page,
     filters,
     options,
+    can,
 }: {
     procurements: Paginated<ProcurementRow>;
     filters: AssignmentFilters;
@@ -41,7 +49,15 @@ export default function PicAssignmentIndex({
         planners: PicOption[];
         executors: PicOption[];
     };
+    can: AssignmentRights;
 }) {
+    const description =
+        can.assignPlanner && can.assignExecutor
+            ? 'PIC Perencana ditunjuk setelah usulan disetujui Asman, PIC Pelaksana setelah perencanaan disetujui ICC. Akses PIC lama otomatis dicabut saat diganti.'
+            : can.assignPlanner
+              ? 'Tunjuk PIC Perencana untuk usulan yang sudah disetujui Asman. PIC Pelaksana ditunjuk TL Pengadaan setelah perencanaan disetujui. Akses PIC lama otomatis dicabut saat diganti.'
+              : 'Tunjuk PIC Pelaksana untuk pengadaan yang perencanaannya sudah disetujui ICC. Akses PIC lama otomatis dicabut saat diganti.';
+
     return (
         <>
             <Head title="Penunjukan PIC" />
@@ -50,7 +66,7 @@ export default function PicAssignmentIndex({
                 <PageHeader
                     eyebrow="Pengadaan"
                     title="Penunjukan PIC"
-                    description="Tunjuk PIC Perencana dan PIC Pelaksana untuk setiap pengadaan. Akses PIC lama otomatis dicabut saat diganti."
+                    description={description}
                     actions={
                         <Button
                             variant={filters.unassigned ? 'default' : 'outline'}
@@ -111,6 +127,7 @@ export default function PicAssignmentIndex({
                                         row={row}
                                         planners={options.planners}
                                         executors={options.executors}
+                                        can={can}
                                     />
                                 ))}
                             </TableBody>
@@ -128,11 +145,16 @@ function AssignmentRow({
     row,
     planners,
     executors,
+    can,
 }: {
     row: ProcurementRow;
     planners: PicOption[];
     executors: PicOption[];
+    can: AssignmentRights;
 }) {
+    const planningApproved = row.planning_approval_state === 'disetujui';
+    const editsExecutor = can.assignExecutor && planningApproved;
+
     const form = useForm<{
         planner_id: number | null;
         executor_id: number | null;
@@ -171,21 +193,36 @@ function AssignmentRow({
             </TableCell>
 
             <TableCell>
-                <PicCell
-                    value={form.data.planner_id}
-                    options={planners}
-                    role="planner"
-                    onChange={(value) => form.setData('planner_id', value)}
-                />
+                {can.assignPlanner ? (
+                    <PicCell
+                        value={form.data.planner_id}
+                        options={planners}
+                        role="planner"
+                        onChange={(value) => form.setData('planner_id', value)}
+                    />
+                ) : (
+                    <FixedPic name={row.planner?.name} hint="Ditunjuk TL ICC" />
+                )}
             </TableCell>
 
             <TableCell>
-                <PicCell
-                    value={form.data.executor_id}
-                    options={executors}
-                    role="executor"
-                    onChange={(value) => form.setData('executor_id', value)}
-                />
+                {editsExecutor ? (
+                    <PicCell
+                        value={form.data.executor_id}
+                        options={executors}
+                        role="executor"
+                        onChange={(value) => form.setData('executor_id', value)}
+                    />
+                ) : (
+                    <FixedPic
+                        name={row.executor?.name}
+                        hint={
+                            planningApproved
+                                ? 'Ditunjuk TL Pengadaan'
+                                : 'Setelah perencanaan disetujui'
+                        }
+                    />
+                )}
             </TableCell>
 
             <TableCell className="text-right">
@@ -203,6 +240,17 @@ function AssignmentRow({
                 </Button>
             </TableCell>
         </TableRow>
+    );
+}
+
+/**
+ * A PIC the user does not appoint, with who does when nobody is set yet.
+ */
+function FixedPic({ name, hint }: { name?: string; hint: string }) {
+    return name ? (
+        <span className="text-sm font-medium">{name}</span>
+    ) : (
+        <span className="text-xs text-muted-foreground">{hint}</span>
     );
 }
 

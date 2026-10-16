@@ -80,6 +80,8 @@ export type ProcurementRow = {
     executor: UserRef | null;
     planning_approval_state: PlanningApprovalState;
     planning_approval_label: string;
+    execution_approval_state: PlanningApprovalState;
+    execution_approval_label: string;
     current_stage: CurrentStage;
     current_stage_label: string;
     finance_submitted_at: string | null;

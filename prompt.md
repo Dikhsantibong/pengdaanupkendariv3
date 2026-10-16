@@ -640,7 +640,10 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 
 ## Penyempurnaan Alur
 
-- **Target Selesai** diisi PIC Perencana (atau TL) di panel identitas detail pengadaan; dipakai kolom target, kurva-S, dan penanda terlambat.
+- **Target Selesai** dipakai kolom target, kurva-S, dan penanda terlambat. Pengisinya:
+  - Pemegang tombol **Edit Identitas Pengadaan** (TL Pengadaan, admin) mengisinya di form Edit, bagian Informasi Tambahan. Untuk mereka, panel identitas di halaman detail hanya-baca (Jenis Kontrak dan Target Selesai tidak bisa diubah di sana).
+  - PIC Perencana, yang tidak punya form Edit, tetap mengisi Jenis Kontrak dan Target Selesai langsung di panel identitas detail sampai perencanaan disetujui.
+  - Usulan dari bidang tidak pernah membawa Target Selesai.
 - **Notifikasi tiap tahap** ke pengusul, TL atasan, dan Asman bidang: usulan disetujui TL/Asman, perencanaan disetujui, diserahkan ke Keuangan, dan pengadaan selesai.
 - **PIC Pelaksana** yang ditunjuk sebelum perencanaan disetujui baru mendapat notifikasi saat perencanaan disetujui.
 - Detail pengadaan otomatis terbuka di tab tahap yang sedang berjalan (Perencanaan / Pelaksanaan / Keuangan).
@@ -789,7 +792,10 @@ Team Leader Mengisi Form Input Awal Pengadaan
     Nilai Setelah Nego, Status Progres
             │
             ▼
-Penunjukan PIC Perencana
+(Usulan staf: disetujui TL, lalu Asman bidang → langsung masuk ke TL ICC)
+            │
+            ▼
+Penunjukan PIC Perencana — oleh TL ICC
             │
             ▼
 Tahap Perencanaan
@@ -805,10 +811,10 @@ Tahap Perencanaan
 └── PR / RO (Opsional)
             │
             ▼
-Approval Team Leader
+PIC Perencana mengajukan → Approval TL ICC
             │
             ▼
-Penunjukan PIC Pelaksana
+Penunjukan PIC Pelaksana — oleh TL Pengadaan (hanya setelah perencanaan disetujui)
             │
             ▼
 Tahap Pelaksanaan — SPK & PJ
@@ -833,8 +839,28 @@ Tahap Pelaksanaan — SPPL
 └── Masa Garansi              (isian: bulan)
             │
             ▼
-Pengadaan Selesai
+PIC Pelaksana mengajukan → Approval TL Pengadaan
+(ditolak: kembali ke PIC Pelaksana dengan catatan, lalu diajukan ulang)
+            │
+            ▼
+Penyerahan & Pembayaran (Keuangan) → Pengadaan Selesai
 ```
+
+## Pembagian Peran Setelah Usulan Disetujui Asman
+
+| Langkah | Pelaku (default) | Hak akses |
+|---|---|---|
+| Menunjuk PIC Perencana | TL ICC | `procurement.assign-planner` — Tunjuk PIC perencana |
+| Menyetujui / menolak perencanaan | TL ICC | `procurement.review-planning` |
+| Menunjuk PIC Pelaksana (setelah perencanaan disetujui) | TL Pengadaan | `procurement.assign-pic` — kini berarti Tunjuk PIC pelaksana (nilai lama dipertahankan agar peran yang sudah memilikinya tidak berubah) |
+| Mengajukan pelaksanaan | PIC Pelaksana yang ditunjuk (bukan TL / admin) | otomatis dari penugasan, setelah semua tahapan wajib pelaksanaan dicentang |
+| Menyetujui / mengembalikan pelaksanaan | TL Pengadaan | `procurement.review-execution` — Setujui / tolak pelaksanaan |
+
+- **Notifikasi:** persetujuan Asman memberi tahu pemegang hak Tunjuk PIC perencana (TL ICC). Pengajuan perencanaan memberi tahu pemegang hak review perencanaan. Perencanaan yang disetujui tanpa PIC Pelaksana memberi tahu pemegang hak Tunjuk PIC pelaksana. Pengajuan pelaksanaan memberi tahu TL Pengadaan; keputusan dikirim ke PIC Pelaksana; persetujuan meneruskan ke Keuangan (notifikasi tagihan).
+- **Penunjukan PIC:** layar Penunjukan PIC menampilkan kolom sesuai hak. TL ICC melihat usulan yang disetujui dan mengisi PIC Perencana; TL Pengadaan hanya melihat pengadaan yang perencanaannya disetujui dan mengisi PIC Pelaksana. Server memeriksa tiap PIC terhadap haknya sendiri. Kolom PIC Perencana di form Buat Pengadaan hanya muncul bagi pemegang hak Tunjuk PIC perencana.
+- **Persetujuan pelaksanaan:** kolom baru `execution_approval_state` (belum_diajukan / menunggu_persetujuan / disetujui / ditolak), `execution_submitted_at`, `execution_reviewed_at`, `execution_reviewed_by`, `execution_review_note`, `execution_revision`. Checklist pelaksanaan terkunci selama ditinjau. Persetujuan mengisi `finance_submitted_at/by` (pengadaan masuk Penyerahan & Pembayaran). Penolakan wajib bercatatan. Pengadaan yang sudah di Keuangan sebelum migrasi ditandai disetujui. Rute: `procurements.execution-approval.store/update` (menggantikan `procurements.finance.submit`).
+- **Tampilan:** kartu Persetujuan Pelaksanaan di tab Pelaksanaan, antrean Approval memuat bagian "Pelaksanaan · menunggu TL Pengadaan", dashboard punya daftar "Pelaksanaan Menunggu Persetujuan Anda", dan Riwayat Approval mencatat Pelaksanaan Diajukan / Disetujui / Ditolak.
+- **Test:** `ExecutionApprovalTest`, `ProcurementWorkflowTest`, `FinanceStageTest`, `EndToEndFlowTest`, `DashboardTasksTest`, `PlannerOnCreateTest`.
 
 ---
 
@@ -1009,6 +1035,27 @@ Di bagian atas dashboard tampil daftar tugas sesuai akun yang login. Setiap bari
 
 ---
 
+# Pindah Akun (Administrator)
+
+Tombol **Pindah Akun** di sudut kanan atas header, hanya untuk Administrator. Administrator memilih pengguna dari daftar yang bisa dicari, lalu bekerja sebagai pengguna itu tanpa kata sandinya. Selama mode ini, header menampilkan penanda "Mode Pindah Akun oleh …" dan tombol **Kembali ke Administrator**.
+
+Pengamanan:
+
+- **Pelaku:** hanya akun Administrator yang aktif dan sedang masuk sebagai dirinya sendiri. Ini bukan hak yang bisa diberikan lewat layar Hak Akses.
+- **Target:** bukan Administrator lain, bukan akun nonaktif atau terhapus, bukan diri sendiri.
+- **Konfirmasi kata sandi:** kata sandi Administrator diminta, lalu berlaku 15 menit untuk perpindahan berikutnya (`Impersonation::CONFIRMATION_TIMEOUT`).
+- **Sesi dan CSRF:** ID sesi dan token CSRF diperbarui setiap kali pindah dan kembali.
+- **Konfirmasi kata sandi tidak terbawa:** konfirmasi kata sandi sesi (`auth.password_confirmed_at`) dihapus, sehingga pengaturan keamanan akun yang dipakai tetap butuh kata sandi pemilik akun itu.
+- **Tidak bisa berantai:** dari sesi pindah akun tidak bisa pindah akun lagi.
+- **Diblokir selama mode pindah akun** (middleware `RestrictImpersonatedSession`): ubah profil, hapus akun, ganti kata sandi, halaman keamanan, 2FA, passkey, konfirmasi kata sandi, kelola pengguna, dan Hak Akses.
+- **Catatan sesi tidak cocok:** jika catatan pindah akun di sesi tidak sesuai dengan akun yang sedang masuk, catatan itu dibuang.
+- **Kembali dengan aman:** jika Administrator dinonaktifkan atau kehilangan peran selama sesi, sesi dikeluarkan sepenuhnya.
+- **Audit:** setiap perpindahan tercatat di tabel `impersonation_logs` (admin, akun, IP, user agent, mulai, selesai). Keluar (logout) saat mode pindah akun juga menutup catatannya.
+- **Throttle:** pindah 10 kali/menit, daftar pengguna 60 kali/menit.
+- **Kode dan rute:** rute `impersonation.index` / `store` / `destroy`, logika di `App\Support\Impersonation`, test `ImpersonationTest`.
+
+---
+
 # Data Demo
 
 `DemoProcurementSeeder` (tidak termasuk `DatabaseSeeder`) membuat **72 pengadaan dummy** yang menempuh alur sebenarnya dari usulan staf sampai pembayaran. Setiap langkah dicatat dengan waktu mundur di Riwayat Approval.
@@ -1016,9 +1063,10 @@ Di bagian atas dashboard tampil daftar tugas sesuai akun yang login. Setiap bari
 | Posisi | Jumlah |
 |---|---|
 | Usulan menunggu TL / menunggu Asman / dikembalikan | 5 / 5 / 3 |
-| Usulan disetujui, perlu penunjukan PIC Perencana | 4 |
+| Usulan disetujui, perlu penunjukan PIC Perencana (TL ICC) | 4 |
 | Penyusunan perencanaan / menunggu approval ICC / dikembalikan ICC | 8 / 6 / 4 |
-| Pelaksanaan / siap diserahkan ke Keuangan | 12 / 4 |
+| Perencanaan disetujui, perlu penunjukan PIC Pelaksana (TL Pengadaan) | 2 |
+| Pelaksanaan / siap diajukan / menunggu approval TL Pengadaan / dikembalikan TL Pengadaan | 8 / 2 / 3 / 1 |
 | Di Keuangan (Penyerahan & Pembayaran sebagian dicentang) / lunas & selesai | 8 / 10 |
 | Batal | 3 |
 
@@ -1026,7 +1074,7 @@ Di bagian atas dashboard tampil daftar tugas sesuai akun yang login. Setiap bari
 - **Penomoran:** usulan memakai nomor `USL/…`. Setelah format kontrak diisi, nomornya menjadi nomor kontrak (SPK, PJ, atau SPPL).
 - **Format kontrak:** bergiliran antara SPK Barang, SPK Jasa, PJ Barang, SPPL, dan PJ Jasa, lengkap dengan metode, jenis kontrak, mitra, rekening, jangka waktu, garansi, dan nilai nego.
 - **Dokumen:** TOR, Nota Dinas Usulan, RKS, HPE, UPB, serta dokumen kontrak (SPK, Surat Perjanjian, atau Lampiran SP) dibuat dari template. Karena kontraknya dibuat, syarat Penyerahan dan Pembayaran terbaca dari kontrak itu.
-- **Penyetuju perencanaan:** bila tidak ada akun TL ICC, Administrator yang menyetujui perencanaan.
+- **Penyetuju perencanaan:** TL ICC menunjuk PIC Perencana dan menyetujui perencanaan; TL Pengadaan menunjuk PIC Pelaksana dan menyetujui pelaksanaan. Bila akun salah satunya tidak ada, Administrator yang mengisinya.
 - **Penanda:** semua data demo memakai catatan "Data demo (DemoProcurementSeeder)." Menjalankan ulang seeder menghapus data demo sebelumnya (hanya yang bertanda itu), lalu membuat ulang.
 - **Menjalankan:** `php artisan db:seed --class=DemoProcurementSeeder`, setelah `php artisan migrate --seed`. Test: `DemoProcurementSeederTest`.
 

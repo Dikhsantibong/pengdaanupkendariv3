@@ -6,7 +6,7 @@ import { ApprovalHistoryTable } from '@/components/procurement/approval-history'
 import type { ApprovalHistory } from '@/components/procurement/approval-history';
 import { ChecklistPanel } from '@/components/procurement/checklist-panel';
 import {
-    FinanceHandover,
+    ExecutionApproval,
     FinanceStatus,
 } from '@/components/procurement/finance-card';
 import type { FinanceDetail } from '@/components/procurement/finance-card';
@@ -68,12 +68,15 @@ type ShowProps = {
     can: {
         update: boolean;
         assignPic: boolean;
+        assignPlanner: boolean;
+        assignExecutor: boolean;
         updateStatus: boolean;
         updatePlanningIdentity: boolean;
         updatePlanningChecklist: boolean;
         updateExecutionChecklist: boolean;
         updateFinanceChecklist: boolean;
-        submitToFinance: boolean;
+        submitExecution: boolean;
+        reviewExecution: boolean;
         completePayment: boolean;
         submitPlanning: boolean;
         reviewPlanning: boolean;
@@ -165,8 +168,12 @@ export default function ShowProcurement({
         detail.finance.paid_at !== null
             ? 'Checklist terkunci karena pembayaran sudah dicatat.'
             : detail.finance.submitted_at === null
-              ? 'Tahap ini terbuka setelah pengadaan diserahkan oleh PIC Pelaksana.'
+              ? 'Tahap ini terbuka setelah pelaksanaan disetujui TL Pengadaan.'
               : 'Hanya Keuangan yang dapat mengubah checklist ini.';
+
+    // Whoever has the Edit Identitas button changes the data there; the
+    // inline pickers are only for the planning PIC, who has no such form.
+    const editsInline = can.updatePlanningIdentity && !can.update;
 
     const identitySummary: Array<{
         label: string;
@@ -351,7 +358,7 @@ export default function ShowProcurement({
                                             {item.label}
                                         </dt>
                                         <dd className="tabular text-right text-sm font-medium text-foreground">
-                                            {can.updatePlanningIdentity &&
+                                            {editsInline &&
                                             item.field === 'target_date' ? (
                                                 <TargetDateField
                                                     procurementId={
@@ -361,7 +368,7 @@ export default function ShowProcurement({
                                                         procurement.target_completion_date
                                                     }
                                                 />
-                                            ) : can.updatePlanningIdentity &&
+                                            ) : editsInline &&
                                               item.field === 'contract_type' ? (
                                                 <ContractTypePicker
                                                     procurementId={
@@ -527,13 +534,17 @@ export default function ShowProcurement({
                                         procurement.planning_approval_state !==
                                         'disetujui'
                                             ? 'Tahap pelaksanaan terbuka setelah dokumen perencanaan disetujui.'
-                                            : 'Anda tidak memiliki akses untuk mengubah checklist ini.'
+                                            : procurement.execution_approval_state ===
+                                                'menunggu_persetujuan'
+                                              ? 'Checklist terkunci selama pelaksanaan ditinjau TL Pengadaan.'
+                                              : 'Anda tidak memiliki akses untuk mengubah checklist ini.'
                                     }
                                 />
-                                <FinanceHandover
+                                <ExecutionApproval
                                     procurementId={procurement.id}
                                     finance={detail.finance}
-                                    canSubmit={can.submitToFinance}
+                                    canSubmit={can.submitExecution}
+                                    canReview={can.reviewExecution}
                                     planningApproved={
                                         procurement.planning_approval_state ===
                                         'disetujui'
@@ -623,7 +634,8 @@ export default function ShowProcurement({
                             executor={procurement.executor}
                             planners={options.planners}
                             executors={options.executors}
-                            editable={can.assignPic}
+                            canAssignPlanner={can.assignPlanner}
+                            canAssignExecutor={can.assignExecutor}
                         />
                     </aside>
                 </div>

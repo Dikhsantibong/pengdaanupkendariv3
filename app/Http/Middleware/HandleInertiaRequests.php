@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Enums\Permission;
 use App\Models\Procurement;
+use App\Support\Impersonation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Middleware;
@@ -67,6 +68,12 @@ class HandleInertiaRequests extends Middleware
                         ])
                         ->all(),
                 ],
+            ],
+            // The administrator's "Pindah Akun" in the header: whether it may
+            // be offered, and who is behind a switched session.
+            'impersonation' => [
+                'canStart' => Impersonation::canStart($user, $request),
+                'active' => $user === null ? null : Impersonation::shared($request),
             ],
             'unreadNotifications' => $user === null ? 0 : $user->unreadNotifications()->count(),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',

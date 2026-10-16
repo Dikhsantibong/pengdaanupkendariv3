@@ -14,10 +14,13 @@ export default function CreateProcurement({
     options,
     nextNumbers,
     proposal,
+    withPlanner,
 }: {
     options: ProcurementFormOptions;
     nextNumbers: Record<number, string>;
     proposal?: ProposalMode;
+    /** Only TL ICC appoints the planning PIC, here or on the PIC board. */
+    withPlanner: boolean;
 }) {
     const isProposal = proposal?.enabled === true;
     const backUrl = isProposal
@@ -61,7 +64,7 @@ export default function CreateProcurement({
 
                 <ProcurementForm
                     options={options}
-                    withPlanner
+                    withPlanner={withPlanner}
                     proposal={proposal}
                     nextNumbers={nextNumbers}
                     submitLabel={

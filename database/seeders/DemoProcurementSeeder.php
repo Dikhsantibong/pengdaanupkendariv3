@@ -31,10 +31,12 @@ use Throwable;
  * application with a realistic amount of work in it.
  *
  * Every job starts as a staff proposal and goes as far as its track says:
- * waiting for the TL or the Asman, returned, waiting for a planning PIC,
- * planned, submitted to ICC, returned by ICC, executed, ready to hand over,
- * at Keuangan (Penyerahan and Pembayaran partly checked), paid and closed,
- * or cancelled. Each step is logged with a backdated time, so the Riwayat
+ * waiting for the TL or the Asman, returned, waiting for TL ICC to appoint a
+ * planning PIC, planned, submitted to ICC, returned by ICC, waiting for TL
+ * Pengadaan to appoint an execution PIC, executed, ready to submit, waiting
+ * for or returned by TL Pengadaan, at Keuangan (Penyerahan and Pembayaran
+ * partly checked), paid and closed, or cancelled. Each step is logged with
+ * a backdated time, so the Riwayat
  * Approval tab, the dashboards of every role and the boards all show a
  * believable history. Jobs that reach execution get their real contract
  * drawn from its template (SPK Barang, SPK Jasa, Surat Perjanjian or
@@ -71,8 +73,11 @@ class DemoProcurementSeeder extends Seeder
         'penyusunan' => 8,
         'menunggu_icc' => 6,
         'ditolak_icc' => 4,
-        'pelaksanaan' => 12,
-        'siap_serah' => 4,
+        'perlu_pelaksana' => 2,
+        'pelaksanaan' => 8,
+        'siap_serah' => 2,
+        'menunggu_tl_pengadaan' => 3,
+        'dikembalikan_tl_pengadaan' => 1,
         'keuangan' => 8,
         'selesai' => 10,
         'batal' => 3,
@@ -306,7 +311,7 @@ class DemoProcurementSeeder extends Seeder
             return;
         }
 
-        // 4. Procurement appoints the planning PIC and fills in the contract.
+        // 4. TL ICC appoints the planning PIC; the contract is filled in.
         $at = $at->addDays(2);
         $contract = self::CONTRACTS[$index % count(self::CONTRACTS)];
         $format = ContractNumberFormat::query()->where('code', $contract['format'])->firstOrFail();
@@ -322,7 +327,7 @@ class DemoProcurementSeeder extends Seeder
         $procurement->number = $this->procurements->nextNumber($format);
         $procurement->save();
 
-        $this->log($procurement, $people['procurement'], ActivityType::PicDitunjuk, "PIC Perencana diubah menjadi {$people['planner']->name}.", $at, ['pic' => 'perencana']);
+        $this->log($procurement, $people['icc'], ActivityType::PicDitunjuk, "PIC Perencana diubah menjadi {$people['planner']->name}.", $at, ['pic' => 'perencana']);
         $this->procurements->syncChecklists($procurement);
 
         if ($track === 'penyusunan' || $track === 'batal') {
@@ -378,7 +383,7 @@ class DemoProcurementSeeder extends Seeder
             $this->log($procurement, $people['planner'], ActivityType::PerencanaanDiajukan, 'Dokumen perencanaan diajukan ulang (revisi ke-1).', $at);
         }
 
-        // 6. ICC approves; the execution PIC takes over.
+        // 6. ICC approves; TL Pengadaan then appoints the execution PIC.
         $at = $at->addDays(2 + $index % 4);
         $partner = self::PARTNERS[$index % count(self::PARTNERS)];
         $start = $at->addDays(7);
@@ -388,7 +393,6 @@ class DemoProcurementSeeder extends Seeder
             'planning_reviewed_at' => $at,
             'planning_reviewed_by' => $people['icc']->id,
             'planning_review_note' => null,
-            'executor_id' => $people['executor']->id,
             'progress_status_id' => $this->status($index % 2 === 0 ? 'penawaran-harga' : 'disposisi-ams'),
             'partner_name' => $partner['name'],
             'partner_director_name' => $partner['director'],
@@ -405,10 +409,18 @@ class DemoProcurementSeeder extends Seeder
             'target_completion_date' => $start->addDays([30, 45, 60, 90][$index % 4] + 14)->toDateString(),
         ])->save();
         $this->log($procurement, $people['icc'], ActivityType::PerencanaanDisetujui, 'Dokumen perencanaan disetujui.', $at);
+
+        // The planning papers, from their templates.
+        $this->draw($procurement, ['rks', 'hpe', 'upb'], $people['planner'], $at->subDays(10));
+
+        if ($track === 'perlu_pelaksana') {
+            return;
+        }
+
+        $procurement->forceFill(['executor_id' => $people['executor']->id])->save();
         $this->log($procurement, $people['procurement'], ActivityType::PicDitunjuk, "PIC Pelaksana diubah menjadi {$people['executor']->name}.", $at->addHour(), ['pic' => 'pelaksana']);
 
-        // The planning papers and the contract itself, from their templates.
-        $this->draw($procurement, ['rks', 'hpe', 'upb'], $people['planner'], $at->subDays(10));
+        // The contract itself, from its template.
         $this->draw($procurement, [$contract['format'] === 'SPPL' ? 'lampiran-sp' : 'spk'], $people['executor'], $at->addDays(2));
         $this->procurements->syncChecklists($procurement);
 
@@ -425,14 +437,43 @@ class DemoProcurementSeeder extends Seeder
             return;
         }
 
-        // 8. Handed to Keuangan.
+        // 8. The executor submits the execution to TL Pengadaan.
         $at = CarbonImmutable::parse($procurement->target_completion_date)->min(CarbonImmutable::now()->subDays(2 + $index % 9));
+        $submittedAt = $at->subDays(2);
+
         $procurement->forceFill([
+            'execution_approval_state' => PlanningApprovalState::MenungguPersetujuan,
+            'execution_submitted_at' => $submittedAt,
+        ])->save();
+        $this->log($procurement, $people['executor'], ActivityType::PelaksanaanDiajukan, 'Pelaksanaan selesai dan diajukan ke TL Pengadaan untuk persetujuan.', $submittedAt);
+
+        if ($track === 'menunggu_tl_pengadaan') {
+            return;
+        }
+
+        if ($track === 'dikembalikan_tl_pengadaan') {
+            $note = 'Lengkapi BA Serah Terima yang sudah ditandatangani kedua pihak.';
+            $procurement->forceFill([
+                'execution_approval_state' => PlanningApprovalState::Ditolak,
+                'execution_reviewed_at' => $submittedAt->addDay(),
+                'execution_reviewed_by' => $people['procurement']->id,
+                'execution_review_note' => $note,
+            ])->save();
+            $this->log($procurement, $people['procurement'], ActivityType::PelaksanaanDitolak, "Pelaksanaan dikembalikan ke PIC Pelaksana untuk diperbaiki. Catatan: {$note}", $submittedAt->addDay());
+
+            return;
+        }
+
+        // 9. TL Pengadaan approves it into Penyerahan and Pembayaran.
+        $procurement->forceFill([
+            'execution_approval_state' => PlanningApprovalState::Disetujui,
+            'execution_reviewed_at' => $at,
+            'execution_reviewed_by' => $people['procurement']->id,
             'finance_submitted_at' => $at,
-            'finance_submitted_by' => $people['executor']->id,
+            'finance_submitted_by' => $people['procurement']->id,
             'progress_status_id' => $this->status('disposisi-ams'),
         ])->save();
-        $this->log($procurement, $people['executor'], ActivityType::DiajukanKeKeuangan, 'Pelaksanaan selesai, pengadaan diserahkan ke Keuangan untuk proses pembayaran.', $at);
+        $this->log($procurement, $people['procurement'], ActivityType::PelaksanaanDisetujui, 'Pelaksanaan disetujui TL Pengadaan dan diteruskan ke Penyerahan dan Pembayaran (Keuangan).', $at);
         $this->procurements->syncChecklists($procurement);
 
         if ($track === 'keuangan') {
@@ -442,7 +483,7 @@ class DemoProcurementSeeder extends Seeder
             return;
         }
 
-        // 9. Paid and closed.
+        // 10. Paid and closed.
         $this->tick($procurement, ProcurementStage::Keuangan, 1.0, $at, $people['finance']);
         $paidAt = $at->addDays(5 + $index % 10)->min(CarbonImmutable::now()->subHour());
 
@@ -607,8 +648,8 @@ class DemoProcurementSeeder extends Seeder
             'perlu_pic' => 10 + $index % 10,
             'penyusunan', 'batal' => 30 + $index % 20,
             'menunggu_icc', 'ditolak_icc' => 50 + $index % 25,
-            'pelaksanaan' => 90 + $index % 40,
-            'siap_serah' => 130 + $index % 20,
+            'perlu_pelaksana', 'pelaksanaan' => 90 + $index % 40,
+            'siap_serah', 'menunggu_tl_pengadaan', 'dikembalikan_tl_pengadaan' => 130 + $index % 20,
             'keuangan' => 160 + $index % 30,
             default => 200 + ($index % 15) * 10,
         };

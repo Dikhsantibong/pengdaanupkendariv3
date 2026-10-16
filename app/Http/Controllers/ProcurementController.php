@@ -74,6 +74,9 @@ class ProcurementController extends Controller
             // One suggestion per format, so switching between SPK and PJ fills
             // in the right running number without another round trip.
             'nextNumbers' => $this->procurements->nextNumbersByFormat(),
+            // Appointing the planner is TL ICC's, so the field only shows to
+            // whoever holds that right.
+            'withPlanner' => $user->hasPermission(Permission::AssignPlanner),
         ]);
     }
 
@@ -181,6 +184,7 @@ class ProcurementController extends Controller
             'planner',
             'executor',
             'planningReviewer',
+            'executionReviewer',
             'creator',
             'financeSubmitter',
             'paymentCompleter',
@@ -230,6 +234,19 @@ class ProcurementController extends Controller
                     'pending_execution' => $procurement->pendingRequiredChecklists(ProcurementStage::Pelaksanaan)
                         ->map(fn ($checklist): string => $checklist->checklistItem->name)
                         ->all(),
+                    // The execution PIC's submission to TL Pengadaan, which
+                    // stands between execution and Keuangan.
+                    'execution_approval' => [
+                        'state' => $procurement->execution_approval_state->value,
+                        'label' => $procurement->execution_approval_state->label(),
+                        'submitted_at' => $procurement->execution_submitted_at?->toDateTimeString(),
+                        'reviewed_at' => $procurement->execution_reviewed_at?->toDateTimeString(),
+                        'reviewer' => $procurement->executionReviewer?->name,
+                        'note' => $procurement->execution_review_note,
+                        'revision' => $procurement->execution_revision,
+                        'is_executor' => $procurement->executor_id === $user->id,
+                        'executor_name' => $procurement->executor?->name,
+                    ],
                     'pending_finance' => $procurement->pendingRequiredChecklists(ProcurementStage::Keuangan)
                         ->map(fn ($checklist): string => $checklist->checklistItem->name)
                         ->all(),
@@ -293,12 +310,15 @@ class ProcurementController extends Controller
             'can' => [
                 'update' => $user->can('update', $procurement),
                 'assignPic' => $user->can('assignPic', $procurement),
+                'assignPlanner' => $user->can('assignPlanner', $procurement),
+                'assignExecutor' => $user->can('assignExecutor', $procurement),
                 'updateStatus' => $user->can('updateStatus', $procurement),
                 'updatePlanningIdentity' => $user->can('updatePlanningIdentity', $procurement),
                 'updatePlanningChecklist' => $user->can('updatePlanningChecklist', $procurement),
                 'updateExecutionChecklist' => $user->can('updateExecutionChecklist', $procurement),
                 'updateFinanceChecklist' => $user->can('updateFinanceChecklist', $procurement),
-                'submitToFinance' => $user->can('submitToFinance', $procurement),
+                'submitExecution' => $user->can('submitExecution', $procurement),
+                'reviewExecution' => $user->can('reviewExecution', $procurement),
                 'completePayment' => $user->can('completePayment', $procurement),
                 'submitPlanning' => $user->can('submitPlanning', $procurement),
                 'reviewPlanning' => $user->can('reviewPlanning', $procurement),
@@ -357,6 +377,7 @@ class ProcurementController extends Controller
                     : (float) $procurement->value_after_negotiation,
                 'progress_status_id' => $procurement->progress_status_id,
                 'notes' => $procurement->notes,
+                'target_completion_date' => $procurement->target_completion_date?->toDateString() ?? '',
             ],
             'options' => MasterDataOptions::forProcurementForm(),
             'nextNumbers' => $this->procurements->nextNumbersByFormat(),

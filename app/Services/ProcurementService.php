@@ -25,6 +25,7 @@ use App\Notifications\ProposalSubmitted;
 use Database\Seeders\FinanceStageSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Throwable;
 
 class ProcurementService
@@ -96,7 +97,7 @@ class ProcurementService
                 "Pengadaan {$procurement->number} dibuat.",
             );
 
-            if ($plannerId !== null) {
+            if ($plannerId !== null && $author->hasPermission(Permission::AssignPlanner)) {
                 $this->assignPic($procurement, $author, (int) $plannerId, $procurement->executor_id);
             }
 
@@ -419,6 +420,10 @@ class ProcurementService
 
     /**
      * Appoint the planning and execution PICs of a procurement.
+     *
+     * Who may change which of the two is decided by the caller (TL ICC the
+     * planner, TL Pengadaan the executor); a value left as it was is not
+     * touched or logged.
      */
     public function assignPic(Procurement $procurement, User $actor, ?int $plannerId, ?int $executorId): Procurement
     {
@@ -516,7 +521,7 @@ class ProcurementService
                 : 'Dokumen perencanaan diajukan untuk persetujuan.',
         );
 
-        $this->notifySupervisors(new PlanningSubmitted($procurement));
+        $this->notifyHolders(Permission::ReviewPlanning, new PlanningSubmitted($procurement));
 
         return $procurement;
     }
@@ -549,6 +554,15 @@ class ProcurementService
 
         if ($approved) {
             $procurement->executor?->notify(new ProcurementAssigned($procurement, ProcurementStage::Pelaksanaan));
+
+            // TL Pengadaan takes over from here and appoints the executor.
+            if ($procurement->executor_id === null) {
+                $this->notifyHolders(Permission::AssignExecutor, new ProcurementMilestone(
+                    $procurement,
+                    'Tunjuk PIC Pelaksana',
+                    "Perencanaan {$procurement->number} - {$procurement->name} disetujui ICC. Tunjuk PIC Pelaksana untuk memulai pelaksanaan.",
+                ));
+            }
 
             $this->notifyProposers(
                 $procurement,
@@ -666,7 +680,8 @@ class ProcurementService
         if ($forwarded) {
             $this->notifyDivisionApprovers($procurement);
         } elseif ($approved) {
-            $this->notifySupervisors($notification);
+            // Straight to TL ICC, who appoints the planning PIC.
+            $this->notifyHolders(Permission::AssignPlanner, $notification);
         }
 
         return $procurement;
@@ -695,9 +710,91 @@ class ProcurementService
     }
 
     /**
-     * Hand the executed job to Keuangan for payment.
+     * Submit the finished execution to TL Pengadaan, first time or after a
+     * revision.
      */
-    public function submitToFinance(Procurement $procurement, User $actor): Procurement
+    public function submitExecution(Procurement $procurement, User $actor): Procurement
+    {
+        $isRevision = $procurement->execution_approval_state === PlanningApprovalState::Ditolak;
+
+        if ($isRevision) {
+            $procurement->execution_revision = $procurement->execution_revision + 1;
+        }
+
+        $procurement->execution_approval_state = PlanningApprovalState::MenungguPersetujuan;
+        $procurement->execution_submitted_at = now();
+        // As with the planning, the note of the previous round stays: it is
+        // what this round answers.
+        $procurement->execution_reviewed_at = null;
+        $procurement->execution_reviewed_by = null;
+        $procurement->save();
+
+        $this->recordActivity(
+            $procurement,
+            $actor,
+            ActivityType::PelaksanaanDiajukan,
+            $isRevision
+                ? "Pelaksanaan diajukan ulang ke TL Pengadaan (revisi ke-{$procurement->execution_revision})."
+                : 'Pelaksanaan selesai dan diajukan ke TL Pengadaan untuk persetujuan.',
+        );
+
+        $this->notifyHolders(Permission::ReviewExecution, new ProcurementMilestone(
+            $procurement,
+            'Pelaksanaan menunggu persetujuan',
+            "Pelaksanaan {$procurement->number} - {$procurement->name} diajukan PIC Pelaksana untuk disetujui.",
+        ));
+
+        return $procurement;
+    }
+
+    /**
+     * Approve the execution, which hands the job to Keuangan, or return it to
+     * the execution PIC with a note.
+     */
+    public function reviewExecution(Procurement $procurement, User $reviewer, bool $approved, ?string $note = null): Procurement
+    {
+        return DB::transaction(function () use ($procurement, $reviewer, $approved, $note): Procurement {
+            $procurement->execution_approval_state = $approved
+                ? PlanningApprovalState::Disetujui
+                : PlanningApprovalState::Ditolak;
+            $procurement->execution_reviewed_at = now();
+            $procurement->execution_reviewed_by = $reviewer->id;
+            $procurement->execution_review_note = $note;
+            $procurement->save();
+
+            $this->recordActivity(
+                $procurement,
+                $reviewer,
+                $approved ? ActivityType::PelaksanaanDisetujui : ActivityType::PelaksanaanDitolak,
+                Str::limit($approved
+                    ? 'Pelaksanaan disetujui TL Pengadaan dan diteruskan ke Penyerahan dan Pembayaran (Keuangan).'
+                    : 'Pelaksanaan dikembalikan ke PIC Pelaksana untuk diperbaiki.'.($note !== null ? " Catatan: {$note}" : ''), 250),
+            );
+
+            if (! $approved) {
+                $procurement->executor?->notify(new ProcurementMilestone(
+                    $procurement,
+                    'Pelaksanaan dikembalikan',
+                    "Pelaksanaan {$procurement->name} dikembalikan untuk diperbaiki.".($note !== null ? " Catatan: {$note}" : ''),
+                ));
+
+                return $procurement;
+            }
+
+            $procurement->executor?->notify(new ProcurementMilestone(
+                $procurement,
+                'Pelaksanaan disetujui',
+                "Pelaksanaan {$procurement->name} disetujui dan diteruskan ke Keuangan.",
+            ));
+
+            return $this->handToFinance($procurement, $reviewer);
+        });
+    }
+
+    /**
+     * Hand the approved execution to Keuangan for payment.
+     */
+    protected function handToFinance(Procurement $procurement, User $actor): Procurement
     {
         // Steps added to the master data since the job started are included.
         $this->syncChecklists($procurement);
@@ -705,13 +802,6 @@ class ProcurementService
         $procurement->finance_submitted_at = now();
         $procurement->finance_submitted_by = $actor->id;
         $procurement->save();
-
-        $this->recordActivity(
-            $procurement,
-            $actor,
-            ActivityType::DiajukanKeKeuangan,
-            'Pelaksanaan selesai, pengadaan diserahkan ke Keuangan untuk proses pembayaran.',
-        );
 
         $message = "Pengadaan {$procurement->number} - {$procurement->name} diserahkan ke Keuangan untuk dibayar.";
 
@@ -841,6 +931,19 @@ class ProcurementService
             'description' => $description,
             'meta' => $meta,
         ]);
+    }
+
+    /**
+     * Send a notification to every active account holding a right; the
+     * administrator holds every right, so it is always told.
+     */
+    protected function notifyHolders(Permission $permission, mixed $notification): void
+    {
+        User::query()
+            ->active()
+            ->get()
+            ->filter(fn (User $user): bool => $user->hasPermission($permission))
+            ->each(fn (User $user) => $user->notify($notification));
     }
 
     /**

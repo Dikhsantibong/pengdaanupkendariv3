@@ -157,4 +157,55 @@ class ProcurementManagementTest extends TestCase
 
         $this->assertSoftDeleted($procurement);
     }
+
+    public function test_the_target_date_is_set_on_the_edit_form(): void
+    {
+        $teamLeader = User::factory()->teamLeader()->create();
+        $procurement = Procurement::factory()->create(['target_completion_date' => '2026-11-30']);
+
+        $this->actingAs($teamLeader)
+            ->get(route('procurements.edit', $procurement))
+            ->assertInertia(fn ($page) => $page->where('procurement.target_completion_date', '2026-11-30'));
+
+        $payload = [
+            'name' => $procurement->name,
+            'work_director_id' => $procurement->work_director_id,
+            'target_unit_id' => $procurement->target_unit_id,
+            'procurement_method_id' => $procurement->procurement_method_id,
+            'budget_source_id' => $procurement->budget_source_id,
+            'hpe_value' => 500_000_000,
+            'progress_status_id' => $procurement->progress_status_id,
+        ];
+
+        $this->actingAs($teamLeader)
+            ->put(route('procurements.update', $procurement), [...$payload, 'target_completion_date' => '2026-12-31'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('2026-12-31', $procurement->refresh()->target_completion_date?->toDateString());
+
+        // A caller that does not send it leaves it alone.
+        $this->actingAs($teamLeader)
+            ->put(route('procurements.update', $procurement), $payload)
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('2026-12-31', $procurement->refresh()->target_completion_date?->toDateString());
+    }
+
+    public function test_the_detail_page_edits_inline_only_for_the_planner(): void
+    {
+        $planner = User::factory()->planner()->create();
+        $procurement = Procurement::factory()->plannedBy($planner)->create();
+
+        // The Edit Identitas form serves procurement, so the page itself is read only.
+        $this->actingAs(User::factory()->teamLeader()->create())
+            ->get(route('procurements.show', $procurement))
+            ->assertInertia(fn ($page) => $page->where('can.update', true));
+
+        // The planning PIC has no such form and keeps the inline fields.
+        $this->actingAs($planner)
+            ->get(route('procurements.show', $procurement))
+            ->assertInertia(fn ($page) => $page
+                ->where('can.update', false)
+                ->where('can.updatePlanningIdentity', true));
+    }
 }

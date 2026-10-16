@@ -21,39 +21,101 @@ class ProcurementWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_team_leader_appointing_a_pic_notifies_them(): void
+    public function test_team_leaders_appointing_a_pic_notifies_them(): void
     {
         Notification::fake();
 
+        $teamLeaderIcc = User::factory()->teamLeaderIcc()->create();
         $teamLeader = User::factory()->teamLeader()->create();
         $planner = User::factory()->planner()->create();
         $executor = User::factory()->executor()->create();
         $procurement = Procurement::factory()->create();
 
-        $this->actingAs($teamLeader)
+        // TL ICC appoints the planning PIC.
+        $this->actingAs($teamLeaderIcc)
             ->put(route('procurements.pic.update', $procurement), [
                 'planner_id' => $planner->id,
-                'executor_id' => $executor->id,
+                'executor_id' => null,
             ])
             ->assertRedirect();
 
-        $procurement->refresh();
-
-        $this->assertSame($planner->id, $procurement->planner_id);
-        $this->assertSame($executor->id, $procurement->executor_id);
-
+        $this->assertSame($planner->id, $procurement->refresh()->planner_id);
         Notification::assertSentTo($planner, ProcurementAssigned::class);
 
-        // Execution cannot start yet: the executor hears once planning is approved.
-        Notification::assertNotSentTo($executor, ProcurementAssigned::class);
-
-        $approved = Procurement::factory()->planningApproved()->create();
+        // TL Pengadaan appoints the executor, once ICC approved the planning.
+        $approved = Procurement::factory()->plannedBy($planner)->planningApproved()->create();
 
         $this->actingAs($teamLeader)
             ->put(route('procurements.pic.update', $approved), ['executor_id' => $executor->id])
             ->assertRedirect();
 
+        $this->assertSame($executor->id, $approved->refresh()->executor_id);
         Notification::assertSentTo($executor, ProcurementAssigned::class);
+    }
+
+    public function test_each_team_leader_appoints_only_their_own_pic(): void
+    {
+        $teamLeaderIcc = User::factory()->teamLeaderIcc()->create();
+        $teamLeader = User::factory()->teamLeaderPengadaan()->create();
+        $planner = User::factory()->planner()->create();
+        $executor = User::factory()->executor()->create();
+
+        $planning = Procurement::factory()->create();
+        $approved = Procurement::factory()->plannedBy($planner)->planningApproved()->create();
+
+        // TL Pengadaan no longer appoints the planning PIC ...
+        $this->actingAs($teamLeader)
+            ->put(route('procurements.pic.update', $planning), ['planner_id' => $planner->id])
+            ->assertForbidden();
+
+        // ... nor the executor before the planning is approved.
+        $this->actingAs($teamLeader)
+            ->put(route('procurements.pic.update', $planning), ['executor_id' => $executor->id])
+            ->assertForbidden();
+
+        // TL ICC appoints the planner only.
+        $this->actingAs($teamLeaderIcc)
+            ->put(route('procurements.pic.update', $approved), ['executor_id' => $executor->id])
+            ->assertForbidden();
+
+        $this->assertNull($planning->refresh()->planner_id);
+        $this->assertNull($planning->executor_id);
+        $this->assertNull($approved->refresh()->executor_id);
+
+        // Sending the other PIC unchanged, as the forms do, is not a change.
+        $this->actingAs($teamLeader)
+            ->put(route('procurements.pic.update', $approved), [
+                'planner_id' => $planner->id,
+                'executor_id' => $executor->id,
+            ])
+            ->assertRedirect();
+
+        $this->assertSame($executor->id, $approved->refresh()->executor_id);
+    }
+
+    public function test_the_pic_board_shows_each_team_leader_their_own_column(): void
+    {
+        $planner = User::factory()->planner()->create();
+        Procurement::factory()->create(['name' => 'Masih Direncanakan']);
+        $approved = Procurement::factory()->plannedBy($planner)->planningApproved()->create(['name' => 'Siap Dilaksanakan']);
+
+        $this->actingAs(User::factory()->teamLeaderIcc()->create())
+            ->get(route('pic-assignments.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('can.assignPlanner', true)
+                ->where('can.assignExecutor', false)
+                ->has('procurements.data', 2));
+
+        // TL Pengadaan only sees jobs whose planning is approved.
+        $this->actingAs(User::factory()->teamLeaderPengadaan()->create())
+            ->get(route('pic-assignments.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('can.assignPlanner', false)
+                ->where('can.assignExecutor', true)
+                ->has('procurements.data', 1)
+                ->where('procurements.data.0.id', $approved->id));
     }
 
     public function test_pic_cannot_appoint_themselves(): void

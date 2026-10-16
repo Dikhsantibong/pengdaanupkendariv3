@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Procurements;
 
 use App\Concerns\ProcurementValidationRules;
+use App\Enums\Permission;
 use App\Enums\UserRole;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -45,6 +46,8 @@ class StoreProcurementRequest extends FormRequest
             'attachments' => ['nullable', 'array', 'max:10'],
             'attachments.*' => ['file', 'mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx', 'max:20480'],
             'planner_id' => [
+                // Only whoever may appoint planners (TL ICC) sets one here.
+                Rule::prohibitedIf(fn (): bool => ! (bool) $this->user()?->hasPermission(Permission::AssignPlanner)),
                 'nullable',
                 Rule::exists('users', 'id')
                     ->whereIn('role', [
