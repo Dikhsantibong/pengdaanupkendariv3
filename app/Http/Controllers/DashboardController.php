@@ -8,6 +8,7 @@ use App\Http\Resources\ProcurementResource;
 use App\Models\Procurement;
 use App\Models\ProgressStatus;
 use App\Support\DashboardTasks;
+use App\Support\RoleDashboard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -31,7 +32,12 @@ class DashboardController extends Controller
             ->groupBy('progress_statuses.category')
             ->pluck('total', 'category');
 
-        return Inertia::render('dashboard', [
+        // Each role gets its own dashboard; only those overseeing every
+        // procurement get the management breakdowns.
+        $profile = RoleDashboard::profile($user);
+
+        $shared = [
+            'profile' => $profile,
             'summary' => [
                 'total' => $base()->count(),
                 'running' => (int) ($byCategory[StatusCategory::Berjalan->value] ?? 0),
@@ -48,6 +54,19 @@ class DashboardController extends Controller
                     ->count(),
                 'totalHpe' => (float) $base()->sum('hpe_value'),
             ],
+            'tasks' => DashboardTasks::for($user),
+        ];
+
+        if ($profile !== 'manajemen') {
+            return Inertia::render('dashboard', [
+                ...$shared,
+                'role' => RoleDashboard::for($user, $profile),
+            ]);
+        }
+
+        return Inertia::render('dashboard', [
+            ...$shared,
+            'stages' => RoleDashboard::stages($base()),
             'byStatus' => $this->groupedCounts($base(), 'progress_statuses', 'progress_status_id', 'name'),
             'byWorkDirector' => $this->groupedCounts($base(), 'work_directors', 'work_director_id', 'name'),
             'byTargetUnit' => $this->unitCounts($base()),
@@ -72,7 +91,6 @@ class DashboardController extends Controller
                     ->get(),
             )->resolve(),
             'statusOrder' => ProgressStatus::query()->active()->ordered()->pluck('name'),
-            'tasks' => DashboardTasks::for($user),
         ]);
     }
 

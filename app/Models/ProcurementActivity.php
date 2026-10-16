@@ -43,6 +43,25 @@ class ProcurementActivity extends Model
     }
 
     /**
+     * The step of the journey this activity belongs to in the approval
+     * history, or null for a routine edit.
+     *
+     * Appointing the PIC Pelaksana belongs to execution, the PIC Perencana
+     * to planning. Newer entries say which in their meta; older ones only in
+     * their wording.
+     */
+    public function approvalStage(): ?string
+    {
+        if ($this->type === ActivityType::PicDitunjuk) {
+            $pic = $this->meta['pic'] ?? (str_contains($this->description, 'PIC Pelaksana') ? 'pelaksana' : 'perencana');
+
+            return $pic === 'pelaksana' ? 'Pelaksanaan' : 'Perencanaan';
+        }
+
+        return $this->type->approvalStage();
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

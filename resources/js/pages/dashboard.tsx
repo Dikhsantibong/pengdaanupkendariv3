@@ -19,10 +19,22 @@ import {
     Wrench,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import {
+    FigureCards,
+    PROFILE_DESCRIPTIONS,
+    RoleJobs,
+    StageFlow,
+} from '@/components/dashboard/role-dashboard';
+import type {
+    RoleDashboardData,
+    RoleProfile,
+    StageCount,
+} from '@/components/dashboard/role-dashboard';
 import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
 import { StatCard } from '@/components/stat-card';
 import { StatusBadge } from '@/components/status-badge';
+import { Button } from '@/components/ui/button';
 import {
     Table,
     TableBody,
@@ -70,7 +82,22 @@ type DashboardTasks = {
     execution: TaskList;
 };
 
-type DashboardProps = {
+type ManagementData = {
+    stages: StageCount[];
+    byStatus: Breakdown[];
+    byWorkDirector: Breakdown[];
+    byTargetUnit: Breakdown[];
+    byProcurementMethod: Breakdown[];
+    byBudgetSource: Breakdown[];
+    byPlanner: Breakdown[];
+    byExecutor: Breakdown[];
+    recent: ProcurementRow[];
+    upcoming: ProcurementRow[];
+};
+
+type DashboardProps = Partial<ManagementData> & {
+    profile: RoleProfile;
+    role?: RoleDashboardData;
     summary: {
         total: number;
         running: number;
@@ -81,32 +108,12 @@ type DashboardProps = {
         needsRevision: number;
         totalHpe: number;
     };
-    byStatus: Breakdown[];
-    byWorkDirector: Breakdown[];
-    byTargetUnit: Breakdown[];
-    byProcurementMethod: Breakdown[];
-    byBudgetSource: Breakdown[];
-    byPlanner: Breakdown[];
-    byExecutor: Breakdown[];
-    recent: ProcurementRow[];
-    upcoming: ProcurementRow[];
     tasks: DashboardTasks;
 };
 
-export default function Dashboard({
-    summary,
-    byStatus,
-    byWorkDirector,
-    byTargetUnit,
-    byProcurementMethod,
-    byBudgetSource,
-    byPlanner,
-    byExecutor,
-    recent,
-    upcoming,
-    tasks,
-}: DashboardProps) {
+export default function Dashboard(props: DashboardProps) {
     const { auth } = usePage<{ auth: Auth }>().props;
+    const { profile, role, tasks, summary } = props;
 
     return (
         <>
@@ -116,147 +123,257 @@ export default function Dashboard({
                 <PageHeader
                     eyebrow="Sistem Management Pengadaan UP Kendari"
                     title={`Selamat datang, ${auth.user.name}`}
-                    description={
-                        auth.permissions.viewAllProcurements
-                            ? 'Ringkasan seluruh pengadaan barang dan jasa yang berjalan di UP Kendari.'
-                            : 'Ringkasan pengadaan yang ditugaskan kepada Anda.'
+                    description={PROFILE_DESCRIPTIONS[profile]}
+                    actions={
+                        auth.permissions.createProcurement ? (
+                            <Button asChild>
+                                <Link href={procurements.create()}>
+                                    <FilePlus2 className="size-4" />
+                                    {auth.permissions.proposeOnly
+                                        ? 'Buat Usulan Pekerjaan'
+                                        : 'Buat Pengadaan'}
+                                </Link>
+                            </Button>
+                        ) : undefined
                     }
                 />
 
                 <TaskInbox tasks={tasks} menus={auth.permissions.menus} />
 
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <StatCard
-                        label="Total Pengadaan"
-                        value={summary.total}
-                        icon={FolderKanban}
-                        accent
+                {profile === 'manajemen' || role === undefined ? (
+                    <ManagementDashboard
+                        summary={summary}
+                        data={props as ManagementData}
+                        canSeeApprovals={auth.permissions.viewAllProcurements}
                     />
-                    <StatCard
-                        label="Pengadaan Berjalan"
-                        value={summary.running}
-                        icon={CircleDot}
-                        hint={`${summary.pending} pending · ${summary.cancelled} batal`}
+                ) : (
+                    <RoleView
+                        profile={profile}
+                        role={role}
+                        summary={summary}
+                        menus={auth.permissions.menus}
                     />
-                    <StatCard
-                        label="Pengadaan Selesai"
-                        value={summary.completed}
-                        icon={BadgeCheck}
-                    />
-                    <StatCard
-                        label="Menunggu Approval"
-                        value={summary.awaitingApproval}
-                        icon={CircleDashed}
-                        hint={
-                            summary.awaitingApproval > 0
-                                ? 'Perlu tindakan TL ICC'
-                                : 'Tidak ada antrean'
-                        }
-                    />
-                </div>
-
-                {summary.needsRevision > 0 && (
-                    <Link
-                        href={
-                            planning.index({
-                                query: { approval_state: 'ditolak' },
-                            }).url
-                        }
-                        className="flex items-start gap-3 rounded-md border border-destructive/40 bg-destructive/5 p-4 transition-colors hover:bg-destructive/10"
-                    >
-                        <RotateCcw className="mt-0.5 size-4 shrink-0 text-destructive" />
-                        <div className="space-y-0.5">
-                            <p className="text-sm font-semibold text-destructive">
-                                {summary.needsRevision} perencanaan dikembalikan
-                                untuk revisi
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                                Perbaiki sesuai catatan reviewer, lalu ajukan
-                                ulang untuk ditinjau kembali.
-                            </p>
-                        </div>
-                    </Link>
                 )}
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                    <StatCard
-                        label="Total Nilai HPE"
-                        value={formatCompactCurrency(summary.totalHpe)}
-                        hint={formatCurrency(summary.totalHpe)}
-                        icon={Wallet}
-                    />
-                    <StatCard
-                        label="Pengadaan Dibatalkan"
-                        value={summary.cancelled}
-                        icon={Ban}
-                    />
-                </div>
-
-                <div className="grid gap-4 xl:grid-cols-3">
-                    <BreakdownCard
-                        title="Progres Pengadaan"
-                        rows={byStatus}
-                        total={summary.total}
-                    />
-                    <BreakdownCard
-                        title="Berdasarkan Direksi Pekerjaan"
-                        rows={byWorkDirector}
-                        total={summary.total}
-                    />
-                    <BreakdownCard
-                        title="Berdasarkan Unit Tujuan"
-                        rows={byTargetUnit}
-                        total={summary.total}
-                    />
-                </div>
-
-                <div className="grid gap-4 xl:grid-cols-2">
-                    <BreakdownCard
-                        title="Berdasarkan Metode Pengadaan"
-                        rows={byProcurementMethod}
-                        total={summary.total}
-                    />
-                    <BreakdownCard
-                        title="Berdasarkan Sumber Anggaran"
-                        rows={byBudgetSource}
-                        total={summary.total}
-                    />
-                </div>
-
-                <div className="grid gap-4 xl:grid-cols-2">
-                    <BreakdownCard
-                        title="Berdasarkan PIC Perencana"
-                        rows={byPlanner}
-                        total={summary.total}
-                    />
-                    <BreakdownCard
-                        title="Berdasarkan PIC Pelaksana"
-                        rows={byExecutor}
-                        total={summary.total}
-                    />
-                </div>
-
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-                    <RecentTable rows={recent} />
-                    <ScheduleCard rows={upcoming} />
-                </div>
-
-                {summary.awaitingApproval > 0 &&
-                    auth.permissions.viewAllProcurements && (
-                        <Link
-                            href={approvals.index()}
-                            className="flex items-center justify-between rounded-md border border-l-2 border-border border-l-primary bg-card px-4 py-3 text-sm transition-colors hover:bg-accent/40"
-                        >
-                            <span className="font-medium text-foreground">
-                                {summary.awaitingApproval} pengadaan menunggu
-                                persetujuan perencanaan
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                                Buka antrean approval →
-                            </span>
-                        </Link>
-                    )}
             </div>
+        </>
+    );
+}
+
+/**
+ * The dashboard of a role that works on its own share of the procurements.
+ */
+function RoleView({
+    profile,
+    role,
+    summary,
+    menus,
+}: {
+    profile: RoleProfile;
+    role: RoleDashboardData;
+    summary: DashboardProps['summary'];
+    menus: Auth['permissions']['menus'];
+}) {
+    // Where "Lihat semua" leads for each role's list.
+    const allHref: Record<RoleProfile, string | null> = {
+        manajemen: procurements.index().url,
+        pengusul: menus.proposals ? proposals.index().url : null,
+        direksi: menus.proposals ? proposals.index().url : null,
+        perencana: menus.planning ? planning.index().url : null,
+        pelaksana: menus.execution ? execution.index().url : null,
+        keuangan: menus.finance ? finance.index().url : null,
+        umum: procurements.index().url,
+    };
+
+    return (
+        <>
+            <FigureCards cards={role.cards} />
+
+            {profile === 'perencana' && summary.needsRevision > 0 && (
+                <RevisionNotice count={summary.needsRevision} />
+            )}
+
+            <StageFlow
+                stages={role.stages}
+                title={
+                    profile === 'pengusul'
+                        ? 'Posisi Usulan Saya'
+                        : 'Posisi Pengadaan Anda'
+                }
+            />
+
+            <RoleJobs
+                title={role.jobsTitle}
+                jobs={role.jobs}
+                allHref={allHref[profile]}
+                showDivision={profile !== 'pengusul' && profile !== 'direksi'}
+            />
+        </>
+    );
+}
+
+/**
+ * A planning returned for revision is work waiting on its PIC.
+ */
+function RevisionNotice({ count }: { count: number }) {
+    return (
+        <Link
+            href={planning.index({ query: { approval_state: 'ditolak' } }).url}
+            className="flex items-start gap-3 rounded-md border border-destructive/40 bg-destructive/5 p-4 transition-colors hover:bg-destructive/10"
+        >
+            <RotateCcw className="mt-0.5 size-4 shrink-0 text-destructive" />
+            <div className="space-y-0.5">
+                <p className="text-sm font-semibold text-destructive">
+                    {count} perencanaan dikembalikan untuk revisi
+                </p>
+                <p className="text-xs text-muted-foreground">
+                    Perbaiki sesuai catatan reviewer, lalu ajukan ulang untuk
+                    ditinjau kembali.
+                </p>
+            </div>
+        </Link>
+    );
+}
+
+/**
+ * The overview of every procurement, for those who oversee them all.
+ */
+function ManagementDashboard({
+    summary,
+    data,
+    canSeeApprovals,
+}: {
+    summary: DashboardProps['summary'];
+    data: ManagementData;
+    canSeeApprovals: boolean;
+}) {
+    const {
+        stages,
+        byStatus,
+        byWorkDirector,
+        byTargetUnit,
+        byProcurementMethod,
+        byBudgetSource,
+        byPlanner,
+        byExecutor,
+        recent,
+        upcoming,
+    } = data;
+
+    return (
+        <>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <StatCard
+                    label="Total Pengadaan"
+                    value={summary.total}
+                    icon={FolderKanban}
+                    accent
+                />
+                <StatCard
+                    label="Pengadaan Berjalan"
+                    value={summary.running}
+                    icon={CircleDot}
+                    hint={`${summary.pending} pending · ${summary.cancelled} batal`}
+                />
+                <StatCard
+                    label="Pengadaan Selesai"
+                    value={summary.completed}
+                    icon={BadgeCheck}
+                />
+                <StatCard
+                    label="Menunggu Approval"
+                    value={summary.awaitingApproval}
+                    icon={CircleDashed}
+                    hint={
+                        summary.awaitingApproval > 0
+                            ? 'Perlu tindakan TL ICC'
+                            : 'Tidak ada antrean'
+                    }
+                />
+            </div>
+
+            {summary.needsRevision > 0 && (
+                <RevisionNotice count={summary.needsRevision} />
+            )}
+
+            {stages && <StageFlow stages={stages} />}
+
+            <div className="grid gap-3 sm:grid-cols-2">
+                <StatCard
+                    label="Total Nilai HPE"
+                    value={formatCompactCurrency(summary.totalHpe)}
+                    hint={formatCurrency(summary.totalHpe)}
+                    icon={Wallet}
+                />
+                <StatCard
+                    label="Pengadaan Dibatalkan"
+                    value={summary.cancelled}
+                    icon={Ban}
+                />
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-3">
+                <BreakdownCard
+                    title="Progres Pengadaan"
+                    rows={byStatus}
+                    total={summary.total}
+                />
+                <BreakdownCard
+                    title="Berdasarkan Direksi Pekerjaan"
+                    rows={byWorkDirector}
+                    total={summary.total}
+                />
+                <BreakdownCard
+                    title="Berdasarkan Unit Tujuan"
+                    rows={byTargetUnit}
+                    total={summary.total}
+                />
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-2">
+                <BreakdownCard
+                    title="Berdasarkan Metode Pengadaan"
+                    rows={byProcurementMethod}
+                    total={summary.total}
+                />
+                <BreakdownCard
+                    title="Berdasarkan Sumber Anggaran"
+                    rows={byBudgetSource}
+                    total={summary.total}
+                />
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-2">
+                <BreakdownCard
+                    title="Berdasarkan PIC Perencana"
+                    rows={byPlanner}
+                    total={summary.total}
+                />
+                <BreakdownCard
+                    title="Berdasarkan PIC Pelaksana"
+                    rows={byExecutor}
+                    total={summary.total}
+                />
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+                <RecentTable rows={recent} />
+                <ScheduleCard rows={upcoming} />
+            </div>
+
+            {summary.awaitingApproval > 0 && canSeeApprovals && (
+                <Link
+                    href={approvals.index()}
+                    className="flex items-center justify-between rounded-md border border-l-2 border-border border-l-primary bg-card px-4 py-3 text-sm transition-colors hover:bg-accent/40"
+                >
+                    <span className="font-medium text-foreground">
+                        {summary.awaitingApproval} pengadaan menunggu
+                        persetujuan perencanaan
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                        Buka antrean approval →
+                    </span>
+                </Link>
+            )}
         </>
     );
 }
@@ -321,7 +438,8 @@ function TaskInbox({
             list: tasks.finance,
             emptyText: 'Tidak ada tagihan yang menunggu pembayaran.',
             itemHref: (item) =>
-                procurements.show(item.id, { query: { tab: 'keuangan' } }).url,
+                procurements.show(item.id, { query: { tab: 'penyerahan' } })
+                    .url,
             dateLabel: (item) =>
                 item.date ? `Diserahkan ${formatDateTime(item.date)}` : null,
             allHref: menus.finance ? finance.index().url : null,

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ActivityType;
+use App\Enums\FinanceSection;
 use App\Enums\Permission;
 use App\Enums\ProcurementStage;
 use App\Http\Requests\Procurements\StoreProcurementRequest;
@@ -13,11 +14,13 @@ use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementDocument;
 use App\Models\User;
+use App\Services\ContractRequirementReader;
 use App\Services\DocumentGenerator;
 use App\Services\ProcurementService;
 use App\Support\MasterDataOptions;
 use App\Support\ProcurementFilters;
 use App\Support\ProposalDocuments;
+use App\Support\RoleDashboard;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -232,6 +235,9 @@ class ProcurementController extends Controller
                         ->all(),
                     // The Penyerahan and Pembayaran requirements follow the
                     // contract, so they wait for what decides which contract.
+                    // Per tab: the contract the requirements were read from,
+                    // or null when the template's list stands in for it.
+                    'requirements_source' => $this->requirementsSource($procurement),
                     'requirements_waiting_for' => array_values(array_filter([
                         $procurement->contract_number_format_id === null ? 'format kontrak' : null,
                         $procurement->contractNumberFormat?->uses_work_category && $procurement->work_category === null
@@ -261,17 +267,28 @@ class ProcurementController extends Controller
                     'edited_at' => $document->edited_at?->toDateTimeString(),
                     'uploads' => self::uploadPayload($document),
                 ]),
-            'activities' => $procurement->activities
-                ->sortByDesc('created_at')
-                ->values()
-                ->map(fn ($activity): array => [
-                    'id' => $activity->id,
-                    'type' => $activity->type->value,
-                    'type_label' => $activity->type->label(),
-                    'description' => $activity->description,
-                    'user' => $activity->user?->name,
-                    'created_at' => $activity->created_at?->toDateTimeString(),
-                ]),
+            // The decisions and hand-overs from the proposal to the payment,
+            // oldest first, so the table reads as the job's journey. Routine
+            // edits stay in the activity log but are not part of it.
+            'approvalHistory' => [
+                'rows' => $procurement->activities
+                    ->filter(fn ($activity): bool => $activity->approvalStage() !== null)
+                    ->sortBy([['created_at', 'asc'], ['id', 'asc']])
+                    ->values()
+                    ->map(fn ($activity): array => [
+                        'id' => $activity->id,
+                        'stage' => $activity->approvalStage(),
+                        'step' => $activity->type->label(),
+                        'outcome' => $activity->type->approvalOutcome(),
+                        'description' => $activity->description,
+                        'user' => $activity->user?->name,
+                        'user_role' => $activity->user?->role?->label(),
+                        'created_at' => $activity->created_at?->toDateTimeString(),
+                    ])
+                    ->all(),
+                // What the job waits for now, shown as the table's last row.
+                'waiting' => $procurement->completed_at === null ? RoleDashboard::note($procurement) : null,
+            ],
             'options' => MasterDataOptions::forProcurementDetail($procurement),
             'can' => [
                 'update' => $user->can('update', $procurement),
@@ -460,6 +477,39 @@ class ProcurementController extends Controller
                 ];
             })
             ->all();
+    }
+
+    /**
+     * Where each Keuangan tab's requirements come from: the title of the
+     * contract they were read from, or null for the template's list.
+     *
+     * @return array<string, string|null>
+     */
+    protected function requirementsSource(Procurement $procurement): array
+    {
+        // Only requirements the contract still lists count; one it dropped
+        // may linger as a ticked row of history.
+        $readSections = [];
+
+        foreach ($procurement->checklists->where('stage', ProcurementStage::Keuangan) as $checklist) {
+            $item = $checklist->checklistItem;
+
+            if ($item->procurement_id === $procurement->id && $item->is_active && $item->section !== null) {
+                $readSections[$item->section->value] = true;
+            }
+        }
+
+        $document = $readSections === []
+            ? null
+            : app(ContractRequirementReader::class)->contractDocument($procurement);
+
+        $source = [];
+
+        foreach (FinanceSection::cases() as $section) {
+            $source[$section->value] = isset($readSections[$section->value]) ? ($document->title ?? 'kontrak') : null;
+        }
+
+        return $source;
     }
 
     /**

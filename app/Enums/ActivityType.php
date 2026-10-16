@@ -49,4 +49,38 @@ enum ActivityType: string
             self::PengadaanSelesai => 'Pengadaan Selesai',
         };
     }
+
+    /**
+     * The step of the job's journey the activity belongs to, when it is one
+     * of the decisions and hand-overs that move a job from the proposal to
+     * the payment; null for routine edits (data, status, checklist,
+     * documents), which are not part of the approval history.
+     */
+    public function approvalStage(): ?string
+    {
+        return match ($this) {
+            self::Dibuat, self::UsulanDiajukan, self::UsulanDisetujuiTl,
+            self::UsulanDisetujui, self::UsulanDikembalikan => 'Usulan',
+            self::PicDitunjuk, self::PerencanaanDiajukan,
+            self::PerencanaanDisetujui, self::PerencanaanDitolak => 'Perencanaan',
+            self::DiajukanKeKeuangan => 'Pelaksanaan',
+            self::PembayaranSelesai, self::PengadaanSelesai => 'Keuangan',
+            default => null,
+        };
+    }
+
+    /**
+     * What the step came to, for the result column of the approval history.
+     */
+    public function approvalOutcome(): string
+    {
+        return match ($this) {
+            self::UsulanDisetujuiTl, self::UsulanDisetujui, self::PerencanaanDisetujui => 'disetujui',
+            self::UsulanDikembalikan, self::PerencanaanDitolak => 'dikembalikan',
+            self::PicDitunjuk => 'ditunjuk',
+            self::Dibuat => 'dibuat',
+            self::PembayaranSelesai, self::PengadaanSelesai => 'selesai',
+            default => 'diajukan',
+        };
+    }
 }

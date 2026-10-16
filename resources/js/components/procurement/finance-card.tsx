@@ -12,6 +12,8 @@ export type FinanceDetail = {
     paid_by: string | null;
     pending_execution: string[];
     pending_finance: string[];
+    /** Per tab: the contract the requirements were read from, or null for the template. */
+    requirements_source: Record<'penyerahan' | 'pembayaran', string | null>;
     /** What has to be filled in before the contract's requirements appear. */
     requirements_waiting_for: string[];
 };

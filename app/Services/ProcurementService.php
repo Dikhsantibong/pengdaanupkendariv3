@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ActivityType;
+use App\Enums\FinanceSection;
 use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
@@ -24,6 +25,7 @@ use App\Notifications\ProposalSubmitted;
 use Database\Seeders\FinanceStageSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class ProcurementService
 {
@@ -288,7 +290,19 @@ class ProcurementService
      */
     public function syncChecklists(Procurement $procurement): void
     {
+        $this->readContractRequirements($procurement);
+
+        // The requirements read from this procurement's own contract.
+        $own = ChecklistItem::query()
+            ->active()
+            ->where('procurement_id', $procurement->id)
+            ->ordered()
+            ->get();
+
+        $readSections = $own->map(fn (ChecklistItem $item): ?string => $item->section?->value)->filter()->unique();
+
         $applicable = ChecklistItem::query()
+            ->shared()
             ->active()
             ->forProcurementMethod($procurement->procurement_method_id)
             ->forContractNumberFormat($procurement->contract_number_format_id)
@@ -300,7 +314,10 @@ class ProcurementService
                 fn ($query) => $query->whereNull('section'),
             )
             ->ordered()
-            ->get();
+            ->get()
+            // A section read from the contract replaces the template's list.
+            ->reject(fn (ChecklistItem $item): bool => $item->section !== null && $readSections->contains($item->section->value))
+            ->concat($own);
 
         $existing = $procurement->checklists()->pluck('checklist_item_id')->all();
 
@@ -318,6 +335,86 @@ class ProcurementService
             ->delete();
 
         $procurement->unsetRelation('checklists');
+    }
+
+    /**
+     * Keep the Penyerahan and Pembayaran requirements in step with the
+     * procurement's own contract.
+     *
+     * Each list found in the contract becomes checklist items owned by this
+     * procurement. An item whose wording is unchanged is the same item, so
+     * its tick survives a re-read; one the contract no longer lists is
+     * switched off, its tick kept as history. A list the contract does not
+     * have (no contract drawn yet, or worded beyond recognition) falls back
+     * to the template's requirements. Once paid, the list is final.
+     */
+    public function readContractRequirements(Procurement $procurement): void
+    {
+        if ($procurement->payment_completed_at !== null || ! $procurement->exists) {
+            return;
+        }
+
+        try {
+            $read = app(ContractRequirementReader::class)->read($procurement);
+        } catch (Throwable $exception) {
+            // A contract that cannot be read must never take the page down:
+            // the requirements already read stay, or the template's stand in.
+            report($exception);
+
+            return;
+        }
+
+        DB::transaction(function () use ($procurement, $read): void {
+            // Two people opening the job at once must not both add the same
+            // requirements: the second waits for the first, then finds them.
+            Procurement::query()->whereKey($procurement->id)->lockForUpdate()->first();
+
+            $this->storeContractRequirements($procurement, $read);
+        });
+    }
+
+    /**
+     * Write the requirements read from a contract as the procurement's own
+     * checklist items.
+     *
+     * @param  array<string, list<array{name: string, is_optional: bool, description: string}>>  $read
+     */
+    protected function storeContractRequirements(Procurement $procurement, array $read): void
+    {
+        $existing = ChecklistItem::query()->where('procurement_id', $procurement->id)->get();
+
+        foreach (FinanceSection::cases() as $section) {
+            $current = $existing->filter(fn (ChecklistItem $item): bool => $item->section === $section);
+            $kept = [];
+
+            foreach ($read[$section->value] ?? [] as $index => $requirement) {
+                $item = $current->first(
+                    fn (ChecklistItem $candidate): bool => $candidate->name === $requirement['name'] && ! in_array($candidate->id, $kept, true),
+                ) ?? new ChecklistItem([
+                    'procurement_id' => $procurement->id,
+                    'stage' => ProcurementStage::Keuangan,
+                    'section' => $section,
+                    'name' => $requirement['name'],
+                ]);
+
+                $item->fill([
+                    'description' => $requirement['description'],
+                    'is_optional' => $requirement['is_optional'],
+                    'sort_order' => $index + 1,
+                    'is_active' => true,
+                ]);
+
+                if ($item->isDirty()) {
+                    $item->save();
+                }
+
+                $kept[] = $item->id;
+            }
+
+            $current
+                ->reject(fn (ChecklistItem $item): bool => in_array($item->id, $kept, true) || ! $item->is_active)
+                ->each(fn (ChecklistItem $item) => $item->update(['is_active' => false]));
+        }
     }
 
     /**
@@ -340,6 +437,7 @@ class ProcurementService
                 $actor,
                 ActivityType::PicDitunjuk,
                 'PIC Perencana diubah menjadi '.($plannerId === null ? 'kosong' : $procurement->planner->name).'.',
+                ['pic' => 'perencana'],
             );
 
             if ($plannerId !== null) {
@@ -355,6 +453,7 @@ class ProcurementService
                 $actor,
                 ActivityType::PicDitunjuk,
                 'PIC Pelaksana diubah menjadi '.($executorId === null ? 'kosong' : $procurement->executor->name).'.',
+                ['pic' => 'pelaksana'],
             );
 
             // Execution cannot start before the planning is approved, so an

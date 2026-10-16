@@ -1,8 +1,9 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { AlertTriangle, Pencil, Trash2 } from 'lucide-react';
+import { AlertTriangle, FileText, Pencil, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
-import { ActivityTimeline } from '@/components/procurement/activity-timeline';
 import { ApprovalCard } from '@/components/procurement/approval-card';
+import { ApprovalHistoryTable } from '@/components/procurement/approval-history';
+import type { ApprovalHistory } from '@/components/procurement/approval-history';
 import { ChecklistPanel } from '@/components/procurement/checklist-panel';
 import {
     FinanceHandover,
@@ -23,7 +24,6 @@ import { formatCurrency, formatDate } from '@/lib/format';
 import { dashboard } from '@/routes';
 import procurements from '@/routes/procurements';
 import type {
-    ActivityRow,
     ChecklistRow,
     DocumentTypeOption,
     Option,
@@ -57,7 +57,7 @@ type ShowProps = {
         pelaksanaan: ChecklistRow[];
         keuangan: ChecklistRow[];
     };
-    activities: ActivityRow[];
+    approvalHistory: ApprovalHistory;
     options: {
         progressStatuses: StatusOption[];
         planners: Option[];
@@ -88,15 +88,17 @@ export default function ShowProcurement({
     procurement,
     detail,
     checklists,
-    activities,
+    approvalHistory,
     options,
     can,
 }: ShowProps) {
     const { url } = usePage();
     const linkedTab = new URLSearchParams(url.split('?')[1] ?? '').get('tab');
-    // The Keuangan tab became Penyerahan and Pembayaran; older links that
-    // still ask for "keuangan" open on Penyerahan.
-    const requestedTab = linkedTab === 'keuangan' ? 'penyerahan' : linkedTab;
+    // Renamed tabs: Keuangan became Penyerahan and Pembayaran, Aktivitas
+    // became Riwayat Approval. Older links still open the right place.
+    const requestedTab =
+        { keuangan: 'penyerahan', aktivitas: 'riwayat' }[linkedTab ?? ''] ??
+        linkedTab;
     // Open on the stage the job is in, unless a link asked for a tab.
     const initialTab =
         requestedTab ??
@@ -128,6 +130,36 @@ export default function ShowProcurement({
                 </span>
             </p>
         ) : null;
+
+    const requirementsSource = (section: 'penyerahan' | 'pembayaran') =>
+        detail.finance.requirements_waiting_for.length > 0 ? null : (
+            <p className="flex items-start gap-2 rounded-md border border-border bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
+                <FileText className="mt-0.5 size-3.5 shrink-0" />
+                <span>
+                    {detail.finance.requirements_source[section] ? (
+                        <>
+                            Daftar ini dibaca langsung dari pasal{' '}
+                            {section === 'penyerahan'
+                                ? 'penyerahan'
+                                : 'cara pembayaran'}{' '}
+                            pada{' '}
+                            <b className="text-foreground">
+                                {detail.finance.requirements_source[section]}
+                            </b>{' '}
+                            dan ikut berubah bila dokumen kontrak itu diubah,
+                            sampai pembayaran dicatat.
+                        </>
+                    ) : (
+                        <>
+                            Dokumen kontrak pengadaan ini belum dibuat atau
+                            daftarnya tidak terbaca, jadi yang dipakai adalah
+                            syarat dari template standar. Begitu dokumen kontrak
+                            dibuat, daftar ini mengikuti isi kontrak.
+                        </>
+                    )}
+                </span>
+            </p>
+        );
 
     const financeLockedReason =
         detail.finance.paid_at !== null
@@ -427,8 +459,8 @@ export default function ShowProcurement({
                                 <TabsTrigger value="pembayaran">
                                     Pembayaran
                                 </TabsTrigger>
-                                <TabsTrigger value="aktivitas">
-                                    Aktivitas
+                                <TabsTrigger value="riwayat">
+                                    Riwayat Approval
                                 </TabsTrigger>
                             </TabsList>
 
@@ -514,6 +546,7 @@ export default function ShowProcurement({
                                 className="space-y-3"
                             >
                                 {requirementsNotice}
+                                {requirementsSource('penyerahan')}
                                 <ChecklistPanel
                                     procurementId={procurement.id}
                                     description="Kelengkapan dokumen penyerahan barang / pekerjaan sesuai pasal penyerahan pada kontrak (SPK, Surat Perjanjian, atau Lampiran Surat Pesanan)."
@@ -536,6 +569,7 @@ export default function ShowProcurement({
                                     canComplete={can.completePayment}
                                 />
                                 {requirementsNotice}
+                                {requirementsSource('pembayaran')}
                                 <ChecklistPanel
                                     procurementId={procurement.id}
                                     description="Kelengkapan dokumen permintaan pembayaran sesuai pasal cara pembayaran pada kontrak, diperiksa Keuangan sebelum pengadaan ditutup."
@@ -548,8 +582,10 @@ export default function ShowProcurement({
                                 />
                             </TabsContent>
 
-                            <TabsContent value="aktivitas">
-                                <ActivityTimeline activities={activities} />
+                            <TabsContent value="riwayat">
+                                <ApprovalHistoryTable
+                                    history={approvalHistory}
+                                />
                             </TabsContent>
                         </Tabs>
                     </div>

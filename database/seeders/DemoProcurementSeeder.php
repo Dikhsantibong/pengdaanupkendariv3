@@ -3,389 +3,614 @@
 namespace Database\Seeders;
 
 use App\Enums\ActivityType;
+use App\Enums\FinanceSection;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
+use App\Enums\ProposalState;
 use App\Enums\UserRole;
 use App\Models\BudgetSource;
-use App\Models\ChecklistItem;
+use App\Models\ContractNumberFormat;
+use App\Models\ContractType;
 use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementMethod;
 use App\Models\ProgressStatus;
 use App\Models\TargetUnit;
 use App\Models\User;
-use App\Models\WorkDirector;
 use App\Services\DocumentGenerator;
+use App\Services\ProcurementService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 use RuntimeException;
+use Throwable;
 
 /**
- * Demo data for evaluating the application and the public boards.
+ * Demo data that walks the whole journey of a job, for seeing the
+ * application with a realistic amount of work in it.
  *
- * This seeder is intentionally NOT part of DatabaseSeeder. Run it explicitly:
+ * Every job starts as a staff proposal and goes as far as its track says:
+ * waiting for the TL or the Asman, returned, waiting for a planning PIC,
+ * planned, submitted to ICC, returned by ICC, executed, ready to hand over,
+ * at Keuangan (Penyerahan and Pembayaran partly checked), paid and closed,
+ * or cancelled. Each step is logged with a backdated time, so the Riwayat
+ * Approval tab, the dashboards of every role and the boards all show a
+ * believable history. Jobs that reach execution get their real contract
+ * drawn from its template (SPK Barang, SPK Jasa, Surat Perjanjian or
+ * Lampiran Surat Pesanan), so their delivery and payment requirements are
+ * read from it.
+ *
+ * Not part of DatabaseSeeder. After `php artisan migrate --seed`, run:
  *
  *     php artisan db:seed --class=DemoProcurementSeeder
  *
- * Every record it creates carries the "PGD/" numbering of a normal procurement,
- * so remove them with:
- *
- *     php artisan db:wipe && php artisan migrate --seed
+ * Running it again first removes the demo jobs it made before (recognised by
+ * their note), so it can be re-run to get a fresh set; nothing else is
+ * touched.
  */
 class DemoProcurementSeeder extends Seeder
 {
     use WithoutModelEvents;
 
     /**
-     * The work packages the demo data is built from.
-     *
-     * @var array<int, array{name: string, track: string}>
+     * The note that marks a demo job, so a re-run can find and replace it.
      */
-    private const WORK_PACKAGES = [
-        ['name' => 'Overhaul Mesin Diesel Unit 3', 'track' => 'selesai'],
-        ['name' => 'Pengadaan Spare Part Turbocharger', 'track' => 'selesai'],
-        ['name' => 'Rehabilitasi Sistem Pendingin Utama', 'track' => 'selesai'],
-        ['name' => 'Pemeliharaan Rutin Generator Unit 1', 'track' => 'pelaksanaan'],
-        ['name' => 'Penggantian Panel Kontrol MV', 'track' => 'pelaksanaan'],
-        ['name' => 'Pengadaan Pelumas Mesin Tahun Berjalan', 'track' => 'pelaksanaan'],
-        ['name' => 'Perbaikan Instalasi Bahan Bakar', 'track' => 'pelaksanaan'],
-        ['name' => 'Kalibrasi Instrumentasi dan Proteksi', 'track' => 'pelaksanaan'],
-        ['name' => 'Pengadaan Jasa Cleaning Boiler', 'track' => 'pelaksanaan'],
-        ['name' => 'Peremajaan Sistem Grounding', 'track' => 'menunggu'],
-        ['name' => 'Pengadaan Material Pemeliharaan Trafo', 'track' => 'menunggu'],
-        ['name' => 'Jasa Inspeksi Keandalan Pembangkit', 'track' => 'menunggu'],
-        ['name' => 'Pengadaan APD dan Perlengkapan K3', 'track' => 'ditolak'],
-        ['name' => 'Perbaikan Jalan Akses Area Pembangkit', 'track' => 'ditolak'],
-        ['name' => 'Pengadaan Sistem Monitoring Emisi', 'track' => 'penyusunan'],
-        ['name' => 'Pemeliharaan Sistem Proteksi Kebakaran', 'track' => 'penyusunan'],
-        ['name' => 'Pengadaan Genset Cadangan Portable', 'track' => 'penyusunan'],
-        ['name' => 'Jasa Pengelolaan Limbah B3', 'track' => 'penyusunan'],
-        ['name' => 'Pengadaan Baterai Bank Unit Isolated', 'track' => 'inisiasi'],
-        ['name' => 'Perbaikan Dermaga Suplai Bahan Bakar', 'track' => 'inisiasi'],
-        ['name' => 'Pengadaan Alat Ukur Laboratorium', 'track' => 'inisiasi'],
-        ['name' => 'Modernisasi Sistem SCADA Pembangkit', 'track' => 'inisiasi'],
-        ['name' => 'Pengadaan Pompa Air Pendingin Cadangan', 'track' => 'batal'],
-        ['name' => 'Jasa Konsultansi Studi Kelayakan Ekspansi', 'track' => 'batal'],
+    public const MARKER = 'Data demo (DemoProcurementSeeder).';
+
+    /**
+     * How many jobs stand at each point of the journey.
+     *
+     * @var array<string, int>
+     */
+    private const TRACKS = [
+        'usulan_tl' => 5,
+        'usulan_asman' => 5,
+        'usulan_kembali' => 3,
+        'perlu_pic' => 4,
+        'penyusunan' => 8,
+        'menunggu_icc' => 6,
+        'ditolak_icc' => 4,
+        'pelaksanaan' => 12,
+        'siap_serah' => 4,
+        'keuangan' => 8,
+        'selesai' => 10,
+        'batal' => 3,
     ];
 
     /**
-     * Seed a realistic spread of procurements across both stages.
+     * The work the demo jobs are about.
+     *
+     * @var array<int, string>
+     */
+    private const WORK = [
+        'Overhaul Mesin Diesel Unit 3',
+        'Pengadaan Spare Part Turbocharger',
+        'Rehabilitasi Sistem Pendingin Utama',
+        'Pemeliharaan Rutin Generator Unit 1',
+        'Penggantian Panel Kontrol MV',
+        'Pengadaan Pelumas Mesin',
+        'Perbaikan Instalasi Bahan Bakar',
+        'Kalibrasi Instrumentasi dan Proteksi',
+        'Jasa Cleaning Boiler',
+        'Peremajaan Sistem Grounding',
+        'Pengadaan Material Pemeliharaan Trafo',
+        'Jasa Inspeksi Keandalan Pembangkit',
+        'Pengadaan APD dan Perlengkapan K3',
+        'Perbaikan Jalan Akses Area Pembangkit',
+        'Pengadaan Sistem Monitoring Emisi',
+        'Pemeliharaan Sistem Proteksi Kebakaran',
+        'Pengadaan Genset Cadangan Portable',
+        'Jasa Pengelolaan Limbah B3',
+        'Pengadaan Baterai Bank Unit Isolated',
+        'Perbaikan Dermaga Suplai Bahan Bakar',
+        'Pengadaan Alat Ukur Laboratorium',
+        'Modernisasi Sistem SCADA Pembangkit',
+        'Pengadaan Pompa Air Pendingin Cadangan',
+        'Jasa Konsultansi Studi Kelayakan',
+        'Pengadaan Filter Udara Mesin',
+        'Penggantian Radiator Unit 2',
+        'Jasa Pengecatan Tangki Timbun',
+        'Pengadaan Kabel Kontrol dan Power',
+        'Perbaikan Atap Gedung Sentral',
+        'Pengadaan Sparepart Governor',
+        'Jasa Uji Minyak Trafo',
+        'Pengadaan Seragam dan Wearpack',
+        'Pemeliharaan AC Ruang Kontrol',
+        'Pengadaan Bearing dan Seal Pompa',
+        'Jasa Pembersihan Saluran Drainase',
+        'Pengadaan Lampu Penerangan Area',
+    ];
+
+    /**
+     * The contracts the demo jobs are let under, in turn.
+     *
+     * @var array<int, array{format: string, category: string|null, method: string}>
+     */
+    private const CONTRACTS = [
+        ['format' => 'SPK', 'category' => 'barang', 'method' => 'spk'],
+        ['format' => 'SPK', 'category' => 'jasa', 'method' => 'spk'],
+        ['format' => 'PJ', 'category' => 'barang', 'method' => 'tender'],
+        ['format' => 'SPPL', 'category' => null, 'method' => 'surat-pesanan'],
+        ['format' => 'PJ', 'category' => 'jasa', 'method' => 'tender'],
+        ['format' => 'SPK', 'category' => 'jasa', 'method' => 'spk'],
+    ];
+
+    /**
+     * The partners the contracts are signed with.
+     *
+     * @var array<int, array{name: string, director: string, address: string, bank: string}>
+     */
+    private const PARTNERS = [
+        ['name' => 'PT Sinar Teknik Sulawesi', 'director' => 'Andi Mappaturung', 'address' => 'Jl. Malik Raya No. 21, Kendari', 'bank' => 'Bank Mandiri'],
+        ['name' => 'CV Mandiri Jaya Abadi', 'director' => 'Hasanuddin', 'address' => 'Jl. Saranani No. 8, Kendari', 'bank' => 'Bank BRI'],
+        ['name' => 'PT Karya Energi Nusantara', 'director' => 'Rudy Hartono', 'address' => 'Jl. Pettarani No. 112, Makassar', 'bank' => 'Bank BNI'],
+        ['name' => 'PT Patria Power Service', 'director' => 'Yohanes Saputra', 'address' => 'Jl. Raya Bekasi Km 21, Jakarta Timur', 'bank' => 'Bank Mandiri'],
+        ['name' => 'CV Bumi Anoa Teknik', 'director' => 'La Ode Hamid', 'address' => 'Jl. Bunggasi No. 45, Kendari', 'bank' => 'Bank Sultra'],
+        ['name' => 'PT Mitra Kelistrikan Indonesia', 'director' => 'Siti Rahmawati', 'address' => 'Jl. Gatot Subroto Kav. 9, Jakarta', 'bank' => 'Bank BCA'],
+    ];
+
+    /**
+     * The progress statuses, by slug.
+     *
+     * @var Collection<string, ProgressStatus>
+     */
+    protected Collection $statuses;
+
+    /**
+     * The demo jobs made so far, for the summary.
+     *
+     * @var array<string, int>
+     */
+    protected array $made = [];
+
+    public function __construct(
+        protected ProcurementService $procurements,
+        protected DocumentGenerator $documents,
+    ) {}
+
+    /**
+     * Lay out the demo jobs.
      */
     public function run(): void
     {
-        $directors = WorkDirector::query()->active()->get();
-        $units = TargetUnit::query()->active()->get();
+        $proposers = User::query()->active()->withRole([UserRole::Pengusul])
+            ->whereNotNull('work_director_id')->with('teamLeader')->get();
         $planners = User::query()->active()->withRole([UserRole::PicPerencana])->get();
         $executors = User::query()->active()->withRole([UserRole::PicPelaksana])->get();
-        $admin = User::query()->where('role', UserRole::Administrator)->first();
-        $teamLeaderPengadaan = User::query()->withRole([UserRole::TeamLeaderPengadaan])->first() ?? $admin;
-        $teamLeaderIcc = User::query()->withRole([UserRole::TeamLeaderIcc])->first() ?? $admin;
+        $finance = User::query()->active()->withRole([UserRole::Keuangan])->get();
+        // The seeded accounts have no TL ICC; the administrator reviews then.
+        $administrator = User::query()->withRole([UserRole::Administrator])->first();
+        $iccLead = User::query()->withRole([UserRole::TeamLeaderIcc])->first() ?? $administrator;
+        $procurementLead = User::query()->withRole([UserRole::TeamLeaderPengadaan])->first() ?? $administrator;
 
-        if ($directors->isEmpty() || $units->isEmpty() || $planners->isEmpty() || $executors->isEmpty()) {
-            throw new RuntimeException('Jalankan DatabaseSeeder terlebih dahulu sebelum menambahkan data demo.');
+        if ($proposers->isEmpty() || $planners->isEmpty() || $executors->isEmpty() || $finance->isEmpty()
+            || $iccLead === null || $procurementLead === null
+            || ContractNumberFormat::query()->count() === 0) {
+            throw new RuntimeException('Jalankan `php artisan migrate --seed` (termasuk DivisionUserSeeder) sebelum data demo.');
         }
 
-        $planningItems = ChecklistItem::query()->active()->forStage(ProcurementStage::Perencanaan)->ordered()->get();
-        $executionItems = ChecklistItem::query()->active()->forStage(ProcurementStage::Pelaksanaan)->ordered()->get();
+        $this->removePreviousDemo();
 
-        foreach (self::WORK_PACKAGES as $index => $package) {
-            $this->createProcurement(
-                $package,
-                $index,
-                $directors,
-                $units,
-                $planners,
-                $executors,
-                $teamLeaderPengadaan,
-                $teamLeaderIcc,
-                $planningItems,
-                $executionItems,
-            );
+        $this->statuses = ProgressStatus::query()->get()->keyBy('slug');
+
+        $index = 0;
+
+        foreach (self::TRACKS as $track => $count) {
+            for ($i = 0; $i < $count; $i++, $index++) {
+                $this->makeJob($track, $index, [
+                    'proposer' => $proposers[$index % $proposers->count()],
+                    'planner' => $planners[$index % $planners->count()],
+                    'executor' => $executors[$index % $executors->count()],
+                    'finance' => $finance[$index % $finance->count()],
+                    'icc' => $iccLead,
+                    'procurement' => $procurementLead,
+                ]);
+
+                $this->made[$track] = ($this->made[$track] ?? 0) + 1;
+            }
         }
 
-        $this->command->info('Data demo pengadaan berhasil dibuat: '.count(self::WORK_PACKAGES).' pengadaan.');
+        $this->command->info("Data demo pengadaan dibuat: {$index} pengadaan.");
+        $this->command->table(['Posisi', 'Jumlah'], collect($this->made)->map(fn (int $n, string $track): array => [$track, $n])->values()->all());
     }
 
     /**
-     * Create a single demo procurement following its track.
+     * Take one job as far as its track goes.
      *
-     * @param  array{name: string, track: string}  $package
-     * @param  Collection<int, WorkDirector>  $directors
-     * @param  Collection<int, TargetUnit>  $units
-     * @param  Collection<int, User>  $planners
-     * @param  Collection<int, User>  $executors
-     * @param  Collection<int, ChecklistItem>  $planningItems
-     * @param  Collection<int, ChecklistItem>  $executionItems
+     * @param  array{proposer: User, planner: User, executor: User, finance: User, icc: User, procurement: User}  $people
      */
-    protected function createProcurement(
-        array $package,
-        int $index,
-        Collection $directors,
-        Collection $units,
-        Collection $planners,
-        Collection $executors,
-        ?User $teamLeaderPengadaan,
-        ?User $teamLeaderIcc,
-        Collection $planningItems,
-        Collection $executionItems,
-    ): void {
-        $track = $package['track'];
-        $createdAt = CarbonImmutable::now()->subDays($this->ageForTrack($track, $index));
-        $target = $this->targetFor($track, $createdAt, $index);
-
-        $methods = ProcurementMethod::query()->active()->ordered()->get();
-        $budgetSources = BudgetSource::query()->active()->ordered()->get();
-
-        $procurement = new Procurement([
-            'name' => $package['name'],
-            'work_director_id' => $directors[$index % $directors->count()]->id,
-            'target_unit_id' => $units[($index * 3) % $units->count()]->id,
-            'procurement_method_id' => $methods[$index % max(1, $methods->count())]->id ?? null,
-            'budget_source_id' => $budgetSources[$index % max(1, $budgetSources->count())]->id ?? null,
-            'prk_number' => sprintf('ND-%03d/PRK/%s', $index + 11, $createdAt->format('Y')),
-            'hpe_value' => fake()->numberBetween(45, 4_800) * 1_000_000,
-            'progress_status_id' => $this->statusFor($track)->id,
-            'target_completion_date' => $index % 11 === 0 ? null : $target->toDateString(),
-            'notes' => null,
-        ]);
-
-        $procurement->number = sprintf('PGD/%s/%04d', $createdAt->format('Y/m'), $index + 1);
-        $procurement->planner_id = $planners[$index % $planners->count()]->id;
-        $procurement->created_by = $teamLeaderPengadaan?->id;
-        $procurement->created_at = $createdAt;
-        $procurement->updated_at = $createdAt;
-        $procurement->save();
-
-        $this->log($procurement, $teamLeaderPengadaan, ActivityType::Dibuat, "Pengadaan {$procurement->number} dibuat.", $createdAt);
-        $this->log($procurement, $teamLeaderPengadaan, ActivityType::PicDitunjuk, 'PIC Perencana ditunjuk.', $createdAt->addHours(3));
-
-        $planningRatio = $this->planningRatio($track);
-        $planningWindow = $this->window($createdAt, $track === 'inisiasi' ? $createdAt->addDays(30) : $target);
-
-        $this->fillChecklist(
-            $procurement,
-            $planningItems,
-            ProcurementStage::Perencanaan,
-            $planningRatio,
-            $planningWindow,
-            $procurement->planner_id,
-        );
-
-        if (in_array($track, ['menunggu', 'ditolak', 'pelaksanaan', 'selesai'], true)) {
-            $submittedAt = $createdAt->addDays(fake()->numberBetween(25, 60));
-
-            $procurement->planning_approval_state = PlanningApprovalState::MenungguPersetujuan;
-            $procurement->planning_submitted_at = $submittedAt;
-
-            $this->log($procurement, $procurement->planner, ActivityType::PerencanaanDiajukan, 'Dokumen perencanaan diajukan untuk persetujuan.', $submittedAt);
-
-            if ($track === 'ditolak') {
-                $reviewedAt = $submittedAt->addDays(3);
-                $procurement->planning_approval_state = PlanningApprovalState::Ditolak;
-                $procurement->planning_reviewed_at = $reviewedAt;
-                $procurement->planning_reviewed_by = $teamLeaderIcc?->id;
-                $procurement->planning_review_note = 'RKS dan HPE perlu disesuaikan dengan spesifikasi terbaru.';
-
-                $this->log($procurement, $teamLeaderIcc, ActivityType::PerencanaanDitolak, 'Dokumen perencanaan ditolak.', $reviewedAt);
-            }
-
-            if (in_array($track, ['pelaksanaan', 'selesai'], true)) {
-                $reviewedAt = $submittedAt->addDays(fake()->numberBetween(2, 8));
-
-                $procurement->planning_approval_state = PlanningApprovalState::Disetujui;
-                $procurement->planning_reviewed_at = $reviewedAt;
-                $procurement->planning_reviewed_by = $teamLeaderIcc?->id;
-                $procurement->executor_id = $executors[$index % $executors->count()]->id;
-
-                $this->log($procurement, $teamLeaderIcc, ActivityType::PerencanaanDisetujui, 'Dokumen perencanaan disetujui.', $reviewedAt);
-                $this->log($procurement, $teamLeaderPengadaan, ActivityType::PicDitunjuk, 'PIC Pelaksana ditunjuk.', $reviewedAt->addHour());
-
-                $this->fillChecklist(
-                    $procurement,
-                    $executionItems,
-                    ProcurementStage::Pelaksanaan,
-                    $track === 'selesai' ? 1.0 : fake()->randomFloat(2, 0.15, 0.85),
-                    $this->window($reviewedAt, $target),
-                    $procurement->executor_id,
-                );
-            }
-        }
-
-        if ($track === 'selesai') {
-            $completedAt = $target->subDays(fake()->numberBetween(0, 12));
-            $procurement->completed_at = $completedAt;
-
-            $this->log($procurement, $teamLeaderPengadaan, ActivityType::PengadaanSelesai, 'Pengadaan dinyatakan selesai.', $completedAt);
-        }
-
-        $procurement->save();
-
-        if (in_array($track, ['pelaksanaan', 'selesai'], true)) {
-            $this->generateDocuments($procurement, $teamLeaderPengadaan);
-        }
-    }
-
-    /**
-     * Tick a share of a stage's checklist, spreading the timestamps over a window.
-     *
-     * @param  Collection<int, ChecklistItem>  $items
-     * @param  array{start: CarbonImmutable, end: CarbonImmutable}  $window
-     */
-    protected function fillChecklist(
-        Procurement $procurement,
-        Collection $items,
-        ProcurementStage $stage,
-        float $ratio,
-        array $window,
-        ?int $userId,
-    ): void {
-        $completedCount = (int) round($items->count() * $ratio);
-        $span = max(1, $window['start']->diffInHours($window['end']));
-
-        foreach ($items->values() as $position => $item) {
-            $isCompleted = $position < $completedCount;
-            $completedAt = null;
-
-            if ($isCompleted) {
-                $offset = (int) round(($position + 1) / max(1, $completedCount + 1) * $span);
-                $completedAt = $window['start']->addHours($offset);
-            }
-
-            $procurement->checklists()->create([
-                'checklist_item_id' => $item->id,
-                'stage' => $stage,
-                'is_completed' => $isCompleted,
-                'completed_at' => $completedAt,
-                'completed_by' => $isCompleted ? $userId : null,
-                'created_at' => $window['start'],
-                'updated_at' => $completedAt ?? $window['start'],
-            ]);
-        }
-    }
-
-    /**
-     * Generate the planning documents for a procurement.
-     */
-    protected function generateDocuments(Procurement $procurement, ?User $author): void
+    protected function makeJob(string $track, int $index, array $people): void
     {
-        if ($author === null) {
+        $proposer = $people['proposer'];
+        $teamLeader = $proposer->teamLeader;
+        $asman = User::query()->withRole([UserRole::DireksiPekerjaan])
+            ->where('work_director_id', $proposer->work_director_id)->first() ?? $people['procurement'];
+
+        $at = CarbonImmutable::now()->subDays($this->age($track, $index))->setTime(8 + $index % 7, ($index * 13) % 60);
+        $units = TargetUnit::query()->active()->get();
+        $work = self::WORK[$index % count(self::WORK)];
+        $unit = $units[$index % $units->count()];
+
+        // 1. The staff member proposes the work.
+        $procurement = new Procurement([
+            'name' => $index < count(self::WORK) ? $work : "{$work} {$unit->name}",
+            'work_director_id' => $proposer->work_director_id,
+            'target_unit_id' => $unit->id,
+            'budget_source_id' => BudgetSource::query()->active()->ordered()->get()[$index % 2]->id ?? null,
+            'hpe_value' => fake()->numberBetween(25, 3_500) * 1_000_000,
+            'prk_number' => sprintf('PRK-%03d/%s', 100 + $index, $at->format('Y')),
+            'progress_status_id' => $this->status('inisiasi-laksdan'),
+            'target_completion_date' => $at->addDays(90 + ($index % 5) * 30)->toDateString(),
+            'notes' => self::MARKER,
+        ]);
+        $procurement->number = $this->usulanNumber($at);
+        $procurement->created_by = $proposer->id;
+        $procurement->proposal_submitted_at = $at;
+        $procurement->proposal_state = $teamLeader !== null ? ProposalState::MenungguPersetujuanTl : ProposalState::MenungguPersetujuan;
+        $procurement->created_at = $at;
+        $procurement->updated_at = $at;
+        $procurement->save();
+        $procurement->targetUnits()->sync([$unit->id => ['sort_order' => 1]]);
+
+        $this->log($procurement, $proposer, ActivityType::Dibuat, "Pengadaan {$procurement->number} dibuat.", $at);
+        $this->log($procurement, $proposer, ActivityType::UsulanDiajukan, 'Usulan pekerjaan diajukan ke '
+            .($teamLeader !== null ? "TL {$teamLeader->name}" : 'Direksi Pekerjaan (Asman)').' untuk disetujui.', $at->addMinutes(10));
+        $this->draw($procurement, ['tor', 'nota-dinas-usulan'], $proposer, $at->addMinutes(5));
+
+        if ($track === 'usulan_tl' && $teamLeader !== null) {
             return;
         }
 
-        $types = DocumentType::query()
-            ->active()
-            ->whereIn('code', ['nota-dinas-usulan', 'rks', 'hpe'])
-            ->get();
+        // 2. The team leader agrees and passes it to the Asman.
+        $at = $at->addDay();
 
-        foreach ($types as $type) {
-            if (! $type->activeTemplate()->exists()) {
-                continue;
+        if ($teamLeader !== null) {
+            $procurement->forceFill([
+                'proposal_state' => ProposalState::MenungguPersetujuan,
+                'proposal_tl_reviewed_at' => $at,
+                'proposal_tl_reviewed_by' => $teamLeader->id,
+            ])->save();
+            $this->log($procurement, $teamLeader, ActivityType::UsulanDisetujuiTl, 'Usulan disetujui TL dan diteruskan ke Asman.', $at);
+        }
+
+        if (in_array($track, ['usulan_tl', 'usulan_asman'], true)) {
+            return;
+        }
+
+        // 3. The Asman decides.
+        $at = $at->addDay();
+
+        if ($track === 'usulan_kembali') {
+            $note = 'Lengkapi spesifikasi teknis dan estimasi volume pada TOR.';
+            $procurement->forceFill([
+                'proposal_state' => ProposalState::Dikembalikan,
+                'proposal_reviewed_at' => $at,
+                'proposal_reviewed_by' => $asman->id,
+                'proposal_review_note' => $note,
+            ])->save();
+            $this->log($procurement, $asman, ActivityType::UsulanDikembalikan, "Usulan pekerjaan dikembalikan ke pengusul. Catatan: {$note}", $at);
+
+            return;
+        }
+
+        $procurement->forceFill([
+            'proposal_state' => ProposalState::Disetujui,
+            'proposal_reviewed_at' => $at,
+            'proposal_reviewed_by' => $asman->id,
+        ])->save();
+        $this->log($procurement, $asman, ActivityType::UsulanDisetujui, 'Usulan disetujui Asman dan diteruskan ke bagian pengadaan.', $at);
+        $this->procurements->syncChecklists($procurement);
+
+        if ($track === 'perlu_pic') {
+            return;
+        }
+
+        // 4. Procurement appoints the planning PIC and fills in the contract.
+        $at = $at->addDays(2);
+        $contract = self::CONTRACTS[$index % count(self::CONTRACTS)];
+        $format = ContractNumberFormat::query()->where('code', $contract['format'])->firstOrFail();
+
+        $procurement->forceFill([
+            'planner_id' => $people['planner']->id,
+            'contract_number_format_id' => $format->id,
+            'work_category' => $contract['category'],
+            'contract_type_id' => $this->contractType($contract['category']),
+            'procurement_method_id' => ProcurementMethod::query()->where('code', $contract['method'])->value('id'),
+            'progress_status_id' => $this->status('penyusunan-rks'),
+        ])->save();
+        $procurement->number = $this->procurements->nextNumber($format);
+        $procurement->save();
+
+        $this->log($procurement, $people['procurement'], ActivityType::PicDitunjuk, "PIC Perencana diubah menjadi {$people['planner']->name}.", $at, ['pic' => 'perencana']);
+        $this->procurements->syncChecklists($procurement);
+
+        if ($track === 'penyusunan' || $track === 'batal') {
+            $this->tick($procurement, ProcurementStage::Perencanaan, fake()->randomFloat(2, 0.2, 0.7), $at, $people['planner']);
+
+            if ($track === 'batal') {
+                $procurement->forceFill(['progress_status_id' => $this->status('batal')])->save();
             }
 
-            app(DocumentGenerator::class)->generate($procurement->refresh(), $type, $author);
+            return;
+        }
+
+        // 5. The planner completes the checklist and submits it to ICC.
+        $this->tick($procurement, ProcurementStage::Perencanaan, 1.0, $at, $people['planner']);
+        $at = $at->addDays(14 + $index % 10);
+
+        $procurement->forceFill([
+            'planning_approval_state' => PlanningApprovalState::MenungguPersetujuan,
+            'planning_submitted_at' => $at,
+            'progress_status_id' => $this->status('kelengkapan-dokumen'),
+        ])->save();
+        $this->log($procurement, $people['planner'], ActivityType::PerencanaanDiajukan, 'Dokumen perencanaan diajukan untuk persetujuan.', $at);
+
+        if ($track === 'menunggu_icc') {
+            return;
+        }
+
+        // Some plans are returned once before they pass.
+        $returnedOnce = $track === 'ditolak_icc' || $index % 3 === 0;
+
+        if ($returnedOnce) {
+            $at = $at->addDays(3);
+            $note = 'RKS dan HPE perlu disesuaikan dengan spesifikasi terbaru.';
+            $procurement->forceFill([
+                'planning_approval_state' => PlanningApprovalState::Ditolak,
+                'planning_reviewed_at' => $at,
+                'planning_reviewed_by' => $people['icc']->id,
+                'planning_review_note' => $note,
+                'progress_status_id' => $this->status('penyusunan-rks'),
+            ])->save();
+            $this->log($procurement, $people['icc'], ActivityType::PerencanaanDitolak, "Dokumen perencanaan dikembalikan untuk revisi. Catatan: {$note}", $at);
+
+            if ($track === 'ditolak_icc') {
+                return;
+            }
+
+            $at = $at->addDays(4);
+            $procurement->forceFill([
+                'planning_approval_state' => PlanningApprovalState::MenungguPersetujuan,
+                'planning_submitted_at' => $at,
+                'planning_revision' => 1,
+            ])->save();
+            $this->log($procurement, $people['planner'], ActivityType::PerencanaanDiajukan, 'Dokumen perencanaan diajukan ulang (revisi ke-1).', $at);
+        }
+
+        // 6. ICC approves; the execution PIC takes over.
+        $at = $at->addDays(2 + $index % 4);
+        $partner = self::PARTNERS[$index % count(self::PARTNERS)];
+        $start = $at->addDays(7);
+
+        $procurement->forceFill([
+            'planning_approval_state' => PlanningApprovalState::Disetujui,
+            'planning_reviewed_at' => $at,
+            'planning_reviewed_by' => $people['icc']->id,
+            'planning_review_note' => null,
+            'executor_id' => $people['executor']->id,
+            'progress_status_id' => $this->status($index % 2 === 0 ? 'penawaran-harga' : 'disposisi-ams'),
+            'partner_name' => $partner['name'],
+            'partner_director_name' => $partner['director'],
+            'partner_address' => $partner['address'],
+            'quotation_number' => sprintf('%03d/SPH/%s/%s', 40 + $index, strtoupper(substr($partner['name'], 3, 3)), $at->format('Y')),
+            'quotation_date' => $at->subDays(5)->toDateString(),
+            'value_after_negotiation' => round((float) $procurement->hpe_value * fake()->randomFloat(2, 0.86, 0.97), -3),
+            'execution_start_date' => $start->toDateString(),
+            'execution_duration_days' => [30, 45, 60, 90][$index % 4],
+            'warranty_months' => [6, 12, 18][$index % 3],
+            'bank_name' => $partner['bank'],
+            'bank_account_number' => (string) (1_250_000_000 + $index * 7_919),
+            'bank_account_holder' => $partner['name'],
+            'target_completion_date' => $start->addDays([30, 45, 60, 90][$index % 4] + 14)->toDateString(),
+        ])->save();
+        $this->log($procurement, $people['icc'], ActivityType::PerencanaanDisetujui, 'Dokumen perencanaan disetujui.', $at);
+        $this->log($procurement, $people['procurement'], ActivityType::PicDitunjuk, "PIC Pelaksana diubah menjadi {$people['executor']->name}.", $at->addHour(), ['pic' => 'pelaksana']);
+
+        // The planning papers and the contract itself, from their templates.
+        $this->draw($procurement, ['rks', 'hpe', 'upb'], $people['planner'], $at->subDays(10));
+        $this->draw($procurement, [$contract['format'] === 'SPPL' ? 'lampiran-sp' : 'spk'], $people['executor'], $at->addDays(2));
+        $this->procurements->syncChecklists($procurement);
+
+        if ($track === 'pelaksanaan') {
+            $this->tick($procurement, ProcurementStage::Pelaksanaan, fake()->randomFloat(2, 0.2, 0.8), $start, $people['executor']);
+
+            return;
+        }
+
+        // 7. Execution done.
+        $this->tick($procurement, ProcurementStage::Pelaksanaan, 1.0, $start, $people['executor']);
+
+        if ($track === 'siap_serah') {
+            return;
+        }
+
+        // 8. Handed to Keuangan.
+        $at = CarbonImmutable::parse($procurement->target_completion_date)->min(CarbonImmutable::now()->subDays(2 + $index % 9));
+        $procurement->forceFill([
+            'finance_submitted_at' => $at,
+            'finance_submitted_by' => $people['executor']->id,
+            'progress_status_id' => $this->status('disposisi-ams'),
+        ])->save();
+        $this->log($procurement, $people['executor'], ActivityType::DiajukanKeKeuangan, 'Pelaksanaan selesai, pengadaan diserahkan ke Keuangan untuk proses pembayaran.', $at);
+        $this->procurements->syncChecklists($procurement);
+
+        if ($track === 'keuangan') {
+            $this->tick($procurement, ProcurementStage::Keuangan, fake()->randomFloat(2, 0.4, 1.0), $at, $people['finance'], FinanceSection::Penyerahan);
+            $this->tick($procurement, ProcurementStage::Keuangan, fake()->randomFloat(2, 0.0, 0.6), $at->addDay(), $people['finance'], FinanceSection::Pembayaran);
+
+            return;
+        }
+
+        // 9. Paid and closed.
+        $this->tick($procurement, ProcurementStage::Keuangan, 1.0, $at, $people['finance']);
+        $paidAt = $at->addDays(5 + $index % 10)->min(CarbonImmutable::now()->subHour());
+
+        $procurement->forceFill([
+            'payment_completed_at' => $paidAt,
+            'payment_completed_by' => $people['finance']->id,
+            'completed_at' => $paidAt,
+            'progress_status_id' => $this->status('selesai'),
+        ])->save();
+        $this->log($procurement, $people['finance'], ActivityType::PembayaranSelesai, 'Pembayaran ke mitra selesai, pengadaan ditutup.', $paidAt);
+    }
+
+    /**
+     * Tick a share of a stage's checklist, the timestamps spread after a start.
+     */
+    protected function tick(
+        Procurement $procurement,
+        ProcurementStage $stage,
+        float $ratio,
+        CarbonImmutable $from,
+        User $by,
+        ?FinanceSection $section = null,
+    ): void {
+        $rows = $procurement->checklists()
+            ->where('stage', $stage->value)
+            ->with('checklistItem')
+            ->get()
+            ->filter(fn ($row): bool => $section === null || $row->checklistItem->section === $section)
+            ->sortBy(fn ($row): int => $row->checklistItem->sort_order)
+            ->values();
+
+        $done = (int) round($rows->count() * $ratio);
+
+        foreach ($rows as $position => $row) {
+            if ($position >= $done) {
+                break;
+            }
+
+            $at = $from->addHours(($position + 1) * 6)->min(CarbonImmutable::now()->subMinutes(5));
+
+            $row->forceFill([
+                'is_completed' => true,
+                'completed_at' => $at,
+                'completed_by' => $by->id,
+                'updated_at' => $at,
+            ])->save();
         }
     }
 
     /**
-     * Append a backdated activity entry.
+     * Draw documents from their templates; one without a template is skipped.
+     *
+     * The document and its history entry are dated when the step happened,
+     * not when the seeder ran, so the job's timeline stays in order.
+     *
+     * @param  array<int, string>  $codes
      */
-    protected function log(
-        Procurement $procurement,
-        ?User $actor,
-        ActivityType $type,
-        string $description,
-        CarbonImmutable $at,
-    ): void {
+    protected function draw(Procurement $procurement, array $codes, User $author, CarbonImmutable $at): void
+    {
+        foreach ($codes as $code) {
+            $type = DocumentType::query()->active()->where('code', $code)->first();
+
+            if ($type === null) {
+                continue;
+            }
+
+            try {
+                $document = $this->documents->generate($procurement->refresh(), $type, $author);
+            } catch (Throwable) {
+                // No template for this contract: the demo goes on without it.
+                continue;
+            }
+
+            $document->forceFill(['generated_at' => $at, 'created_at' => $at, 'updated_at' => $at])->save();
+
+            $procurement->activities()
+                ->where('type', ActivityType::DokumenDigenerate->value)
+                ->latest('id')
+                ->first()
+                ?->forceFill(['created_at' => $at, 'updated_at' => $at])
+                ->save();
+        }
+
+        $procurement->unsetRelation('documents');
+    }
+
+    /**
+     * Append a backdated history entry.
+     *
+     * @param  array<string, mixed>|null  $meta
+     */
+    protected function log(Procurement $procurement, ?User $actor, ActivityType $type, string $description, CarbonImmutable $at, ?array $meta = null): void
+    {
         $procurement->activities()->create([
             'user_id' => $actor?->id,
             'type' => $type,
             'description' => $description,
+            'meta' => $meta,
             'created_at' => $at,
             'updated_at' => $at,
         ]);
     }
 
     /**
-     * A sensible completion window for a stage.
-     *
-     * @return array{start: CarbonImmutable, end: CarbonImmutable}
+     * Remove the demo jobs of an earlier run, and only those.
      */
-    protected function window(CarbonImmutable $start, CarbonImmutable $end): array
+    protected function removePreviousDemo(): void
     {
-        $now = CarbonImmutable::now();
-        $limit = $end->greaterThan($now) ? $now : $end;
+        $previous = Procurement::withTrashed()->where('notes', self::MARKER)->get();
 
-        return [
-            'start' => $start,
-            'end' => $limit->greaterThan($start) ? $limit : $start->addDays(7),
-        ];
+        foreach ($previous as $procurement) {
+            $procurement->forceDelete();
+        }
+
+        if ($previous->isNotEmpty()) {
+            $this->command->warn("{$previous->count()} data demo sebelumnya dihapus.");
+        }
     }
 
     /**
-     * How old a procurement on a given track should be.
+     * A free proposal number in the month the proposal was made.
      */
-    protected function ageForTrack(string $track, int $index): int
+    protected function usulanNumber(CarbonImmutable $at): string
+    {
+        $prefix = 'USL/'.$at->format('Y/m').'/';
+        $sequence = 1;
+
+        while (Procurement::withTrashed()->where('number', $prefix.str_pad((string) $sequence, 4, '0', STR_PAD_LEFT))->exists()) {
+            $sequence++;
+        }
+
+        return $prefix.str_pad((string) $sequence, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * The contract type matching a goods/services category, if there is one.
+     */
+    protected function contractType(?string $category): ?int
+    {
+        $types = ContractType::query()->get();
+
+        $match = $category === null ? null : $types->first(fn (ContractType $type): bool => strcasecmp($type->name, $category) === 0);
+
+        return ($match ?? $types->first())?->id;
+    }
+
+    /**
+     * The id of a progress status by its slug, falling back to the first one.
+     */
+    protected function status(string $slug): int
+    {
+        return (int) ($this->statuses->get($slug) ?? $this->statuses->first())->id;
+    }
+
+    /**
+     * How long ago a job on a track was proposed.
+     */
+    protected function age(string $track, int $index): int
     {
         return match ($track) {
-            'selesai' => 250 + $index * 5,
-            'pelaksanaan' => 130 + $index * 4,
-            'menunggu' => 70 + $index * 2,
-            'ditolak' => 60 + $index,
-            'penyusunan' => 40 + $index,
-            'batal' => 90 + $index,
-            default => 12 + $index,
+            'usulan_tl', 'usulan_asman', 'usulan_kembali' => 2 + $index % 12,
+            'perlu_pic' => 10 + $index % 10,
+            'penyusunan', 'batal' => 30 + $index % 20,
+            'menunggu_icc', 'ditolak_icc' => 50 + $index % 25,
+            'pelaksanaan' => 90 + $index % 40,
+            'siap_serah' => 130 + $index % 20,
+            'keuangan' => 160 + $index % 30,
+            default => 200 + ($index % 15) * 10,
         };
-    }
-
-    /**
-     * The target completion date of a track.
-     *
-     * Running procurements are spread around today so the boards show a mix of
-     * on-schedule, due-soon and overdue work.
-     */
-    protected function targetFor(string $track, CarbonImmutable $createdAt, int $index): CarbonImmutable
-    {
-        $spread = [-38, -9, 7, 12, 52, 96];
-
-        return match ($track) {
-            'selesai' => $createdAt->addDays(fake()->numberBetween(120, 200)),
-            'pelaksanaan' => CarbonImmutable::now()->addDays($spread[$index % count($spread)]),
-            'batal' => $createdAt->addDays(fake()->numberBetween(80, 140)),
-            default => CarbonImmutable::now()->addDays(fake()->numberBetween(18, 150)),
-        };
-    }
-
-    /**
-     * How much of the planning checklist a track has completed.
-     */
-    protected function planningRatio(string $track): float
-    {
-        return match ($track) {
-            'selesai', 'pelaksanaan', 'menunggu' => 1.0,
-            'ditolak' => 0.85,
-            'penyusunan' => fake()->randomFloat(2, 0.45, 0.75),
-            'batal' => 0.3,
-            default => fake()->randomFloat(2, 0.08, 0.35),
-        };
-    }
-
-    /**
-     * The progress status a track should sit on.
-     */
-    protected function statusFor(string $track): ProgressStatus
-    {
-        $slug = match ($track) {
-            'selesai' => 'proses-validasi',
-            'pelaksanaan' => 'disposisi-ams',
-            'menunggu' => 'kelengkapan-dokumen',
-            'ditolak' => 'penyusunan-rks',
-            'penyusunan' => 'penyusunan-rks',
-            'batal' => 'batal',
-            default => 'inisiasi-laksdan',
-        };
-
-        return ProgressStatus::query()->where('slug', $slug)->firstOrFail();
     }
 }

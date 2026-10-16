@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -19,6 +20,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
+ * @property int|null $procurement_id
  * @property ProcurementStage $stage
  * @property FinanceSection|null $section
  * @property WorkCategory|null $work_category
@@ -33,11 +35,34 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $deleted_at
  * @property-read int|null $procurement_checklists_count
  */
-#[Fillable(['stage', 'section', 'work_category', 'name', 'description', 'is_optional', 'input_kind', 'sort_order', 'is_active'])]
+#[Fillable(['procurement_id', 'stage', 'section', 'work_category', 'name', 'description', 'is_optional', 'input_kind', 'sort_order', 'is_active'])]
 class ChecklistItem extends Model
 {
     /** @use HasFactory<ChecklistItemFactory> */
     use HasFactory, MasterDataScopes, SoftDeletes;
+
+    /**
+     * The procurement this item belongs to alone, when it was read from that
+     * procurement's own contract.
+     *
+     * @return BelongsTo<Procurement, $this>
+     */
+    public function procurement(): BelongsTo
+    {
+        return $this->belongsTo(Procurement::class);
+    }
+
+    /**
+     * Limit the query to the master data items every procurement shares,
+     * leaving out the ones read from a single procurement's contract.
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeShared(Builder $query): Builder
+    {
+        return $query->whereNull('procurement_id');
+    }
 
     /**
      * The per-procurement checklist rows derived from this item.

@@ -98,7 +98,7 @@ class PublicProcurementBoard
      */
     protected function steps(ProcurementStage $stage): array
     {
-        return ChecklistItem::query()->active()->forStage($stage)->ordered()->get()
+        return ChecklistItem::query()->shared()->active()->forStage($stage)->ordered()->get()
             ->map(fn (ChecklistItem $item): array => [
                 'name' => $item->name,
                 'is_optional' => $item->is_optional,

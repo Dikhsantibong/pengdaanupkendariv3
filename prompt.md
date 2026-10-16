@@ -314,7 +314,14 @@ Agar template standar ini nantinya dapat diganti dengan template resmi **tanpa m
 
 ### Detail Pengadaan
 
-- Halaman detail pengadaan hanya memiliki tab **Perencanaan**, **Pelaksanaan**, dan **Aktivitas**. Tab Dokumen dihapus: generate, preview, unduh, edit, dan unggah hasil TTD dilakukan langsung di baris checklist masing-masing.
+- **Tab halaman detail pengadaan:** tab nama pengusul (dokumen usulan), **Perencanaan**, **Pelaksanaan**, **Penyerahan**, **Pembayaran**, dan **Riwayat Approval**.
+  - Tab Dokumen dihapus: generate, preview, unduh, edit, dan unggah hasil TTD dilakukan langsung di baris checklist masing-masing.
+- **Riwayat Approval** (dulu tab *Aktivitas*): tabel berurutan dari yang terlama, berisi proses persetujuan dari usulan pengguna sampai pembayaran Keuangan.
+  - **Kolom:** No, Tahap (Usulan / Perencanaan / Pelaksanaan / Keuangan), Proses, Hasil (Dibuat / Diajukan / Disetujui / Dikembalikan / Ditunjuk / Selesai), Oleh (nama dan peran), Waktu, dan Keterangan (termasuk catatan pengembalian).
+  - **Proses yang dicatat:** pengadaan dibuat, usulan diajukan, disetujui TL, disetujui Asman, atau dikembalikan, penunjukan PIC Perencana (tahap Perencanaan) dan PIC Pelaksana (tahap Pelaksanaan), perencanaan diajukan, disetujui, atau dikembalikan, diserahkan ke Keuangan, pembayaran selesai, dan pengadaan selesai.
+  - **Posisi saat ini:** baris terakhir menunjukkan langkah yang sedang ditunggu, sampai pengadaan ditutup.
+  - **Yang tidak ditampilkan:** perubahan data, status, checklist, dan dokumen tetap tercatat di database (`procurement_activities`), tetapi tidak ditampilkan di tabel ini.
+  - **Tautan lama:** `?tab=aktivitas` otomatis membuka tab ini.
 - Tombol Preview dokumen generate di checklist memakai gaya ringkas yang sama dengan tombol Preview berkas unggahan.
 
 ### Output
@@ -599,6 +606,24 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
   - Format kontrak memakai pengecualian format yang sudah ada.
   - Kategori barang/jasa memakai kolom baru `checklist_items.work_category` (kosong berarti berlaku untuk keduanya).
   - Tab ditentukan kolom `checklist_items.section` (`penyerahan` / `pembayaran`, enum `FinanceSection`). Item Keuangan tanpa tab tampil di Pembayaran.
+- **Dibaca dari kontrak pengadaan itu sendiri (opsi B):** `ContractRequirementReader` membaca dokumen kontrak milik pengadaan.
+  - **Dokumen yang dibaca:** SPK atau Surat Perjanjian (jenis dokumen `spk`) untuk format SPK/PJ, dan Lampiran SP (`lampiran-sp`) untuk SPPL.
+  - **Daftar yang diambil:** daftar berhuruf yang langsung mengikuti frasa penyerahan ("dilengkapi dokumen sebagai berikut" / "harus dilengkapi dengan") dan frasa pembayaran ("melampirkan" / "dilampiri"). Daftar harus berada di paragraf atau sel yang sama dengan frasanya.
+  - **Hasil:** setiap butir menjadi item checklist milik pengadaan itu (kolom `checklist_items.procurement_id`), dengan keterangan pasal, misalnya "SPK (Surat Perintah Kerja) Pasal 6 ayat (8) huruf f". Penomoran diambil dari judul pasal dan kolom nomor ayat, bukan dari teks.
+  - **Sifat opsional:** item opsional bila diakhiri "(apabila ada)", "(jika ada)", atau "(untuk …)".
+  - **Panjang nama:** kolom nama diperlebar menjadi 500 karakter agar teks kontrak tersimpan utuh.
+  - **Pembaruan:** daftar diperbarui setiap kali detail pengadaan dibuka, mengikuti isi kontrak terbaru termasuk hasil editan.
+    - Butir dengan teks yang sama tetap item yang sama, jadi centangnya bertahan.
+    - Butir yang dihapus dari kontrak dinonaktifkan. Centangnya tetap tersimpan sebagai riwayat.
+    - Setelah pembayaran dicatat, daftar dibekukan.
+  - **Fallback ke template:** bila dokumen kontrak belum dibuat atau daftarnya tidak terbaca, tab itu memakai syarat template dari Data Master. Contohnya syarat penyerahan SPPL, yang ditulis dalam kalimat.
+  - **Penanda sumber:** tiap tab menampilkan sumbernya, yaitu judul dokumen kontrak atau "template standar".
+  - **Pengaman:**
+    - Kontrak yang gagal dibaca dicatat di log dan tidak membuat halaman error.
+    - Penulisan dikunci per pengadaan, sehingga dua pengguna yang membuka bersamaan tidak membuat item ganda.
+    - Item milik pengadaan tidak tampil di Data Master, papan monitoring, atau pengadaan lain, dan tidak bisa diubah atau dihapus lewat Data Master.
+    - Item itu ikut terhapus bila pengadaannya dihapus.
+  - Migration: `2026_10_15_150516_add_procurement_id_to_checklist_items`. Test: `ContractRequirementTest`.
 - **Penjaga kecocokan:** `FinanceRequirementSourceTest` membaca file template dan memastikan daftar syarat sama kata per kata dengan pasalnya.
   - Pengecualian yang disengaja ada dua: "selama masa garansi" menggantikan placeholder bulan, dan "TTE" menggantikan "tanda tangan elektronik" agar muat 255 karakter.
   - Bila pasal penyerahan atau pembayaran di template diubah, test ini gagal sampai syaratnya disesuaikan.
@@ -921,6 +946,31 @@ Bagian **Request Penilaian Vendor** ada di halaman Penilaian Penyedia, di atas d
 
 # Dashboard
 
+## Dashboard per Peran
+
+Setiap peran punya dashboard sendiri yang hanya menampilkan data yang berkaitan dengan perannya (`App\Support\RoleDashboard`).
+
+- **Penentuan profil:** siapa pun yang punya hak **lihat semua pengadaan** (`procurement.view-all`) mendapat dashboard **manajemen** (Administrator, TL Pengadaan, TL ICC, atau peran lain yang diberi hak itu di Hak Akses). Peran lain mendapat dashboard sesuai perannya:
+
+| Profil | Kartu | Daftar |
+|---|---|---|
+| Pengusul | Usulan Saya, Menunggu Persetujuan, Dikembalikan, Sedang Diproses, Selesai (+ Usulan Tim Menunggu Anda bila ia TL) | Usulan Saya |
+| Direksi Pekerjaan | Usulan Menunggu Anda, Pengadaan Bidang Berjalan, Selesai, Nilai HPE Berjalan | Pengadaan Bidang Anda |
+| PIC Perencana | Perlu Dilengkapi, Menunggu Approval ICC, Dikembalikan, Disetujui | Pengadaan yang Anda Rencanakan (yang dikembalikan di atas) |
+| PIC Pelaksana | Pekerjaan Berjalan, Siap Diserahkan, Di Keuangan, Selesai | Pengadaan yang Anda Laksanakan (urut target) |
+| Keuangan | Menunggu Pembayaran, Nilai Tagihan Menunggu, Dibayar Bulan Ini, Total Sudah Dibayar | Tagihan Menunggu Pembayaran |
+| Lainnya | Pengadaan Saya, Berjalan, Selesai | Pengadaan Saya |
+
+- **Bagian yang sama untuk semua profil:**
+  - Kotak **Perlu Tindakan Anda**.
+  - Diagram **Posisi Pengadaan** (Usulan → Perencanaan → Pelaksanaan → Keuangan → Selesai).
+  - Daftar pengadaan dengan tahap, keterangan menunggu apa, status, dan target.
+  - Tombol **Buat Usulan Pekerjaan** / **Buat Pengadaan** bagi yang berhak.
+- **Sumber angka:** semua angka diambil dari pengadaan yang boleh dilihat pengguna (`visibleTo`). Rincian manajemen (per direksi, unit, metode, anggaran, PIC) hanya dihitung dan dikirim untuk profil manajemen.
+- **Dashboard manajemen** tetap seperti sebelumnya, ditambah diagram Posisi Pengadaan.
+
+## Dashboard Manajemen
+
 Menampilkan informasi:
 
 - Total Pengadaan
@@ -956,6 +1006,29 @@ Di bagian atas dashboard tampil daftar tugas sesuai akun yang login. Setiap bari
 - **Seluruh dokumen lainnya** (TOR, RKS, Nota Dinas, Surat Pesanan, Lampiran Surat Pesanan, dsb.) secara konsisten menggunakan format kertas **Potret (A4 Portrait)** (`@page { size: A4 portrait; margin: 20mm 15mm; }`).
 - Pengaturan cetak HTML dan PDF secara otomatis mendeteksi konfigurasi `@page` pada dokumen sehingga orientasi kertas (landscape vs portrait) dan footer tercetak dengan koordinat yang presisi pada browser maupun Dompdf.
 - Dialog pratinjau template dokumen pada Data Master dan canvas editor visual menyesuaikan lebar bingkai secara dinamis (`max-w-[297mm]` untuk dokumen landscape dan `max-w-[210mm]` untuk dokumen portrait).
+
+---
+
+# Data Demo
+
+`DemoProcurementSeeder` (tidak termasuk `DatabaseSeeder`) membuat **72 pengadaan dummy** yang menempuh alur sebenarnya dari usulan staf sampai pembayaran. Setiap langkah dicatat dengan waktu mundur di Riwayat Approval.
+
+| Posisi | Jumlah |
+|---|---|
+| Usulan menunggu TL / menunggu Asman / dikembalikan | 5 / 5 / 3 |
+| Usulan disetujui, perlu penunjukan PIC Perencana | 4 |
+| Penyusunan perencanaan / menunggu approval ICC / dikembalikan ICC | 8 / 6 / 4 |
+| Pelaksanaan / siap diserahkan ke Keuangan | 12 / 4 |
+| Di Keuangan (Penyerahan & Pembayaran sebagian dicentang) / lunas & selesai | 8 / 10 |
+| Batal | 3 |
+
+- **Pengusul:** akun Pengusul dari `DivisionUserSeeder`, bergiliran. Usulan melewati TL timnya, lalu Asman bidangnya.
+- **Penomoran:** usulan memakai nomor `USL/…`. Setelah format kontrak diisi, nomornya menjadi nomor kontrak (SPK, PJ, atau SPPL).
+- **Format kontrak:** bergiliran antara SPK Barang, SPK Jasa, PJ Barang, SPPL, dan PJ Jasa, lengkap dengan metode, jenis kontrak, mitra, rekening, jangka waktu, garansi, dan nilai nego.
+- **Dokumen:** TOR, Nota Dinas Usulan, RKS, HPE, UPB, serta dokumen kontrak (SPK, Surat Perjanjian, atau Lampiran SP) dibuat dari template. Karena kontraknya dibuat, syarat Penyerahan dan Pembayaran terbaca dari kontrak itu.
+- **Penyetuju perencanaan:** bila tidak ada akun TL ICC, Administrator yang menyetujui perencanaan.
+- **Penanda:** semua data demo memakai catatan "Data demo (DemoProcurementSeeder)." Menjalankan ulang seeder menghapus data demo sebelumnya (hanya yang bertanda itu), lalu membuat ulang.
+- **Menjalankan:** `php artisan db:seed --class=DemoProcurementSeeder`, setelah `php artisan migrate --seed`. Test: `DemoProcurementSeederTest`.
 
 ---
 

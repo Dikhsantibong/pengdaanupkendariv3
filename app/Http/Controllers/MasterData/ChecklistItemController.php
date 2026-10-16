@@ -24,7 +24,7 @@ class ChecklistItemController extends MasterDataController
     {
         $response = parent::store($request);
 
-        $item = ChecklistItem::query()->latest('id')->firstOrFail();
+        $item = ChecklistItem::query()->shared()->latest('id')->firstOrFail();
         $this->syncRelations($request, $item);
 
         return $response;
@@ -35,6 +35,8 @@ class ChecklistItemController extends MasterDataController
      */
     public function update(Request $request, ChecklistItem $checklistItem): RedirectResponse
     {
+        abort_if($checklistItem->procurement_id !== null, 404);
+
         $response = $this->updateRecord($request, $checklistItem);
 
         $this->syncRelations($request, $checklistItem);
@@ -47,6 +49,8 @@ class ChecklistItemController extends MasterDataController
      */
     public function destroy(ChecklistItem $checklistItem): RedirectResponse
     {
+        abort_if($checklistItem->procurement_id !== null, 404);
+
         return $this->destroyRecord($checklistItem);
     }
 
@@ -74,6 +78,8 @@ class ChecklistItemController extends MasterDataController
     protected function records(): array
     {
         return ChecklistItem::query()
+            // Requirements read from one procurement's contract are not master data.
+            ->shared()
             ->with(['excludedProcurementMethods:id', 'excludedContractNumberFormats:id', 'documentTypes:id,name'])
             ->withCount('procurementChecklists')
             ->orderBy('stage')

@@ -184,6 +184,7 @@ class FinanceRequirementSeeder extends Seeder
 
                     $item = ChecklistItem::query()->firstOrCreate(
                         [
+                            'procurement_id' => null,
                             'stage' => ProcurementStage::Keuangan->value,
                             'section' => FinanceSection::from($section)->value,
                             'name' => $name,
