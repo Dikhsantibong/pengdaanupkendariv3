@@ -25,7 +25,6 @@ type Filters = {
     /** A stage, or "keuangan:penyerahan" / "keuangan:pembayaran". */
     tahap: string;
     format: string;
-    metode: string;
     kategori: string;
     sifat: string;
     isian: string;
@@ -36,7 +35,6 @@ const EMPTY: Filters = {
     q: '',
     tahap: ALL,
     format: ALL,
-    metode: ALL,
     kategori: ALL,
     sifat: ALL,
     isian: ALL,
@@ -125,13 +123,6 @@ function matches(record: ChecklistItem, filters: Filters): boolean {
     }
 
     if (
-        filters.metode !== ALL &&
-        record.excluded_procurement_method_ids.includes(Number(filters.metode))
-    ) {
-        return false;
-    }
-
-    if (
         filters.kategori !== ALL &&
         record.work_category !== 'none' &&
         record.work_category !== filters.kategori
@@ -206,7 +197,6 @@ type ChecklistItem = MasterRecord & {
     description: string | null;
     is_optional: boolean;
     sort_order: number;
-    excluded_procurement_method_ids: number[];
     excluded_contract_number_format_ids: number[];
     input_kind: string;
     input_label: string | null;
@@ -221,7 +211,6 @@ export default function ChecklistItems({
     sections,
     workCategories,
     inputKinds,
-    procurementMethods,
     contractNumberFormats,
     documentTypes,
 }: {
@@ -230,13 +219,9 @@ export default function ChecklistItems({
     sections: EnumOption[];
     workCategories: EnumOption[];
     inputKinds: EnumOption[];
-    procurementMethods: EnumOption[];
     contractNumberFormats: EnumOption[];
     documentTypes: EnumOption[];
 }) {
-    const methodLabel = (id: number) =>
-        procurementMethods.find((method) => Number(method.value) === id)?.label;
-
     const formatLabel = (id: number) =>
         contractNumberFormats.find((format) => Number(format.value) === id)
             ?.label;
@@ -305,12 +290,6 @@ export default function ChecklistItems({
                     onChange={(format) => update({ format })}
                 />
                 <FilterSelect
-                    label="Berlaku untuk Metode"
-                    value={filters.metode}
-                    options={procurementMethods}
-                    onChange={(metode) => update({ metode })}
-                />
-                <FilterSelect
                     label="Kategori Pekerjaan"
                     value={filters.kategori}
                     options={workCategories.filter(
@@ -363,10 +342,8 @@ export default function ChecklistItems({
                 </span>{' '}
                 dari {records.length} item, berurutan sesuai tahap dan urutan
                 tampil.
-                {(filters.format !== ALL ||
-                    filters.metode !== ALL ||
-                    filters.kategori !== ALL) &&
-                    ' Filter format, metode, dan kategori menampilkan item yang dilalui pengadaan dengan kriteria itu, termasuk item yang berlaku untuk semua.'}
+                {(filters.format !== ALL || filters.kategori !== ALL) &&
+                    ' Filter format dan kategori menampilkan item yang dilalui pengadaan dengan kriteria itu, termasuk item yang berlaku untuk semua.'}
             </p>
         </div>
     );
@@ -414,17 +391,6 @@ export default function ChecklistItems({
                     key: 'input_label',
                     label: 'Isian',
                     render: (record) => record.input_label ?? '—',
-                },
-                {
-                    key: 'excluded_procurement_method_ids',
-                    label: 'Dilewati Metode',
-                    render: (record) =>
-                        record.excluded_procurement_method_ids.length === 0
-                            ? '—'
-                            : record.excluded_procurement_method_ids
-                                  .map(methodLabel)
-                                  .filter(Boolean)
-                                  .join(', '),
                 },
                 {
                     key: 'excluded_contract_number_format_ids',
@@ -502,18 +468,11 @@ export default function ChecklistItems({
                     hint: 'Data yang wajib diisi pada tahapan ini sebelum dapat dicentang, mis. rentang waktu, masa garansi, atau rekening pelaksana.',
                 },
                 {
-                    name: 'excluded_procurement_method_ids',
-                    label: 'Dilewati oleh Metode Pengadaan',
-                    type: 'multiselect',
-                    options: procurementMethods,
-                    hint: 'Centang metode yang tidak melalui tahapan ini. Metode yang tidak dicentang tetap memakai item ini.',
-                },
-                {
                     name: 'excluded_contract_number_format_ids',
                     label: 'Dilewati oleh Format Kontrak',
                     type: 'multiselect',
                     options: contractNumberFormats,
-                    hint: 'Centang format kontrak yang tidak melalui tahapan ini, misalnya SPPL tidak memakai RAB karena sudah tercakup di Penawaran. Berlaku untuk pengadaan baru dan saat data pengadaan disimpan ulang.',
+                    hint: 'Centang format kontrak yang tidak melalui tahapan ini, misalnya SPPL (metode Surat Pesanan) tidak memakai RAB, HPE, UPB, RKS, Inisiasi SMART SCM, dan PR/RO. Metode pengadaan mengikuti format, jadi pengecualian cukup diatur di sini. Berlaku untuk pengadaan baru dan saat data pengadaan disimpan ulang.',
                 },
                 { name: 'sort_order', label: 'Urutan Tampil', type: 'number' },
                 { name: 'is_active', label: 'Aktif', type: 'switch' },
@@ -528,7 +487,6 @@ export default function ChecklistItems({
                 document_type_ids: [],
                 alternative_document_type_ids: [],
                 input_kind: 'none',
-                excluded_procurement_method_ids: [],
                 excluded_contract_number_format_ids: [],
                 sort_order: 0,
                 is_active: true,

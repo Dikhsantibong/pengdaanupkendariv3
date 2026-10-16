@@ -11,7 +11,6 @@ use App\Models\ContractType;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
 use App\Models\Procurement;
-use App\Models\ProcurementMethod;
 use App\Models\ProgressStatus;
 use App\Models\TargetUnit;
 use App\Models\User;
@@ -58,7 +57,6 @@ class MasterDataOptions
         return [
             'workDirectors' => self::workDirectors(false),
             'targetUnits' => self::targetUnits(false),
-            'procurementMethods' => self::procurementMethods(false),
             'budgetSources' => self::budgetSources(false),
             'progressStatuses' => self::statuses(),
         ];
@@ -231,24 +229,6 @@ class MasterDataOptions
             ->map(fn (TargetUnit $record): array => [
                 'value' => $record->id,
                 'label' => $record->name,
-            ])->all();
-    }
-
-    /**
-     * Get the selectable metode pengadaan.
-     *
-     * @return array<int, array{value: int, label: string, description: string|null}>
-     */
-    protected static function procurementMethods(bool $onlyActive): array
-    {
-        return ProcurementMethod::query()
-            ->when($onlyActive, fn ($query) => $query->active())
-            ->ordered()
-            ->get()
-            ->map(fn (ProcurementMethod $record): array => [
-                'value' => $record->id,
-                'label' => $record->name,
-                'description' => $record->description,
             ])->all();
     }
 

@@ -4,6 +4,8 @@ namespace Tests\Feature\Procurements;
 
 use App\Enums\ProcurementStage;
 use App\Models\ChecklistItem;
+use App\Models\ContractNumberFormat;
+use App\Models\ContractType;
 use App\Models\Procurement;
 use App\Models\ProcurementMethod;
 use App\Models\User;
@@ -13,8 +15,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * A checklist item can be switched off for particular procurement methods, so
- * a Surat Pesanan does not carry the tender paperwork steps.
+ * A checklist item can be switched off for particular contract formats (and,
+ * for older callers, methods), so an SPPL — let by Surat Pesanan — does not
+ * carry the tender paperwork steps. The method follows the format, so the
+ * seeded exclusions are set on the SPPL format.
  */
 class ChecklistMethodExclusionTest extends TestCase
 {
@@ -24,9 +28,10 @@ class ChecklistMethodExclusionTest extends TestCase
     {
         $this->seed(MasterDataSeeder::class);
 
-        $suratPesanan = ProcurementMethod::query()->where('code', 'surat-pesanan')->firstOrFail();
+        $procurement = $this->makeProcurementOn('SPPL');
 
-        $procurement = $this->makeProcurement($suratPesanan);
+        // The SPPL brings its method along.
+        $this->assertSame('surat-pesanan', $procurement->procurementMethod?->code);
 
         $names = $procurement->checklists()
             ->with('checklistItem')
@@ -43,8 +48,9 @@ class ChecklistMethodExclusionTest extends TestCase
             $this->assertNotContains($skipped, $names, "[{$skipped}] seharusnya dilewati Surat Pesanan.");
         }
 
-        // Steps the method does not skip are still there.
-        $this->assertContains('RAB (Rencana Anggaran Biaya)', $names);
+        // Steps the format does not skip are still there; the RAB is folded
+        // into the SPPL's Penawaran.
+        $this->assertNotContains('RAB (Rencana Anggaran Biaya)', $names);
         $this->assertContains('Penawaran', $names);
 
         // The Nota Dinas Usulan and TOR are filed on the proposer's tab.
@@ -52,13 +58,11 @@ class ChecklistMethodExclusionTest extends TestCase
         $this->assertNotContains('TOR / KAK', $names);
     }
 
-    public function test_other_methods_keep_the_full_checklist(): void
+    public function test_other_formats_keep_the_full_checklist(): void
     {
         $this->seed(MasterDataSeeder::class);
 
-        $tender = ProcurementMethod::query()->where('code', 'tender')->firstOrFail();
-
-        $names = $this->makeProcurement($tender)->checklists()
+        $names = $this->makeProcurementOn('PJ')->checklists()
             ->with('checklistItem')
             ->get()
             ->map(fn ($checklist): string => $checklist->checklistItem->name);
@@ -79,15 +83,15 @@ class ChecklistMethodExclusionTest extends TestCase
         $this->assertSame($expected, $procurement->checklists()->count());
     }
 
-    public function test_switching_method_adds_and_drops_the_right_steps(): void
+    public function test_switching_format_adds_and_drops_the_right_steps(): void
     {
         $this->seed(MasterDataSeeder::class);
 
         $teamLeader = User::factory()->teamLeader()->create();
-        $tender = ProcurementMethod::query()->where('code', 'tender')->firstOrFail();
-        $suratPesanan = ProcurementMethod::query()->where('code', 'surat-pesanan')->firstOrFail();
+        $pj = ContractNumberFormat::query()->where('code', 'PJ')->firstOrFail();
+        $sppl = ContractNumberFormat::query()->where('code', 'SPPL')->firstOrFail();
 
-        $procurement = $this->makeProcurement($tender);
+        $procurement = $this->makeProcurementOn('PJ');
         $rksItem = ChecklistItem::query()->where('name', 'RKS (Rencana Kerja dan Syarat)')->firstOrFail();
 
         $this->assertTrue(
@@ -97,7 +101,7 @@ class ChecklistMethodExclusionTest extends TestCase
         $this->actingAs($teamLeader)
             ->put(route('procurements.update', $procurement), [
                 ...$this->payloadFrom($procurement),
-                'procurement_method_id' => $suratPesanan->id,
+                'contract_number_format_id' => $sppl->id,
             ])
             ->assertRedirect();
 
@@ -108,7 +112,8 @@ class ChecklistMethodExclusionTest extends TestCase
         $this->actingAs($teamLeader)
             ->put(route('procurements.update', $procurement), [
                 ...$this->payloadFrom($procurement),
-                'procurement_method_id' => $tender->id,
+                'contract_number_format_id' => $pj->id,
+                'contract_type_id' => ContractType::query()->firstOrFail()->id,
             ])
             ->assertRedirect();
 
@@ -117,21 +122,18 @@ class ChecklistMethodExclusionTest extends TestCase
         );
     }
 
-    public function test_a_completed_step_survives_a_method_change(): void
+    public function test_a_completed_step_survives_a_format_change(): void
     {
         $this->seed(MasterDataSeeder::class);
 
-        $tender = ProcurementMethod::query()->where('code', 'tender')->firstOrFail();
-        $suratPesanan = ProcurementMethod::query()->where('code', 'surat-pesanan')->firstOrFail();
-
-        $procurement = $this->makeProcurement($tender);
+        $procurement = $this->makeProcurementOn('PJ');
         $rksItem = ChecklistItem::query()->where('name', 'RKS (Rencana Kerja dan Syarat)')->firstOrFail();
 
         $procurement->checklists()
             ->where('checklist_item_id', $rksItem->id)
             ->update(['is_completed' => true, 'completed_at' => now()]);
 
-        $procurement->procurement_method_id = $suratPesanan->id;
+        $procurement->contract_number_format_id = ContractNumberFormat::query()->where('code', 'SPPL')->value('id');
         $procurement->save();
 
         app(ProcurementService::class)->syncChecklists($procurement);
@@ -173,6 +175,23 @@ class ChecklistMethodExclusionTest extends TestCase
             ->map(fn ($checklist): string => $checklist->checklistItem->name);
 
         $this->assertNotContains('CSMS', $names);
+    }
+
+    /**
+     * Create a procurement on a seeded contract format, with its checklist.
+     */
+    protected function makeProcurementOn(string $format): Procurement
+    {
+        $procurement = Procurement::factory()->create([
+            'contract_number_format_id' => ContractNumberFormat::query()->where('code', $format)->value('id'),
+            'procurement_method_id' => null,
+        ]);
+
+        $procurement->checklists()->delete();
+
+        app(ProcurementService::class)->syncChecklists($procurement->refresh());
+
+        return $procurement;
     }
 
     /**

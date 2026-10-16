@@ -43,7 +43,7 @@ class ProcurementClassificationTest extends TestCase
             );
     }
 
-    public function test_the_list_can_be_filtered_by_method_and_budget_source(): void
+    public function test_the_list_can_be_filtered_by_budget_source_but_not_by_method(): void
     {
         $teamLeader = User::factory()->teamLeader()->create();
 
@@ -57,19 +57,40 @@ class ProcurementClassificationTest extends TestCase
         Procurement::factory()->count(2)->create();
 
         $this->actingAs($teamLeader)
-            ->get(route('procurements.index', ['procurement_method_id' => $tender->id]))
+            ->get(route('procurements.index', ['budget_source_id' => $investment->id]))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->has('procurements.data', 1)
                 ->where('procurements.data.0.number', $matching->number)
-                ->where('procurements.data.0.procurement_method', 'Tender')
-                ->where('procurements.data.0.budget_source', 'AI'),
-            );
+                ->where('procurements.data.0.budget_source', 'AI')
+                ->missing('options.procurementMethods')
+                ->missing('filters.procurement_method_id'));
 
+        // The method follows the contract format and is no longer a filter:
+        // an old link carrying it shows the whole list.
         $this->actingAs($teamLeader)
-            ->get(route('procurements.index', ['budget_source_id' => $investment->id]))
+            ->get(route('procurements.index', ['procurement_method_id' => $tender->id]))
             ->assertOk()
-            ->assertInertia(fn (AssertableInertia $page) => $page->has('procurements.data', 1));
+            ->assertInertia(fn (AssertableInertia $page) => $page->has('procurements.data', 3));
+    }
+
+    public function test_the_report_export_and_checklist_screen_no_longer_show_the_method(): void
+    {
+        Procurement::factory()->create();
+
+        $csv = $this->actingAs(User::factory()->administrator()->create())
+            ->get(route('reports.export'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringNotContainsString('Metode Pengadaan', $csv);
+        $this->assertStringContainsString('Sumber Anggaran', $csv);
+
+        $this->get(route('master-data.checklist-items.index'))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->missing('procurementMethods')
+                ->has('contractNumberFormats'));
     }
 
     public function test_generated_documents_carry_the_method_and_budget_source(): void

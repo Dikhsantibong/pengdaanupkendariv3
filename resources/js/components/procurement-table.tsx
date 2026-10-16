@@ -19,7 +19,6 @@ import type { ChecklistProgress, Paginated, ProcurementRow } from '@/types';
 export type ProcurementColumn =
     | 'unit'
     | 'director'
-    | 'method'
     | 'budgetSource'
     | 'hpe'
     | 'status'
@@ -34,7 +33,6 @@ export type ProcurementColumn =
 const columnHeadings: Record<ProcurementColumn, string> = {
     unit: 'Unit Tujuan',
     director: 'Direksi Pekerjaan',
-    method: 'Metode',
     budgetSource: 'Sumber Anggaran',
     hpe: 'Nilai HPE',
     status: 'Status Progres',
@@ -143,14 +141,6 @@ function renderCell(column: ProcurementColumn, row: ProcurementRow) {
         case 'director':
             return (
                 <span className="whitespace-nowrap">{row.work_director}</span>
-            );
-        case 'method':
-            return (
-                <span className="whitespace-nowrap">
-                    {row.procurement_method ?? (
-                        <span className="text-muted-foreground">—</span>
-                    )}
-                </span>
             );
         case 'budgetSource':
             return (

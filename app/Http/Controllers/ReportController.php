@@ -24,7 +24,7 @@ class ReportController extends Controller
         $query = ProcurementFilters::apply(
             Procurement::query()
                 ->visibleTo($request->user())
-                ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor']),
+                ->with(['workDirector', 'targetUnit', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor']),
             $request,
         );
 
@@ -53,7 +53,7 @@ class ReportController extends Controller
         $rows = ProcurementFilters::apply(
             Procurement::query()
                 ->visibleTo($request->user())
-                ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor']),
+                ->with(['workDirector', 'targetUnit', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor']),
             $request,
         )->latest('created_at')->get();
 
@@ -65,7 +65,7 @@ class ReportController extends Controller
 
         fputcsv($handle, [
             'Nomor Pengadaan', 'Nama Pengadaan', 'Nama Mitra/Pelaksana', 'Direksi Pekerjaan', 'Unit Tujuan',
-            'Metode Pengadaan', 'Sumber Anggaran', 'Nomor PR/PO', 'Nomor PRK',
+            'Sumber Anggaran', 'Nomor PR/PO', 'Nomor PRK',
             'Nomor Nota Dinas Usulan', 'Nomor Nota Dinas ICC', 'Nomor COA', 'Nomor WO', 'Nomor SR',
             'Nilai Sebelum Nego', 'Nilai Setelah Nego', 'Status Progres', 'PIC Perencana', 'PIC Pelaksana',
             'Status Persetujuan', 'Dibuat',
@@ -78,7 +78,6 @@ class ReportController extends Controller
                 $procurement->partner_name ?? '-',
                 $procurement->workDirector->name,
                 $procurement->targetUnitNames(),
-                $procurement->procurement_method_id === null ? '-' : $procurement->procurementMethod->name,
                 $procurement->budget_source_id === null ? '-' : $procurement->budgetSource->name,
                 $procurement->pr_po_number ?? '-',
                 $procurement->prk_number ?? '-',

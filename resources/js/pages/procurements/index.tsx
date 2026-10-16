@@ -60,7 +60,6 @@ export default function ProcurementIndex({
                     page={page}
                     columns={[
                         'unit',
-                        'method',
                         'budgetSource',
                         'hpe',
                         'status',

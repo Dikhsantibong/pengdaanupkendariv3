@@ -9,7 +9,6 @@ use App\Enums\WorkCategory;
 use App\Models\ChecklistItem;
 use App\Models\ContractNumberFormat;
 use App\Models\DocumentType;
-use App\Models\ProcurementMethod;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -80,7 +79,7 @@ class ChecklistItemController extends MasterDataController
         return ChecklistItem::query()
             // Requirements read from one procurement's contract are not master data.
             ->shared()
-            ->with(['excludedProcurementMethods:id', 'excludedContractNumberFormats:id', 'documentTypes:id,name'])
+            ->with(['excludedContractNumberFormats:id', 'documentTypes:id,name'])
             ->withCount('procurementChecklists')
             ->orderBy('stage')
             ->ordered()
@@ -99,9 +98,6 @@ class ChecklistItemController extends MasterDataController
                 'sort_order' => $record->sort_order,
                 'is_active' => $record->is_active,
                 'usage_count' => $record->procurement_checklists_count,
-                'excluded_procurement_method_ids' => $record->excludedProcurementMethods
-                    ->pluck('id')
-                    ->all(),
                 'excluded_contract_number_format_ids' => $record->excludedContractNumberFormats
                     ->pluck('id')
                     ->all(),
@@ -239,11 +235,6 @@ class ChecklistItemController extends MasterDataController
                 ['value' => 'none', 'label' => 'Tanpa isian'],
                 ...ChecklistInput::options(),
             ],
-            'procurementMethods' => ProcurementMethod::query()->active()->ordered()->get()
-                ->map(fn (ProcurementMethod $method): array => [
-                    'value' => $method->id,
-                    'label' => $method->name,
-                ])->all(),
             'contractNumberFormats' => ContractNumberFormat::query()->active()->ordered()->get()
                 ->map(fn (ContractNumberFormat $format): array => [
                     'value' => $format->id,

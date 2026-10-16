@@ -76,7 +76,6 @@ export default function ReportIndex({
                     columns={[
                         'unit',
                         'director',
-                        'method',
                         'budgetSource',
                         'hpe',
                         'status',

@@ -500,34 +500,14 @@ class MasterDataSeeder extends Seeder
     }
 
     /**
-     * Switch off the planning steps that a Surat Pesanan does not go through.
+     * Switch off the steps each contract format does not go through.
      *
-     * A Surat Pesanan is the lightest method: it skips the tender paperwork
-     * and the SMART SCM/PR pipeline entirely.
+     * Steps are switched off by format only: the method follows the format,
+     * so the SPPL (let by Surat Pesanan, the lightest method) also skips the
+     * tender paperwork and the SMART SCM/PR pipeline.
      */
     protected function seedChecklistExclusions(): void
     {
-        $suratPesanan = ProcurementMethod::query()->where('code', 'surat-pesanan')->first();
-
-        if ($suratPesanan === null) {
-            return;
-        }
-
-        $excluded = ChecklistItem::query()
-            ->forStage(ProcurementStage::Perencanaan)
-            ->whereIn('name', [
-                'RKS (Rencana Kerja dan Syarat)',
-                'Inisiasi SMART SCM',
-                'PR / RO',
-                'UPB',
-                'HPE (Harga Perkiraan Engineer)',
-            ])
-            ->pluck('id');
-
-        foreach ($excluded as $checklistItemId) {
-            $suratPesanan->excludedChecklistItems()->syncWithoutDetaching([$checklistItemId]);
-        }
-
         $formats = ContractNumberFormat::query()->pluck('id', 'code');
 
         $skip = function (ProcurementStage $stage, array $names, array $formatIds): void {
@@ -541,7 +521,14 @@ class MasterDataSeeder extends Seeder
         if (isset($formats['SPPL'])) {
             // SPPL folds the RAB into its Penawaran, so it skips the RAB step,
             // and has its own execution steps in place of the SPK/PJ ones.
-            $skip(ProcurementStage::Perencanaan, ['RAB (Rencana Anggaran Biaya)'], [$formats['SPPL']]);
+            $skip(ProcurementStage::Perencanaan, [
+                'RAB (Rencana Anggaran Biaya)',
+                'RKS (Rencana Kerja dan Syarat)',
+                'Inisiasi SMART SCM',
+                'PR / RO',
+                'UPB',
+                'HPE (Harga Perkiraan Engineer)',
+            ], [$formats['SPPL']]);
             $skip(ProcurementStage::Pelaksanaan, [
                 'Penyusunan HPS',
                 'Proses SMART SCM',

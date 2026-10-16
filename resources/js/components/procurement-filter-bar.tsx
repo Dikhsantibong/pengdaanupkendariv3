@@ -43,7 +43,6 @@ export function ProcurementFilterBar({
             progress_status_id: filters.progress_status_id,
             work_director_id: filters.work_director_id,
             target_unit_id: filters.target_unit_id,
-            procurement_method_id: filters.procurement_method_id,
             budget_source_id: filters.budget_source_id,
             planner_id: filters.planner_id,
             executor_id: filters.executor_id,
@@ -86,7 +85,6 @@ export function ProcurementFilterBar({
         Boolean(filters.progress_status_id) ||
         Boolean(filters.work_director_id) ||
         Boolean(filters.target_unit_id) ||
-        Boolean(filters.procurement_method_id) ||
         Boolean(filters.budget_source_id) ||
         extraSelects.some((select) => Boolean(select.value));
 
@@ -127,13 +125,6 @@ export function ProcurementFilterBar({
                 value={filters.target_unit_id}
                 options={options.targetUnits}
                 onChange={(value) => visit({ target_unit_id: value })}
-            />
-
-            <FilterSelect
-                label="Metode Pengadaan"
-                value={filters.procurement_method_id}
-                options={options.procurementMethods}
-                onChange={(value) => visit({ procurement_method_id: value })}
             />
 
             <FilterSelect

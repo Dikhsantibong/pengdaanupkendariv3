@@ -229,7 +229,6 @@ export type ProcurementFilters = {
     progress_status_id: number | null;
     work_director_id: number | null;
     target_unit_id: number | null;
-    procurement_method_id: number | null;
     budget_source_id: number | null;
     planner_id: number | null;
     executor_id: number | null;
@@ -238,7 +237,6 @@ export type ProcurementFilters = {
 export type FilterOptions = {
     workDirectors: Option[];
     targetUnits: Option[];
-    procurementMethods: Option[];
     budgetSources: Option[];
     progressStatuses: StatusOption[];
 };
