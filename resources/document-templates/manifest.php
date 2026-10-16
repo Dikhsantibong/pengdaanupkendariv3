@@ -239,6 +239,17 @@ return [
         'work_category' => 'barang',
         'name' => 'SPK (Surat Perintah Kerja) Barang - Template Standar UP Kendari',
     ],
+    // The amendment of any contract (SPK, Surat Perjanjian or Surat
+    // Pesanan); drawn from the Amandemen tab with the amendment's values.
+    'kontrak.amandemen' => [
+        'group' => 'kontrak',
+        'file' => 'kontrak/amandemen.html',
+        'document_type' => 'amandemen-kontrak',
+        'procurement_method' => null,
+        'contract_format' => null,
+        'work_category' => null,
+        'name' => 'Amandemen Kontrak - Template Standar UP Kendari',
+    ],
     'kontrak.lampiran-spk' => [
         'group' => 'kontrak',
         'file' => 'kontrak/lampiran-spk.html',

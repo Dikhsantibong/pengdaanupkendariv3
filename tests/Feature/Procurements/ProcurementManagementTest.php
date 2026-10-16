@@ -107,8 +107,9 @@ class ProcurementManagementTest extends TestCase
                 'target_unit_ids',
                 'budget_source_id',
                 'hpe_value',
-                'progress_status_id',
             ])
+            // The progress status is set by the system, not typed in.
+            ->assertSessionDoesntHaveErrors('progress_status_id')
             // The method follows the contract format, so it is not required.
             ->assertSessionDoesntHaveErrors('procurement_method_id');
 

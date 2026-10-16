@@ -1,6 +1,8 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { AlertTriangle, FileText, Pencil, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
+import { AmendmentTab } from '@/components/procurement/amendment-tab';
+import type { Amendment } from '@/components/procurement/amendment-tab';
 import { ApprovalCard } from '@/components/procurement/approval-card';
 import { ApprovalHistoryTable } from '@/components/procurement/approval-history';
 import type { ApprovalHistory } from '@/components/procurement/approval-history';
@@ -10,17 +12,13 @@ import {
     FinanceStatus,
 } from '@/components/procurement/finance-card';
 import type { FinanceDetail } from '@/components/procurement/finance-card';
+import { IdentityPanel } from '@/components/procurement/identity-panel';
 import { PicAssignmentCard } from '@/components/procurement/pic-assignment-card';
-import {
-    ContractTypePicker,
-    TargetDateField,
-} from '@/components/procurement/planning-identity-fields';
 import { ProposalDocuments } from '@/components/procurement/proposal-documents';
 import { StatusCard } from '@/components/procurement/status-card';
 import { DownloadAllButton } from '@/components/procurement-table';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { formatCurrency, formatDate } from '@/lib/format';
 import { dashboard } from '@/routes';
 import procurements from '@/routes/procurements';
 import type {
@@ -36,6 +34,8 @@ type ShowProps = {
     procurement: ProcurementRow;
     detail: {
         notes: string | null;
+        /** When the current, automatic status applies. */
+        status_rule: string | null;
         planning_review_note: string | null;
         planning_submitted_at: string | null;
         planning_reviewed_at: string | null;
@@ -58,6 +58,7 @@ type ShowProps = {
         keuangan: ChecklistRow[];
     };
     approvalHistory: ApprovalHistory;
+    amendments: Amendment[];
     options: {
         progressStatuses: StatusOption[];
         planners: Option[];
@@ -67,6 +68,7 @@ type ShowProps = {
     };
     can: {
         update: boolean;
+        startAmendment: boolean;
         assignPic: boolean;
         assignPlanner: boolean;
         assignExecutor: boolean;
@@ -92,6 +94,7 @@ export default function ShowProcurement({
     detail,
     checklists,
     approvalHistory,
+    amendments,
     options,
     can,
 }: ShowProps) {
@@ -175,114 +178,6 @@ export default function ShowProcurement({
     // inline pickers are only for the planning PIC, who has no such form.
     const editsInline = can.updatePlanningIdentity && !can.update;
 
-    const identitySummary: Array<{
-        label: string;
-        value: string;
-        field?: 'contract_type' | 'target_date';
-    }> = [
-        { label: 'Direksi Pekerjaan', value: procurement.work_director },
-        { label: 'Unit Tujuan', value: procurement.target_unit },
-        {
-            label: 'Sumber Anggaran',
-            value: procurement.budget_source ?? '—',
-        },
-        {
-            label: 'Jenis Kontrak',
-            value: procurement.contract_type ?? '—',
-            field: 'contract_type' as const,
-        },
-        {
-            label: 'Target Selesai',
-            value: procurement.target_completion_date
-                ? formatDate(procurement.target_completion_date)
-                : '—',
-            field: 'target_date' as const,
-        },
-        ...(procurement.work_category
-            ? [
-                  {
-                      label: 'Format Dokumen',
-                      value: procurement.work_category,
-                  },
-              ]
-            : []),
-        // Sembunyikan sementara sesuai permintaan user:
-        // { label: 'Dibuat Oleh', value: detail.created_by ?? '—' },
-        // { label: 'Tanggal Dibuat', value: formatDate(procurement.created_at) },
-    ];
-
-    const partnerSummary: Array<{
-        label: string;
-        value: string;
-        fullWidth?: boolean;
-    }> = [
-        {
-            label: 'Nama Calon Mitra',
-            value: procurement.partner_name ?? '—',
-        },
-        {
-            label: 'Nama Direktur',
-            value: procurement.partner_director_name ?? '—',
-        },
-        {
-            label: 'Nomor Surat Penawaran',
-            value: procurement.quotation_number ?? '—',
-        },
-        {
-            label: 'Tanggal Surat Penawaran',
-            value: procurement.quotation_date
-                ? formatDate(procurement.quotation_date)
-                : '—',
-        },
-        {
-            label: 'Alamat Perusahaan',
-            value: procurement.partner_address ?? '—',
-            fullWidth: true,
-        },
-    ];
-
-    const proposalSummary: Array<{
-        label: string;
-        value: string;
-    }> = [
-        { label: 'Nomor PRK', value: procurement.prk_number ?? '—' },
-        { label: 'Nomor COA', value: procurement.coa_number ?? '—' },
-        { label: 'Nomor PR', value: procurement.pr_po_number ?? '—' },
-        { label: 'Nomor SR', value: procurement.sr_number ?? '—' },
-        { label: 'Nomor WO', value: procurement.wo_number ?? '—' },
-        {
-            label: 'Nomor Nota Dinas Usulan',
-            value: procurement.proposal_memo_number ?? '—',
-        },
-        {
-            label: 'Tanggal Nota Dinas Usulan',
-            value: procurement.proposal_memo_date
-                ? formatDate(procurement.proposal_memo_date)
-                : '—',
-        },
-        {
-            label: 'Nomor Nota Dinas ke Manager',
-            value: procurement.icc_memo_number ?? '—',
-        },
-        {
-            label: 'Tanggal Nota Dinas ke Manager',
-            value: procurement.icc_memo_date
-                ? formatDate(procurement.icc_memo_date)
-                : '—',
-        },
-        {
-            label: 'Nilai (Sebelum Nego)',
-            value: formatCurrency(procurement.hpe_value),
-        },
-        {
-            label: 'Nilai Setelah Nego',
-            value:
-                procurement.value_after_negotiation === null
-                    ? '—'
-                    : formatCurrency(procurement.value_after_negotiation),
-        },
-    ];
-
     return (
         <>
             <Head title={procurement.number} />
@@ -337,111 +232,12 @@ export default function ShowProcurement({
 
                 <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
                     <div className="flex min-w-0 flex-col gap-5">
-                        <section className="rounded-md border border-border bg-card">
-                            <header className="border-b border-border px-4 py-3">
-                                <h2 className="text-sm font-semibold text-foreground">
-                                    Identitas Pengadaan
-                                </h2>
-                            </header>
-
-                            <dl className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
-                                {identitySummary.map((item) => (
-                                    <div
-                                        key={item.label}
-                                        className="flex items-baseline justify-between gap-4 border-b border-border px-4 py-2.5 last:border-b-0 sm:[&:nth-last-child(2)]:border-b-0"
-                                    >
-                                        <dt className="text-sm text-muted-foreground">
-                                            {item.label}
-                                        </dt>
-                                        <dd className="tabular text-right text-sm font-medium text-foreground">
-                                            {editsInline &&
-                                            item.field === 'target_date' ? (
-                                                <TargetDateField
-                                                    procurementId={
-                                                        procurement.id
-                                                    }
-                                                    value={
-                                                        procurement.target_completion_date
-                                                    }
-                                                />
-                                            ) : editsInline &&
-                                              item.field === 'contract_type' ? (
-                                                <ContractTypePicker
-                                                    procurementId={
-                                                        procurement.id
-                                                    }
-                                                    value={
-                                                        procurement.contract_type_id
-                                                    }
-                                                    options={
-                                                        options.contractTypes
-                                                    }
-                                                />
-                                            ) : (
-                                                item.value
-                                            )}
-                                        </dd>
-                                    </div>
-                                ))}
-                            </dl>
-                        </section>
-
-                        <section className="rounded-md border border-border bg-card">
-                            <header className="border-b border-border px-4 py-3">
-                                <h2 className="text-sm font-semibold text-foreground">
-                                    Calon Mitra
-                                </h2>
-                            </header>
-
-                            <dl className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
-                                {partnerSummary.map((item) => (
-                                    <div
-                                        key={item.label}
-                                        className={`flex items-baseline justify-between gap-4 border-b border-border px-4 py-2.5 last:border-b-0 sm:[&:nth-last-child(2)]:border-b-0 ${item.fullWidth ? 'sm:col-span-2' : ''}`}
-                                    >
-                                        <dt className="text-sm text-muted-foreground">
-                                            {item.label}
-                                        </dt>
-                                        <dd className="tabular text-right text-sm font-medium text-foreground">
-                                            {item.value}
-                                        </dd>
-                                    </div>
-                                ))}
-                            </dl>
-                        </section>
-
-                        <section className="rounded-md border border-border bg-card">
-                            <header className="border-b border-border px-4 py-3">
-                                <h2 className="text-sm font-semibold text-foreground">
-                                    Usulan Pekerjaan
-                                </h2>
-                            </header>
-
-                            <dl className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
-                                {proposalSummary.map((item) => (
-                                    <div
-                                        key={item.label}
-                                        className="flex items-baseline justify-between gap-4 border-b border-border px-4 py-2.5 last:border-b-0 sm:[&:nth-last-child(2)]:border-b-0"
-                                    >
-                                        <dt className="text-sm text-muted-foreground">
-                                            {item.label}
-                                        </dt>
-                                        <dd className="tabular text-right text-sm font-medium text-foreground">
-                                            {item.value}
-                                        </dd>
-                                    </div>
-                                ))}
-                            </dl>
-
-                            {detail.notes && (
-                                <p className="border-t border-border px-4 py-3 text-sm text-muted-foreground">
-                                    <span className="font-medium text-foreground">
-                                        Catatan:{' '}
-                                    </span>
-                                    {detail.notes}
-                                </p>
-                            )}
-                        </section>
+                        <IdentityPanel
+                            procurement={procurement}
+                            notes={detail.notes}
+                            editsInline={editsInline}
+                            contractTypes={options.contractTypes}
+                        />
 
                         <Tabs defaultValue={initialTab}>
                             <TabsList className="h-auto flex-wrap">
@@ -461,6 +257,11 @@ export default function ShowProcurement({
                                 </TabsTrigger>
                                 <TabsTrigger value="pembayaran">
                                     Pembayaran
+                                </TabsTrigger>
+                                <TabsTrigger value="amandemen">
+                                    Amandemen
+                                    {amendments.length > 0 &&
+                                        ` (${amendments.length})`}
                                 </TabsTrigger>
                                 <TabsTrigger value="riwayat">
                                     Riwayat Approval
@@ -589,6 +390,14 @@ export default function ShowProcurement({
                                 />
                             </TabsContent>
 
+                            <TabsContent value="amandemen">
+                                <AmendmentTab
+                                    procurementId={procurement.id}
+                                    amendments={amendments}
+                                    canStart={can.startAmendment}
+                                />
+                            </TabsContent>
+
                             <TabsContent value="riwayat">
                                 <ApprovalHistoryTable
                                     history={approvalHistory}
@@ -601,7 +410,7 @@ export default function ShowProcurement({
                         <StatusCard
                             procurementId={procurement.id}
                             status={procurement.status}
-                            statuses={options.progressStatuses}
+                            rule={detail.status_rule}
                             editable={can.updateStatus}
                         />
 

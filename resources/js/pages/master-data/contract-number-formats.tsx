@@ -12,6 +12,7 @@ type ContractNumberFormat = MasterRecord & {
     sequence_length: number;
     starting_sequence: number;
     uses_work_category: boolean;
+    for_amendment: boolean;
     procurement_method_id: string;
     procurement_method: string | null;
     description: string | null;
@@ -98,6 +99,12 @@ export default function ContractNumberFormats({
                     hint: 'Saat format ini dipilih, form pengadaan meminta kategori Barang atau Jasa. Kategori menentukan template dokumen yang dipakai (mis. SPK Barang / SPK Jasa).',
                 },
                 {
+                    name: 'for_amendment',
+                    label: 'Untuk Nomor Amandemen',
+                    type: 'switch',
+                    hint: 'Format ini dipakai untuk menomori amandemen kontrak (contoh KDD054.Amd/612/UPKD/2026), tidak ditawarkan sebagai format kontrak pengadaan.',
+                },
+                {
                     name: 'procurement_method_id',
                     label: 'Metode Pengadaan',
                     type: 'select',
@@ -126,6 +133,7 @@ export default function ContractNumberFormats({
                 sequence_length: 3,
                 starting_sequence: 1,
                 uses_work_category: false,
+                for_amendment: false,
                 procurement_method_id: 'none',
                 description: '',
                 sort_order: 0,

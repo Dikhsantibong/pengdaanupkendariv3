@@ -11,6 +11,8 @@ type ProgressStatus = MasterRecord & {
     category: StatusCategory;
     sort_order: number;
     is_default: boolean;
+    /** When the system sets this status by itself; null for a hand-made one. */
+    system_rule: string | null;
 };
 
 export default function ProgressStatuses({
@@ -23,7 +25,7 @@ export default function ProgressStatuses({
     return (
         <MasterDataPage<ProgressStatus>
             title="Status Progres"
-            description="Pilihan status progres pengadaan beserta kategori siklus hidupnya yang menentukan warna badge di seluruh aplikasi."
+            description="Status progres diisi otomatis oleh sistem sesuai proses setiap pengadaan (kolom Diatur Otomatis). Nama, kategori, dan urutan tetap bisa diubah di sini; status yang dinonaktifkan tidak dipakai sistem. Batal dipilih manual lewat tombol Batalkan Pengadaan."
             addLabel="Tambah Status"
             records={records}
             nameKey="name"
@@ -45,6 +47,13 @@ export default function ProgressStatuses({
                         categories.find(
                             (category) => category.value === record.category,
                         )?.label ?? record.category,
+                },
+                {
+                    key: 'system_rule',
+                    label: 'Diatur Otomatis',
+                    className: 'max-w-sm whitespace-normal text-xs',
+                    render: (record) =>
+                        record.system_rule ?? 'Tidak dipakai sistem',
                 },
                 { key: 'sort_order', label: 'Urutan', className: 'tabular' },
                 {

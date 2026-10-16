@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ActivityType;
+use App\Enums\AmendmentFileKind;
 use App\Enums\FinanceSection;
 use App\Enums\Permission;
 use App\Enums\ProcurementStage;
@@ -12,6 +13,7 @@ use App\Http\Resources\ProcurementResource;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
 use App\Models\Procurement;
+use App\Models\ProcurementAmendment;
 use App\Models\ProcurementDocument;
 use App\Models\User;
 use App\Services\ContractRequirementReader;
@@ -201,6 +203,8 @@ class ProcurementController extends Controller
             'procurement' => (new ProcurementResource($procurement))->resolve(),
             'detail' => [
                 'notes' => $procurement->notes,
+                // The status is set by the system; this says why it is the one shown.
+                'status_rule' => $procurement->progressStatus->systemStatus()?->rule(),
                 'planning_review_note' => $procurement->planning_review_note,
                 'planning_submitted_at' => $procurement->planning_submitted_at?->toDateTimeString(),
                 'planning_reviewed_at' => $procurement->planning_reviewed_at?->toDateTimeString(),
@@ -306,8 +310,11 @@ class ProcurementController extends Controller
                 // What the job waits for now, shown as the table's last row.
                 'waiting' => $procurement->completed_at === null ? RoleDashboard::note($procurement) : null,
             ],
+            // The Amandemen tab: every amendment of the contract, oldest first.
+            'amendments' => $this->amendmentsPayload($procurement, $user),
             'options' => MasterDataOptions::forProcurementDetail($procurement),
             'can' => [
+                'startAmendment' => $user->can('startAmendment', $procurement),
                 'update' => $user->can('update', $procurement),
                 'assignPic' => $user->can('assignPic', $procurement),
                 'assignPlanner' => $user->can('assignPlanner', $procurement),
@@ -328,6 +335,75 @@ class ProcurementController extends Controller
                 'editDocument' => $user->can('editDocument', $procurement),
             ],
         ]);
+    }
+
+    /**
+     * The amendments of the procurement's contract as the Amandemen tab
+     * shows them.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function amendmentsPayload(Procurement $procurement, User $user): array
+    {
+        return $procurement->amendments()
+            ->with(['changedArticles', 'files.uploadedBy', 'creator', 'teamLeaderReviewer', 'directorReviewer', 'reviewer', 'document'])
+            ->get()
+            ->map(fn (ProcurementAmendment $amendment): array => [
+                'id' => $amendment->id,
+                'sequence' => $amendment->sequence,
+                'roman' => $amendment->roman(),
+                'number' => $amendment->number,
+                'state' => $amendment->state->value,
+                'state_label' => $amendment->state->label(),
+                'amendment_date' => $amendment->amendment_date?->toDateString(),
+                'contract_date' => $amendment->contract_date?->toDateString(),
+                'meeting_date' => $amendment->meeting_date?->toDateString(),
+                'memo_number' => $amendment->memo_number,
+                'memo_date' => $amendment->memo_date?->toDateString(),
+                'request_number' => $amendment->request_number,
+                'request_date' => $amendment->request_date?->toDateString(),
+                'created_by' => $amendment->creator?->name,
+                'submitted_at' => $amendment->submitted_at?->toDateTimeString(),
+                'review_note' => $amendment->review_note,
+                'revision' => $amendment->revision,
+                'decisions' => array_values(array_filter([
+                    $amendment->tl_reviewed_at === null ? null : ['level' => 'TL', 'by' => $amendment->teamLeaderReviewer?->name, 'at' => $amendment->tl_reviewed_at->toDateTimeString()],
+                    $amendment->director_reviewed_at === null ? null : ['level' => 'Asman', 'by' => $amendment->directorReviewer?->name, 'at' => $amendment->director_reviewed_at->toDateTimeString()],
+                    $amendment->reviewed_at === null ? null : ['level' => 'TL Pengadaan', 'by' => $amendment->reviewer?->name, 'at' => $amendment->reviewed_at->toDateTimeString()],
+                ])),
+                'changes' => $amendment->changedArticles->map(fn ($change): array => [
+                    'article' => $change->article,
+                    'original_text' => $change->original_text,
+                    'new_text' => $change->new_text,
+                ])->values()->all(),
+                'files' => collect(AmendmentFileKind::cases())->map(function (AmendmentFileKind $kind) use ($amendment, $procurement): array {
+                    $file = $amendment->files->where('kind', $kind)->last();
+
+                    return [
+                        'kind' => $kind->value,
+                        'label' => $kind->label(),
+                        'file' => $file === null ? null : [
+                            'name' => $file->file_name,
+                            'size' => $file->size,
+                            'uploaded_by' => $file->uploadedBy?->name,
+                            'uploaded_at' => $file->created_at?->toDateTimeString(),
+                            'url' => route('procurements.amendments.file', [$procurement, $amendment, $file]),
+                        ],
+                    ];
+                })->all(),
+                'document' => $amendment->document === null ? null : [
+                    'id' => $amendment->document->id,
+                    'title' => $amendment->document->title,
+                    'edit_url' => route('procurements.documents.edit', [$procurement, $amendment->document]),
+                    'preview_url' => route('procurements.documents.show', [$procurement, $amendment->document, 'preview' => 1]),
+                ],
+                'missing' => $amendment->state->isEditable() ? $amendment->missing() : [],
+                'can' => [
+                    'update' => $user->can('updateAmendment', [$procurement, $amendment]),
+                    'decide' => $user->can('decideAmendment', [$procurement, $amendment]),
+                ],
+            ])
+            ->all();
     }
 
     /**
@@ -374,7 +450,6 @@ class ProcurementController extends Controller
                 'value_after_negotiation' => $procurement->value_after_negotiation === null
                     ? null
                     : (float) $procurement->value_after_negotiation,
-                'progress_status_id' => $procurement->progress_status_id,
                 'notes' => $procurement->notes,
                 'target_completion_date' => $procurement->target_completion_date?->toDateString() ?? '',
             ],

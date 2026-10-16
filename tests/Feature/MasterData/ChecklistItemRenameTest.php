@@ -25,7 +25,7 @@ class ChecklistItemRenameTest extends TestCase
         $this->assertTrue(
             ChecklistItem::query()
                 ->forStage(ProcurementStage::Pelaksanaan)
-                ->where('name', 'Proses SMART SCM')
+                ->where('name', 'Proses SMART SCM & Berita Acara')
                 ->exists(),
         );
 
@@ -43,7 +43,7 @@ class ChecklistItemRenameTest extends TestCase
 
         $item = ChecklistItem::query()
             ->forStage(ProcurementStage::Pelaksanaan)
-            ->where('name', 'Proses SMART SCM')
+            ->where('name', 'Proses SMART SCM & Berita Acara')
             ->firstOrFail();
 
         $procurement = Procurement::factory()->create();
@@ -55,7 +55,8 @@ class ChecklistItemRenameTest extends TestCase
             'completed_at' => now(),
         ]);
 
-        // Put the installation back on the old wording, then reseed.
+        // Put the installation back on the oldest wording, then reseed: it
+        // goes through every rename since, in place.
         $item->forceFill(['name' => 'Progress Pengadaan'])->save();
 
         $this->seed(MasterDataSeeder::class);
@@ -64,12 +65,12 @@ class ChecklistItemRenameTest extends TestCase
             1,
             ChecklistItem::query()
                 ->forStage(ProcurementStage::Pelaksanaan)
-                ->whereIn('name', ['Proses SMART SCM', 'Progress Pengadaan'])
+                ->whereIn('name', ['Proses SMART SCM & Berita Acara', 'Proses SMART SCM', 'Progress Pengadaan'])
                 ->count(),
             'Reseeding harus mengganti nama, bukan menambah item baru.',
         );
 
-        $this->assertSame('Proses SMART SCM', $item->refresh()->name);
+        $this->assertSame('Proses SMART SCM & Berita Acara', $item->refresh()->name);
         $this->assertSame($item->id, $checklist->refresh()->checklist_item_id);
         $this->assertTrue($checklist->is_completed);
     }

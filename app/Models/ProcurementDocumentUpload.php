@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ProgressStatusResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -26,6 +27,25 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['path', 'file_name', 'mime', 'size', 'uploaded_by'])]
 class ProcurementDocumentUpload extends Model
 {
+    /**
+     * A signed copy filed or removed can move the procurement's status.
+     */
+    protected static function booted(): void
+    {
+        $sync = function (ProcurementDocumentUpload $upload): void {
+            $procurement = Procurement::withTrashed()
+                ->whereKey(ProcurementDocument::query()->whereKey($upload->procurement_document_id)->value('procurement_id'))
+                ->first();
+
+            if ($procurement !== null) {
+                app(ProgressStatusResolver::class)->sync($procurement);
+            }
+        };
+
+        static::created($sync);
+        static::deleted($sync);
+    }
+
     /**
      * The generated document this scan belongs to.
      *

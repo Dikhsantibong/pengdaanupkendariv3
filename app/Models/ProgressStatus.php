@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\MasterDataScopes;
 use App\Enums\StatusCategory;
+use App\Enums\SystemStatus;
 use Database\Factories\ProgressStatusFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -16,6 +17,7 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property string $name
  * @property string $slug
+ * @property string|null $system_key
  * @property StatusCategory $category
  * @property int $sort_order
  * @property bool $is_default
@@ -48,6 +50,14 @@ class ProgressStatus extends Model
     {
         return self::query()->where('is_default', true)->first()
             ?? self::query()->ordered()->first();
+    }
+
+    /**
+     * The meaning the system gives this status, when it sets it by itself.
+     */
+    public function systemStatus(): ?SystemStatus
+    {
+        return $this->system_key === null ? null : SystemStatus::tryFrom($this->system_key);
     }
 
     /**

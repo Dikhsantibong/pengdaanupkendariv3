@@ -255,6 +255,7 @@ class ProcurementService
     public function nextNumbersByFormat(): array
     {
         return ContractNumberFormat::query()
+            ->forContracts()
             ->active()
             ->ordered()
             ->get()
@@ -336,6 +337,9 @@ class ProcurementService
             ->delete();
 
         $procurement->unsetRelation('checklists');
+
+        // Which steps the job goes through decides part of its status.
+        app(ProgressStatusResolver::class)->sync($procurement);
     }
 
     /**

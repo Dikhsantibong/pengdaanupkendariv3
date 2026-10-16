@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ProgressStatusResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * @property int $id
  * @property int $procurement_id
+ * @property int|null $procurement_amendment_id
  * @property int $document_type_id
  * @property int|null $document_template_id
  * @property string $title
@@ -41,6 +43,23 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 ])]
 class ProcurementDocument extends Model
 {
+    /**
+     * A document drawn or removed can move the procurement's status.
+     */
+    protected static function booted(): void
+    {
+        $sync = function (ProcurementDocument $document): void {
+            $procurement = Procurement::withTrashed()->find($document->procurement_id);
+
+            if ($procurement !== null) {
+                app(ProgressStatusResolver::class)->sync($procurement);
+            }
+        };
+
+        static::created($sync);
+        static::deleted($sync);
+    }
+
     /**
      * The procurement this document was generated for.
      *

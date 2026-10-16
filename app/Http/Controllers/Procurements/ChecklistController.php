@@ -9,6 +9,7 @@ use App\Http\Requests\Procurements\UpdateChecklistRequest;
 use App\Models\Procurement;
 use App\Models\ProcurementChecklist;
 use App\Services\ProcurementService;
+use App\Services\ProgressStatusResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -121,6 +122,8 @@ class ChecklistController extends Controller
             "Checklist {$checklist->checklistItem->name} ditandai ".($isCompleted ? 'selesai' : 'belum selesai').'.',
             ['stage' => $checklist->stage->value, 'checklist_id' => $checklist->id],
         );
+
+        app(ProgressStatusResolver::class)->sync($procurement);
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Checklist diperbarui.']);
 

@@ -4,15 +4,16 @@ namespace Tests\Feature\Procurements;
 
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
+use App\Enums\SystemStatus;
 use App\Enums\UserRole;
 use App\Models\ChecklistItem;
 use App\Models\Procurement;
-use App\Models\ProgressStatus;
 use App\Models\User;
 use App\Notifications\PlanningReviewed;
 use App\Notifications\PlanningSubmitted;
 use App\Notifications\ProcurementAssigned;
 use App\Services\ProcurementService;
+use Database\Seeders\MasterDataSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
@@ -257,24 +258,46 @@ class ProcurementWorkflowTest extends TestCase
         $this->assertSame($planner->id, $procurement->planning_reviewed_by);
     }
 
-    public function test_status_changes_are_recorded_in_the_activity_history(): void
+    public function test_cancelling_and_restoring_are_recorded_in_the_activity_history(): void
     {
-        $planner = User::factory()->planner()->create();
-        $procurement = Procurement::factory()->plannedBy($planner)->create();
-        $newStatus = ProgressStatus::factory()->create(['name' => 'Penyusunan RKS']);
+        $this->seed(MasterDataSeeder::class);
 
+        $planner = User::factory()->planner()->create();
+        $teamLeader = User::factory()->teamLeader()->create();
+        $procurement = Procurement::factory()->plannedBy($planner)->create();
+
+        // The job is planned, so it sits on a planning status set by the system.
+        $before = $procurement->refresh()->progressStatus->systemStatus();
+        $this->assertNotNull($before);
+        $this->assertNotSame(SystemStatus::Batal, $before);
+
+        // The status follows the work; a PIC can no longer set it.
         $this->actingAs($planner)
-            ->put(route('procurements.status.update', $procurement), [
-                'progress_status_id' => $newStatus->id,
-                'note' => 'Mulai penyusunan',
-            ])
+            ->put(route('procurements.status.update', $procurement), ['cancelled' => true, 'note' => 'Batal'])
+            ->assertForbidden();
+
+        // Cancelling says why.
+        $this->actingAs($teamLeader)
+            ->put(route('procurements.status.update', $procurement), ['cancelled' => true])
+            ->assertSessionHasErrors('note');
+
+        $this->actingAs($teamLeader)
+            ->put(route('procurements.status.update', $procurement), ['cancelled' => true, 'note' => 'Anggaran ditunda'])
             ->assertRedirect();
 
-        $this->assertSame($newStatus->id, $procurement->refresh()->progress_status_id);
-        $this->assertDatabaseHas('procurement_activities', [
-            'procurement_id' => $procurement->id,
-            'type' => 'status_diubah',
-        ]);
+        $this->assertSame(SystemStatus::Batal, $procurement->refresh()->progressStatus->systemStatus());
+
+        // A cancelled job keeps Batal whatever else changes ...
+        $procurement->update(['name' => 'Nama Baru']);
+        $this->assertSame(SystemStatus::Batal, $procurement->refresh()->progressStatus->systemStatus());
+
+        // ... until the cancellation is lifted.
+        $this->actingAs($teamLeader)
+            ->put(route('procurements.status.update', $procurement), ['cancelled' => false])
+            ->assertRedirect();
+
+        $this->assertSame($before, $procurement->refresh()->progressStatus->systemStatus());
+        $this->assertSame(2, $procurement->activities()->where('type', 'status_diubah')->count());
     }
 
     public function test_closing_out_waits_for_keuangan_to_pay(): void

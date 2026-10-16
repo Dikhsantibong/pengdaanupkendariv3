@@ -29,7 +29,7 @@ class MasterDataOptions
     public static function forProcurementForm(): array
     {
         return [
-            'contractNumberFormats' => ContractNumberFormat::query()->active()->ordered()->get()
+            'contractNumberFormats' => ContractNumberFormat::query()->forContracts()->active()->ordered()->get()
                 ->map(fn (ContractNumberFormat $format): array => [
                     'value' => $format->id,
                     'label' => $format->code,
@@ -41,8 +41,6 @@ class MasterDataOptions
             'workDirectors' => self::workDirectors(true),
             'targetUnits' => self::targetUnits(true),
             'budgetSources' => self::budgetSources(true),
-            'progressStatuses' => self::statuses(),
-            'defaultProgressStatusId' => ProgressStatus::defaultStatus()?->id,
             'planners' => self::planners(),
         ];
     }
@@ -85,7 +83,10 @@ class MasterDataOptions
             'contractTypes' => self::contractTypes(),
             // Upload-only documents are filed on their checklist step, never
             // generated, so they are not offered here.
-            'documentTypes' => DocumentType::query()->active()->where('upload_only', false)->ordered()->get()
+            'documentTypes' => DocumentType::query()->active()->where('upload_only', false)
+                // Drawn from the Amandemen tab only.
+                ->where('code', '!=', 'amandemen-kontrak')
+                ->ordered()->get()
                 ->map(fn (DocumentType $type): array => [
                     'value' => $type->id,
                     'label' => $type->name,

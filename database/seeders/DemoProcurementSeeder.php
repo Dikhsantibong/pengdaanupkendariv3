@@ -18,10 +18,12 @@ use App\Models\TargetUnit;
 use App\Models\User;
 use App\Services\DocumentGenerator;
 use App\Services\ProcurementService;
+use App\Services\ProgressStatusResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
 
@@ -58,6 +60,22 @@ class DemoProcurementSeeder extends Seeder
      * The note that marks a demo job, so a re-run can find and replace it.
      */
     public const MARKER = 'Data demo (DemoProcurementSeeder).';
+
+    /**
+     * Where the placeholder signed scans of the demo are kept.
+     */
+    private const SCAN_DIRECTORY = 'documents/signed/demo';
+
+    /**
+     * A one-page blank PDF standing in for a signed scan.
+     */
+    private const PLACEHOLDER_PDF = '%PDF-1.4
+1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
+2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj
+3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]>>endobj
+trailer<</Root 1 0 R>>
+%%EOF
+';
 
     /**
      * How many jobs stand at each point of the journey.
@@ -157,11 +175,9 @@ class DemoProcurementSeeder extends Seeder
     ];
 
     /**
-     * The progress statuses, by slug.
-     *
-     * @var Collection<string, ProgressStatus>
+     * The status a job is created on before its own is worked out.
      */
-    protected Collection $statuses;
+    protected int $initialStatus;
 
     /**
      * The demo jobs made so far, for the summary.
@@ -173,6 +189,7 @@ class DemoProcurementSeeder extends Seeder
     public function __construct(
         protected ProcurementService $procurements,
         protected DocumentGenerator $documents,
+        protected ProgressStatusResolver $statuses,
     ) {}
 
     /**
@@ -198,7 +215,8 @@ class DemoProcurementSeeder extends Seeder
 
         $this->removePreviousDemo();
 
-        $this->statuses = ProgressStatus::query()->get()->keyBy('slug');
+        $this->statuses->forget();
+        $this->initialStatus = (int) (ProgressStatus::defaultStatus() ?? ProgressStatus::query()->firstOrFail())->id;
 
         $index = 0;
 
@@ -222,11 +240,29 @@ class DemoProcurementSeeder extends Seeder
     }
 
     /**
-     * Take one job as far as its track goes.
+     * Lay out one job, then let the system work its progress status out,
+     * the way it would have for a job worked through the screens.
      *
      * @param  array{proposer: User, planner: User, executor: User, finance: User, icc: User, procurement: User}  $people
      */
     protected function makeJob(string $track, int $index, array $people): void
+    {
+        $procurement = $this->buildJob($track, $index, $people);
+
+        // Model events are off while seeding, so the status is set here.
+        $this->statuses->sync($procurement->refresh());
+
+        if ($track === 'batal') {
+            $this->statuses->cancel($procurement);
+        }
+    }
+
+    /**
+     * Take one job as far as its track goes.
+     *
+     * @param  array{proposer: User, planner: User, executor: User, finance: User, icc: User, procurement: User}  $people
+     */
+    protected function buildJob(string $track, int $index, array $people): Procurement
     {
         $proposer = $people['proposer'];
         $teamLeader = $proposer->teamLeader;
@@ -246,7 +282,8 @@ class DemoProcurementSeeder extends Seeder
             'budget_source_id' => BudgetSource::query()->active()->ordered()->get()[$index % 2]->id ?? null,
             'hpe_value' => fake()->numberBetween(25, 3_500) * 1_000_000,
             'prk_number' => sprintf('PRK-%03d/%s', 100 + $index, $at->format('Y')),
-            'progress_status_id' => $this->status('inisiasi-laksdan'),
+            // Worked out by ProgressStatusResolver once the job is laid out.
+            'progress_status_id' => $this->initialStatus,
             'target_completion_date' => $at->addDays(90 + ($index % 5) * 30)->toDateString(),
             'notes' => self::MARKER,
         ]);
@@ -264,8 +301,20 @@ class DemoProcurementSeeder extends Seeder
             .($teamLeader !== null ? "TL {$teamLeader->name}" : 'Direksi Pekerjaan (Asman)').' untuk disetujui.', $at->addMinutes(10));
         $this->draw($procurement, ['tor', 'nota-dinas-usulan'], $proposer, $at->addMinutes(5));
 
+        // The signed TOR and Nota Dinas Usulan; a few fresh proposals are
+        // still being drafted (Penyusunan TOR, Draft Nodis Usulan).
+        $drafted = $track === 'usulan_tl' ? $index % 5 : 2;
+
+        if ($drafted >= 1) {
+            $this->file($procurement, ['tor'], $proposer, $at->addMinutes(20));
+        }
+
+        if ($drafted >= 2) {
+            $this->file($procurement, ['nota-dinas-usulan'], $proposer, $at->addMinutes(30));
+        }
+
         if ($track === 'usulan_tl' && $teamLeader !== null) {
-            return;
+            return $procurement;
         }
 
         // 2. The team leader agrees and passes it to the Asman.
@@ -281,7 +330,7 @@ class DemoProcurementSeeder extends Seeder
         }
 
         if (in_array($track, ['usulan_tl', 'usulan_asman'], true)) {
-            return;
+            return $procurement;
         }
 
         // 3. The Asman decides.
@@ -297,7 +346,7 @@ class DemoProcurementSeeder extends Seeder
             ])->save();
             $this->log($procurement, $asman, ActivityType::UsulanDikembalikan, "Usulan pekerjaan dikembalikan ke pengusul. Catatan: {$note}", $at);
 
-            return;
+            return $procurement;
         }
 
         $procurement->forceFill([
@@ -309,7 +358,7 @@ class DemoProcurementSeeder extends Seeder
         $this->procurements->syncChecklists($procurement);
 
         if ($track === 'perlu_pic') {
-            return;
+            return $procurement;
         }
 
         // 4. TL ICC appoints the planning PIC; the contract is filled in.
@@ -325,7 +374,6 @@ class DemoProcurementSeeder extends Seeder
             'procurement_method_id' => $format->procurement_method_id,
             'work_category' => $contract['category'],
             'contract_type_id' => $this->contractType($contract['category']),
-            'progress_status_id' => $this->status('penyusunan-rks'),
         ])->save();
         $procurement->number = $this->procurements->nextNumber($format);
         $procurement->save();
@@ -336,26 +384,26 @@ class DemoProcurementSeeder extends Seeder
         if ($track === 'penyusunan' || $track === 'batal') {
             $this->tick($procurement, ProcurementStage::Perencanaan, fake()->randomFloat(2, 0.2, 0.7), $at, $people['planner']);
 
-            if ($track === 'batal') {
-                $procurement->forceFill(['progress_status_id' => $this->status('batal')])->save();
-            }
+            // Planning papers at different points: drafts and RAB, then the
+            // offer, then the Nota Dinas ke Pengadaan.
+            $this->filePlanning($procurement, $contract['format'], $index % 4, $people['planner'], $at->addDays(3));
 
-            return;
+            return $procurement;
         }
 
         // 5. The planner completes the checklist and submits it to ICC.
+        $this->filePlanning($procurement, $contract['format'], 3, $people['planner'], $at->addDays(3));
         $this->tick($procurement, ProcurementStage::Perencanaan, 1.0, $at, $people['planner']);
         $at = $at->addDays(14 + $index % 10);
 
         $procurement->forceFill([
             'planning_approval_state' => PlanningApprovalState::MenungguPersetujuan,
             'planning_submitted_at' => $at,
-            'progress_status_id' => $this->status('kelengkapan-dokumen'),
         ])->save();
         $this->log($procurement, $people['planner'], ActivityType::PerencanaanDiajukan, 'Dokumen perencanaan diajukan untuk persetujuan.', $at);
 
         if ($track === 'menunggu_icc') {
-            return;
+            return $procurement;
         }
 
         // Some plans are returned once before they pass.
@@ -369,12 +417,11 @@ class DemoProcurementSeeder extends Seeder
                 'planning_reviewed_at' => $at,
                 'planning_reviewed_by' => $people['icc']->id,
                 'planning_review_note' => $note,
-                'progress_status_id' => $this->status('penyusunan-rks'),
             ])->save();
             $this->log($procurement, $people['icc'], ActivityType::PerencanaanDitolak, "Dokumen perencanaan dikembalikan untuk revisi. Catatan: {$note}", $at);
 
             if ($track === 'ditolak_icc') {
-                return;
+                return $procurement;
             }
 
             $at = $at->addDays(4);
@@ -396,7 +443,6 @@ class DemoProcurementSeeder extends Seeder
             'planning_reviewed_at' => $at,
             'planning_reviewed_by' => $people['icc']->id,
             'planning_review_note' => null,
-            'progress_status_id' => $this->status($index % 2 === 0 ? 'penawaran-harga' : 'disposisi-ams'),
             'partner_name' => $partner['name'],
             'partner_director_name' => $partner['director'],
             'partner_address' => $partner['address'],
@@ -413,11 +459,9 @@ class DemoProcurementSeeder extends Seeder
         ])->save();
         $this->log($procurement, $people['icc'], ActivityType::PerencanaanDisetujui, 'Dokumen perencanaan disetujui.', $at);
 
-        // The planning papers, from their templates.
-        $this->draw($procurement, ['rks', 'hpe', 'upb'], $people['planner'], $at->subDays(10));
-
+        // The planning papers were drawn before the submission (filePlanning).
         if ($track === 'perlu_pelaksana') {
-            return;
+            return $procurement;
         }
 
         $procurement->forceFill(['executor_id' => $people['executor']->id])->save();
@@ -428,16 +472,17 @@ class DemoProcurementSeeder extends Seeder
         $this->procurements->syncChecklists($procurement);
 
         if ($track === 'pelaksanaan') {
-            $this->tick($procurement, ProcurementStage::Pelaksanaan, fake()->randomFloat(2, 0.2, 0.8), $start, $people['executor']);
+            // Spread over the execution statuses: HPS, SMART SCM, contract.
+            $this->tick($procurement, ProcurementStage::Pelaksanaan, [0.0, 0.1, 0.5, 0.8][$index % 4], $start, $people['executor']);
 
-            return;
+            return $procurement;
         }
 
         // 7. Execution done.
         $this->tick($procurement, ProcurementStage::Pelaksanaan, 1.0, $start, $people['executor']);
 
         if ($track === 'siap_serah') {
-            return;
+            return $procurement;
         }
 
         // 8. The executor submits the execution to TL Pengadaan.
@@ -451,7 +496,7 @@ class DemoProcurementSeeder extends Seeder
         $this->log($procurement, $people['executor'], ActivityType::PelaksanaanDiajukan, 'Pelaksanaan selesai dan diajukan ke TL Pengadaan untuk persetujuan.', $submittedAt);
 
         if ($track === 'menunggu_tl_pengadaan') {
-            return;
+            return $procurement;
         }
 
         if ($track === 'dikembalikan_tl_pengadaan') {
@@ -464,7 +509,7 @@ class DemoProcurementSeeder extends Seeder
             ])->save();
             $this->log($procurement, $people['procurement'], ActivityType::PelaksanaanDitolak, "Pelaksanaan dikembalikan ke PIC Pelaksana untuk diperbaiki. Catatan: {$note}", $submittedAt->addDay());
 
-            return;
+            return $procurement;
         }
 
         // 9. TL Pengadaan approves it into Penyerahan and Pembayaran.
@@ -474,7 +519,6 @@ class DemoProcurementSeeder extends Seeder
             'execution_reviewed_by' => $people['procurement']->id,
             'finance_submitted_at' => $at,
             'finance_submitted_by' => $people['procurement']->id,
-            'progress_status_id' => $this->status('disposisi-ams'),
         ])->save();
         $this->log($procurement, $people['procurement'], ActivityType::PelaksanaanDisetujui, 'Pelaksanaan disetujui TL Pengadaan dan diteruskan ke Penyerahan dan Pembayaran (Keuangan).', $at);
         $this->procurements->syncChecklists($procurement);
@@ -483,7 +527,7 @@ class DemoProcurementSeeder extends Seeder
             $this->tick($procurement, ProcurementStage::Keuangan, fake()->randomFloat(2, 0.4, 1.0), $at, $people['finance'], FinanceSection::Penyerahan);
             $this->tick($procurement, ProcurementStage::Keuangan, fake()->randomFloat(2, 0.0, 0.6), $at->addDay(), $people['finance'], FinanceSection::Pembayaran);
 
-            return;
+            return $procurement;
         }
 
         // 10. Paid and closed.
@@ -494,9 +538,10 @@ class DemoProcurementSeeder extends Seeder
             'payment_completed_at' => $paidAt,
             'payment_completed_by' => $people['finance']->id,
             'completed_at' => $paidAt,
-            'progress_status_id' => $this->status('selesai'),
         ])->save();
         $this->log($procurement, $people['finance'], ActivityType::PembayaranSelesai, 'Pembayaran ke mitra selesai, pengadaan ditutup.', $paidAt);
+
+        return $procurement;
     }
 
     /**
@@ -574,6 +619,74 @@ class DemoProcurementSeeder extends Seeder
     }
 
     /**
+     * Draw and file the planning papers up to a point.
+     *
+     * 0: nothing yet; 1: the RKS, UPB and HPE drawn and the RAB filed;
+     * 2: the offer filed too; 3: the Nota Dinas ke Pengadaan as well. An
+     * SPPL has no drafts or RAB of its own.
+     */
+    protected function filePlanning(Procurement $procurement, string $format, int $upTo, User $planner, CarbonImmutable $at): void
+    {
+        if ($upTo >= 1 && $format !== 'SPPL') {
+            $this->draw($procurement, ['rks', 'hpe', 'upb'], $planner, $at);
+            $this->file($procurement, ['rab'], $planner, $at->addHour());
+        }
+
+        if ($upTo >= 2) {
+            $this->file($procurement, ['penawaran'], $planner, $at->addDay());
+        }
+
+        if ($upTo >= 3) {
+            $this->file($procurement, ['nota-dinas-perintah-pekerjaan'], $planner, $at->addDays(2));
+        }
+    }
+
+    /**
+     * File a signed copy of documents, as a PIC uploading the scan would.
+     *
+     * A document not drawn yet (an upload-only paper such as the Penawaran)
+     * is created first. The scan is a one-page placeholder PDF of its own,
+     * so removing one on screen leaves the others intact.
+     *
+     * @param  array<int, string>  $codes
+     */
+    protected function file(Procurement $procurement, array $codes, User $by, CarbonImmutable $at): void
+    {
+        foreach ($codes as $code) {
+            $type = DocumentType::query()->where('code', $code)->first();
+
+            if ($type === null) {
+                continue;
+            }
+
+            $document = $procurement->documents()->where('document_type_id', $type->id)->latest('id')->first()
+                ?? $procurement->documents()->create([
+                    'document_type_id' => $type->id,
+                    'document_template_id' => null,
+                    'title' => $type->name.' - '.$procurement->name,
+                    'file_name' => Str::slug($type->code.'-'.$procurement->number).'.pdf',
+                    'template_version' => 0,
+                    'rendered_body' => '',
+                    'generated_by' => $by->id,
+                    'generated_at' => $at,
+                ]);
+
+            $path = self::SCAN_DIRECTORY.'/'.$document->id.'/'.Str::slug($type->code).'-ttd-'.Str::random(10).'.pdf';
+            Storage::disk('local')->put($path, self::PLACEHOLDER_PDF);
+
+            $document->signedUploads()->create([
+                'path' => $path,
+                'file_name' => Str::slug($type->name).'-ttd.pdf',
+                'mime' => 'application/pdf',
+                'size' => strlen(self::PLACEHOLDER_PDF),
+                'uploaded_by' => $by->id,
+            ])->forceFill(['created_at' => $at, 'updated_at' => $at])->save();
+        }
+
+        $procurement->unsetRelation('documents');
+    }
+
+    /**
      * Append a backdated history entry.
      *
      * @param  array<string, mixed>|null  $meta
@@ -600,6 +713,9 @@ class DemoProcurementSeeder extends Seeder
         foreach ($previous as $procurement) {
             $procurement->forceDelete();
         }
+
+        // The placeholder scans went with their jobs.
+        Storage::disk('local')->deleteDirectory(self::SCAN_DIRECTORY);
 
         if ($previous->isNotEmpty()) {
             $this->command->warn("{$previous->count()} data demo sebelumnya dihapus.");
@@ -631,14 +747,6 @@ class DemoProcurementSeeder extends Seeder
         $match = $category === null ? null : $types->first(fn (ContractType $type): bool => strcasecmp($type->name, $category) === 0);
 
         return ($match ?? $types->first())?->id;
-    }
-
-    /**
-     * The id of a progress status by its slug, falling back to the first one.
-     */
-    protected function status(string $slug): int
-    {
-        return (int) ($this->statuses->get($slug) ?? $this->statuses->first())->id;
     }
 
     /**

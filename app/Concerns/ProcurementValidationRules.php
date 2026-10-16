@@ -40,7 +40,8 @@ trait ProcurementValidationRules
             // the internal number it always used.
             'contract_number_format_id' => [
                 'nullable',
-                Rule::exists('contract_number_formats', 'id')->whereNull('deleted_at'),
+                // The amendment numbering is not a contract format.
+                Rule::exists('contract_number_formats', 'id')->whereNull('deleted_at')->where('for_amendment', 0),
             ],
             // The category asked for by the formats set up to need it (SPK
             // and PJ), picked from the Jenis Kontrak master data.
@@ -87,7 +88,6 @@ trait ProcurementValidationRules
             'quotation_date' => ['nullable', 'date'],
             'hpe_value' => ['required', 'numeric', 'min:0', 'max:999999999999999999'],
             'value_after_negotiation' => ['nullable', 'numeric', 'min:0', 'max:999999999999999999'],
-            'progress_status_id' => ['required', Rule::exists('progress_statuses', 'id')->whereNull('deleted_at')],
             'notes' => ['nullable', 'string', 'max:2000'],
             // Set by procurement (or by the planning PIC on the detail page),
             // never by the division proposing the work.
@@ -234,7 +234,6 @@ trait ProcurementValidationRules
             'quotation_date' => 'tanggal surat penawaran',
             'hpe_value' => 'nilai sebelum nego',
             'value_after_negotiation' => 'nilai setelah nego',
-            'progress_status_id' => 'status progres',
             'notes' => 'catatan',
         ];
     }

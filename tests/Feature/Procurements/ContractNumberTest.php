@@ -24,7 +24,7 @@ class ContractNumberTest extends TestCase
         $this->seed(MasterDataSeeder::class);
         $this->travelTo('2026-08-07');
 
-        $formats = ContractNumberFormat::query()->active()->ordered()->get();
+        $formats = ContractNumberFormat::query()->forContracts()->active()->ordered()->get();
 
         $this->assertSame(['SPK', 'PJ', 'SPPL'], $formats->pluck('code')->all());
 
@@ -158,7 +158,7 @@ class ContractNumberTest extends TestCase
 
         $administrator = User::factory()->administrator()->create();
 
-        $formats = ContractNumberFormat::query()->active()->ordered()->get();
+        $formats = ContractNumberFormat::query()->forContracts()->active()->ordered()->get();
 
         $this->actingAs($administrator)
             ->get(route('procurements.create'))

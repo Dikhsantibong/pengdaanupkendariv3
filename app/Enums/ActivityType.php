@@ -23,6 +23,11 @@ enum ActivityType: string
     case PelaksanaanDisetujui = 'pelaksanaan_disetujui';
     case PelaksanaanDitolak = 'pelaksanaan_ditolak';
     case DiajukanKeKeuangan = 'diajukan_ke_keuangan';
+    case AmandemenDiajukan = 'amandemen_diajukan';
+    case AmandemenDisetujuiTl = 'amandemen_disetujui_tl';
+    case AmandemenDisetujuiAsman = 'amandemen_disetujui_asman';
+    case AmandemenDisetujui = 'amandemen_disetujui';
+    case AmandemenDikembalikan = 'amandemen_dikembalikan';
     case PembayaranSelesai = 'pembayaran_selesai';
     case PengadaanSelesai = 'pengadaan_selesai';
 
@@ -51,6 +56,11 @@ enum ActivityType: string
             self::PelaksanaanDisetujui => 'Pelaksanaan Disetujui',
             self::PelaksanaanDitolak => 'Pelaksanaan Ditolak',
             self::DiajukanKeKeuangan => 'Diserahkan ke Keuangan',
+            self::AmandemenDiajukan => 'Amandemen Diajukan',
+            self::AmandemenDisetujuiTl => 'Amandemen Disetujui TL',
+            self::AmandemenDisetujuiAsman => 'Amandemen Disetujui Asman',
+            self::AmandemenDisetujui => 'Amandemen Disetujui TL Pengadaan',
+            self::AmandemenDikembalikan => 'Amandemen Dikembalikan',
             self::PembayaranSelesai => 'Pembayaran Selesai',
             self::PengadaanSelesai => 'Pengadaan Selesai',
         };
@@ -70,7 +80,9 @@ enum ActivityType: string
             self::PicDitunjuk, self::PerencanaanDiajukan,
             self::PerencanaanDisetujui, self::PerencanaanDitolak => 'Perencanaan',
             self::PelaksanaanDiajukan, self::PelaksanaanDisetujui,
-            self::PelaksanaanDitolak, self::DiajukanKeKeuangan => 'Pelaksanaan',
+            self::PelaksanaanDitolak, self::DiajukanKeKeuangan,
+            self::AmandemenDiajukan, self::AmandemenDisetujuiTl, self::AmandemenDisetujuiAsman,
+            self::AmandemenDisetujui, self::AmandemenDikembalikan => 'Pelaksanaan',
             self::PembayaranSelesai, self::PengadaanSelesai => 'Keuangan',
             default => null,
         };
@@ -83,8 +95,10 @@ enum ActivityType: string
     {
         return match ($this) {
             self::UsulanDisetujuiTl, self::UsulanDisetujui, self::PerencanaanDisetujui,
-            self::PelaksanaanDisetujui => 'disetujui',
-            self::UsulanDikembalikan, self::PerencanaanDitolak, self::PelaksanaanDitolak => 'dikembalikan',
+            self::PelaksanaanDisetujui, self::AmandemenDisetujuiTl, self::AmandemenDisetujuiAsman,
+            self::AmandemenDisetujui => 'disetujui',
+            self::UsulanDikembalikan, self::PerencanaanDitolak, self::PelaksanaanDitolak,
+            self::AmandemenDikembalikan => 'dikembalikan',
             self::PicDitunjuk => 'ditunjuk',
             self::Dibuat => 'dibuat',
             self::PembayaranSelesai, self::PengadaanSelesai => 'selesai',

@@ -2,13 +2,17 @@
 
 namespace App\Policies;
 
+use App\Enums\AmendmentState;
 use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Enums\ProposalState;
+use App\Enums\StatusCategory;
 use App\Enums\UserRole;
 use App\Models\Procurement;
+use App\Models\ProcurementAmendment;
 use App\Models\User;
+use App\Services\AmendmentService;
 use App\Support\ProposalDocuments;
 
 class ProcurementPolicy
@@ -166,7 +170,9 @@ class ProcurementPolicy
      */
     public function updateStatus(User $user, Procurement $procurement): bool
     {
-        return $user->isSupervisor() || $procurement->isAssignedTo($user);
+        // The status follows the work by itself; only cancelling a job (and
+        // lifting it) is left to the team leaders, never to a PIC.
+        return $user->isSupervisor() && $this->view($user, $procurement);
     }
 
     /**
@@ -321,6 +327,71 @@ class ProcurementPolicy
             && $this->view($user, $procurement)
             && $procurement->isExecutionAwaitingApproval()
             && $procurement->finance_submitted_at === null;
+    }
+
+    /**
+     * Whether the user speaks for the division that asked for the work: who
+     * proposed it, or a proposer of the same division.
+     */
+    protected function proposesFor(User $user, Procurement $procurement): bool
+    {
+        return $user->role === UserRole::Administrator
+            || $procurement->created_by === $user->id
+            || ($user->hasPermission(Permission::ProposeWork)
+                && $user->work_director_id !== null
+                && $user->work_director_id === $procurement->work_director_id);
+    }
+
+    /**
+     * Determine whether the user may start an amendment of the contract.
+     *
+     * Once there is a contract and until the job is closed or cancelled,
+     * one amendment at a time, by the proposing division.
+     */
+    public function startAmendment(User $user, Procurement $procurement): bool
+    {
+        $service = app(AmendmentService::class);
+
+        return $this->proposesFor($user, $procurement)
+            && $procurement->completed_at === null
+            && $procurement->progressStatus->category !== StatusCategory::Batal
+            && $service->hasContract($procurement)
+            && $service->open($procurement) === null;
+    }
+
+    /**
+     * Determine whether the user may fill in and send an amendment.
+     */
+    public function updateAmendment(User $user, Procurement $procurement, ProcurementAmendment $amendment): bool
+    {
+        return $amendment->state->isEditable()
+            && ($user->role === UserRole::Administrator || $amendment->created_by === $user->id);
+    }
+
+    /**
+     * Determine whether the user may decide on an amendment at its level:
+     * the proposer's TL, then the division's Asman, then TL Pengadaan.
+     * Nobody decides on their own amendment.
+     */
+    public function decideAmendment(User $user, Procurement $procurement, ProcurementAmendment $amendment): bool
+    {
+        if (! $amendment->state->isWaiting()) {
+            return false;
+        }
+
+        if ($user->role === UserRole::Administrator) {
+            return true;
+        }
+
+        if ($amendment->created_by === $user->id) {
+            return false;
+        }
+
+        return match ($amendment->state) {
+            AmendmentState::MenungguPersetujuanTl => app(AmendmentService::class)->teamLeaderOf($amendment)?->is($user) === true,
+            AmendmentState::MenungguPersetujuanAsman => $this->leadsDivisionOf($user, $procurement),
+            default => $user->hasPermission(Permission::ApproveAmendment) && $this->view($user, $procurement),
+        };
     }
 
     /**

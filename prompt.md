@@ -43,7 +43,7 @@ Palet ini sudah tetap dan diterapkan di seluruh halaman melalui `resources/css/a
 - **Aksen Korporat:** satu warna **biru muda PLN** yang jelas untuk tombol utama, tautan, highlight data, dan elemen navigasi aktif (teks putih di atasnya).
 - **Navigasi:** sidebar tetap berwarna biru PLN dengan teks putih, menjadi jangkar visual di setiap halaman.
 - **Kuning pisang (logo PLN):** dipakai sangat terbatas — hanya pada badge status "berjalan" — sebagai sentuhan identitas, bukan warna utama.
-- **Warna Status (Status Progres):** abu-abu untuk Pending, merah gelap untuk Batal, kuning pisang untuk proses berjalan (Penyusunan RKS, Kelengkapan Dokumen, Penawaran Harga, Disposisi AMS, Proses Validasi), hijau tua untuk selesai/tervalidasi.
+- **Warna Status (Status Progres):** mengikuti kategori status. Abu-abu untuk tahap usulan (pending), merah gelap untuk Batal, kuning pisang untuk proses berjalan (Inisiasi Rendan sampai Terkontrak), dan hijau tua untuk Selesai.
 - Hindari warna neon, pastel childish, atau kombinasi lebih dari 2 warna aksen sekaligus dalam satu tampilan.
 
 ### Layout & Komponen
@@ -214,7 +214,8 @@ Form ini (menu **Buat Perencanaan Pengadaan**) diisi oleh **Team Leader Pengadaa
 - **Pemetaan bawaan:** SPK → SPK, PJ → Tender, SPPL → Surat Pesanan.
 - **Kapan metode diterapkan:** setiap kali format sebuah pengadaan dipilih atau diganti, metodenya ikut berganti (`Procurement::booted`, event `saving`). Mengubah data lain tidak mengubah metode. Format tanpa metode tidak mengubah metode pengadaan.
 - **Fungsi metode tetap sama:** menentukan template RKS (Metode SPK / Tender) dan tahapan checklist yang dilewati (Surat Pesanan melewati HPE, UPB, RKS, Inisiasi SMART SCM, PR/RO).
-- **Panel identitas:** baris Metode Pengadaan tidak ditampilkan lagi di panel identitas detail pengadaan. Data metode tetap tersimpan untuk filter, laporan, dan dashboard.
+- **Tampilan:** Metode Pengadaan tidak ditampilkan lagi di panel identitas detail, filter dan kolom daftar pengadaan, kolom laporan dan ekspor CSV, serta filter, kolom, dan isian "Dilewati Metode" di Item Checklist. Datanya tetap tersimpan (template RKS per metode, grafik dashboard per metode, dan menu Data Master Metode Pengadaan masih ada).
+- **Pengecualian tahap:** semua pengecualian per metode dipindah ke **Dilewati Format Kontrak** (migrasi `move_method_exclusions_to_contract_formats`). Contohnya, SPPL kini melewati RAB, HPE, UPB, RKS, Inisiasi SMART SCM, dan PR/RO. Tabel pengecualian per metode dikosongkan agar tidak ada pengecualian tersembunyi; mekanismenya di backend masih ada untuk pemanggil lama.
 - **Migrasi:** `add_procurement_method_to_contract_number_formats` hanya mengisi pengadaan yang metodenya kosong. Data lama sudah konsisten dengan pemetaan di atas.
 - **Validasi:** `procurement_method_id` tidak lagi wajib. Nilainya masih diterima dari pemanggil lama, tetapi ditimpa metode format bila format punya metode.
 - **Seeder:**
@@ -245,7 +246,6 @@ Form ini (menu **Buat Perencanaan Pengadaan**) diisi oleh **Team Leader Pengadaa
 | 6 | No. Nodis Manager & Tgl. Nodis Manager | Text & Date | Nomor dan tanggal nota dinas ke manager (`icc_memo_date`, sebelumnya Nota Dinas ICC) |
 | 7 | Nilai (Sebelum Nego) | Number (currency, Rupiah) | Nilai HPE / anggaran sebelum negosiasi |
 | 8 | Nilai Setelah Nego | Number (currency, Rupiah) | Opsional; hasil kesepakatan negosiasi harga |
-| 9 | Status Progres | Dropdown (single select) | Status progres tahapan pengadaan |
 
 > **Catatan Penyempurnaan Form:**
 > - Inputan nomor dan tanggal nota dinas disatukan di Edit Identitas Pengadaan.
@@ -253,18 +253,52 @@ Form ini (menu **Buat Perencanaan Pengadaan**) diisi oleh **Team Leader Pengadaa
 > - Field **Nama Mitra**, **No. Surat Penawaran**, **Tgl. Surat Penawaran**, **Nama Direktur**, dan **Alamat Perusahaan** dipindahkan ke bagian tersendiri bernama **Calon Mitra**.
 > - Target Penyelesaian sudah dihapus dari form. Data lama yang sudah terisi tetap tersimpan.
 
-### Daftar Pilihan Status Progres
+### Status Progres Otomatis
 
-1. Pending
-2. Batal
-3. Inisiasi Laksdan
-4. Penyusunan RKS
-5. Kelengkapan Dokumen
-6. Penawaran Harga
-7. Disposisi AMS
-8. Proses Validasi
+**Status Progres tidak lagi diisi manual.** Sistem menetapkannya sendiri dari posisi pengadaan dan dokumennya (`App\Services\ProgressStatusResolver`). Status dihitung ulang setiap kali:
+- pengadaan disimpan;
+- dokumen digenerate atau dihapus;
+- salinan bertanda tangan diunggah atau dihapus;
+- checklist dicentang atau disinkronkan.
 
-> Field **Status Progres** dapat diubah kapan saja oleh PIC terkait (Perencana/Pelaksana) maupun Team Leader sesuai perkembangan pengadaan, dan setiap perubahan status tercatat pada histori aktivitas pengadaan.
+Status ditulis dengan query langsung, sehingga tidak memicu sinkronisasi ulang isi dokumen.
+
+| Tahap | Status | Kapan berlaku |
+|---|---|---|
+| Usulan (pengusul) | Penyusunan TOR | TOR belum diunggah bertanda tangan (sudah/belum digenerate) |
+| | Draft Nodis Usulan | TOR sudah diunggah, Nota Dinas Usulan belum |
+| | Approval Usulan | menunggu persetujuan TL / Asman |
+| | Revisi Usulan | usulan dikembalikan |
+| Perencanaan SPK / PJ | Inisiasi Rendan | sudah di TL ICC, PIC Perencana belum ditunjuk |
+| | Penyusunan RKS | RKS, UPB, HPE belum digenerate atau RAB belum diunggah |
+| | Menunggu Penawaran | penawaran harga belum diunggah |
+| | Draft Nodis ke Pengadaan | Nota Dinas ke Pengadaan belum diunggah / belum diajukan |
+| Perencanaan SPPL | Inisiasi Rendan | idem |
+| | Draft Nota Dinas ke Laksdan | PIC ditunjuk, dokumen rendan belum lengkap / belum diajukan |
+| Persetujuan | Menunggu Approval ICC / Revisi Perencanaan | perencanaan diajukan / dikembalikan |
+| Pelaksanaan SPK / PJ | Inisiasi Laksdan | sudah di TL Pengadaan, PIC Pelaksana belum ditunjuk |
+| | Penyusunan HPS | Penyusunan HPS belum diunggah |
+| | Proses SMART SCM | dokumen SMART SCM dan seluruh Berita Acara belum lengkap |
+| | Penyusunan Kontrak | kontrak, jaminan, rentang waktu, masa pemeliharaan |
+| Pelaksanaan SPPL | Inisiasi Laksdan / Penyusunan Surat Pesanan | BA Negosiasi, Surat Pesanan, dan tahapan SPPL lain |
+| Persetujuan | Menunggu Approval TL Pengadaan / Revisi Pelaksanaan | pelaksanaan diajukan / dikembalikan |
+| Keuangan | Terkontrak | disetujui TL Pengadaan; proses Penyerahan dan Pembayaran |
+| | Selesai | pembayaran dicatat |
+| Manual | Batal | dipilih TL / admin lewat **Batalkan Pengadaan** (alasan wajib). Tetap Batal sampai **Cabut Pembatalan**; kedua aksi tercatat di histori |
+
+Aturan tambahan:
+- **Format SPPL:** pengadaan berformat SPPL (atau bermetode Surat Pesanan) mengikuti jalur SPPL.
+- **Tahap yang dilewati:** dokumen dari tahap yang dilewati format itu tidak ditunggu.
+- **Data Master Status Progres:**
+  - Setiap status punya `system_key` tetap, dan kolom **Diatur Otomatis** menjelaskan aturannya.
+  - Nama, kategori, dan urutan status tetap bisa diubah di layar Data Master.
+  - Status yang dinonaktifkan tidak dipakai sistem; pengadaan tetap pada status terakhirnya.
+- **Status lama:** Pending, Kelengkapan Dokumen, Penawaran Harga, Disposisi AMS, dan Proses Validasi dinonaktifkan (tidak dihapus). Migrasi `automate_progress_statuses_and_merge_smart_scm_step` menghitung ulang status semua pengadaan, dan pengadaan yang Batal tetap Batal.
+- **Form:** isian Status Progres dihapus dari form Buat/Ubah Pengadaan. Kartu Status Progres di detail kini hanya menampilkan status beserta alasannya, plus tombol Batalkan / Cabut Pembatalan untuk TL / admin.
+- **Checklist pelaksanaan:** "Proses SMART SCM" dan "Berita Acara" digabung menjadi satu checklist, **Proses SMART SCM & Berita Acara**, berisi dokumen SMART SCM dan 6 Berita Acara.
+  - Pada pengadaan yang masih berjalan, langkah gabungan dianggap selesai hanya bila kedua langkah lama sudah selesai.
+  - Item "Berita Acara" lama dinonaktifkan.
+- **Test:** `AutomaticProgressStatusTest`.
 
 ### Output Form
 
@@ -440,7 +474,7 @@ Sebelum proses perencanaan dimulai, **Team Leader Pengadaan** wajib menunjuk **1
 Susunan tahapan dapat disesuaikan tanpa mengubah kode, di **Data Master → Item Checklist**:
 
 - **Dilewati oleh Format Kontrak** — tahapan tidak dipakai oleh format kontrak tertentu. Contoh bawaan: format **SPPL** melewati RAB, sehingga RAB dan Penawaran disatukan menjadi Penawaran.
-- **Dilewati oleh Metode Pengadaan** — contoh bawaan: Surat Pesanan melewati RKS, Inisiasi SMART SCM, PR/RO, UPB, dan HPE.
+- **Dilewati oleh Format Kontrak** — contoh bawaan: SPPL (metode Surat Pesanan) melewati RAB, RKS, Inisiasi SMART SCM, PR/RO, UPB, dan HPE. *(Isian "Dilewati oleh Metode Pengadaan" sudah dihapus; metode mengikuti format.)*
 - Format kontrak baru dapat ditambah di **Data Master → Format No Kontrak**, lalu diatur tahapan mana yang dilewatinya.
 - Susunan berlaku untuk pengadaan baru, dan untuk pengadaan lama saat datanya disimpan ulang (tahapan yang sudah selesai tetap tersimpan sebagai riwayat).
 
@@ -579,7 +613,7 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 | Pengaturan per tahapan | Fungsi |
 |------------------------|--------|
 | Dilewati oleh Format Kontrak | Tahapan tidak dipakai oleh format tertentu (SPK, PJ, SPPL, atau format baru). |
-| Dilewati oleh Metode Pengadaan | Tahapan tidak dipakai oleh metode tertentu. |
+| Dilewati oleh Format Kontrak | Tahapan tidak dipakai oleh format kontrak tertentu (metode mengikuti format). |
 | Dokumen yang Dihasilkan | Dokumen wajib — semuanya harus diunggah. |
 | Dokumen Pilihan (cukup salah satu) | Dokumen alternatif — cukup satu yang diunggah (mis. Jaminan Bank atau Surat Garansi). |
 | Isian Tahapan | Data wajib sebelum dicentang: Rentang waktu, Masa garansi, atau Rekening pelaksana. |
@@ -642,8 +676,8 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
   - Bila pasal penyerahan atau pembayaran di template diubah, test ini gagal sampai syaratnya disesuaikan.
 - **Data Master → Item Checklist** sekarang punya isian **Tab Keuangan** dan **Kategori Pekerjaan**, sehingga semua item tetap bisa diubah atau ditambah.
 - **Filter data Item Checklist** untuk melihat susunan proses:
-  - **Jenis filter:** Cari (nama, keterangan, dokumen), Tahap (termasuk Keuangan — Penyerahan / Pembayaran), Berlaku untuk Format Kontrak, Berlaku untuk Metode, Kategori Pekerjaan, Sifat, Isian Tahapan, dan Status. Ada juga tombol Reset dan jumlah "Menampilkan X dari Y".
-  - **Cara kerja filter Format, Metode, dan Kategori:** menampilkan item yang dilalui pengadaan dengan kriteria itu. Item yang dilewati (dikecualikan) disembunyikan, sedangkan item yang berlaku untuk semua tetap ditampilkan.
+  - **Jenis filter:** Cari (nama, keterangan, dokumen), Tahap (termasuk Keuangan — Penyerahan / Pembayaran), Berlaku untuk Format Kontrak, Kategori Pekerjaan, Sifat, Isian Tahapan, dan Status. Ada juga tombol Reset dan jumlah "Menampilkan X dari Y".
+  - **Cara kerja filter Format dan Kategori:** menampilkan item yang dilalui pengadaan dengan kriteria itu. Item yang dilewati (dikecualikan) disembunyikan, sedangkan item yang berlaku untuk semua tetap ditampilkan.
   - **Penyimpanan filter:** tersimpan di alamat halaman (query string), jadi tetap terpasang setelah item disimpan atau halaman dimuat ulang, dan bisa dibagikan lewat tautan.
   - **Teknis:** penyaringan dilakukan di sisi tampilan, tanpa perubahan backend. `MasterDataPage` mendapat prop opsional `toolbar` dan `filtered`; halaman data master lain tidak berubah.
 - **Seeder dan migration:**
@@ -658,6 +692,9 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 
 ## Penyempurnaan Alur
 
+- **Layout detail pengadaan:** kartu Identitas Pengadaan, Calon Mitra, dan Usulan Pekerjaan digabung menjadi satu panel ringkas (`components/procurement/identity-panel.tsx`), sehingga tab (Perencanaan, Pelaksanaan, dst.) menjadi bagian yang dominan.
+  - Panel menampilkan 8 data utama dalam grid rapat (label di atas nilai): Direksi Pekerjaan, Unit Tujuan, Sumber Anggaran, Jenis Kontrak, Target Selesai, Calon Mitra, Nilai Sebelum Nego, dan Nilai Setelah Nego.
+  - Rincian lainnya ada di tombol **Lihat detail lengkap**: data mitra, nomor PRK/COA/PR/SR/WO, nota dinas, dan catatan. Pilihan buka/tutup diingat per pengguna di browser.
 - **Target Selesai** dipakai kolom target, kurva-S, dan penanda terlambat. Pengisinya:
   - Pemegang tombol **Edit Identitas Pengadaan** (TL Pengadaan, admin) mengisinya di form Edit, bagian Informasi Tambahan. Untuk mereka, panel identitas di halaman detail hanya-baca (Jenis Kontrak dan Target Selesai tidak bisa diubah di sana).
   - PIC Perencana, yang tidak punya form Edit, tetap mengisi Jenis Kontrak dan Target Selesai langsung di panel identitas detail sampai perencanaan disetujui.
@@ -1050,6 +1087,61 @@ Di bagian atas dashboard tampil daftar tugas sesuai akun yang login. Setiap bari
 - **Seluruh dokumen lainnya** (TOR, RKS, Nota Dinas, Surat Pesanan, Lampiran Surat Pesanan, dsb.) secara konsisten menggunakan format kertas **Potret (A4 Portrait)** (`@page { size: A4 portrait; margin: 20mm 15mm; }`).
 - Pengaturan cetak HTML dan PDF secara otomatis mendeteksi konfigurasi `@page` pada dokumen sehingga orientasi kertas (landscape vs portrait) dan footer tercetak dengan koordinat yang presisi pada browser maupun Dompdf.
 - Dialog pratinjau template dokumen pada Data Master dan canvas editor visual menyesuaikan lebar bingkai secara dinamis (`max-w-[297mm]` untuk dokumen landscape dan `max-w-[210mm]` untuk dokumen portrait).
+
+---
+
+# Amandemen Kontrak
+
+Amandemen punya **tab tersendiri** di detail pengadaan (tab *Amandemen*). Langkah checklist pelaksanaan "Amandemen" yang lama dinonaktifkan; centang lamanya tetap tersimpan sebagai histori.
+
+**Siapa dan kapan**
+- Diajukan oleh **pengusul / user**: pembuat usulan, pemegang hak Usulkan Pekerjaan di bidang yang sama, atau admin.
+- Tombol **Ajukan Amandemen** muncul setelah dokumen kontrak (SPK, Surat Perjanjian, atau Surat Pesanan) dibuat, sampai pengadaan selesai. Tombol tidak muncul bila pengadaan Batal.
+- Hanya satu amandemen boleh terbuka sekaligus. Amandemen bisa lebih dari sekali (Amandemen I, II, dst.).
+
+**Isian pengusul**
+| Dokumen (unggah PDF/JPG/PNG) | Isian |
+|---|---|
+| Notulen Rapat | tanggal notulen (dipakai di dokumen) |
+| Daftar Hadir | — |
+| Nota Dinas Amandemen | nomor dan tanggal nota dinas |
+| Surat Permohonan Amandemen | nomor dan tanggal surat |
+
+Isian lain:
+- Nomor amandemen: otomatis dari format **Amd**, tetap bisa dikoreksi.
+- Tanggal amandemen dan tanggal kontrak (default: tanggal kontrak dibuat).
+- Daftar **perubahan pasal**: pasal/ayat, teks *Semula berbunyi*, dan teks *Menjadi*; bisa beberapa baris.
+
+Amandemen baru bisa diajukan bila semua dokumen dan isian lengkap; yang masih kurang ditampilkan sebagai daftar.
+
+**Alur persetujuan** (tidak lewat perencana / TL ICC)
+1. Pengusul mengajukan. Saat itu dokumen keluaran dibuat otomatis, sehingga penyetuju membaca dokumen yang akan disepakati.
+2. **TL** atasan pengusul menyetujui. Bila pengusul tidak punya TL, atau TL-nya Direksi Pekerjaan bidang itu, langkah ini dilewati.
+3. **Asman** (Direksi Pekerjaan) bidang menyetujui.
+4. **TL Pengadaan** memberi persetujuan akhir (hak baru `procurement.approve-amendment`, default TL Pengadaan) → status *Disetujui*.
+
+Aturan tambahan:
+- **Dikembalikan:** catatan wajib diisi. Pengusul memperbaiki lalu mengajukan ulang (revisi bertambah) dan dokumen dibuat ulang.
+- **Penyetuju:** tidak ada yang menyetujui amandemennya sendiri, dan admin bisa mewakili.
+- **Notifikasi:** dikirim ke penyetuju berikutnya; keputusan akhir dikirim ke pengusul dan PIC Pelaksana.
+- **Riwayat Approval:** mencatat Amandemen Diajukan / Disetujui TL / Disetujui Asman / Disetujui TL Pengadaan / Dikembalikan.
+
+**Dokumen keluaran**
+- Template: `resources/document-templates/kontrak/amandemen.html` (manifest `kontrak.amandemen`, jenis dokumen `amandemen-kontrak`), mengikuti contoh Amandemen I Surat Perjanjian.
+- Jenis kontrak menyesuaikan format: SURAT PERJANJIAN (PJ), SURAT PERINTAH KERJA (SPK), atau SURAT PESANAN (SPPL).
+- Isi Pasal 1 *Perubahan Ketentuan* disusun dari baris perubahan. Teks pengguna di-escape.
+- Dokumen tersimpan sebagai dokumen pengadaan (`procurement_documents.procurement_amendment_id`). Dokumen bisa dibuka di editor dan pratinjau yang sama, serta di-regenerate dengan data amandemennya.
+- Dokumen tidak bisa dibuat dari tombol generate biasa.
+- Placeholder baru tercantum di katalog template (awalan "Amandemen:").
+
+**Penomoran**
+- Format **Amd** (KDD054.Amd/612/UPKD/2026) ada di Data Master Format No Kontrak, dengan saklar *Untuk Nomor Amandemen*. Kode format amandemen tidak diubah menjadi huruf besar.
+- Format amandemen tidak ditawarkan sebagai format kontrak pengadaan, dan validasi menolaknya.
+
+**Teknis**
+- Tabel `procurement_amendments`, `procurement_amendment_changes`, `procurement_amendment_files`. Berkas disimpan di disk privat `amendments/{id}` dan hanya bisa dibuka oleh yang berhak melihat pengadaan.
+- Layanan `App\Services\AmendmentService`, controller `Procurements\AmendmentController`, rute `procurements.amendments.*`.
+- Test: `AmendmentTest`.
 
 ---
 

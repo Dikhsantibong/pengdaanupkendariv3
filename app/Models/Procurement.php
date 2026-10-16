@@ -9,6 +9,7 @@ use App\Enums\ProposalState;
 use App\Enums\StatusCategory;
 use App\Enums\WorkCategory;
 use App\Observers\ProcurementDocumentObserver;
+use App\Services\ProgressStatusResolver;
 use Carbon\CarbonImmutable;
 use Database\Factories\ProcurementFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -179,6 +180,22 @@ class Procurement extends Model
             if ($methodId !== null) {
                 $procurement->procurement_method_id = (int) $methodId;
             }
+        });
+
+        // The progress status is set by the system (ProgressStatusResolver);
+        // a new job starts on the default status until it is worked out.
+        static::creating(function (Procurement $procurement): void {
+            // Not set yet on a job created without one (the column is filled
+            // here before the row exists).
+            $default = ProgressStatus::defaultStatus();
+
+            if ($procurement->getAttribute('progress_status_id') === null && $default !== null) {
+                $procurement->progress_status_id = $default->id;
+            }
+        });
+
+        static::saved(function (Procurement $procurement): void {
+            app(ProgressStatusResolver::class)->sync($procurement);
         });
 
         static::created(function (Procurement $procurement): void {
@@ -504,6 +521,16 @@ class Procurement extends Model
     public function documents(): HasMany
     {
         return $this->hasMany(ProcurementDocument::class);
+    }
+
+    /**
+     * The amendments of this procurement's contract, oldest first.
+     *
+     * @return HasMany<ProcurementAmendment, $this>
+     */
+    public function amendments(): HasMany
+    {
+        return $this->hasMany(ProcurementAmendment::class)->orderBy('sequence');
     }
 
     /**

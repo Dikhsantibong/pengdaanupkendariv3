@@ -60,12 +60,11 @@ class ChecklistDocumentRequirementTest extends TestCase
     {
         return [
             'Penyusunan HPS',
-            'Proses SMART SCM',
-            'Berita Acara',
+            'Proses SMART SCM & Berita Acara',
             'Penyusunan Kontrak',
             'Jaminan Bank',
             'Kontrak',
-            'Amandemen',
+            // Amandemen has its own tab now (procurements.amendments.*).
             'Masa Pemeliharaan',
             // SPPL.
             'BA Negosiasi',
@@ -327,16 +326,17 @@ class ChecklistDocumentRequirementTest extends TestCase
         $this->assertFalse($item->requiresDocument());
     }
 
-    public function test_the_berita_acara_step_requires_all_six_documents(): void
+    public function test_the_smart_scm_step_requires_its_document_and_all_six_berita_acara(): void
     {
         $this->seed(MasterDataSeeder::class);
 
         $item = ChecklistItem::query()
             ->forStage(ProcurementStage::Pelaksanaan)
-            ->where('name', 'Berita Acara')
+            ->where('name', 'Proses SMART SCM & Berita Acara')
             ->firstOrFail();
 
         $this->assertSame([
+            'proses-smart-scm',
             'ba-aanwijzing',
             'lampiran-bapp',
             'ba-evaluasi-teknis',
@@ -375,7 +375,7 @@ class ChecklistDocumentRequirementTest extends TestCase
 
         $item = ChecklistItem::query()
             ->forStage(ProcurementStage::Pelaksanaan)
-            ->where('name', 'Berita Acara')
+            ->where('name', 'Proses SMART SCM & Berita Acara')
             ->firstOrFail();
 
         $checklist = $procurement->checklists()
@@ -385,6 +385,16 @@ class ChecklistDocumentRequirementTest extends TestCase
         // File all but the last, then check the step is still refused and the
         // message names the one that is missing.
         foreach ($item->documentTypes->slice(0, -1) as $type) {
+            // The SMART SCM document is only ever uploaded.
+            if ($type->upload_only) {
+                $this->actingAs($executor)->post(route('procurements.documents.upload', $procurement), [
+                    'document_type_id' => $type->id,
+                    'files' => [UploadedFile::fake()->create('scm.pdf', 50, 'application/pdf')],
+                ]);
+
+                continue;
+            }
+
             $this->actingAs($executor)->post(route('procurements.documents.store', $procurement), [
                 'document_type_id' => $type->id,
             ]);

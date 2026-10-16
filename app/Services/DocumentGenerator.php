@@ -7,11 +7,14 @@ use App\Enums\ProcurementStage;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
 use App\Models\Procurement;
+use App\Models\ProcurementAmendment;
+use App\Models\ProcurementAmendmentChange;
 use App\Models\ProcurementDocument;
 use App\Models\UnitManager;
 use App\Models\User;
 use App\Models\VendorAssessmentRequest;
 use App\Support\IndonesianNumber;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -95,6 +98,25 @@ class DocumentGenerator
             'tanggal_dokumen' => 'Tanggal dokumen digenerate',
             'tahun' => 'Tahun berjalan',
             'tautan_penilaian_vendor' => 'Tautan tetap untuk vendor mengisi rincian tagihan (request penilaian vendor)',
+            // Filled only on the amendment document (tab Amandemen).
+            'amandemen_ke' => 'Amandemen: urutan dalam angka romawi (I, II, ...)',
+            'nomor_amandemen' => 'Amandemen: nomor amandemen (format Amd)',
+            'jenis_dokumen_kontrak' => 'Amandemen: jenis kontrak yang diubah (SURAT PERJANJIAN / SURAT PERINTAH KERJA / SURAT PESANAN)',
+            'jenis_dokumen_kontrak_judul' => 'Amandemen: jenis kontrak yang diubah, huruf judul',
+            'nomor_kontrak' => 'Amandemen: nomor kontrak yang diubah',
+            'tanggal_kontrak' => 'Amandemen: tanggal kontrak yang diubah',
+            'tanggal_amandemen' => 'Amandemen: tanggal amandemen',
+            'tanggal_amandemen_angka' => 'Amandemen: tanggal amandemen (dd-mm-yyyy)',
+            'hari_amandemen' => 'Amandemen: nama hari tanggal amandemen',
+            'tanggal_amandemen_terbilang' => 'Amandemen: tanggal amandemen dalam kata',
+            'bulan_amandemen' => 'Amandemen: nama bulan amandemen',
+            'tahun_amandemen_terbilang' => 'Amandemen: tahun amandemen dalam kata',
+            'tanggal_notulen' => 'Amandemen: tanggal notulen rapat pembahasan',
+            'nomor_nota_dinas_amandemen' => 'Amandemen: nomor nota dinas amandemen',
+            'tanggal_nota_dinas_amandemen' => 'Amandemen: tanggal nota dinas amandemen',
+            'nomor_surat_permohonan_amandemen' => 'Amandemen: nomor surat permohonan amandemen',
+            'tanggal_surat_permohonan_amandemen' => 'Amandemen: tanggal surat permohonan amandemen',
+            'daftar_perubahan' => 'Amandemen: daftar perubahan pasal (Semula berbunyi / Menjadi)',
             'checklist_perencanaan' => 'Daftar checklist tahap perencanaan',
             'checklist_pelaksanaan' => 'Daftar checklist tahap pelaksanaan',
         ];
@@ -437,7 +459,7 @@ class DocumentGenerator
         }
 
         if ($unedited && $template !== null) {
-            $body = $this->render($template, $document->procurement, $document->generated_at);
+            $body = $this->renderFor($document, $template, $document->generated_at);
         } else {
             $body = $this->refreshLiveFields($document->rendered_body, $values);
         }
@@ -525,6 +547,155 @@ class DocumentGenerator
         $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
 
         return trim((string) preg_replace('/\s+/u', ' ', str_replace("\xc2\xa0", ' ', $text)));
+    }
+
+    /**
+     * Render a template for an archived document: an amendment document
+     * also takes the values of its amendment.
+     */
+    protected function renderFor(ProcurementDocument $document, DocumentTemplate $template, ?CarbonInterface $issuedAt = null): string
+    {
+        $amendment = $document->procurement_amendment_id === null
+            ? null
+            : ProcurementAmendment::query()->find($document->procurement_amendment_id);
+
+        return $amendment === null
+            ? $this->render($template, $document->procurement, $issuedAt)
+            : $this->renderAmendment($template, $amendment, $issuedAt);
+    }
+
+    /**
+     * Render an amendment template: the procurement's values and the
+     * amendment's own.
+     */
+    public function renderAmendment(DocumentTemplate $template, ProcurementAmendment $amendment, ?CarbonInterface $issuedAt = null): string
+    {
+        $values = [
+            ...$this->placeholderValues($amendment->procurement, $issuedAt),
+            ...$this->amendmentValues($amendment),
+        ];
+
+        return $this->fillPlaceholders($template->body, $values);
+    }
+
+    /**
+     * The placeholder values of an amendment.
+     *
+     * The articles typed in by the proposer are escaped before they become
+     * part of the document.
+     *
+     * @return array<string, string>
+     */
+    public function amendmentValues(ProcurementAmendment $amendment): array
+    {
+        $amendment->loadMissing(['procurement.contractNumberFormat', 'changedArticles']);
+        $procurement = $amendment->procurement;
+        $date = $amendment->amendment_date ?? CarbonImmutable::now();
+        $format = $procurement->contractNumberFormat?->code;
+
+        $changes = $amendment->changedArticles->values()->map(
+            fn (ProcurementAmendmentChange $change): string => '<li><p>Mengubah ketentuan <b>'.e($change->article).'</b> :</p>'
+                .'<p class="label"><b>Semula Berbunyi :</b></p><div class="isi">'.nl2br(e($change->original_text), false).'</div>'
+                .'<p class="label"><b>Menjadi :</b></p><div class="isi">'.nl2br(e($change->new_text), false).'</div></li>',
+        )->implode('');
+
+        return [
+            'amandemen_ke' => $amendment->roman(),
+            'amandemen_ke_angka' => (string) $amendment->sequence,
+            'nomor_amandemen' => $amendment->number ?: '-',
+            'jenis_dokumen_kontrak' => match ($format) {
+                'PJ' => 'SURAT PERJANJIAN',
+                'SPPL' => 'SURAT PESANAN',
+                default => 'SURAT PERINTAH KERJA',
+            },
+            'jenis_dokumen_kontrak_judul' => match ($format) {
+                'PJ' => 'Surat Perjanjian',
+                'SPPL' => 'Surat Pesanan',
+                default => 'Surat Perintah Kerja',
+            },
+            'nomor_kontrak' => $procurement->number,
+            'tanggal_kontrak' => $amendment->contract_date?->translatedFormat('d F Y') ?? '-',
+            'tanggal_amandemen' => $date->translatedFormat('d F Y'),
+            'tanggal_amandemen_angka' => $date->format('d-m-Y'),
+            'hari_amandemen' => $date->translatedFormat('l'),
+            'tanggal_amandemen_terbilang' => Str::title(IndonesianNumber::spell((int) $date->format('j'))),
+            'bulan_amandemen' => $date->translatedFormat('F'),
+            'tahun_amandemen_terbilang' => Str::title(IndonesianNumber::spell((int) $date->format('Y'))),
+            'tanggal_notulen' => $amendment->meeting_date?->translatedFormat('d F Y') ?? '-',
+            'nomor_nota_dinas_amandemen' => $amendment->memo_number ?? '-',
+            'tanggal_nota_dinas_amandemen' => $amendment->memo_date?->translatedFormat('d F Y') ?? '-',
+            'nomor_surat_permohonan_amandemen' => $amendment->request_number ?? '-',
+            'tanggal_surat_permohonan_amandemen' => $amendment->request_date?->translatedFormat('d F Y') ?? '-',
+            'daftar_perubahan' => $changes === '' ? '<li>-</li>' : $changes,
+        ];
+    }
+
+    /**
+     * Draw (or redraw) the document of an amendment from its template.
+     *
+     * Redrawn while it is unsigned, so the latest wording of the request is
+     * what the approvers read; a signed one stays as it was signed.
+     */
+    public function generateAmendment(ProcurementAmendment $amendment, User $author): ProcurementDocument
+    {
+        $amendment->loadMissing('procurement');
+        $procurement = $amendment->procurement;
+        $documentType = DocumentType::query()->where('code', 'amandemen-kontrak')->first();
+
+        $template = $documentType === null ? null : DocumentTemplate::resolveFor(
+            $documentType->id,
+            $procurement->procurement_method_id,
+            $procurement->work_category,
+            $procurement->contract_number_format_id,
+        );
+
+        if ($documentType === null || $template === null) {
+            throw new RuntimeException('Template aktif untuk dokumen Amandemen Kontrak belum tersedia.');
+        }
+
+        $document = $amendment->procurement_document_id === null
+            ? null
+            : ProcurementDocument::query()->find($amendment->procurement_document_id);
+
+        if ($document !== null && $this->isFrozen($document)) {
+            return $document;
+        }
+
+        $title = "Amandemen {$amendment->roman()} - {$procurement->name}";
+        $values = [
+            'document_type_id' => $documentType->id,
+            'document_template_id' => $template->id,
+            'title' => $title,
+            'file_name' => Str::slug("{$procurement->number}-amandemen-{$amendment->sequence}").'.html',
+            'template_version' => $template->version,
+            'rendered_body' => $this->renderAmendment($template, $amendment),
+            'revision' => 0,
+            'edited_by' => null,
+            'edited_at' => null,
+            'generated_by' => $author->id,
+            'generated_at' => now(),
+        ];
+
+        if ($document === null) {
+            $document = new ProcurementDocument($values);
+            $document->procurement_id = $procurement->id;
+            $document->procurement_amendment_id = $amendment->id;
+            $document->save();
+
+            $amendment->forceFill(['procurement_document_id' => $document->id])->save();
+        } else {
+            $document->forceFill($values)->save();
+        }
+
+        $this->procurements->recordActivity(
+            $procurement,
+            $author,
+            ActivityType::DokumenDigenerate,
+            "Dokumen {$title} digenerate.",
+            ['document_type' => 'amandemen-kontrak', 'amendment_id' => $amendment->id],
+        );
+
+        return $document;
     }
 
     /**
@@ -894,7 +1065,7 @@ HTML;
 
         $document->document_template_id = $template->id;
         $document->template_version = $template->version;
-        $document->rendered_body = $this->render($template, $document->procurement);
+        $document->rendered_body = $this->renderFor($document, $template);
         $document->revision = 0;
         $document->edited_by = null;
         $document->edited_at = null;
@@ -953,7 +1124,7 @@ HTML;
             $template = (int) $document->revision === 0 ? $this->currentTemplateFor($document) : null;
 
             if ($template !== null) {
-                $candidate = $this->render($template, $procurement, $document->generated_at);
+                $candidate = $this->renderFor($document, $template, $document->generated_at);
                 $switched = $template->getKey() !== $document->document_template_id;
 
                 if ($candidate !== $body || $switched) {

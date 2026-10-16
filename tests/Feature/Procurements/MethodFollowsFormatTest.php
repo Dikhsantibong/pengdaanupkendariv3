@@ -35,7 +35,7 @@ class MethodFollowsFormatTest extends TestCase
 
     public function test_each_seeded_format_names_its_method(): void
     {
-        $methods = ContractNumberFormat::query()->with('procurementMethod')->get()
+        $methods = ContractNumberFormat::query()->forContracts()->with('procurementMethod')->get()
             ->mapWithKeys(fn (ContractNumberFormat $format): array => [$format->code => $format->procurementMethod?->code])
             ->all();
 

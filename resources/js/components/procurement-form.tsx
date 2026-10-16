@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import type { Option, PicOption, StatusOption } from '@/types';
+import type { Option, PicOption } from '@/types';
 
 const NONE = 'none';
 
@@ -32,8 +32,6 @@ export type ProcurementFormOptions = {
     workDirectors: Option[];
     targetUnits: Option[];
     budgetSources: Option[];
-    progressStatuses: StatusOption[];
-    defaultProgressStatusId: number | null;
     planners: PicOption[];
 };
 
@@ -61,7 +59,6 @@ export type ProcurementFormValues = {
     quotation_date: string;
     hpe_value: number;
     value_after_negotiation: number | null;
-    progress_status_id: number | null;
     notes: string;
     /** Set by procurement; a work proposal never carries it. */
     target_completion_date?: string;
@@ -160,10 +157,6 @@ export function ProcurementForm({
         quotation_date: initialValues?.quotation_date ?? '',
         hpe_value: initialValues?.hpe_value ?? 0,
         value_after_negotiation: initialValues?.value_after_negotiation ?? null,
-        progress_status_id:
-            initialValues?.progress_status_id ??
-            options.defaultProgressStatusId ??
-            null,
         notes: initialValues?.notes ?? '',
     });
 
@@ -765,47 +758,6 @@ export function ProcurementForm({
                                 </p>
                                 <InputError
                                     message={errors.value_after_negotiation}
-                                />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="progress_status_id">
-                                    Status Progres
-                                </Label>
-                                <Select
-                                    value={
-                                        data.progress_status_id === null
-                                            ? undefined
-                                            : String(data.progress_status_id)
-                                    }
-                                    onValueChange={(value) =>
-                                        setData(
-                                            'progress_status_id',
-                                            Number(value),
-                                        )
-                                    }
-                                >
-                                    <SelectTrigger
-                                        id="progress_status_id"
-                                        className="w-full"
-                                    >
-                                        <SelectValue placeholder="Pilih status progres" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {options.progressStatuses.map(
-                                            (option) => (
-                                                <SelectItem
-                                                    key={option.value}
-                                                    value={String(option.value)}
-                                                >
-                                                    {option.label}
-                                                </SelectItem>
-                                            ),
-                                        )}
-                                    </SelectContent>
-                                </Select>
-                                <InputError
-                                    message={errors.progress_status_id}
                                 />
                             </div>
                         </>

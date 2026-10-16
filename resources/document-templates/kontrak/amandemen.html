@@ -1,0 +1,87 @@
+<section class="amd">
+    <style>
+        @page { size: A4 portrait; margin: 18mm 20mm 30mm 22mm; }
+        .amd { font-family: Arial, Helvetica, sans-serif; font-size: 10pt; line-height: 1.45; color: #000; text-align: justify; }
+        .amd .title { text-align: center; font-weight: bold; font-size: 11pt; line-height: 1.6; }
+        .amd .center { text-align: center; }
+        .amd .upper { text-transform: uppercase; }
+        .amd p { margin: 6px 0; }
+        .amd .pasal { text-align: center; font-weight: bold; margin: 22px 0 8px; page-break-after: avoid; }
+        .amd .party td { border: none; padding: 3px 0; vertical-align: top; text-align: justify; }
+        .amd .party td.no { width: 26px; font-weight: bold; }
+        .amd .party td.name { width: 130px; font-weight: bold; padding-right: 10px; }
+        .amd ol { margin: 4px 0 4px 18px; padding: 0; }
+        .amd ol li { margin: 3px 0; padding-left: 2px; }
+        .amd ol.perubahan > li { margin-bottom: 12px; }
+        .amd .label { margin: 8px 0 2px; }
+        .amd .isi { margin: 2px 0 6px 0; }
+        .amd .sign td { border: none; text-align: center; vertical-align: top; font-weight: bold; width: 50%; padding: 0 8px; }
+    </style>
+
+    <div class="center" style="margin-bottom: 10px;"><img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 34px; width: auto;"></div>
+
+    <div class="title">
+        <div>AMANDEMEN {{amandemen_ke}}</div>
+        <div>{{jenis_dokumen_kontrak}}</div>
+        <div>{{nomor_kontrak}} Tanggal {{tanggal_kontrak}}</div>
+    </div>
+
+    <div class="center" style="margin-top: 14px;">
+        <div><i>Antara</i></div>
+        <div>PT PLN Nusantara Power</div>
+        <div>UNIT PEMBANGKITAN KENDARI</div>
+        <div><i>Dengan</i></div>
+        <div class="upper">{{nama_mitra}}</div>
+        <div><i>Tentang:</i></div>
+        <div class="upper" style="font-weight: bold;">{{nama_pengadaan}}</div>
+        <div>Nomor Pihak Pertama : {{nomor_amandemen}}</div>
+        <div>Nomor Pihak Kedua : ______________________________</div>
+    </div>
+
+    <p style="margin-top: 16px;">Pada hari ini, <b>{{hari_amandemen}}</b> tanggal <b>{{tanggal_amandemen_terbilang}}</b> bulan <b>{{bulan_amandemen}}</b> tahun <b>{{tahun_amandemen_terbilang}}</b> ({{tanggal_amandemen_angka}}) di Kendari, kami yang bertandatangan dibawah ini :</p>
+
+    <table class="party">
+        <tr>
+            <td class="no">I</td>
+            <td class="name">PT PLN Nusantara Power UP Kendari</td>
+            <td>Suatu perusahaan Perseroan yang didirikan berdasarkan hukum Negara Republik Indonesia, berdasarkan Akta Notaris Poerbaningsih Adi Warsito, SH., Nomor 16 tanggal 3 Oktober 1995 sebagaimana telah diubah terakhir dengan Akta Notaris Muhammad Hanafi, SH Nomor 40 Tanggal 29 Maret 2023, yang berkedudukan di Jalan Ketintang Baru No.11 Surabaya 60231. Dalam hal ini diwakili secara sah dan berwenang oleh <b class="upper">{{nama_manager}}</b> selaku Manager PT PLN Nusantara Power Unit Pembangkitan Kendari berdasarkan Keputusan Direksi Nomor <span class="fill">....................</span> tanggal <span class="fill">....................</span> dan oleh karenanya sah bertindak untuk dan atas nama PT PLN Nusantara Power, yang selanjutnya dalam Perjanjian ini disebut sebagai <b>PIHAK PERTAMA.</b></td>
+        </tr>
+        <tr>
+            <td class="no">II</td>
+            <td class="name upper">{{nama_mitra}}</td>
+            <td>Suatu perusahaan yang didirikan berdasarkan Hukum Negara Republik Indonesia, dengan Akta Notaris <span class="fill">....................</span> Nomor <span class="fill">....</span> tanggal <span class="fill">....................</span>, beralamat di {{alamat_perusahaan}}, yang dalam hal ini diwakili oleh <b class="upper">{{nama_direktur}}</b> dalam kedudukannya selaku Direktur, dari dan oleh karenanya bertindak untuk dan atas nama <span class="upper">{{nama_mitra}}</span>, yang selanjutnya dalam Perjanjian ini disebut <b>PIHAK KEDUA</b>.</td>
+        </tr>
+    </table>
+
+    <p><b>PIHAK PERTAMA</b> dan <b>PIHAK KEDUA</b> secara bersama-sama disebut &ldquo;PARA PIHAK&rdquo;. PARA PIHAK terlebih dahulu menerangkan hal-hal sebagai berikut:</p>
+    <ol>
+        <li>{{jenis_dokumen_kontrak_judul}} No. {{nomor_kontrak}} tanggal {{tanggal_kontrak}} tentang {{nama_pengadaan}}.</li>
+        <li>Notulen Rapat Pembahasan Teknis Amandemen Kontrak {{nama_pengadaan}} tanggal {{tanggal_notulen}}.</li>
+        <li>Nota Dinas Manager No. {{nomor_nota_dinas_amandemen}} tanggal {{tanggal_nota_dinas_amandemen}} perihal Permohonan Amandemen Kontrak {{jenis_dokumen_kontrak_judul}} Nomor {{nomor_kontrak}} tentang {{nama_pengadaan}}.</li>
+        <li>Surat Permohonan Amandemen No. {{nomor_surat_permohonan_amandemen}} tanggal {{tanggal_surat_permohonan_amandemen}}.</li>
+    </ol>
+
+    <p>Berdasarkan hal tersebut di atas, <b>Para Pihak</b> sepakat melakukan <b>Amandemen {{amandemen_ke}}</b> {{jenis_dokumen_kontrak_judul}} No. {{nomor_kontrak}} tanggal {{tanggal_kontrak}} dengan ketentuan sebagai berikut :</p>
+
+    <div class="pasal"><div>PASAL 1</div><div>PERUBAHAN KETENTUAN</div></div>
+    <ol class="perubahan">{{daftar_perubahan}}</ol>
+
+    <div class="pasal"><div>PASAL 2</div><div>PENUTUP</div></div>
+    <ol>
+        <li>Amandemen {{amandemen_ke}} {{jenis_dokumen_kontrak_judul}} ini merupakan bagian yang tidak terpisahkan dengan {{jenis_dokumen_kontrak_judul}} No. {{nomor_kontrak}} tanggal {{tanggal_kontrak}}.</li>
+        <li>Hal-hal yang tidak termuat / tercantum dalam Amandemen {{amandemen_ke}} {{jenis_dokumen_kontrak_judul}} ini merupakan bagian yang tidak terpisahkan dengan {{jenis_dokumen_kontrak_judul}} No. {{nomor_kontrak}} tanggal {{tanggal_kontrak}} tentang {{nama_pengadaan}}.</li>
+        <li>Amandemen {{amandemen_ke}} ini dibuat dalam 2 (dua) rangkap yang masing-masing mempunyai kekuatan hukum yang sama, 1 (satu) rangkap untuk PIHAK PERTAMA dan 1 (satu) rangkap untuk PIHAK KEDUA dan setelah dibubuhi materai yang cukup kemudian ditandatangani oleh PARA PIHAK.</li>
+    </ol>
+
+    <table class="sign" style="margin-top: 28px; page-break-inside: avoid;">
+        <tr>
+            <td>PIHAK KEDUA</td>
+            <td>PIHAK PERTAMA</td>
+        </tr>
+        <tr><td style="height: 90px;"></td><td></td></tr>
+        <tr>
+            <td class="upper">{{nama_direktur}}</td>
+            <td class="upper">{{nama_manager}}</td>
+        </tr>
+    </table>
+</section>

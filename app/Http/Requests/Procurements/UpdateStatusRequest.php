@@ -11,16 +11,16 @@ class UpdateStatusRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
+     * The status is set by the system; only cancelling (Batal) and lifting
+     * a cancellation are asked here. A cancellation says why.
+     *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
         return [
-            'progress_status_id' => [
-                'required',
-                Rule::exists('progress_statuses', 'id')->where('is_active', true)->whereNull('deleted_at'),
-            ],
-            'note' => ['nullable', 'string', 'max:500'],
+            'cancelled' => ['required', 'boolean'],
+            'note' => [Rule::requiredIf(fn (): bool => $this->boolean('cancelled')), 'nullable', 'string', 'max:500'],
         ];
     }
 
@@ -32,8 +32,8 @@ class UpdateStatusRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'progress_status_id' => 'status progres',
-            'note' => 'catatan',
+            'cancelled' => 'pembatalan',
+            'note' => 'alasan',
         ];
     }
 }

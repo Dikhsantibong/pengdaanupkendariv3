@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\ChecklistInput;
 use App\Enums\ProcurementStage;
-use App\Enums\StatusCategory;
+use App\Enums\SystemStatus;
 use App\Enums\WorkCategory;
 use App\Models\BudgetSource;
 use App\Models\ChecklistItem;
@@ -16,6 +16,7 @@ use App\Models\ProgressStatus;
 use App\Models\TargetUnit;
 use App\Models\UnitManager;
 use App\Models\WorkDirector;
+use App\Services\ProgressStatusResolver;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -36,6 +37,7 @@ class MasterDataSeeder extends Seeder
         $this->seedBudgetSources();
         $this->seedContractTypes();
         $this->seedContractNumberFormats();
+        $this->seedAmendmentFormat();
         $this->seedProgressStatuses();
         // Document types first: the checklist steps link to them.
         $this->seedDocumentTypes();
@@ -230,33 +232,69 @@ class MasterDataSeeder extends Seeder
     }
 
     /**
+     * The format amendments are numbered with: KDD054.Amd/612/UPKD/2026.
+     *
+     * Created once; what the administrator later sets on it stays.
+     */
+    protected function seedAmendmentFormat(): void
+    {
+        if (ContractNumberFormat::withTrashed()->where('for_amendment', true)->exists()) {
+            return;
+        }
+
+        ContractNumberFormat::query()->create([
+            'code' => 'Amd',
+            'name' => 'Amandemen Kontrak',
+            'prefix' => 'KDD',
+            'unit_segment' => '612/UPKD',
+            'sequence_length' => 3,
+            'starting_sequence' => 1,
+            'uses_work_category' => false,
+            'for_amendment' => true,
+            'description' => 'Nomor amandemen kontrak, contoh KDD054.Amd/612/UPKD/2026.',
+            'sort_order' => 99,
+            'is_active' => true,
+        ]);
+    }
+
+    /**
      * Seed the status progres reference data.
+     *
+     * Every status is set by the system (ProgressStatusResolver), found by
+     * its `system_key`. A status already there keeps the name it was given
+     * on the master data; only a missing one is created.
      */
     protected function seedProgressStatuses(): void
     {
-        $statuses = [
-            ['Pending', StatusCategory::Pending, true],
-            ['Batal', StatusCategory::Batal, false],
-            ['Inisiasi Laksdan', StatusCategory::Berjalan, false],
-            ['Penyusunan RKS', StatusCategory::Berjalan, false],
-            ['Kelengkapan Dokumen', StatusCategory::Berjalan, false],
-            ['Penawaran Harga', StatusCategory::Berjalan, false],
-            ['Disposisi AMS', StatusCategory::Berjalan, false],
-            ['Proses Validasi', StatusCategory::Selesai, false],
-        ];
+        foreach (SystemStatus::cases() as $index => $status) {
+            $existing = ProgressStatus::withTrashed()->where('system_key', $status->value)->first();
 
-        foreach ($statuses as $index => [$name, $category, $isDefault]) {
-            ProgressStatus::query()->updateOrCreate(
-                ['slug' => Str::slug($name)],
-                [
-                    'name' => $name,
-                    'category' => $category,
-                    'sort_order' => $index + 1,
-                    'is_default' => $isDefault,
-                    'is_active' => true,
-                ],
-            );
+            if ($existing !== null) {
+                continue;
+            }
+
+            $taken = ProgressStatus::withTrashed()->where('slug', Str::slug($status->label()))->first();
+
+            // A status of the same name typed in before becomes the system one.
+            if ($taken !== null && $taken->system_key === null) {
+                $taken->forceFill(['system_key' => $status->value, 'category' => $status->category(), 'is_active' => true])->save();
+
+                continue;
+            }
+
+            $created = new ProgressStatus([
+                'name' => $status->label(),
+                'slug' => Str::slug($status->label()),
+                'category' => $status->category(),
+                'sort_order' => $index + 1,
+                'is_default' => $status === SystemStatus::InisiasiRendan,
+                'is_active' => true,
+            ]);
+            $created->system_key = $status->value;
+            $created->save();
         }
+
+        app(ProgressStatusResolver::class)->forget();
     }
 
     /**
@@ -286,8 +324,8 @@ class MasterDataSeeder extends Seeder
         $execution = [
             ['Evaluasi Dokumen', false],
             ['Penyusunan HPS', false],
-            ['Proses SMART SCM', false],
-            ['Berita Acara', false],
+            // One step for the SMART SCM document and every Berita Acara.
+            ['Proses SMART SCM & Berita Acara', false],
             ['BA Negosiasi', false],
             ['Penyusunan Kontrak', false],
             ['Surat Pesanan', false],
@@ -297,7 +335,6 @@ class MasterDataSeeder extends Seeder
             ['Lampiran Surat Pesanan', false],
             ['Rentang Waktu', false],
             ['Rentang Waktu Pelaksanaan', false],
-            ['Amandemen', true],
             ['Masa Pemeliharaan', false],
             ['Masa Garansi', false],
         ];
@@ -391,10 +428,11 @@ class MasterDataSeeder extends Seeder
             ],
             ProcurementStage::Pelaksanaan->value => [
                 'Penyusunan HPS' => ['penyusunan-hps'],
-                'Proses SMART SCM' => ['proses-smart-scm'],
-                // One step, six berita acara, all of which have to be signed
-                // and filed before the step counts as finished.
-                'Berita Acara' => [
+                // One step: the SMART SCM document and the six berita acara,
+                // all of which have to be signed and filed before the step
+                // counts as finished.
+                'Proses SMART SCM & Berita Acara' => [
+                    'proses-smart-scm',
                     'ba-aanwijzing',
                     'lampiran-bapp',
                     'ba-evaluasi-teknis',
@@ -406,7 +444,6 @@ class MasterDataSeeder extends Seeder
                 'Jaminan Bank' => ['jaminan-bank'],
                 // Only the SPK with its articles is uploaded for the contract.
                 'Kontrak' => ['spk'],
-                'Amandemen' => ['amandemen'],
                 'Masa Pemeliharaan' => ['masa-pemeliharaan'],
                 // SPPL.
                 'BA Negosiasi' => ['ba-negosiasi-sppl'],
@@ -480,6 +517,7 @@ class MasterDataSeeder extends Seeder
             ['stage' => ProcurementStage::Perencanaan, 'from' => 'Nota Dinas Perintah Pekerjaan', 'to' => 'Nota Dinas ke Pengadaan'],
             ['stage' => ProcurementStage::Pelaksanaan, 'from' => 'Surat Pesanan', 'to' => 'Lampiran Surat Pesanan'],
             ['stage' => ProcurementStage::Pelaksanaan, 'from' => 'Purchase Order (PO)', 'to' => 'Surat Pesanan'],
+            ['stage' => ProcurementStage::Pelaksanaan, 'from' => 'Proses SMART SCM', 'to' => 'Proses SMART SCM & Berita Acara'],
         ];
 
         foreach ($renames as $rename) {
@@ -531,13 +569,11 @@ class MasterDataSeeder extends Seeder
             ], [$formats['SPPL']]);
             $skip(ProcurementStage::Pelaksanaan, [
                 'Penyusunan HPS',
-                'Proses SMART SCM',
-                'Berita Acara',
+                'Proses SMART SCM & Berita Acara',
                 'Penyusunan Kontrak',
                 'Kontrak',
                 'Jaminan Bank',
                 'Rentang Waktu',
-                'Amandemen',
                 'Masa Pemeliharaan',
             ], [$formats['SPPL']]);
         }
@@ -589,6 +625,8 @@ class MasterDataSeeder extends Seeder
             ['purchase-order', 'Surat Pesanan', ProcurementStage::Pelaksanaan],
             ['lampiran-sp', 'Lampiran SP Barang dan Jasa', ProcurementStage::Pelaksanaan],
             ['surat-pesanan', 'Surat Pesanan', ProcurementStage::Pelaksanaan],
+            // Drawn from the Amandemen tab, with the amendment's own values.
+            ['amandemen-kontrak', 'Amandemen Kontrak', ProcurementStage::Pelaksanaan],
         ];
 
         foreach ($types as $index => [$code, $name, $stage]) {

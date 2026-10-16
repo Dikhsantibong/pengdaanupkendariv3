@@ -69,6 +69,7 @@ class ProgressStatusController extends MasterDataController
                 'category' => $record->category->value,
                 'sort_order' => $record->sort_order,
                 'is_default' => $record->is_default,
+                'system_rule' => $record->systemStatus()?->rule(),
                 'is_active' => $record->is_active,
                 'usage_count' => $record->procurements_count,
             ])

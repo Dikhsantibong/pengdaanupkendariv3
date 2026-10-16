@@ -7,6 +7,7 @@ use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PlanningController;
 use App\Http\Controllers\ProcurementController;
+use App\Http\Controllers\Procurements\AmendmentController;
 use App\Http\Controllers\Procurements\ApprovalController;
 use App\Http\Controllers\Procurements\ChecklistController;
 use App\Http\Controllers\Procurements\CompletionController;
@@ -39,6 +40,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('execution-approval', [ExecutionApprovalController::class, 'store'])->name('execution-approval.store');
         Route::put('execution-approval', [ExecutionApprovalController::class, 'update'])->name('execution-approval.update');
         Route::post('keuangan/lunas', [FinanceController::class, 'complete'])->name('finance.complete');
+        // Contract amendments, on the Amandemen tab.
+        Route::post('amandemen', [AmendmentController::class, 'store'])->name('amendments.store');
+        Route::put('amandemen/{amendment}', [AmendmentController::class, 'update'])->name('amendments.update');
+        Route::post('amandemen/{amendment}/berkas', [AmendmentController::class, 'upload'])->name('amendments.upload');
+        Route::get('amandemen/{amendment}/berkas/{file}', [AmendmentController::class, 'file'])->name('amendments.file');
+        Route::post('amandemen/{amendment}/ajukan', [AmendmentController::class, 'submit'])->name('amendments.submit');
+        Route::post('amandemen/{amendment}/keputusan', [AmendmentController::class, 'decide'])->name('amendments.decide');
         // Every file of the procurement at once, as a ZIP.
         Route::get('arsip-zip', DocumentArchiveDownloadController::class)->name('documents.archive');
         Route::post('documents', [DocumentController::class, 'store'])->name('documents.store');

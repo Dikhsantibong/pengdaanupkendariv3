@@ -44,15 +44,15 @@ class SpplExecutionTest extends TestCase
     {
         $expected = [
             'Penyusunan HPS',
-            'Proses SMART SCM',
-            'Berita Acara',
+            // One step for the SMART SCM document and every Berita Acara.
+            'Proses SMART SCM & Berita Acara',
             'Surat Pesanan',
             // The SPK states the partner's bank account and the warranty too.
             'Rekening Pelaksana',
             'Jaminan Bank',
             'Kontrak',
             'Rentang Waktu',
-            'Amandemen',
+            // Amandemen has its own tab now (procurements.amendments.*).
             'Masa Pemeliharaan',
             'Masa Garansi',
         ];

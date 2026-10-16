@@ -9,6 +9,7 @@ use App\Http\Requests\Procurements\UploadDocumentRequest;
 use App\Http\Requests\Procurements\UploadSignedDocumentRequest;
 use App\Models\DocumentType;
 use App\Models\Procurement;
+use App\Models\ProcurementAmendment;
 use App\Models\ProcurementDocument;
 use App\Models\ProcurementDocumentUpload;
 use App\Services\DocumentGenerator;
@@ -41,6 +42,13 @@ class DocumentController extends Controller
         $this->authorize('generateDocument', $procurement);
 
         $documentType = DocumentType::query()->findOrFail($request->integer('document_type_id'));
+
+        // An amendment is drawn from its own tab, with the amendment's data.
+        if ($documentType->code === 'amandemen-kontrak') {
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Dokumen Amandemen dibuat dari tab Amandemen.']);
+
+            return back();
+        }
 
         // A proposed job is only drafted once procurement has filled in what
         // picks its template.
@@ -133,6 +141,15 @@ class DocumentController extends Controller
         abort_if($document->documentType->upload_only, 404);
 
         $values = $this->generator->placeholderValues($procurement);
+
+        // An amendment document also shows the amendment's own values.
+        if ($document->procurement_amendment_id !== null) {
+            $amendment = ProcurementAmendment::query()->find($document->procurement_amendment_id);
+
+            if ($amendment !== null) {
+                $values = [...$values, ...$this->generator->amendmentValues($amendment)];
+            }
+        }
 
         // The editor polls this page, so every reload pulls the latest
         // procurement data into the document before it is shown.

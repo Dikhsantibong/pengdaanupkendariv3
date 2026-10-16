@@ -235,7 +235,7 @@ class ChecklistItemController extends MasterDataController
                 ['value' => 'none', 'label' => 'Tanpa isian'],
                 ...ChecklistInput::options(),
             ],
-            'contractNumberFormats' => ContractNumberFormat::query()->active()->ordered()->get()
+            'contractNumberFormats' => ContractNumberFormat::query()->forContracts()->active()->ordered()->get()
                 ->map(fn (ContractNumberFormat $format): array => [
                     'value' => $format->id,
                     'label' => $format->code,

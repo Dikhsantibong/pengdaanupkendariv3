@@ -2,35 +2,61 @@
 
 namespace App\Http\Controllers\Procurements;
 
+use App\Enums\ActivityType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Procurements\UpdateStatusRequest;
 use App\Models\Procurement;
-use App\Models\ProgressStatus;
 use App\Services\ProcurementService;
+use App\Services\ProgressStatusResolver;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 
+/**
+ * The progress status is set by the system; the only status chosen by hand
+ * is Batal, and it can be lifted again.
+ */
 class StatusController extends Controller
 {
-    public function __construct(protected ProcurementService $procurements) {}
+    public function __construct(
+        protected ProcurementService $procurements,
+        protected ProgressStatusResolver $statuses,
+    ) {}
 
     /**
-     * Move a procurement onto a different progress status.
+     * Cancel the procurement, or lift its cancellation.
      */
     public function update(UpdateStatusRequest $request, Procurement $procurement): RedirectResponse
     {
         $this->authorize('updateStatus', $procurement);
 
-        $status = ProgressStatus::query()->findOrFail($request->integer('progress_status_id'));
+        $cancel = $request->boolean('cancelled');
+        $note = $request->string('note')->trim()->value() ?: null;
 
-        $this->procurements->changeStatus(
+        abort_unless($this->statuses->isAvailable(), 409, 'Status otomatis belum disiapkan di Data Master Status Progres.');
+
+        if ($cancel === $this->statuses->isCancelled($procurement)) {
+            return back();
+        }
+
+        $previous = $procurement->progressStatus->name;
+
+        $cancel ? $this->statuses->cancel($procurement) : $this->statuses->restore($procurement);
+
+        $current = $procurement->load('progressStatus')->progressStatus->name;
+
+        $this->procurements->recordActivity(
             $procurement,
             $request->user(),
-            $status,
-            $request->string('note')->trim()->value() ?: null,
+            ActivityType::StatusDiubah,
+            ($cancel ? 'Pengadaan dibatalkan.' : "Pembatalan dicabut, status kembali menjadi {$current}.")
+                .($note !== null ? " Catatan: {$note}" : ''),
+            ['from' => $previous, 'to' => $current, 'note' => $note],
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => "Status diubah menjadi {$status->name}."]);
+        Inertia::flash('toast', [
+            'type' => $cancel ? 'warning' : 'success',
+            'message' => $cancel ? 'Pengadaan dibatalkan.' : "Pembatalan dicabut. Status: {$current}.",
+        ]);
 
         return back();
     }

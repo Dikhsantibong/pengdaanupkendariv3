@@ -6,6 +6,7 @@ use App\Concerns\MasterDataScopes;
 use Carbon\CarbonImmutable;
 use Database\Factories\ContractNumberFormatFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -24,6 +25,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int $starting_sequence
  * @property bool $uses_work_category
  * @property int|null $procurement_method_id
+ * @property bool $for_amendment
  * @property string|null $description
  * @property int $sort_order
  * @property bool $is_active
@@ -41,6 +43,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'starting_sequence',
     'uses_work_category',
     'procurement_method_id',
+    'for_amendment',
     'description',
     'sort_order',
     'is_active',
@@ -69,6 +72,26 @@ class ContractNumberFormat extends Model
     public function procurementMethod(): BelongsTo
     {
         return $this->belongsTo(ProcurementMethod::class)->withTrashed();
+    }
+
+    /**
+     * Limit the query to the formats a contract is numbered with, leaving
+     * out the one that numbers amendments.
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    public function scopeForContracts(Builder $query): Builder
+    {
+        return $query->where('for_amendment', false);
+    }
+
+    /**
+     * The format amendments are numbered with (KDD054.Amd/612/UPKD/2026).
+     */
+    public static function forAmendments(): ?self
+    {
+        return self::query()->active()->where('for_amendment', true)->ordered()->first();
     }
 
     /**
@@ -118,6 +141,7 @@ class ContractNumberFormat extends Model
             'sequence_length' => 'integer',
             'starting_sequence' => 'integer',
             'uses_work_category' => 'boolean',
+            'for_amendment' => 'boolean',
         ];
     }
 }

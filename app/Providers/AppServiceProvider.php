@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Enums\Permission;
 use App\Models\User;
+use App\Services\ProgressStatusResolver;
 use App\Support\Impersonation;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Logout;
@@ -21,7 +22,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // One per application, so the statuses are read once per request.
+        $this->app->singleton(ProgressStatusResolver::class);
     }
 
     /**

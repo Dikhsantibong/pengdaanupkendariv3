@@ -77,6 +77,7 @@ class ContractNumberFormatController extends MasterDataController
                 'sequence_length' => $record->sequence_length,
                 'starting_sequence' => $record->starting_sequence,
                 'uses_work_category' => $record->uses_work_category,
+                'for_amendment' => $record->for_amendment,
                 // "none" is the select's way of saying no method.
                 'procurement_method_id' => $record->procurement_method_id === null ? 'none' : (string) $record->procurement_method_id,
                 'procurement_method' => $record->procurementMethod?->name,
@@ -140,6 +141,8 @@ class ContractNumberFormatController extends MasterDataController
             'starting_sequence' => ['required', 'integer', 'min:1', 'max:99999999'],
             // Whether procurements on this format choose barang or jasa.
             'uses_work_category' => ['sometimes', 'boolean'],
+            // Numbers amendments (Amd) rather than contracts.
+            'for_amendment' => ['sometimes', 'boolean'],
             // The method a procurement on this format is let by; it replaces
             // the method once asked on the procurement form.
             'procurement_method_id' => ['sometimes', 'nullable', Rule::exists('procurement_methods', 'id')->whereNull('deleted_at')],
@@ -169,7 +172,10 @@ class ContractNumberFormatController extends MasterDataController
      */
     protected function normalise(Request $request): void
     {
-        foreach (['code', 'prefix'] as $field) {
+        // An amendment code keeps its case (KDD054.Amd/612/UPKD/2026).
+        $fields = $request->boolean('for_amendment') ? ['prefix'] : ['code', 'prefix'];
+
+        foreach ($fields as $field) {
             if ($request->filled($field)) {
                 $request->merge([$field => Str::upper(trim((string) $request->input($field)))]);
             }
