@@ -12,7 +12,6 @@ use App\Models\ContractType;
 use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementChecklist;
-use App\Models\ProcurementMethod;
 use App\Models\ProgressStatus;
 use App\Models\TargetUnit;
 use App\Models\User;
@@ -115,7 +114,8 @@ class EndToEndFlowTest extends TestCase
 
         $this->assertSame($planner->id, $procurement->refresh()->planner_id);
 
-        $this->assertSame(['Metode Pengadaan', 'Jenis No Kontrak'], $procurement->refresh()->missingPlanningData());
+        // Only the contract format is awaited: the method follows it.
+        $this->assertSame(['Jenis No Kontrak'], $procurement->refresh()->missingPlanningData());
 
         $hpe = DocumentType::query()->where('code', 'hpe')->firstOrFail();
 
@@ -135,7 +135,6 @@ class EndToEndFlowTest extends TestCase
                 'name' => $procurement->name,
                 'work_director_id' => $division->id,
                 'target_unit_ids' => [$procurement->target_unit_id],
-                'procurement_method_id' => ProcurementMethod::query()->firstOrFail()->id,
                 'budget_source_id' => $procurement->budget_source_id,
                 'prk_number' => $procurement->prk_number,
                 'pr_po_number' => $procurement->pr_po_number,
@@ -148,6 +147,8 @@ class EndToEndFlowTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->assertSame([], $procurement->refresh()->missingPlanningData());
+        // The form no longer asks the method: the SPK format brings it.
+        $this->assertSame('spk', $procurement->procurementMethod?->code);
 
         // 5. The planner sets the target date, completes every step and submits.
         $this->actingAs($planner)

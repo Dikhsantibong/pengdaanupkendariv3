@@ -22,7 +22,7 @@ class ProcurementClassificationTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_the_create_form_offers_the_active_methods_and_budget_sources(): void
+    public function test_the_create_form_offers_the_active_budget_sources_but_no_method(): void
     {
         $teamLeader = User::factory()->teamLeader()->create();
 
@@ -37,7 +37,8 @@ class ProcurementClassificationTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('procurements/create')
-                ->has('options.procurementMethods', 2)
+                // The method follows the contract format; it is not asked.
+                ->missing('options.procurementMethods')
                 ->has('options.budgetSources', 2),
             );
     }

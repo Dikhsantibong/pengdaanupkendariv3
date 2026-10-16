@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\MasterData;
 
 use App\Models\ContractNumberFormat;
+use App\Models\ProcurementMethod;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -63,6 +64,7 @@ class ContractNumberFormatController extends MasterDataController
     protected function records(): array
     {
         return ContractNumberFormat::query()
+            ->with('procurementMethod')
             ->withCount('procurements')
             ->ordered()
             ->get()
@@ -75,6 +77,9 @@ class ContractNumberFormatController extends MasterDataController
                 'sequence_length' => $record->sequence_length,
                 'starting_sequence' => $record->starting_sequence,
                 'uses_work_category' => $record->uses_work_category,
+                // "none" is the select's way of saying no method.
+                'procurement_method_id' => $record->procurement_method_id === null ? 'none' : (string) $record->procurement_method_id,
+                'procurement_method' => $record->procurementMethod?->name,
                 'description' => $record->description,
                 'sample' => $record->sample(),
                 'sort_order' => $record->sort_order,
@@ -82,6 +87,25 @@ class ContractNumberFormatController extends MasterDataController
                 'usage_count' => $record->procurements_count,
             ])
             ->all();
+    }
+
+    /**
+     * The options the form offers.
+     *
+     * @return array<string, mixed>
+     */
+    protected function extraProps(): array
+    {
+        return [
+            'procurementMethods' => [
+                ['value' => 'none', 'label' => 'Tidak ditentukan'],
+                ...ProcurementMethod::query()->active()->ordered()->get()
+                    ->map(fn (ProcurementMethod $method): array => [
+                        'value' => (string) $method->id,
+                        'label' => $method->name,
+                    ])->all(),
+            ],
+        ];
     }
 
     /**
@@ -116,6 +140,9 @@ class ContractNumberFormatController extends MasterDataController
             'starting_sequence' => ['required', 'integer', 'min:1', 'max:99999999'],
             // Whether procurements on this format choose barang or jasa.
             'uses_work_category' => ['sometimes', 'boolean'],
+            // The method a procurement on this format is let by; it replaces
+            // the method once asked on the procurement form.
+            'procurement_method_id' => ['sometimes', 'nullable', Rule::exists('procurement_methods', 'id')->whereNull('deleted_at')],
             'description' => ['nullable', 'string', 'max:255'],
             'sort_order' => ['required', 'integer', 'min:0', 'max:999'],
             'is_active' => ['required', 'boolean'],
@@ -146,6 +173,10 @@ class ContractNumberFormatController extends MasterDataController
             if ($request->filled($field)) {
                 $request->merge([$field => Str::upper(trim((string) $request->input($field)))]);
             }
+        }
+
+        if ($request->input('procurement_method_id') === 'none') {
+            $request->merge(['procurement_method_id' => null]);
         }
 
         if ($request->filled('unit_segment')) {

@@ -105,11 +105,12 @@ class ProcurementManagementTest extends TestCase
                 'name',
                 'work_director_id',
                 'target_unit_ids',
-                'procurement_method_id',
                 'budget_source_id',
                 'hpe_value',
                 'progress_status_id',
-            ]);
+            ])
+            // The method follows the contract format, so it is not required.
+            ->assertSessionDoesntHaveErrors('procurement_method_id');
 
         $this->assertDatabaseCount('procurements', 0);
     }

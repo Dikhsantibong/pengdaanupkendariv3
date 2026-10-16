@@ -31,7 +31,6 @@ export type ProcurementFormOptions = {
     contractTypes: Option[];
     workDirectors: Option[];
     targetUnits: Option[];
-    procurementMethods: Option[];
     budgetSources: Option[];
     progressStatuses: StatusOption[];
     defaultProgressStatusId: number | null;
@@ -48,7 +47,6 @@ export type ProcurementFormValues = {
     partner_address: string;
     work_director_id: number | null;
     target_unit_ids: number[];
-    procurement_method_id: number | null;
     budget_source_id: number | null;
     prk_number: string;
     proposal_memo_number: string;
@@ -148,7 +146,6 @@ export function ProcurementForm({
             initialValues?.work_director_id ??
             (isProposal ? (proposal?.workDirectorId ?? null) : null),
         target_unit_ids: initialValues?.target_unit_ids ?? [],
-        procurement_method_id: initialValues?.procurement_method_id ?? null,
         budget_source_id: initialValues?.budget_source_id ?? null,
         prk_number: initialValues?.prk_number ?? '',
         proposal_memo_number: initialValues?.proposal_memo_number ?? '',
@@ -510,49 +507,6 @@ export function ProcurementForm({
                         </p>
                         <InputError message={unitError} />
                     </div>
-
-                    {!isProposal && (
-                        <div className="grid gap-2">
-                            <Label htmlFor="procurement_method_id">
-                                Metode Pengadaan
-                            </Label>
-                            <Select
-                                value={
-                                    data.procurement_method_id === null
-                                        ? undefined
-                                        : String(data.procurement_method_id)
-                                }
-                                onValueChange={(value) =>
-                                    setData(
-                                        'procurement_method_id',
-                                        Number(value),
-                                    )
-                                }
-                            >
-                                <SelectTrigger
-                                    id="procurement_method_id"
-                                    className="w-full"
-                                >
-                                    <SelectValue placeholder="Pilih metode pengadaan" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {options.procurementMethods.map(
-                                        (option) => (
-                                            <SelectItem
-                                                key={option.value}
-                                                value={String(option.value)}
-                                            >
-                                                {option.label}
-                                            </SelectItem>
-                                        ),
-                                    )}
-                                </SelectContent>
-                            </Select>
-                            <InputError
-                                message={errors.procurement_method_id}
-                            />
-                        </div>
-                    )}
 
                     <div className="grid gap-2">
                         <Label htmlFor="budget_source_id">

@@ -162,6 +162,25 @@ class Procurement extends Model
      */
     protected static function booted(): void
     {
+        // The method is not asked on the form: it follows the contract format
+        // (set on the Format No Kontrak master data), on every path that
+        // chooses or changes the format. A format without a method leaves the
+        // procurement's own method as it was.
+        static::saving(function (Procurement $procurement): void {
+            if ($procurement->contract_number_format_id === null
+                || ! ($procurement->isDirty('contract_number_format_id') || $procurement->procurement_method_id === null)) {
+                return;
+            }
+
+            $methodId = ContractNumberFormat::withTrashed()
+                ->whereKey($procurement->contract_number_format_id)
+                ->value('procurement_method_id');
+
+            if ($methodId !== null) {
+                $procurement->procurement_method_id = (int) $methodId;
+            }
+        });
+
         static::created(function (Procurement $procurement): void {
             $procurement->targetUnits()->syncWithoutDetaching([
                 $procurement->target_unit_id => ['sort_order' => 1],
@@ -377,10 +396,11 @@ class Procurement extends Model
     /**
      * The procurement data still missing before planning documents are drawn.
      *
-     * A job that came in as a work proposal has no method or contract
+     * A job that came in as a work proposal has no contract format or
      * category yet; its documents would otherwise pick the wrong template,
      * so generating and submitting wait until procurement has filled them.
-     * A procurement registered directly already had them asked on its form.
+     * The method follows the format, so it is not asked separately. A
+     * procurement registered directly already had them asked on its form.
      *
      * @return array<int, string>
      */
@@ -391,10 +411,6 @@ class Procurement extends Model
         }
 
         $missing = [];
-
-        if ($this->procurement_method_id === null) {
-            $missing[] = 'Metode Pengadaan';
-        }
 
         if ($this->contract_number_format_id === null) {
             $missing[] = 'Jenis No Kontrak';

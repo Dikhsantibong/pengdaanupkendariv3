@@ -183,10 +183,6 @@ export default function ShowProcurement({
         { label: 'Direksi Pekerjaan', value: procurement.work_director },
         { label: 'Unit Tujuan', value: procurement.target_unit },
         {
-            label: 'Metode Pengadaan',
-            value: procurement.procurement_method ?? '—',
-        },
-        {
             label: 'Sumber Anggaran',
             value: procurement.budget_source ?? '—',
         },

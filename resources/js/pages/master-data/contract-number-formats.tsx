@@ -2,6 +2,7 @@ import { MasterDataPage } from '@/components/master-data-page';
 import type { MasterRecord } from '@/components/master-data-page';
 import { dashboard } from '@/routes';
 import masterData from '@/routes/master-data';
+import type { EnumOption } from '@/types';
 
 type ContractNumberFormat = MasterRecord & {
     code: string;
@@ -11,6 +12,8 @@ type ContractNumberFormat = MasterRecord & {
     sequence_length: number;
     starting_sequence: number;
     uses_work_category: boolean;
+    procurement_method_id: string;
+    procurement_method: string | null;
     description: string | null;
     sample: string;
     sort_order: number;
@@ -18,8 +21,10 @@ type ContractNumberFormat = MasterRecord & {
 
 export default function ContractNumberFormats({
     records,
+    procurementMethods,
 }: {
     records: ContractNumberFormat[];
+    procurementMethods: EnumOption[];
 }) {
     return (
         <MasterDataPage<ContractNumberFormat>
@@ -35,6 +40,11 @@ export default function ContractNumberFormats({
                     key: 'sample',
                     label: 'Nomor Berikutnya',
                     className: 'tabular',
+                },
+                {
+                    key: 'procurement_method',
+                    label: 'Metode Pengadaan',
+                    render: (record) => record.procurement_method ?? '—',
                 },
                 { key: 'sort_order', label: 'Urutan', className: 'tabular' },
             ]}
@@ -88,6 +98,13 @@ export default function ContractNumberFormats({
                     hint: 'Saat format ini dipilih, form pengadaan meminta kategori Barang atau Jasa. Kategori menentukan template dokumen yang dipakai (mis. SPK Barang / SPK Jasa).',
                 },
                 {
+                    name: 'procurement_method_id',
+                    label: 'Metode Pengadaan',
+                    type: 'select',
+                    options: procurementMethods,
+                    hint: 'Metode pengadaan tidak lagi diisi di form pengadaan, tetapi mengikuti format ini. Metode menentukan template RKS dan tahapan checklist yang dilewati (mis. Surat Pesanan melewati HPE, UPB, dan RKS).',
+                },
+                {
                     name: 'description',
                     label: 'Catatan',
                     type: 'text',
@@ -109,6 +126,7 @@ export default function ContractNumberFormats({
                 sequence_length: 3,
                 starting_sequence: 1,
                 uses_work_category: false,
+                procurement_method_id: 'none',
                 description: '',
                 sort_order: 0,
                 is_active: true,

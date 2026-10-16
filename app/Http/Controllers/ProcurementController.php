@@ -358,7 +358,6 @@ class ProcurementController extends Controller
                 'partner_address' => $procurement->partner_address ?? '',
                 'work_director_id' => $procurement->work_director_id,
                 'target_unit_ids' => $procurement->servedUnits()->pluck('id')->all(),
-                'procurement_method_id' => $procurement->procurement_method_id,
                 'budget_source_id' => $procurement->budget_source_id,
                 'prk_number' => $procurement->prk_number ?? '',
                 'proposal_memo_number' => $procurement->proposal_memo_number ?? '',

@@ -207,8 +207,21 @@ Form ini (menu **Buat Perencanaan Pengadaan**) diisi oleh **Team Leader Pengadaa
 | 2 | Nama Pengadaan | Text | Nama/judul pekerjaan pengadaan |
 | 3 | Direksi Pekerjaan | Dropdown (single select) | Diambil dari Master Data Direksi Pekerjaan |
 | 4 | Unit Tujuan | Checklist (multi select) | **Dapat lebih dari 1 unit**, minimal 1; diambil dari Master Data Unit Tujuan |
-| 5 | Metode Pengadaan | Dropdown | Diambil dari master Metode Pengadaan |
-| 6 | Sumber Anggaran | Dropdown | Diambil dari master Sumber Anggaran |
+| 5 | Sumber Anggaran | Dropdown | Diambil dari master Sumber Anggaran |
+
+**Metode Pengadaan tidak lagi diisi di form.** Metode mengikuti **Format No Kontrak**, dan setiap format punya isian *Metode Pengadaan* di Data Master.
+
+- **Pemetaan bawaan:** SPK → SPK, PJ → Tender, SPPL → Surat Pesanan.
+- **Kapan metode diterapkan:** setiap kali format sebuah pengadaan dipilih atau diganti, metodenya ikut berganti (`Procurement::booted`, event `saving`). Mengubah data lain tidak mengubah metode. Format tanpa metode tidak mengubah metode pengadaan.
+- **Fungsi metode tetap sama:** menentukan template RKS (Metode SPK / Tender) dan tahapan checklist yang dilewati (Surat Pesanan melewati HPE, UPB, RKS, Inisiasi SMART SCM, PR/RO).
+- **Panel identitas:** baris Metode Pengadaan tidak ditampilkan lagi di panel identitas detail pengadaan. Data metode tetap tersimpan untuk filter, laporan, dan dashboard.
+- **Migrasi:** `add_procurement_method_to_contract_number_formats` hanya mengisi pengadaan yang metodenya kosong. Data lama sudah konsisten dengan pemetaan di atas.
+- **Validasi:** `procurement_method_id` tidak lagi wajib. Nilainya masih diterima dari pemanggil lama, tetapi ditimpa metode format bila format punya metode.
+- **Seeder:**
+  - `MasterDataSeeder` mengisi metode tiap format.
+  - `DemoProcurementSeeder` mengambil metode dari format, karena event model mati saat seeding.
+  - `MasterDataSeeder` tidak lagi membuat ulang item checklist bawaan yang sudah dihapus pengguna.
+- **Test:** `MethodFollowsFormatTest`.
 
 ### Bagian Calon Mitra
 
@@ -374,7 +387,7 @@ Akun bidang dibuat oleh `DivisionUserSeeder` (`php artisan db:seed --class=Divis
 
 Nomor usulan: usulan mendapat nomor sementara berawalan **USL/** (mis. `USL/2026/10/0001`) sampai pengadaan memberi nomor kontrak.
 
-Setelah usulan disetujui, **TL Pengadaan** melengkapi data yang tidak diketahui bidang (Metode Pengadaan, Jenis No Kontrak & Kategori, nomor kontrak, nilai, calon mitra) lewat **Ubah Data**. Selama Metode, Jenis No Kontrak, dan Kategori (untuk SPK/PJ) belum terisi, dokumen perencanaan belum bisa digenerate dan perencanaan belum bisa diajukan — tab Perencanaan menampilkan peringatan data apa yang kurang. *(Inputan lanjutan untuk perencana menunggu daftar dari pengguna.)*
+Setelah usulan disetujui, **TL Pengadaan** melengkapi data yang tidak diketahui bidang (Jenis No Kontrak & Kategori, nomor kontrak, nilai, calon mitra; metode pengadaan mengikuti format) lewat **Ubah Data**. Selama Jenis No Kontrak dan Kategori (untuk SPK/PJ) belum terisi, dokumen perencanaan belum bisa digenerate dan perencanaan belum bisa diajukan — tab Perencanaan menampilkan peringatan data apa yang kurang. *(Inputan lanjutan untuk perencana menunggu daftar dari pengguna.)*
 
 Di setiap detail pengadaan ada tab bernama **pengusul / pembuat pengadaan** (di kiri tab Perencanaan) berisi kedua dokumen tersebut: pratinjau/edit draf TOR, berkas TOR bertanda tangan, dan scan Nota Dinas Usulan.
 
@@ -628,6 +641,11 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
   - Pengecualian yang disengaja ada dua: "selama masa garansi" menggantikan placeholder bulan, dan "TTE" menggantikan "tanda tangan elektronik" agar muat 255 karakter.
   - Bila pasal penyerahan atau pembayaran di template diubah, test ini gagal sampai syaratnya disesuaikan.
 - **Data Master → Item Checklist** sekarang punya isian **Tab Keuangan** dan **Kategori Pekerjaan**, sehingga semua item tetap bisa diubah atau ditambah.
+- **Filter data Item Checklist** untuk melihat susunan proses:
+  - **Jenis filter:** Cari (nama, keterangan, dokumen), Tahap (termasuk Keuangan — Penyerahan / Pembayaran), Berlaku untuk Format Kontrak, Berlaku untuk Metode, Kategori Pekerjaan, Sifat, Isian Tahapan, dan Status. Ada juga tombol Reset dan jumlah "Menampilkan X dari Y".
+  - **Cara kerja filter Format, Metode, dan Kategori:** menampilkan item yang dilalui pengadaan dengan kriteria itu. Item yang dilewati (dikecualikan) disembunyikan, sedangkan item yang berlaku untuk semua tetap ditampilkan.
+  - **Penyimpanan filter:** tersimpan di alamat halaman (query string), jadi tetap terpasang setelah item disimpan atau halaman dimuat ulang, dan bisa dibagikan lewat tautan.
+  - **Teknis:** penyaringan dilakukan di sisi tampilan, tanpa perubahan backend. `MasterDataPage` mendapat prop opsional `toolbar` dan `filtered`; halaman data master lain tidak berubah.
 - **Seeder dan migration:**
   - Seeder: `FinanceRequirementSeeder`, ikut `DatabaseSeeder`.
   - Migration `2026_10_15_141204_split_keuangan_into_penyerahan_and_pembayaran`: menambah kedua kolom, memasang syarat, dan menonaktifkan 6 tahapan Keuangan generik lama (Penerimaan Tagihan, BAST, Faktur Pajak, Verifikasi, Pengajuan Pembayaran, Pembayaran ke Mitra).

@@ -13,7 +13,6 @@ use App\Models\ContractNumberFormat;
 use App\Models\ContractType;
 use App\Models\DocumentType;
 use App\Models\Procurement;
-use App\Models\ProcurementMethod;
 use App\Models\ProgressStatus;
 use App\Models\TargetUnit;
 use App\Models\User;
@@ -130,15 +129,17 @@ class DemoProcurementSeeder extends Seeder
     /**
      * The contracts the demo jobs are let under, in turn.
      *
-     * @var array<int, array{format: string, category: string|null, method: string}>
+     * The method is not set here: it follows the format (Format No Kontrak).
+     *
+     * @var array<int, array{format: string, category: string|null}>
      */
     private const CONTRACTS = [
-        ['format' => 'SPK', 'category' => 'barang', 'method' => 'spk'],
-        ['format' => 'SPK', 'category' => 'jasa', 'method' => 'spk'],
-        ['format' => 'PJ', 'category' => 'barang', 'method' => 'tender'],
-        ['format' => 'SPPL', 'category' => null, 'method' => 'surat-pesanan'],
-        ['format' => 'PJ', 'category' => 'jasa', 'method' => 'tender'],
-        ['format' => 'SPK', 'category' => 'jasa', 'method' => 'spk'],
+        ['format' => 'SPK', 'category' => 'barang'],
+        ['format' => 'SPK', 'category' => 'jasa'],
+        ['format' => 'PJ', 'category' => 'barang'],
+        ['format' => 'SPPL', 'category' => null],
+        ['format' => 'PJ', 'category' => 'jasa'],
+        ['format' => 'SPK', 'category' => 'jasa'],
     ];
 
     /**
@@ -319,9 +320,11 @@ class DemoProcurementSeeder extends Seeder
         $procurement->forceFill([
             'planner_id' => $people['planner']->id,
             'contract_number_format_id' => $format->id,
+            // Model events are off while seeding, so the method the format
+            // names is copied here rather than by Procurement::booted().
+            'procurement_method_id' => $format->procurement_method_id,
             'work_category' => $contract['category'],
             'contract_type_id' => $this->contractType($contract['category']),
-            'procurement_method_id' => ProcurementMethod::query()->where('code', $contract['method'])->value('id'),
             'progress_status_id' => $this->status('penyusunan-rks'),
         ])->save();
         $procurement->number = $this->procurements->nextNumber($format);

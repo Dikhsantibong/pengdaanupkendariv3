@@ -200,13 +200,17 @@ class MasterDataSeeder extends Seeder
     protected function seedContractNumberFormats(): void
     {
         $formats = [
-            // [code, name, starting sequence, asks for barang/jasa]
-            ['SPK', 'Surat Perintah Kerja', 75, true],
-            ['PJ', 'Perjanjian', 20, true],
-            ['SPPL', 'SPPL', 1, false],
+            // [code, name, starting sequence, asks for barang/jasa, method]
+            ['SPK', 'Surat Perintah Kerja', 75, true, 'spk'],
+            ['PJ', 'Perjanjian', 20, true, 'tender'],
+            ['SPPL', 'SPPL', 1, false, 'surat-pesanan'],
         ];
 
-        foreach ($formats as $index => [$code, $name, $startsAt, $usesWorkCategory]) {
+        // A procurement takes its method from its format, so the method is
+        // no longer asked on the procurement form.
+        $methods = ProcurementMethod::query()->pluck('id', 'code');
+
+        foreach ($formats as $index => [$code, $name, $startsAt, $usesWorkCategory, $method]) {
             ContractNumberFormat::query()->updateOrCreate(
                 ['code' => $code],
                 [
@@ -216,6 +220,7 @@ class MasterDataSeeder extends Seeder
                     'sequence_length' => 3,
                     'starting_sequence' => $startsAt,
                     'uses_work_category' => $usesWorkCategory,
+                    'procurement_method_id' => $methods[$method] ?? null,
                     'description' => null,
                     'sort_order' => $index + 1,
                     'is_active' => true,
@@ -305,6 +310,10 @@ class MasterDataSeeder extends Seeder
         ];
 
         foreach ($planning as $index => [$name, $isOptional]) {
+            if ($this->removedByUser(ProcurementStage::Perencanaan, $name)) {
+                continue;
+            }
+
             ChecklistItem::query()->updateOrCreate(
                 ['stage' => ProcurementStage::Perencanaan->value, 'name' => $name],
                 [
@@ -319,6 +328,10 @@ class MasterDataSeeder extends Seeder
         }
 
         foreach ($execution as $index => [$name, $isOptional]) {
+            if ($this->removedByUser(ProcurementStage::Pelaksanaan, $name)) {
+                continue;
+            }
+
             ChecklistItem::query()->updateOrCreate(
                 ['stage' => ProcurementStage::Pelaksanaan->value, 'name' => $name],
                 [
@@ -334,6 +347,23 @@ class MasterDataSeeder extends Seeder
 
         $this->seedChecklistExclusions();
         $this->linkChecklistDocuments();
+    }
+
+    /**
+     * Whether a seeded step was deleted on the Item Checklist screen.
+     *
+     * Seeding again must not bring it back as a fresh item: that would add
+     * it to every running procurement the user had taken it out of.
+     */
+    protected function removedByUser(ProcurementStage $stage, string $name): bool
+    {
+        $items = ChecklistItem::withTrashed()
+            ->forStage($stage)
+            ->where('name', $name)
+            ->whereNull('procurement_id')
+            ->get();
+
+        return $items->isNotEmpty() && $items->every(fn (ChecklistItem $item): bool => $item->trashed());
     }
 
     /**

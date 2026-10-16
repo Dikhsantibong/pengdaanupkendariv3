@@ -8,6 +8,7 @@ use Database\Factories\ContractNumberFormatFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -22,6 +23,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int $sequence_length
  * @property int $starting_sequence
  * @property bool $uses_work_category
+ * @property int|null $procurement_method_id
  * @property string|null $description
  * @property int $sort_order
  * @property bool $is_active
@@ -38,6 +40,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'sequence_length',
     'starting_sequence',
     'uses_work_category',
+    'procurement_method_id',
     'description',
     'sort_order',
     'is_active',
@@ -55,6 +58,17 @@ class ContractNumberFormat extends Model
     public function procurements(): HasMany
     {
         return $this->hasMany(Procurement::class);
+    }
+
+    /**
+     * The method a contract of this format is let by. A procurement takes it
+     * from its format rather than having it chosen separately.
+     *
+     * @return BelongsTo<ProcurementMethod, $this>
+     */
+    public function procurementMethod(): BelongsTo
+    {
+        return $this->belongsTo(ProcurementMethod::class)->withTrashed();
     }
 
     /**

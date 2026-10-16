@@ -68,7 +68,9 @@ trait ProcurementValidationRules
                 'distinct',
                 Rule::exists('target_units', 'id')->whereNull('deleted_at'),
             ],
-            'procurement_method_id' => [$proposal ? 'nullable' : 'required', Rule::exists('procurement_methods', 'id')->whereNull('deleted_at')],
+            // No longer on the form: the method follows the contract format
+            // (see Procurement::booted). Still accepted from older callers.
+            'procurement_method_id' => ['nullable', Rule::exists('procurement_methods', 'id')->whereNull('deleted_at')],
             'budget_source_id' => ['required', Rule::exists('budget_sources', 'id')->whereNull('deleted_at')],
             // Usulan pekerjaan: reference numbers typed by hand. PRK, PR, COA,
             // SR and WO may each hold several numbers, kept as one list.

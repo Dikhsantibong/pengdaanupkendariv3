@@ -41,7 +41,6 @@ class MasterDataOptions
             'contractTypes' => self::contractTypes(),
             'workDirectors' => self::workDirectors(true),
             'targetUnits' => self::targetUnits(true),
-            'procurementMethods' => self::procurementMethods(true),
             'budgetSources' => self::budgetSources(true),
             'progressStatuses' => self::statuses(),
             'defaultProgressStatusId' => ProgressStatus::defaultStatus()?->id,

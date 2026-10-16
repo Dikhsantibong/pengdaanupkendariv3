@@ -95,7 +95,13 @@ export function MasterDataPage<T extends MasterRecord>({
     updateUrl,
     destroyUrl,
     nameKey,
+    toolbar,
+    filtered = false,
 }: {
+    /** Filters shown above the table, for pages that offer them. */
+    toolbar?: ReactNode;
+    /** The records are a filtered subset, so an empty list means no match. */
+    filtered?: boolean;
     title: string;
     eyebrow?: string;
     description: string;
@@ -168,7 +174,17 @@ export function MasterDataPage<T extends MasterRecord>({
                     }
                 />
 
-                {records.length === 0 ? (
+                {toolbar}
+
+                {records.length === 0 && filtered ? (
+                    <div className="rounded-md border border-border bg-card">
+                        <EmptyState
+                            icon={Database}
+                            title="Tidak ada data yang cocok"
+                            description="Ubah atau reset filter untuk melihat data lainnya."
+                        />
+                    </div>
+                ) : records.length === 0 ? (
                     <div className="rounded-md border border-border bg-card">
                         <EmptyState
                             icon={Database}
@@ -284,7 +300,7 @@ export function MasterDataPage<T extends MasterRecord>({
             </div>
 
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
                     <DialogHeader>
                         <DialogTitle>
                             {editing === null ? addLabel : `Ubah ${title}`}
@@ -301,7 +317,7 @@ export function MasterDataPage<T extends MasterRecord>({
                             event.preventDefault();
                             submit();
                         }}
-                        className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start"
+                        className="grid grid-cols-1 items-start gap-4 md:grid-cols-2"
                     >
                         {fields.map((field) => (
                             <div

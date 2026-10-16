@@ -60,6 +60,13 @@ class DemoProcurementSeederTest extends TestCase
         $this->assertSame(8, $demo()->whereNotNull('finance_submitted_at')->whereNull('payment_completed_at')->count());
         $this->assertSame(10, $demo()->whereNotNull('payment_completed_at')->whereNotNull('completed_at')->count());
 
+        // The method is not set by the seeder: every job takes it from its
+        // contract format.
+        $withFormat = $demo()->whereNotNull('contract_number_format_id')->with('contractNumberFormat')->get();
+        $this->assertNotEmpty($withFormat);
+        $this->assertTrue($withFormat->every(fn ($job) => $job->procurement_method_id !== null
+            && $job->procurement_method_id === $job->contractNumberFormat->procurement_method_id));
+
         // A contract job carries its contract number and its contract.
         $paid = $demo()->whereNotNull('payment_completed_at')->with(['documents.documentType', 'contractNumberFormat'])->get();
         $this->assertTrue($paid->every(fn ($job) => ! str_starts_with($job->number, 'USL/')));
