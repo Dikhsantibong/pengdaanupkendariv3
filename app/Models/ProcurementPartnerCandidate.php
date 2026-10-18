@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property int $procurement_id
  * @property string $name
+ * @property string|null $vendor_code
  * @property string|null $director_name
  * @property string|null $address
  * @property string|null $quotation_number
@@ -26,7 +27,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $quotation_file_size
  * @property int $sort_order
  */
-#[Fillable(['name', 'director_name', 'address', 'quotation_number', 'quotation_date', 'quotation_value', 'sort_order'])]
+#[Fillable(['name', 'vendor_code', 'director_name', 'address', 'quotation_number', 'quotation_date', 'quotation_value', 'sort_order'])]
 class ProcurementPartnerCandidate extends Model
 {
     /**
@@ -86,6 +87,7 @@ class ProcurementPartnerCandidate extends Model
     {
         return [
             'partner_name' => $this->name,
+            'partner_vendor_code' => $this->vendor_code,
             'partner_director_name' => $this->director_name,
             'partner_address' => $this->address,
             'quotation_number' => $this->quotation_number,

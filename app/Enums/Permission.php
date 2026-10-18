@@ -33,7 +33,6 @@ enum Permission: string
     case AssignExecutor = 'procurement.assign-pic';
     case ReviewPlanning = 'procurement.review-planning';
     case ReviewExecution = 'procurement.review-execution';
-    case ApproveAmendment = 'procurement.approve-amendment';
     case CompleteProcurement = 'procurement.complete';
     case ProcessPayment = 'procurement.process-payment';
     case ViewAllProcurements = 'procurement.view-all';
@@ -64,7 +63,6 @@ enum Permission: string
             self::AssignExecutor => 'Tunjuk PIC pelaksana',
             self::ReviewPlanning => 'Setujui / tolak perencanaan',
             self::ReviewExecution => 'Setujui / tolak pelaksanaan',
-            self::ApproveAmendment => 'Setujui / tolak amandemen kontrak',
             self::CompleteProcurement => 'Nyatakan pengadaan selesai',
             self::ProcessPayment => 'Proses pembayaran (Keuangan)',
             self::ViewAllProcurements => 'Lihat seluruh pengadaan',
@@ -96,7 +94,6 @@ enum Permission: string
             self::AssignPlanner => 'Membuka menu Penunjukan PIC dan menunjuk atau mengganti PIC Perencana pada usulan yang sudah disetujui Asman.',
             self::AssignExecutor => 'Membuka menu Penunjukan PIC dan menunjuk atau mengganti PIC Pelaksana setelah perencanaan disetujui.',
             self::ReviewPlanning => 'Menyetujui, menolak, atau membuka kembali penolakan perencanaan. Tidak berlaku untuk perencanaan yang diajukan oleh dirinya sendiri.',
-            self::ApproveAmendment => 'Memberi persetujuan akhir atas amandemen kontrak yang sudah disetujui TL dan Asman bidang pengusul.',
             self::ReviewExecution => 'Menyetujui atau menolak pelaksanaan yang diajukan PIC Pelaksana. Pelaksanaan yang disetujui diteruskan ke Penyerahan dan Pembayaran (Keuangan).',
             self::CompleteProcurement => 'Menutup pengadaan yang sudah selesai.',
             self::ProcessPayment => 'Memverifikasi dokumen tagihan, mencatat pembayaran, lalu menutup pengadaan yang sudah diserahkan ke Keuangan, serta melihat pengadaan tersebut.',
@@ -130,7 +127,6 @@ enum Permission: string
             self::AssignExecutor,
             self::ReviewPlanning,
             self::ReviewExecution,
-            self::ApproveAmendment,
             self::CompleteProcurement,
             self::ProcessPayment,
             self::ViewAllProcurements => 'Pengadaan',
@@ -164,7 +160,6 @@ enum Permission: string
             self::DeleteProcurement,
             self::AssignExecutor,
             self::ReviewExecution,
-            self::ApproveAmendment,
             self::CompleteProcurement => [UserRole::TeamLeaderPengadaan],
             self::AssignPlanner,
             self::ReviewPlanning => [UserRole::TeamLeaderIcc],

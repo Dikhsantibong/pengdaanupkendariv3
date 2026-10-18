@@ -38,6 +38,7 @@ class MasterDataSeeder extends Seeder
         $this->seedContractTypes();
         $this->seedContractNumberFormats();
         $this->seedAmendmentFormat();
+        $this->seedDeliveryOrderFormat();
         $this->seedProgressStatuses();
         // Document types first: the checklist steps link to them.
         $this->seedDocumentTypes();
@@ -258,6 +259,33 @@ class MasterDataSeeder extends Seeder
     }
 
     /**
+     * The number format of Delivery Orders under a KHS contract
+     * (D26252.DO/612/UPKD/2026).
+     *
+     * Created once; what the administrator later sets on it stays.
+     */
+    protected function seedDeliveryOrderFormat(): void
+    {
+        if (ContractNumberFormat::withTrashed()->where('for_delivery_order', true)->exists()) {
+            return;
+        }
+
+        ContractNumberFormat::query()->create([
+            'code' => 'DO',
+            'name' => 'Delivery Order',
+            'prefix' => 'D',
+            'unit_segment' => '612/UPKD',
+            'sequence_length' => 5,
+            'starting_sequence' => 1,
+            'uses_work_category' => false,
+            'for_delivery_order' => true,
+            'description' => 'Nomor Delivery Order kontrak KHS, contoh D26252.DO/612/UPKD/2026.',
+            'sort_order' => 100,
+            'is_active' => true,
+        ]);
+    }
+
+    /**
      * Seed the status progres reference data.
      *
      * Every status is set by the system (ProgressStatusResolver), found by
@@ -449,7 +477,8 @@ class MasterDataSeeder extends Seeder
                 'Penyusunan Kontrak' => ['penyusunan-kontrak'],
                 'Jaminan Bank' => ['jaminan-bank'],
                 // Only the SPK with its articles is uploaded for the contract.
-                'Kontrak' => ['spk'],
+                // The SPK table, then its Syarat & Ketentuan (Pasal).
+                'Kontrak' => ['spk', 'spk-pasal'],
                 'Masa Pemeliharaan' => ['masa-pemeliharaan'],
                 // SPPL.
                 'BA Negosiasi' => ['ba-negosiasi-sppl'],
@@ -620,6 +649,8 @@ class MasterDataSeeder extends Seeder
             ['masa-pemeliharaan', 'Masa Pemeliharaan', ProcurementStage::Pelaksanaan],
             ['ba-evaluasi-teknis', 'Berita Acara Evaluasi Teknis', ProcurementStage::Pelaksanaan],
             ['spk', 'SPK (Surat Perintah Kerja)', ProcurementStage::Pelaksanaan],
+            // The SPK's articles, drawn beside the SPK table (format SPK only).
+            ['spk-pasal', 'SPK - Syarat & Ketentuan (Pasal)', ProcurementStage::Pelaksanaan],
             ['lampiran-spk', 'Lampiran Surat Perintah Kerja', ProcurementStage::Pelaksanaan],
             ['ba-negosiasi', 'Berita Acara Negosiasi dan Lampiran', ProcurementStage::Pelaksanaan],
             ['ba-aanwijzing', 'Berita Acara Aanwijzing', ProcurementStage::Pelaksanaan],
@@ -634,6 +665,8 @@ class MasterDataSeeder extends Seeder
             ['surat-pesanan', 'Surat Pesanan', ProcurementStage::Pelaksanaan],
             // Drawn from the Amandemen tab, with the amendment's own values.
             ['amandemen-kontrak', 'Amandemen Kontrak', ProcurementStage::Pelaksanaan],
+            // Drawn from the DO tab of a KHS contract, with the DO's own values.
+            ['delivery-order', 'Delivery Order (DO)', ProcurementStage::Pelaksanaan],
         ];
 
         foreach ($types as $index => [$code, $name, $stage]) {
@@ -642,6 +675,12 @@ class MasterDataSeeder extends Seeder
                 ['name' => $name, 'stage' => $stage, 'sort_order' => $index + 1, 'is_active' => true],
             );
         }
+
+        // A PJ carries its articles in the Surat Perjanjian, so the SPK's
+        // Pasal document is asked for under the SPK format only.
+        DocumentType::query()->where('code', 'spk-pasal')->update([
+            'contract_number_format_id' => ContractNumberFormat::query()->where('code', 'SPK')->value('id'),
+        ]);
 
         // Steps that turned out to be plain ticks: the type is switched off so
         // it stops being offered, but stays on record in case it is wanted

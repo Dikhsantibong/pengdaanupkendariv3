@@ -78,6 +78,7 @@ class ContractNumberFormatController extends MasterDataController
                 'starting_sequence' => $record->starting_sequence,
                 'uses_work_category' => $record->uses_work_category,
                 'for_amendment' => $record->for_amendment,
+                'for_delivery_order' => $record->for_delivery_order,
                 // "none" is the select's way of saying no method.
                 'procurement_method_id' => $record->procurement_method_id === null ? 'none' : (string) $record->procurement_method_id,
                 'procurement_method' => $record->procurementMethod?->name,
@@ -143,6 +144,8 @@ class ContractNumberFormatController extends MasterDataController
             'uses_work_category' => ['sometimes', 'boolean'],
             // Numbers amendments (Amd) rather than contracts.
             'for_amendment' => ['sometimes', 'boolean'],
+            // Numbers Delivery Orders of KHS contracts (DO) rather than contracts.
+            'for_delivery_order' => ['sometimes', 'boolean'],
             // The method a procurement on this format is let by; it replaces
             // the method once asked on the procurement form.
             'procurement_method_id' => ['sometimes', 'nullable', Rule::exists('procurement_methods', 'id')->whereNull('deleted_at')],

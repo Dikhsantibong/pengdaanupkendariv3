@@ -41,7 +41,7 @@ trait ProcurementValidationRules
             'contract_number_format_id' => [
                 'nullable',
                 // The amendment numbering is not a contract format.
-                Rule::exists('contract_number_formats', 'id')->whereNull('deleted_at')->where('for_amendment', 0),
+                Rule::exists('contract_number_formats', 'id')->whereNull('deleted_at')->where('for_amendment', 0)->where('for_delivery_order', 0),
             ],
             // The category asked for by the formats set up to need it (SPK
             // and PJ), picked from the Jenis Kontrak master data.

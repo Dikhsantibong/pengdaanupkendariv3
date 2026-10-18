@@ -20,6 +20,7 @@ import type { PartnerCandidate } from '@/types';
 
 type CandidateValues = {
     name: string;
+    vendor_code: string;
     director_name: string;
     address: string;
     quotation_number: string;
@@ -119,6 +120,8 @@ export function PartnerCandidatesCard({
                                 </p>
                                 <p className="text-xs text-muted-foreground">
                                     {[
+                                        candidate.vendor_code &&
+                                            `Kode rekanan ${candidate.vendor_code}`,
                                         candidate.director_name &&
                                             `Direktur: ${candidate.director_name}`,
                                         candidate.quotation_number &&
@@ -227,6 +230,7 @@ function CandidateForm({
 }) {
     const form = useForm<CandidateValues>({
         name: candidate?.name ?? '',
+        vendor_code: candidate?.vendor_code ?? '',
         director_name: candidate?.director_name ?? '',
         address: candidate?.address ?? '',
         quotation_number: candidate?.quotation_number ?? '',
@@ -298,6 +302,7 @@ function CandidateForm({
         >
             <div className="grid gap-3 md:grid-cols-2">
                 {text('name', 'Nama Calon Mitra')}
+                {text('vendor_code', 'Kode Rekanan')}
                 {text('director_name', 'Nama Direktur')}
                 {text('quotation_number', 'Nomor Surat Penawaran')}
                 {text('quotation_date', 'Tanggal Surat Penawaran', 'date')}

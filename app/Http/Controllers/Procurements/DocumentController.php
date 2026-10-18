@@ -10,6 +10,7 @@ use App\Http\Requests\Procurements\UploadSignedDocumentRequest;
 use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementAmendment;
+use App\Models\ProcurementDeliveryOrder;
 use App\Models\ProcurementDocument;
 use App\Models\ProcurementDocumentUpload;
 use App\Services\DocumentGenerator;
@@ -47,6 +48,13 @@ class DocumentController extends Controller
         // An amendment is drawn from its own tab, with the amendment's data.
         if ($documentType->code === 'amandemen-kontrak') {
             Inertia::flash('toast', ['type' => 'error', 'message' => 'Dokumen Amandemen dibuat dari tab Amandemen.']);
+
+            return back();
+        }
+
+        // A Delivery Order is issued from its own tab, with the DO's data.
+        if ($documentType->code === 'delivery-order') {
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Dokumen Delivery Order dibuat dari tab DO.']);
 
             return back();
         }
@@ -150,6 +158,15 @@ class DocumentController extends Controller
 
             if ($amendment !== null) {
                 $values = [...$values, ...$this->generator->amendmentValues($amendment)];
+            }
+        }
+
+        // ... and a Delivery Order document the DO's own.
+        if ($document->procurement_delivery_order_id !== null) {
+            $order = ProcurementDeliveryOrder::query()->find($document->procurement_delivery_order_id);
+
+            if ($order !== null) {
+                $values = [...$values, ...$this->generator->deliveryOrderValues($order)];
             }
         }
 

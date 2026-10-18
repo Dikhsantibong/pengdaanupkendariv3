@@ -6,6 +6,7 @@ import {
     CalendarClock,
     ClipboardCheck,
     ClipboardList,
+    FilePen,
     FileSignature,
     FileStack,
     FileText,
@@ -20,6 +21,7 @@ import {
     Play,
     Settings2,
     ShieldCheck,
+    Truck,
     UserCheck,
     UserCog,
     UserSquare2,
@@ -168,14 +170,24 @@ export function AppSidebar() {
             ],
         },
         {
-            title: 'Pengawasan',
+            title: 'Monitoring',
             items: [
                 ...(menus.monitoring
                     ? [
                           {
-                              title: 'Monitoring',
+                              title: 'Monitoring Pengadaan',
                               href: monitoring.index(),
                               icon: Gauge,
+                          },
+                          {
+                              title: 'Monitoring Amandemen',
+                              href: monitoring.amendments(),
+                              icon: FilePen,
+                          },
+                          {
+                              title: 'Monitoring Delivery Order',
+                              href: monitoring.deliveryOrders(),
+                              icon: Truck,
                           },
                       ]
                     : []),

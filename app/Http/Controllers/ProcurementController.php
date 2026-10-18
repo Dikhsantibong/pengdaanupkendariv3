@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Enums\ActivityType;
 use App\Enums\AmendmentFileKind;
+use App\Enums\AmendmentState;
+use App\Enums\DeliveryOrderState;
 use App\Enums\FinanceSection;
 use App\Enums\Permission;
 use App\Enums\ProcurementStage;
@@ -14,9 +16,12 @@ use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementAmendment;
+use App\Models\ProcurementDeliveryOrder;
 use App\Models\ProcurementDocument;
 use App\Models\User;
+use App\Services\AmendmentService;
 use App\Services\ContractRequirementReader;
+use App\Services\DeliveryOrderService;
 use App\Services\DocumentGenerator;
 use App\Services\ProcurementService;
 use App\Support\MasterDataOptions;
@@ -324,6 +329,7 @@ class ProcurementController extends Controller
                 ->map(fn ($candidate): array => [
                     'id' => $candidate->id,
                     'name' => $candidate->name,
+                    'vendor_code' => $candidate->vendor_code,
                     'director_name' => $candidate->director_name,
                     'address' => $candidate->address,
                     'quotation_number' => $candidate->quotation_number,
@@ -340,9 +346,19 @@ class ProcurementController extends Controller
                 ->all(),
             // The Amandemen tab: every amendment of the contract, oldest first.
             'amendments' => $this->amendmentsPayload($procurement, $user),
+            // The contract's articles, which Laksdan picks the changed ones
+            // from; only read while an amendment waits on Laksdan.
+            'amendmentArticles' => $procurement->amendments()->where('state', AmendmentState::MenungguTlPengadaan->value)->exists()
+                ? app(AmendmentService::class)->contractArticles($procurement)
+                : [],
+            // The DO tab, shown for a KHS SPK / PJ only: the contract's price
+            // list and every Delivery Order called off under it.
+            'deliveryOrders' => $procurement->usesDeliveryOrders() ? $this->deliveryOrdersPayload($procurement, $user) : null,
             'options' => MasterDataOptions::forProcurementDetail($procurement),
             'can' => [
                 'startAmendment' => $user->can('startAmendment', $procurement),
+                'startDeliveryOrder' => $user->can('startDeliveryOrder', $procurement),
+                'manageContractItems' => $user->can('manageContractItems', $procurement),
                 'update' => $user->can('update', $procurement),
                 'assignPic' => $user->can('assignPic', $procurement),
                 'assignPlanner' => $user->can('assignPlanner', $procurement),
@@ -368,6 +384,93 @@ class ProcurementController extends Controller
     }
 
     /**
+     * The DO tab: the KHS contract's price list and its Delivery Orders,
+     * newest last.
+     *
+     * @return array{available: bool, contract_items: array<int, array<string, mixed>>, orders: array<int, array<string, mixed>>}
+     */
+    protected function deliveryOrdersPayload(Procurement $procurement, User $user): array
+    {
+        $orders = $procurement->deliveryOrders()
+            ->with(['items', 'creator', 'teamLeaderReviewer', 'directorReviewer', 'forwarder', 'issuer', 'document'])
+            ->get();
+
+        return [
+            // Whether the contract document exists, which DOs wait for.
+            'available' => app(DeliveryOrderService::class)->available($procurement),
+            'contract_items' => $procurement->contractItems()->get()
+                ->map(fn ($item): array => [
+                    'id' => $item->id,
+                    'group_name' => $item->group_name,
+                    'description' => $item->description,
+                    'part_number' => $item->part_number,
+                    'unit' => $item->unit,
+                    'unit_price' => (float) $item->unit_price,
+                ])->all(),
+            'orders' => $orders->map(fn (ProcurementDeliveryOrder $order): array => [
+                'id' => $order->id,
+                'sequence' => $order->sequence,
+                'state' => $order->state->value,
+                'state_label' => $order->state->label(),
+                'request_memo_number' => $order->request_memo_number,
+                'request_memo_date' => $order->request_memo_date?->toDateString(),
+                'request_file' => $order->request_file_path === null ? null : [
+                    'name' => $order->request_file_name,
+                    'url' => route('procurements.delivery-orders.request-file', [$procurement, $order]),
+                ],
+                'do_memo_number' => $order->do_memo_number,
+                'do_memo_date' => $order->do_memo_date?->toDateString(),
+                'number' => $order->number,
+                'order_date' => $order->order_date?->toDateString(),
+                'contract_date' => $order->contract_date?->toDateString(),
+                'vendor_code' => $order->vendor_code,
+                'work_description' => $order->work_description,
+                'delivery_place' => $order->delivery_place,
+                'delivery_days' => $order->delivery_days,
+                'created_by' => $order->creator?->name,
+                'review_note' => $order->review_note,
+                'revision' => $order->revision,
+                'total' => $order->total(),
+                'items' => $order->items->map(fn ($item): array => [
+                    'contract_item_id' => $item->procurement_contract_item_id,
+                    'group_name' => $item->group_name,
+                    'description' => $item->description,
+                    'part_number' => $item->part_number,
+                    'quantity' => (float) $item->quantity,
+                    'unit' => $item->unit,
+                    'unit_price' => (float) $item->unit_price,
+                    'total' => $item->total(),
+                ])->values()->all(),
+                'steps' => array_values(array_filter([
+                    $order->tl_reviewed_at === null ? null : ['label' => 'Disetujui TL', 'by' => $order->teamLeaderReviewer?->name, 'at' => $order->tl_reviewed_at->toDateTimeString()],
+                    $order->director_reviewed_at === null ? null : ['label' => 'Disetujui Asman', 'by' => $order->directorReviewer?->name, 'at' => $order->director_reviewed_at->toDateTimeString()],
+                    $order->forwarded_at === null ? null : ['label' => 'Diteruskan Rendan ke Laksdan', 'by' => $order->forwarder?->name, 'at' => $order->forwarded_at->toDateTimeString()],
+                    $order->issued_at === null ? null : ['label' => 'DO diterbitkan Laksdan', 'by' => $order->issuer?->name, 'at' => $order->issued_at->toDateTimeString()],
+                ])),
+                'document' => $order->document === null ? null : [
+                    'id' => $order->document->id,
+                    'title' => $order->document->title,
+                    'edit_url' => route('procurements.documents.edit', [$procurement, $order->document]),
+                    'preview_url' => route('procurements.documents.show', [$procurement, $order->document, 'preview' => 1]),
+                    'download_url' => route('procurements.documents.show', [$procurement, $order->document]),
+                ],
+                'missing' => match (true) {
+                    $order->state->isEditable() => $order->missingRequest(),
+                    $order->state === DeliveryOrderState::DiRendan => $order->missingMemo(),
+                    $order->state === DeliveryOrderState::DiLaksdan => $order->missingIssue(),
+                    default => [],
+                },
+                'can' => [
+                    'request' => $user->can('updateDeliveryOrderRequest', [$procurement, $order]),
+                    'decide' => $user->can('decideDeliveryOrder', [$procurement, $order]),
+                    'forward' => $user->can('forwardDeliveryOrder', [$procurement, $order]),
+                    'issue' => $user->can('issueDeliveryOrder', [$procurement, $order]),
+                ],
+            ])->all(),
+        ];
+    }
+
+    /**
      * The amendments of the procurement's contract as the Amandemen tab
      * shows them.
      *
@@ -376,7 +479,7 @@ class ProcurementController extends Controller
     protected function amendmentsPayload(Procurement $procurement, User $user): array
     {
         return $procurement->amendments()
-            ->with(['changedArticles', 'files.uploadedBy', 'creator', 'teamLeaderReviewer', 'directorReviewer', 'reviewer', 'document'])
+            ->with(['changedArticles', 'files.uploadedBy', 'creator', 'teamLeaderReviewer', 'directorReviewer', 'reviewer', 'issuer', 'document'])
             ->get()
             ->map(fn (ProcurementAmendment $amendment): array => [
                 'id' => $amendment->id,
@@ -400,37 +503,51 @@ class ProcurementController extends Controller
                     $amendment->tl_reviewed_at === null ? null : ['level' => 'TL', 'by' => $amendment->teamLeaderReviewer?->name, 'at' => $amendment->tl_reviewed_at->toDateTimeString()],
                     $amendment->director_reviewed_at === null ? null : ['level' => 'Asman', 'by' => $amendment->directorReviewer?->name, 'at' => $amendment->director_reviewed_at->toDateTimeString()],
                     $amendment->reviewed_at === null ? null : ['level' => 'TL Pengadaan', 'by' => $amendment->reviewer?->name, 'at' => $amendment->reviewed_at->toDateTimeString()],
+                    $amendment->issued_at === null ? null : ['level' => 'Diterbitkan Laksdan', 'by' => $amendment->issuer?->name, 'at' => $amendment->issued_at->toDateTimeString()],
                 ])),
                 'changes' => $amendment->changedArticles->map(fn ($change): array => [
                     'article' => $change->article,
                     'original_text' => $change->original_text,
                     'new_text' => $change->new_text,
                 ])->values()->all(),
-                'files' => collect(AmendmentFileKind::cases())->map(function (AmendmentFileKind $kind) use ($amendment, $procurement): array {
-                    $file = $amendment->files->where('kind', $kind)->last();
+                // The papers asked for, plus an attendance list filed before
+                // it stopped being asked for.
+                'files' => collect(AmendmentFileKind::cases())
+                    ->filter(fn (AmendmentFileKind $kind): bool => in_array($kind, AmendmentFileKind::asked(), true)
+                        || $amendment->files->contains('kind', $kind))
+                    ->sortBy(fn (AmendmentFileKind $kind): int => (int) array_search($kind, [...AmendmentFileKind::asked(), AmendmentFileKind::DaftarHadir], true))
+                    ->values()
+                    ->map(function (AmendmentFileKind $kind) use ($amendment, $procurement): array {
+                        $file = $amendment->files->where('kind', $kind)->last();
 
-                    return [
-                        'kind' => $kind->value,
-                        'label' => $kind->label(),
-                        'file' => $file === null ? null : [
-                            'name' => $file->file_name,
-                            'size' => $file->size,
-                            'uploaded_by' => $file->uploadedBy?->name,
-                            'uploaded_at' => $file->created_at?->toDateTimeString(),
-                            'url' => route('procurements.amendments.file', [$procurement, $amendment, $file]),
-                        ],
-                    ];
-                })->all(),
+                        return [
+                            'kind' => $kind->value,
+                            'label' => $kind->label(),
+                            'required' => $kind->isRequired(),
+                            'file' => $file === null ? null : [
+                                'name' => $file->file_name,
+                                'size' => $file->size,
+                                'uploaded_by' => $file->uploadedBy?->name,
+                                'uploaded_at' => $file->created_at?->toDateTimeString(),
+                                'url' => route('procurements.amendments.file', [$procurement, $amendment, $file]),
+                            ],
+                        ];
+                    })->all(),
                 'document' => $amendment->document === null ? null : [
                     'id' => $amendment->document->id,
                     'title' => $amendment->document->title,
                     'edit_url' => route('procurements.documents.edit', [$procurement, $amendment->document]),
                     'preview_url' => route('procurements.documents.show', [$procurement, $amendment->document, 'preview' => 1]),
                 ],
-                'missing' => $amendment->state->isEditable() ? $amendment->missing() : [],
+                'missing' => match (true) {
+                    $amendment->state->isEditable() => $amendment->missingRequest(),
+                    $amendment->state === AmendmentState::MenungguTlPengadaan => $amendment->missingIssue(),
+                    default => [],
+                },
                 'can' => [
                     'update' => $user->can('updateAmendment', [$procurement, $amendment]),
                     'decide' => $user->can('decideAmendment', [$procurement, $amendment]),
+                    'issue' => $user->can('issueAmendment', [$procurement, $amendment]),
                 ],
             ])
             ->all();
@@ -569,7 +686,8 @@ class ProcurementController extends Controller
                 // panel whether to offer the document actions at all.
                 $documents = [];
 
-                foreach ($item->documentTypes as $type) {
+                // A document of another contract format is not asked for.
+                foreach ($item->documentTypesFor($procurement) as $type) {
                     $documents[] = $this->checklistDocumentPayload($procurement, $type, $resolvable);
                 }
 

@@ -39,7 +39,8 @@ class ContractRequirementReader
      * @var array<string, string>
      */
     public const CONTRACT_DOCUMENTS = [
-        'SPK' => 'spk',
+        // The SPK's articles are their own document, beside the SPK table.
+        'SPK' => 'spk-pasal',
         'PJ' => 'spk',
         'SPPL' => 'lampiran-sp',
     ];
@@ -101,8 +102,11 @@ class ContractRequirementReader
             $items = $this->requirementsIn(
                 (string) $document->rendered_body,
                 self::MARKERS[$section->value],
-                // Kept even once retired (withTrashed), so always there.
-                $document->documentType->nameFor($procurement),
+                // Kept even once retired (withTrashed), so always there. The
+                // SPK's articles are cited as the SPK they belong to.
+                $document->documentType->code === 'spk-pasal'
+                    ? 'SPK (Surat Perintah Kerja)'
+                    : $document->documentType->nameFor($procurement),
             );
 
             if ($items !== null) {

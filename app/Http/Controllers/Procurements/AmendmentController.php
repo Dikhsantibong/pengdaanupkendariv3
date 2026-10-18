@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Procurements;
 
 use App\Enums\AmendmentFileKind;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Procurements\IssueAmendmentRequest;
 use App\Http\Requests\Procurements\ReviewPlanningRequest;
 use App\Http\Requests\Procurements\UpdateAmendmentRequest;
 use App\Http\Requests\Procurements\UploadAmendmentFileRequest;
@@ -19,8 +20,9 @@ use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * The Amandemen tab: the proposer drafts and sends an amendment, their TL,
- * the division's Asman and TL Pengadaan decide on it.
+ * The Amandemen tab: the proposer requests an amendment, their TL and the
+ * division's Asman agree, and Laksdan numbers, dates, fills in the changed
+ * articles and issues it.
  */
 class AmendmentController extends Controller
 {
@@ -35,25 +37,69 @@ class AmendmentController extends Controller
 
         $amendment = $this->amendments->start($procurement, $request->user());
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => "Amandemen {$amendment->roman()} dibuat. Lengkapi dokumen dan perubahannya, lalu ajukan."]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => "Amandemen {$amendment->roman()} dibuat. Lengkapi nota dinas usulan dan notulen, lalu ajukan."]);
 
         return back();
     }
 
     /**
-     * Save the numbers, dates and changed articles.
+     * Save the proposer's request: the Nota Dinas usulan and the Notulen date.
      */
     public function update(UpdateAmendmentRequest $request, Procurement $procurement, ProcurementAmendment $amendment): RedirectResponse
     {
         $this->belongs($procurement, $amendment);
         $this->authorize('updateAmendment', [$procurement, $amendment]);
 
+        $this->amendments->update($amendment, $request->validated());
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Permohonan amandemen tersimpan.']);
+
+        return back();
+    }
+
+    /**
+     * Laksdan saves the number, dates and changed articles.
+     */
+    public function saveIssue(IssueAmendmentRequest $request, Procurement $procurement, ProcurementAmendment $amendment): RedirectResponse
+    {
+        $this->belongs($procurement, $amendment);
+        $this->authorize('issueAmendment', [$procurement, $amendment]);
+
         /** @var array<int, array{article: string, original_text: string, new_text: string}> $changes */
         $changes = $request->validated('changes', []);
 
         $this->amendments->update($amendment, $request->safe()->except('changes'), $changes);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Amandemen tersimpan.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Data amandemen tersimpan.']);
+
+        return back();
+    }
+
+    /**
+     * Laksdan issues the amendment and its document is drawn.
+     */
+    public function issue(Request $request, Procurement $procurement, ProcurementAmendment $amendment): RedirectResponse
+    {
+        $this->belongs($procurement, $amendment);
+        $this->authorize('issueAmendment', [$procurement, $amendment]);
+
+        $missing = $amendment->load('changedArticles')->missingIssue();
+
+        if ($missing !== []) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => 'Lengkapi dulu: '.implode(', ', $missing).'.']);
+
+            return back();
+        }
+
+        try {
+            $this->amendments->issue($amendment, $request->user());
+        } catch (RuntimeException $exception) {
+            Inertia::flash('toast', ['type' => 'error', 'message' => $exception->getMessage()]);
+
+            return back();
+        }
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => "Amandemen {$amendment->roman()} terbit."]);
 
         return back();
     }
@@ -67,6 +113,9 @@ class AmendmentController extends Controller
         $this->authorize('updateAmendment', [$procurement, $amendment]);
 
         $kind = AmendmentFileKind::from($request->string('kind')->value());
+
+        // The attendance list is no longer asked for.
+        abort_unless(in_array($kind, AmendmentFileKind::asked(), true), 422);
 
         $this->amendments->attach($amendment, $kind, $request->file('file'), $request->user());
 
@@ -100,7 +149,7 @@ class AmendmentController extends Controller
         $this->belongs($procurement, $amendment);
         $this->authorize('updateAmendment', [$procurement, $amendment]);
 
-        $missing = $amendment->load(['files', 'changedArticles'])->missing();
+        $missing = $amendment->load('files')->missingRequest();
 
         if ($missing !== []) {
             Inertia::flash('toast', ['type' => 'error', 'message' => 'Lengkapi dulu: '.implode(', ', $missing).'.']);
@@ -108,13 +157,7 @@ class AmendmentController extends Controller
             return back();
         }
 
-        try {
-            $this->amendments->submit($amendment, $request->user());
-        } catch (RuntimeException $exception) {
-            Inertia::flash('toast', ['type' => 'error', 'message' => $exception->getMessage()]);
-
-            return back();
-        }
+        $this->amendments->submit($amendment, $request->user());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => "Amandemen {$amendment->roman()} diajukan untuk persetujuan."]);
 
@@ -135,7 +178,7 @@ class AmendmentController extends Controller
 
         Inertia::flash('toast', [
             'type' => $approved ? 'success' : 'warning',
-            'message' => $approved ? 'Amandemen disetujui.' : 'Amandemen dikembalikan ke pengusul.',
+            'message' => $approved ? 'Permohonan amandemen disetujui.' : 'Amandemen dikembalikan ke pengusul.',
         ]);
 
         return back();

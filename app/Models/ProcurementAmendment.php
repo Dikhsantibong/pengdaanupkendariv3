@@ -37,6 +37,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int|null $director_reviewed_by
  * @property CarbonImmutable|null $reviewed_at
  * @property int|null $reviewed_by
+ * @property CarbonImmutable|null $issued_at
+ * @property int|null $issued_by
  * @property string|null $review_note
  * @property int $revision
  * @property int|null $procurement_document_id
@@ -144,6 +146,16 @@ class ProcurementAmendment extends Model
     }
 
     /**
+     * The execution side (Laksdan) user who issued it.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function issuer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'issued_by')->withTrashed();
+    }
+
+    /**
      * The roman numeral of the amendment: I, II, III ...
      */
     public function roman(): string
@@ -152,42 +164,45 @@ class ProcurementAmendment extends Model
     }
 
     /**
-     * The papers still missing before it can be sent.
+     * What the proposer still owes before the request can be sent: the Nota
+     * Dinas usulan (number, date, scan) and the Notulen. The partner's
+     * request letter is optional.
      *
      * @return array<int, string>
      */
-    public function missing(): array
+    public function missingRequest(): array
     {
         $filed = $this->files
             ->map(fn (ProcurementAmendmentFile $file): string => $file->kind->value)
             ->unique()
             ->all();
-        $missing = [];
 
-        foreach (AmendmentFileKind::cases() as $kind) {
-            if (! in_array($kind->value, $filed, true)) {
+        $missing = array_values(array_filter([
+            blank($this->memo_number) ? 'Nomor Nota Dinas Usulan' : null,
+            $this->memo_date === null ? 'Tanggal Nota Dinas Usulan' : null,
+        ]));
+
+        foreach (AmendmentFileKind::asked() as $kind) {
+            if ($kind->isRequired() && ! in_array($kind->value, $filed, true)) {
                 $missing[] = $kind->label();
             }
         }
 
-        $fields = [
-            'Nomor Nota Dinas Amandemen' => $this->memo_number,
-            'Tanggal Nota Dinas Amandemen' => $this->memo_date,
-            'Nomor Surat Permohonan' => $this->request_number,
-            'Tanggal Surat Permohonan' => $this->request_date,
-        ];
-
-        foreach ($fields as $label => $value) {
-            if ($value === null || $value === '') {
-                $missing[] = $label;
-            }
-        }
-
-        if ($this->changedArticles->isEmpty()) {
-            $missing[] = 'Minimal satu perubahan pasal';
-        }
-
         return $missing;
+    }
+
+    /**
+     * What Laksdan still owes before the amendment is issued.
+     *
+     * @return array<int, string>
+     */
+    public function missingIssue(): array
+    {
+        return array_values(array_filter([
+            blank($this->number) ? 'Nomor Amandemen' : null,
+            $this->amendment_date === null ? 'Tanggal Amandemen' : null,
+            $this->changedArticles->isEmpty() ? 'Minimal satu perubahan pasal' : null,
+        ]));
     }
 
     /**
@@ -210,6 +225,7 @@ class ProcurementAmendment extends Model
             'tl_reviewed_at' => 'datetime',
             'director_reviewed_at' => 'datetime',
             'reviewed_at' => 'datetime',
+            'issued_at' => 'datetime',
         ];
     }
 }

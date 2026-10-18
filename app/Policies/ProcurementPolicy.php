@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\AmendmentState;
+use App\Enums\DeliveryOrderState;
 use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
@@ -13,8 +14,10 @@ use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementAmendment;
 use App\Models\ProcurementChecklist;
+use App\Models\ProcurementDeliveryOrder;
 use App\Models\User;
 use App\Services\AmendmentService;
+use App\Services\DeliveryOrderService;
 use App\Support\ProposalDocuments;
 
 class ProcurementPolicy
@@ -431,13 +434,13 @@ class ProcurementPolicy
     }
 
     /**
-     * Determine whether the user may decide on an amendment at its level:
-     * the proposer's TL, then the division's Asman, then TL Pengadaan.
-     * Nobody decides on their own amendment.
+     * Determine whether the user may decide on an amendment request at its
+     * level: the proposer's TL, then the division's Asman. Nobody decides on
+     * their own request.
      */
     public function decideAmendment(User $user, Procurement $procurement, ProcurementAmendment $amendment): bool
     {
-        if (! $amendment->state->isWaiting()) {
+        if (! $amendment->state->awaitsApproval()) {
             return false;
         }
 
@@ -449,11 +452,92 @@ class ProcurementPolicy
             return false;
         }
 
-        return match ($amendment->state) {
-            AmendmentState::MenungguPersetujuanTl => app(AmendmentService::class)->teamLeaderOf($amendment)?->is($user) === true,
-            AmendmentState::MenungguPersetujuanAsman => $this->leadsDivisionOf($user, $procurement),
-            default => $user->hasPermission(Permission::ApproveAmendment) && $this->view($user, $procurement),
-        };
+        return $amendment->state === AmendmentState::MenungguPersetujuanTl
+            ? app(AmendmentService::class)->teamLeaderOf($amendment)?->is($user) === true
+            : $this->leadsDivisionOf($user, $procurement);
+    }
+
+    /**
+     * Determine whether the user may number, date, fill in the changed
+     * articles of and issue an agreed amendment: the execution side
+     * (Laksdan). It does not pass through the planning side.
+     */
+    public function issueAmendment(User $user, Procurement $procurement, ProcurementAmendment $amendment): bool
+    {
+        return $amendment->state === AmendmentState::MenungguTlPengadaan && $this->worksOnExecution($user, $procurement);
+    }
+
+    /**
+     * Determine whether the user may request a Delivery Order: the
+     * proposing division, under a KHS contract that exists, until the job is
+     * closed or cancelled. Several DOs may run side by side.
+     */
+    public function startDeliveryOrder(User $user, Procurement $procurement): bool
+    {
+        return $this->proposesFor($user, $procurement)
+            && $procurement->completed_at === null
+            && $procurement->progressStatus->category !== StatusCategory::Batal
+            && app(DeliveryOrderService::class)->available($procurement);
+    }
+
+    /**
+     * Determine whether the user may fill in and send a DO request.
+     */
+    public function updateDeliveryOrderRequest(User $user, Procurement $procurement, ProcurementDeliveryOrder $order): bool
+    {
+        return $order->state->isEditable()
+            && ($user->role === UserRole::Administrator || $order->created_by === $user->id);
+    }
+
+    /**
+     * Determine whether the user may decide on a DO request at its level:
+     * the proposer's TL, then the division's Asman. Nobody decides on their
+     * own request.
+     */
+    public function decideDeliveryOrder(User $user, Procurement $procurement, ProcurementDeliveryOrder $order): bool
+    {
+        if (! $order->state->awaitsApproval()) {
+            return false;
+        }
+
+        if ($user->role === UserRole::Administrator) {
+            return true;
+        }
+
+        if ($order->created_by === $user->id) {
+            return false;
+        }
+
+        return $order->state === DeliveryOrderState::MenungguPersetujuanTl
+            ? app(DeliveryOrderService::class)->teamLeaderOf($order)?->is($user) === true
+            : $this->leadsDivisionOf($user, $procurement);
+    }
+
+    /**
+     * Determine whether the user may write the Nota Dinas DO and hand the DO
+     * to Laksdan: the planning side (Rendan).
+     */
+    public function forwardDeliveryOrder(User $user, Procurement $procurement, ProcurementDeliveryOrder $order): bool
+    {
+        return $order->state === DeliveryOrderState::DiRendan && $this->worksOnPlanning($user, $procurement);
+    }
+
+    /**
+     * Determine whether the user may date, number and issue the DO: the
+     * execution side (Laksdan).
+     */
+    public function issueDeliveryOrder(User $user, Procurement $procurement, ProcurementDeliveryOrder $order): bool
+    {
+        return $order->state === DeliveryOrderState::DiLaksdan && $this->worksOnExecution($user, $procurement);
+    }
+
+    /**
+     * Determine whether the user may keep the KHS contract's price list,
+     * which every DO draws its lines from: the execution side.
+     */
+    public function manageContractItems(User $user, Procurement $procurement): bool
+    {
+        return $procurement->usesDeliveryOrders() && $this->worksOnExecution($user, $procurement);
     }
 
     /**

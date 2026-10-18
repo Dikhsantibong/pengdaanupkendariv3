@@ -16,6 +16,7 @@ class PartnerCandidateRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
+            'vendor_code' => ['nullable', 'string', 'max:100'],
             'director_name' => ['nullable', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:1000'],
             'quotation_number' => ['nullable', 'string', 'max:255'],
@@ -35,6 +36,7 @@ class PartnerCandidateRequest extends FormRequest
     {
         return [
             'name' => 'nama calon mitra',
+            'vendor_code' => 'kode rekanan',
             'director_name' => 'nama direktur',
             'address' => 'alamat perusahaan',
             'quotation_number' => 'nomor surat penawaran',

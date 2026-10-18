@@ -221,23 +221,34 @@ return [
         'work_category' => null,
         'name' => 'Berita Acara Klarifikasi dan Negosiasi - UP Kendari',
     ],
+    // The SPK itself, a table of what is ordered (format SPK). Its articles
+    // are a document of their own, the Syarat & Ketentuan (Pasal) below.
+    'kontrak.spk-tabel' => [
+        'group' => 'kontrak',
+        'file' => 'kontrak/spk.html',
+        'document_type' => 'spk',
+        'procurement_method' => null,
+        'contract_format' => 'SPK',
+        'work_category' => null,
+        'name' => 'SPK (Surat Perintah Kerja) Tabel - Template Standar UP Kendari',
+    ],
     'kontrak.spk-jasa' => [
         'group' => 'kontrak',
         'file' => 'kontrak/spk-jasa.html',
-        'document_type' => 'spk',
+        'document_type' => 'spk-pasal',
         'procurement_method' => null,
         'contract_format' => null,
         'work_category' => 'jasa',
-        'name' => 'SPK (Surat Perintah Kerja) - Template Standar UP Kendari',
+        'name' => 'SPK Syarat & Ketentuan (Pasal) Jasa - Template Standar UP Kendari',
     ],
     'kontrak.spk-barang' => [
         'group' => 'kontrak',
         'file' => 'kontrak/spk-barang.html',
-        'document_type' => 'spk',
+        'document_type' => 'spk-pasal',
         'procurement_method' => null,
         'contract_format' => null,
         'work_category' => 'barang',
-        'name' => 'SPK (Surat Perintah Kerja) Barang - Template Standar UP Kendari',
+        'name' => 'SPK Syarat & Ketentuan (Pasal) Barang - Template Standar UP Kendari',
     ],
     // The amendment of any contract (SPK, Surat Perjanjian or Surat
     // Pesanan); drawn from the Amandemen tab with the amendment's values.
@@ -249,6 +260,15 @@ return [
         'contract_format' => null,
         'work_category' => null,
         'name' => 'Amandemen Kontrak - Template Standar UP Kendari',
+    ],
+    'kontrak.delivery-order' => [
+        'group' => 'kontrak',
+        'file' => 'kontrak/delivery-order.html',
+        'document_type' => 'delivery-order',
+        'procurement_method' => null,
+        'contract_format' => null,
+        'work_category' => null,
+        'name' => 'Delivery Order (DO) - Template Standar UP Kendari',
     ],
     'kontrak.lampiran-spk' => [
         'group' => 'kontrak',

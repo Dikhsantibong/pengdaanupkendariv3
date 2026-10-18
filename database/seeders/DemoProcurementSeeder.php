@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\ActivityType;
+use App\Enums\AmendmentFileKind;
 use App\Enums\FinanceSection;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
@@ -16,9 +17,12 @@ use App\Models\Procurement;
 use App\Models\ProgressStatus;
 use App\Models\TargetUnit;
 use App\Models\User;
+use App\Services\AmendmentService;
+use App\Services\DeliveryOrderService;
 use App\Services\DocumentGenerator;
 use App\Services\ProcurementService;
 use App\Services\ProgressStatusResolver;
+use App\Support\IndonesianNumber;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -149,15 +153,31 @@ trailer<</Root 1 0 R>>
      *
      * The method is not set here: it follows the format (Format No Kontrak).
      *
-     * @var array<int, array{format: string, category: string|null}>
+     * A "khs" contract is called off by Delivery Orders (tab DO).
+     *
+     * @var array<int, array{format: string, category: string|null, type?: string}>
      */
     private const CONTRACTS = [
         ['format' => 'SPK', 'category' => 'barang'],
         ['format' => 'SPK', 'category' => 'jasa'],
-        ['format' => 'PJ', 'category' => 'barang'],
+        ['format' => 'PJ', 'category' => 'barang', 'type' => 'khs'],
         ['format' => 'SPPL', 'category' => null],
         ['format' => 'PJ', 'category' => 'jasa'],
-        ['format' => 'SPK', 'category' => 'jasa'],
+        ['format' => 'SPK', 'category' => 'barang', 'type' => 'khs'],
+    ];
+
+    /**
+     * The price list of a KHS contract: material and their unit prices.
+     *
+     * @var array<int, array{0: string, 1: string, 2: string, 3: string, 4: int}>
+     */
+    private const PRICE_LIST = [
+        ['MATERIAL MAK 8M 453 C', 'CONNECTING ROD, ENGINE', '1.2810 A', 'Bh', 823_769_000],
+        ['MATERIAL MAK 8M 453 C', 'PISTON, ENGINE', '1.2670 N', 'Bh', 840_341_000],
+        ['MATERIAL MAK 8M 453 AK', 'CYLINDER LINER', '1.1101-002', 'Bh', 175_830_000],
+        ['MATERIAL MAK 8M 453 AK', 'INJECTION PUMP', '1.3597 LL', 'Bh', 191_594_000],
+        ['MATERIAL MAK 8M 453 AK', 'LUBE OIL PUMP', '1.6417', 'Bh', 375_102_000],
+        ['MATERIAL MAK 8M 453 AK', 'GASKET SET, CYLINDER HEAD', '1.4302', 'Set', 28_450_000],
     ];
 
     /**
@@ -190,6 +210,8 @@ trailer<</Root 1 0 R>>
         protected ProcurementService $procurements,
         protected DocumentGenerator $documents,
         protected ProgressStatusResolver $statuses,
+        protected AmendmentService $amendments,
+        protected DeliveryOrderService $deliveryOrders,
     ) {}
 
     /**
@@ -382,7 +404,7 @@ trailer<</Root 1 0 R>>
             // names is copied here rather than by Procurement::booted().
             'procurement_method_id' => $format->procurement_method_id,
             'work_category' => $contract['category'],
-            'contract_type_id' => $this->contractType($contract['category']),
+            'contract_type_id' => $this->contractType($contract['category'], $contract['type'] ?? null),
         ])->save();
         $procurement->number = $this->procurements->nextNumber($format);
         $procurement->save();
@@ -480,8 +502,28 @@ trailer<</Root 1 0 R>>
         $this->log($procurement, $people['procurement'], ActivityType::PicDitunjuk, "PIC Pelaksana diubah menjadi {$people['executor']->name}.", $at->addHour(), ['pic' => 'pelaksana']);
 
         // The contract itself, from its template.
-        $this->draw($procurement, [$contract['format'] === 'SPPL' ? 'lampiran-sp' : 'spk'], $people['executor'], $at->addDays(2));
+        $this->draw($procurement, match ($contract['format']) {
+            'SPPL' => ['lampiran-sp'],
+            // The SPK table and its Syarat & Ketentuan (Pasal).
+            'SPK' => ['spk', 'spk-pasal'],
+            default => ['spk'],
+        }, $people['executor'], $at->addDays(2));
         $this->procurements->syncChecklists($procurement);
+
+        // Under the contract: Delivery Orders of a KHS, amendments of others.
+        $people['team_leader'] = $teamLeader;
+        $people['asman'] = $asman;
+        $afterContract = $at->addDays(4)->min(CarbonImmutable::now()->subDays(2));
+
+        // Only on jobs still running, so a closed job's history ends with
+        // its payment.
+        $running = in_array($track, ['pelaksanaan', 'siap_serah', 'menunggu_tl_pengadaan', 'dikembalikan_tl_pengadaan', 'keuangan'], true);
+
+        if ($running && ($contract['type'] ?? null) === 'khs') {
+            $this->callOff($procurement, $index, $people, $afterContract);
+        } elseif ($running && $contract['format'] !== 'SPPL' && $index % 2 === 0) {
+            $this->amend($procurement, $index, $people, $afterContract);
+        }
 
         if ($track === 'pelaksanaan') {
             // Spread over the execution statuses: HPS, SMART SCM, contract.
@@ -657,6 +699,7 @@ trailer<</Root 1 0 R>>
 
             $candidate = $procurement->partnerCandidates()->create([
                 'name' => $partner['name'],
+                'vendor_code' => sprintf('V%05d', 7_000 + (($index + $offset) % count(self::PARTNERS)) * 113),
                 'director_name' => $partner['director'],
                 'address' => $partner['address'],
                 'quotation_number' => sprintf('%03d/SPH/%s/%s', 40 + $index + $offset, strtoupper(substr($partner['name'], 3, 3)), $at->format('Y')),
@@ -671,6 +714,260 @@ trailer<</Root 1 0 R>>
                 $procurement->forceFill(['partner_candidate_id' => $candidate->id, ...$candidate->partnerFields()])->save();
             }
         }
+    }
+
+    /**
+     * The price list of a KHS contract and its Delivery Orders: one issued,
+     * one waiting on Laksdan, one still with the Asman.
+     *
+     * @param  array<string, mixed>  $people
+     */
+    protected function callOff(Procurement $procurement, int $index, array $people, CarbonImmutable $at): void
+    {
+        foreach (self::PRICE_LIST as $position => [$group, $description, $part, $unit, $price]) {
+            $procurement->contractItems()->create([
+                'sort_order' => $position + 1,
+                'group_name' => $group,
+                'description' => $description,
+                'part_number' => $part,
+                'unit' => $unit,
+                'unit_price' => $price,
+            ]);
+        }
+
+        $catalog = $procurement->contractItems()->get()->values();
+        $states = ['terbit', 'di_laksdan', 'menunggu_asman'];
+        $format = ContractNumberFormat::forDeliveryOrders();
+
+        foreach ($states as $sequence => $state) {
+            $when = $at->addDays($sequence * 5)->min(CarbonImmutable::now()->subDay());
+            $order = $procurement->deliveryOrders()->make([
+                'request_memo_number' => sprintf('%04d/USL/DO/%s', 300 + $index * 3 + $sequence, $when->format('Y')),
+                'request_memo_date' => $when->toDateString(),
+                'contract_date' => $at->subDays(2)->toDateString(),
+                'work_description' => Str::upper(Str::limit($procurement->name, 200, '')),
+                'vendor_code' => $procurement->partner_vendor_code,
+            ]);
+            $order->forceFill([
+                'sequence' => $sequence + 1,
+                'state' => 'draft',
+                'created_by' => $people['proposer']->id,
+                'created_at' => $when,
+                'updated_at' => $when,
+            ])->save();
+
+            foreach ([[0, 2], [2, 4], [4, 1]] as $line => [$item, $quantity]) {
+                $source = $catalog[($item + $sequence) % $catalog->count()];
+                $order->items()->create([
+                    'procurement_contract_item_id' => $source->id,
+                    'sort_order' => $line + 1,
+                    'group_name' => $source->group_name,
+                    'description' => $source->description,
+                    'part_number' => $source->part_number,
+                    'quantity' => $quantity,
+                    'unit' => $source->unit,
+                    'unit_price' => $source->unit_price,
+                ]);
+            }
+
+            $path = 'delivery-orders/'.$order->id.'/nota-dinas-usulan-'.Str::random(12).'.pdf';
+            Storage::disk('local')->put($path, self::PLACEHOLDER_PDF);
+            $order->forceFill([
+                'request_file_path' => $path,
+                'request_file_name' => 'nota-dinas-usulan-do.pdf',
+                'request_file_mime' => 'application/pdf',
+                'request_file_size' => strlen(self::PLACEHOLDER_PDF),
+                'state' => 'menunggu_persetujuan_tl',
+                'submitted_at' => $when,
+            ])->save();
+            $this->log($procurement, $people['proposer'], ActivityType::DoDiajukan, "Permohonan DO ke-{$order->sequence} diajukan ke TL untuk disetujui.", $when, ['delivery_order_id' => $order->id]);
+
+            $leader = $people['team_leader'] ?? $people['asman'];
+            $order->forceFill(['state' => 'menunggu_persetujuan_asman', 'tl_reviewed_at' => $when->addHours(3), 'tl_reviewed_by' => $leader->id])->save();
+            $this->log($procurement, $leader, ActivityType::DoDisetujuiTl, "Permohonan DO ke-{$order->sequence} disetujui TL.", $when->addHours(3), ['delivery_order_id' => $order->id]);
+
+            if ($state === 'menunggu_asman') {
+                continue;
+            }
+
+            $order->forceFill(['state' => 'di_rendan', 'director_reviewed_at' => $when->addHours(6), 'director_reviewed_by' => $people['asman']->id])->save();
+            $this->log($procurement, $people['asman'], ActivityType::DoDisetujuiAsman, "Permohonan DO ke-{$order->sequence} disetujui Asman dan diteruskan ke Rendan.", $when->addHours(6), ['delivery_order_id' => $order->id]);
+
+            // Rendan: the Nota Dinas DO, then to Laksdan with its number.
+            $order->forceFill([
+                'do_memo_number' => sprintf('%04d/DAN.01.03/C01030300/%s', 120 + $index * 3 + $sequence, $when->format('Y')),
+                'do_memo_date' => $when->addDay()->toDateString(),
+                'number' => $format === null ? null : $this->deliveryOrders->nextNumber($format),
+                'contract_number_format_id' => $format?->id,
+                'order_date' => $when->addDays(2)->toDateString(),
+                'state' => 'di_laksdan',
+                'forwarded_at' => $when->addDay(),
+                'forwarded_by' => $people['planner']->id,
+            ])->save();
+            $this->log($procurement, $people['planner'], ActivityType::DoDiteruskanLaksdan, "Nota Dinas DO {$order->do_memo_number} dibuat dan DO ke-{$order->sequence} diteruskan ke Laksdan.", $when->addDay(), ['delivery_order_id' => $order->id]);
+
+            if ($state === 'di_laksdan') {
+                continue;
+            }
+
+            // Laksdan: delivery terms, then the DO itself.
+            $order->forceFill([
+                'delivery_place' => 'PT PLN Nusantara Power UP Kendari '.$procurement->targetUnitNames(),
+                'delivery_days' => [60, 90, 120][$index % 3],
+            ])->save();
+
+            try {
+                $document = $this->documents->generateDeliveryOrder($order->refresh(), $people['executor']);
+                $document->forceFill(['generated_at' => $when->addDays(2), 'created_at' => $when->addDays(2), 'updated_at' => $when->addDays(2)])->save();
+                $this->backdateLastActivity($procurement, $when->addDays(2));
+            } catch (Throwable) {
+                // No DO template: the demo goes on without the document.
+            }
+
+            $order->forceFill(['state' => 'terbit', 'issued_at' => $when->addDays(2), 'issued_by' => $people['executor']->id])->save();
+            $this->log($procurement, $people['executor'], ActivityType::DoTerbit, "Delivery Order {$order->number} terbit.", $when->addDays(2), ['delivery_order_id' => $order->id]);
+        }
+
+        $procurement->unsetRelation('documents');
+    }
+
+    /**
+     * Amendments of a contract: Amandemen I issued, Amandemen II waiting on
+     * Laksdan or still with the TL.
+     *
+     * @param  array<string, mixed>  $people
+     */
+    protected function amend(Procurement $procurement, int $index, array $people, CarbonImmutable $at): void
+    {
+        $states = ['terbit', $index % 4 === 0 ? 'di_laksdan' : 'menunggu_tl'];
+        $format = ContractNumberFormat::forAmendments();
+        $articles = $this->amendments->contractArticles($procurement->refresh());
+
+        foreach ($states as $position => $state) {
+            $when = $at->addDays($position * 7)->min(CarbonImmutable::now()->subDay());
+            $amendment = $procurement->amendments()->make([
+                'memo_number' => sprintf('%04d/KLH.00.01/USL/%s', 1270 + $index + $position, $when->format('Y')),
+                'memo_date' => $when->toDateString(),
+                'meeting_date' => $when->subDay()->toDateString(),
+                'contract_date' => $at->subDays(2)->toDateString(),
+            ]);
+            $amendment->forceFill([
+                'sequence' => $position + 1,
+                'state' => 'menunggu_persetujuan_tl',
+                'created_by' => $people['proposer']->id,
+                'submitted_at' => $when,
+                'created_at' => $when,
+                'updated_at' => $when,
+            ])->save();
+
+            foreach ([AmendmentFileKind::NotaDinas, AmendmentFileKind::NotulenRapat] as $kind) {
+                $path = 'amendments/'.$amendment->id.'/'.$kind->value.'-'.Str::random(12).'.pdf';
+                Storage::disk('local')->put($path, self::PLACEHOLDER_PDF);
+                $amendment->files()->create([
+                    'kind' => $kind,
+                    'path' => $path,
+                    'file_name' => Str::slug($kind->label()).'.pdf',
+                    'mime' => 'application/pdf',
+                    'size' => strlen(self::PLACEHOLDER_PDF),
+                    'uploaded_by' => $people['proposer']->id,
+                ]);
+            }
+
+            $this->log($procurement, $people['proposer'], ActivityType::AmandemenDiajukan, "Amandemen {$amendment->roman()} diajukan ke TL untuk disetujui.", $when, ['amendment_id' => $amendment->id]);
+
+            if ($state === 'menunggu_tl') {
+                continue;
+            }
+
+            $leader = $people['team_leader'] ?? $people['asman'];
+            $amendment->forceFill(['state' => 'menunggu_persetujuan_asman', 'tl_reviewed_at' => $when->addHours(3), 'tl_reviewed_by' => $leader->id])->save();
+            $this->log($procurement, $leader, ActivityType::AmandemenDisetujuiTl, "Amandemen {$amendment->roman()} disetujui TL.", $when->addHours(3), ['amendment_id' => $amendment->id]);
+
+            // The Asman's agreement hands it to Laksdan, numbered.
+            $amendment->forceFill([
+                'state' => 'menunggu_tl_pengadaan',
+                'director_reviewed_at' => $when->addHours(6),
+                'director_reviewed_by' => $people['asman']->id,
+                'number' => $format === null ? null : $this->amendments->nextNumber($format),
+                'contract_number_format_id' => $format?->id,
+                'amendment_date' => $when->addDay()->toDateString(),
+            ])->save();
+            $this->log($procurement, $people['asman'], ActivityType::AmandemenDisetujuiAsman, "Amandemen {$amendment->roman()} disetujui Asman dan diteruskan ke Laksdan dengan nomor {$amendment->number}.", $when->addHours(6), ['amendment_id' => $amendment->id]);
+
+            if ($state === 'di_laksdan') {
+                continue;
+            }
+
+            // Laksdan: the changed ayat, taken from the contract and reworded.
+            [$article, $newText] = $this->extendedTerm($articles);
+            $amendment->changedArticles()->create([
+                'sort_order' => 1,
+                'article' => $article['article'],
+                'original_text' => $article['text'],
+                'new_text' => $newText,
+            ]);
+
+            try {
+                $document = $this->documents->generateAmendment($amendment->refresh(), $people['executor']);
+                $document->forceFill(['generated_at' => $when->addDays(2), 'created_at' => $when->addDays(2), 'updated_at' => $when->addDays(2)])->save();
+                $this->backdateLastActivity($procurement, $when->addDays(2));
+            } catch (Throwable) {
+                // No amendment template: the demo goes on without the document.
+            }
+
+            $amendment->forceFill(['state' => 'disetujui', 'issued_at' => $when->addDays(2), 'issued_by' => $people['executor']->id])->save();
+            $this->log($procurement, $people['executor'], ActivityType::AmandemenTerbit, "Amandemen {$amendment->roman()} nomor {$amendment->number} terbit.", $when->addDays(2), ['amendment_id' => $amendment->id]);
+        }
+
+        $procurement->unsetRelation('documents');
+    }
+
+    /**
+     * The ayat a demo amendment changes and its new wording: the contract's
+     * term in days lengthened by 30, the rest of the ayat kept as it was.
+     *
+     * @param  array<int, array{article: string, text: string}>  $articles
+     * @return array{0: array{article: string, text: string}, 1: string}
+     */
+    protected function extendedTerm(array $articles): array
+    {
+        $days = '/(\d+)(\s*)\(([^)]+)\)(\s*hari kalender)/i';
+        $months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        $date = '/(\d{1,2}) ('.implode('|', $months).') (\d{4})/';
+
+        foreach ($articles as $article) {
+            if (preg_match($days, $article['text']) === 1) {
+                $newText = (string) preg_replace_callback($days, function (array $match): string {
+                    $extended = (int) $match[1] + 30;
+                    $words = IndonesianNumber::spell($extended);
+
+                    return $extended.$match[2].'('.(ctype_upper($match[3][0]) ? ucwords($words) : $words).')'.$match[4];
+                }, $article['text'], 1);
+
+                // A deadline date moves with the term.
+                $newText = (string) preg_replace_callback($date, function (array $match) use ($months): string {
+                    $moved = CarbonImmutable::create((int) $match[3], (int) array_search($match[2], $months, true) + 1, (int) $match[1])?->addDays(30);
+
+                    return $moved === null ? $match[0] : $moved->day.' '.$months[$moved->month - 1].' '.$moved->year;
+                }, $newText);
+
+                return [$article, $newText];
+            }
+        }
+
+        // No term in days to lengthen: the ayat gains a closing sentence.
+        $article = $articles[min(7, max(0, count($articles) - 1))] ?? ['article' => 'PASAL 8 HARGA PEKERJAAN Ayat 1', 'text' => '1. Harga pekerjaan sesuai kontrak.'];
+
+        return [$article, rtrim($article['text']).' Jangka waktu pelaksanaan pekerjaan diperpanjang selama 30 (tiga puluh) hari kalender sesuai hasil rapat pembahasan teknis.'];
+    }
+
+    /**
+     * Date the latest history entry when the step happened, not when the
+     * seeder ran.
+     */
+    protected function backdateLastActivity(Procurement $procurement, CarbonImmutable $at): void
+    {
+        $procurement->activities()->latest('id')->first()?->forceFill(['created_at' => $at, 'updated_at' => $at])->save();
     }
 
     /**
@@ -786,6 +1083,12 @@ trailer<</Root 1 0 R>>
             $procurement->checklists()->pluck('id')->each(
                 fn (int $id) => Storage::disk('local')->deleteDirectory('checklist-berkas/'.$id),
             );
+            $procurement->amendments()->pluck('id')->each(
+                fn (int $id) => Storage::disk('local')->deleteDirectory('amendments/'.$id),
+            );
+            $procurement->deliveryOrders()->pluck('id')->each(
+                fn (int $id) => Storage::disk('local')->deleteDirectory('delivery-orders/'.$id),
+            );
             $procurement->forceDelete();
         }
 
@@ -815,9 +1118,14 @@ trailer<</Root 1 0 R>>
     /**
      * The contract type matching a goods/services category, if there is one.
      */
-    protected function contractType(?string $category): ?int
+    protected function contractType(?string $category, ?string $code = null): ?int
     {
         $types = ContractType::query()->get();
+
+        // A KHS contract is its own jenis kontrak.
+        if ($code !== null && ($khs = $types->firstWhere('code', $code)) !== null) {
+            return $khs->id;
+        }
 
         $match = $category === null ? null : $types->first(fn (ContractType $type): bool => strcasecmp($type->name, $category) === 0);
 

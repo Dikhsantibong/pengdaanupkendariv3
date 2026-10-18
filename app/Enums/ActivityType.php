@@ -28,6 +28,13 @@ enum ActivityType: string
     case AmandemenDisetujuiAsman = 'amandemen_disetujui_asman';
     case AmandemenDisetujui = 'amandemen_disetujui';
     case AmandemenDikembalikan = 'amandemen_dikembalikan';
+    case AmandemenTerbit = 'amandemen_terbit';
+    case DoDiajukan = 'do_diajukan';
+    case DoDisetujuiTl = 'do_disetujui_tl';
+    case DoDisetujuiAsman = 'do_disetujui_asman';
+    case DoDiteruskanLaksdan = 'do_diteruskan_laksdan';
+    case DoTerbit = 'do_terbit';
+    case DoDikembalikan = 'do_dikembalikan';
     case PembayaranSelesai = 'pembayaran_selesai';
     case PengadaanSelesai = 'pengadaan_selesai';
 
@@ -61,6 +68,13 @@ enum ActivityType: string
             self::AmandemenDisetujuiAsman => 'Amandemen Disetujui Asman',
             self::AmandemenDisetujui => 'Amandemen Disetujui TL Pengadaan',
             self::AmandemenDikembalikan => 'Amandemen Dikembalikan',
+            self::AmandemenTerbit => 'Amandemen Terbit',
+            self::DoDiajukan => 'Delivery Order Diajukan',
+            self::DoDisetujuiTl => 'Delivery Order Disetujui TL',
+            self::DoDisetujuiAsman => 'Delivery Order Disetujui Asman',
+            self::DoDiteruskanLaksdan => 'Nota Dinas DO Diteruskan ke Laksdan',
+            self::DoTerbit => 'Delivery Order Terbit',
+            self::DoDikembalikan => 'Delivery Order Dikembalikan',
             self::PembayaranSelesai => 'Pembayaran Selesai',
             self::PengadaanSelesai => 'Pengadaan Selesai',
         };
@@ -82,7 +96,9 @@ enum ActivityType: string
             self::PelaksanaanDiajukan, self::PelaksanaanDisetujui,
             self::PelaksanaanDitolak, self::DiajukanKeKeuangan,
             self::AmandemenDiajukan, self::AmandemenDisetujuiTl, self::AmandemenDisetujuiAsman,
-            self::AmandemenDisetujui, self::AmandemenDikembalikan => 'Pelaksanaan',
+            self::AmandemenDisetujui, self::AmandemenDikembalikan, self::AmandemenTerbit,
+            self::DoDiajukan, self::DoDisetujuiTl, self::DoDisetujuiAsman,
+            self::DoDiteruskanLaksdan, self::DoTerbit, self::DoDikembalikan => 'Pelaksanaan',
             self::PembayaranSelesai, self::PengadaanSelesai => 'Keuangan',
             default => null,
         };
@@ -96,9 +112,10 @@ enum ActivityType: string
         return match ($this) {
             self::UsulanDisetujuiTl, self::UsulanDisetujui, self::PerencanaanDisetujui,
             self::PelaksanaanDisetujui, self::AmandemenDisetujuiTl, self::AmandemenDisetujuiAsman,
-            self::AmandemenDisetujui => 'disetujui',
+            self::AmandemenDisetujui, self::DoDisetujuiTl, self::DoDisetujuiAsman => 'disetujui',
+            self::DoTerbit, self::AmandemenTerbit => 'selesai',
             self::UsulanDikembalikan, self::PerencanaanDitolak, self::PelaksanaanDitolak,
-            self::AmandemenDikembalikan => 'dikembalikan',
+            self::AmandemenDikembalikan, self::DoDikembalikan => 'dikembalikan',
             self::PicDitunjuk => 'ditunjuk',
             self::Dibuat => 'dibuat',
             self::PembayaranSelesai, self::PengadaanSelesai => 'selesai',

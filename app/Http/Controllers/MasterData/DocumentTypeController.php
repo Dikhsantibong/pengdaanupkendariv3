@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\MasterData;
 
 use App\Enums\ProcurementStage;
+use App\Models\ContractNumberFormat;
 use App\Models\DocumentType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
@@ -13,11 +14,33 @@ use Illuminate\Validation\Rule;
 class DocumentTypeController extends MasterDataController
 {
     /**
+     * Store a new jenis dokumen.
+     */
+    public function store(Request $request): RedirectResponse
+    {
+        $this->normaliseFormat($request);
+
+        return parent::store($request);
+    }
+
+    /**
      * Update an existing jenis dokumen.
      */
     public function update(Request $request, DocumentType $documentType): RedirectResponse
     {
+        $this->normaliseFormat($request);
+
         return $this->updateRecord($request, $documentType);
+    }
+
+    /**
+     * "none" is the select's way of saying every contract format.
+     */
+    protected function normaliseFormat(Request $request): void
+    {
+        if ($request->input('contract_number_format_id') === 'none') {
+            $request->merge(['contract_number_format_id' => null]);
+        }
     }
 
     /**
@@ -52,7 +75,7 @@ class DocumentTypeController extends MasterDataController
     protected function records(): array
     {
         return DocumentType::query()
-            ->with('activeTemplate')
+            ->with(['activeTemplate', 'contractNumberFormat'])
             ->withCount(['templates', 'procurementDocuments'])
             ->orderBy('stage')
             ->ordered()
@@ -63,6 +86,9 @@ class DocumentTypeController extends MasterDataController
                 'name' => $record->name,
                 'stage' => $record->stage->value,
                 'upload_only' => $record->upload_only,
+                // "none" is the select's way of saying every format.
+                'contract_number_format_id' => $record->contract_number_format_id === null ? 'none' : (string) $record->contract_number_format_id,
+                'contract_number_format' => $record->contractNumberFormat?->code,
                 'stage_label' => $record->stage->label(),
                 'description' => $record->description,
                 'sort_order' => $record->sort_order,
@@ -93,7 +119,17 @@ class DocumentTypeController extends MasterDataController
      */
     protected function extraProps(): array
     {
-        return ['stages' => ProcurementStage::options()];
+        return [
+            'stages' => ProcurementStage::options(),
+            'contractNumberFormats' => [
+                ['value' => 'none', 'label' => 'Semua format'],
+                ...ContractNumberFormat::query()->forContracts()->active()->ordered()->get()
+                    ->map(fn (ContractNumberFormat $format): array => [
+                        'value' => (string) $format->id,
+                        'label' => "{$format->code} - {$format->name}",
+                    ])->all(),
+            ],
+        ];
     }
 
     /**
@@ -112,6 +148,8 @@ class DocumentTypeController extends MasterDataController
             'stage' => ['required', Rule::enum(ProcurementStage::class)],
             // Optional so a form that predates the switch still saves.
             'upload_only' => ['sometimes', 'boolean'],
+            // Asked for under this contract format only (e.g. the SPK's Pasal).
+            'contract_number_format_id' => ['sometimes', 'nullable', Rule::exists('contract_number_formats', 'id')->whereNull('deleted_at')],
             'description' => ['nullable', 'string', 'max:255'],
             'sort_order' => ['required', 'integer', 'min:0', 'max:999'],
             'is_active' => ['required', 'boolean'],

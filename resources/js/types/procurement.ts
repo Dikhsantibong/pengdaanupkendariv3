@@ -157,6 +157,8 @@ export type ChecklistFile = {
 export type PartnerCandidate = {
     id: number;
     name: string;
+    /** Kode rekanan (vendor code). */
+    vendor_code: string | null;
     director_name: string | null;
     address: string | null;
     quotation_number: string | null;

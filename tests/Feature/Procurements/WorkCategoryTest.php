@@ -126,7 +126,8 @@ class WorkCategoryTest extends TestCase
     {
         $this->seed(MasterDataSeeder::class);
         $this->seed(KontrakTemplateSeeder::class);
-        $spk = DocumentType::query()->where('code', 'spk')->firstOrFail();
+        // The SPK's articles follow the category (the SPK table does not).
+        $spk = DocumentType::query()->where('code', 'spk-pasal')->firstOrFail();
         $author = User::factory()->administrator()->create();
 
         $goods = Procurement::factory()->create(['work_category' => 'barang']);
@@ -175,7 +176,8 @@ class WorkCategoryTest extends TestCase
     {
         $this->seed(MasterDataSeeder::class);
         $this->seed(KontrakTemplateSeeder::class);
-        $spk = DocumentType::query()->where('code', 'spk')->firstOrFail();
+        // The SPK's articles follow the category (the SPK table does not).
+        $spk = DocumentType::query()->where('code', 'spk-pasal')->firstOrFail();
 
         $this->actingAs(User::factory()->administrator()->create())
             ->post(route('master-data.document-templates.store'), [

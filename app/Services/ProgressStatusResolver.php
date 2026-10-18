@@ -258,7 +258,7 @@ class ProgressStatusResolver
             ->get()
             ->map(fn (ProcurementChecklist $checklist): array => [
                 'completed' => $checklist->is_completed,
-                'required' => $checklist->checklistItem->documentTypes
+                'required' => $checklist->checklistItem->documentTypesFor($procurement)
                     ->reject(fn (DocumentType $type): bool => $type->isAlternative())
                     ->map(fn (DocumentType $type): string => $type->code)
                     ->values()
@@ -279,7 +279,7 @@ class ProgressStatusResolver
             ->where('stage', $stage->value)
             ->with('checklistItem.documentTypes')
             ->get()
-            ->flatMap(fn (ProcurementChecklist $checklist) => $checklist->checklistItem->documentTypes->map(fn (DocumentType $type): string => $type->code))
+            ->flatMap(fn (ProcurementChecklist $checklist) => $checklist->checklistItem->documentTypesFor($procurement)->map(fn (DocumentType $type): string => $type->code))
             ->unique()
             ->values();
     }

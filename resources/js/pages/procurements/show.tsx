@@ -2,11 +2,16 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { AlertTriangle, FileText, Pencil, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { AmendmentTab } from '@/components/procurement/amendment-tab';
-import type { Amendment } from '@/components/procurement/amendment-tab';
+import type {
+    Amendment,
+    ContractArticle,
+} from '@/components/procurement/amendment-tab';
 import { ApprovalCard } from '@/components/procurement/approval-card';
 import { ApprovalHistoryTable } from '@/components/procurement/approval-history';
 import type { ApprovalHistory } from '@/components/procurement/approval-history';
 import { ChecklistPanel } from '@/components/procurement/checklist-panel';
+import { DeliveryOrderTab } from '@/components/procurement/delivery-order-tab';
+import type { DeliveryOrders } from '@/components/procurement/delivery-order-tab';
 import {
     ExecutionApproval,
     FinanceStatus,
@@ -61,6 +66,10 @@ type ShowProps = {
     };
     approvalHistory: ApprovalHistory;
     amendments: Amendment[];
+    /** The contract's articles, while an amendment waits on Laksdan. */
+    amendmentArticles: ContractArticle[];
+    /** The DO tab, for a KHS SPK / PJ only. */
+    deliveryOrders: DeliveryOrders | null;
     partnerCandidates: PartnerCandidate[];
     directAppointment: boolean;
     options: {
@@ -73,6 +82,8 @@ type ShowProps = {
     can: {
         update: boolean;
         startAmendment: boolean;
+        startDeliveryOrder: boolean;
+        manageContractItems: boolean;
         assignPic: boolean;
         assignPlanner: boolean;
         assignExecutor: boolean;
@@ -100,6 +111,8 @@ export default function ShowProcurement({
     checklists,
     approvalHistory,
     amendments,
+    amendmentArticles,
+    deliveryOrders,
     partnerCandidates,
     directAppointment,
     options,
@@ -271,6 +284,13 @@ export default function ShowProcurement({
                                     {amendments.length > 0 &&
                                         ` (${amendments.length})`}
                                 </TabsTrigger>
+                                {deliveryOrders && (
+                                    <TabsTrigger value="do">
+                                        DO Delivery Order
+                                        {deliveryOrders.orders.length > 0 &&
+                                            ` (${deliveryOrders.orders.length})`}
+                                    </TabsTrigger>
+                                )}
                                 <TabsTrigger value="riwayat">
                                     Riwayat Approval
                                 </TabsTrigger>
@@ -428,8 +448,20 @@ export default function ShowProcurement({
                                     procurementId={procurement.id}
                                     amendments={amendments}
                                     canStart={can.startAmendment}
+                                    articles={amendmentArticles}
                                 />
                             </TabsContent>
+
+                            {deliveryOrders && (
+                                <TabsContent value="do">
+                                    <DeliveryOrderTab
+                                        procurementId={procurement.id}
+                                        data={deliveryOrders}
+                                        canStart={can.startDeliveryOrder}
+                                        canManageItems={can.manageContractItems}
+                                    />
+                                </TabsContent>
+                            )}
 
                             <TabsContent value="riwayat">
                                 <ApprovalHistoryTable

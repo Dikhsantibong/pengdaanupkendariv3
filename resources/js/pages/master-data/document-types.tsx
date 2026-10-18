@@ -10,6 +10,8 @@ type DocumentType = MasterRecord & {
     stage: ProcurementStage;
     stage_label: string;
     upload_only: boolean;
+    contract_number_format_id: string;
+    contract_number_format: string | null;
     description: string | null;
     sort_order: number;
     template_count: number;
@@ -19,9 +21,11 @@ type DocumentType = MasterRecord & {
 export default function DocumentTypes({
     records,
     stages,
+    contractNumberFormats,
 }: {
     records: DocumentType[];
     stages: EnumOption[];
+    contractNumberFormats: EnumOption[];
 }) {
     return (
         <MasterDataPage<DocumentType>
@@ -38,6 +42,14 @@ export default function DocumentTypes({
                 },
                 { key: 'code', label: 'Kode', className: 'tabular' },
                 { key: 'stage_label', label: 'Tahap' },
+                {
+                    key: 'contract_number_format',
+                    label: 'Format',
+                    render: (record) =>
+                        record.contract_number_format ?? (
+                            <span className="text-muted-foreground">Semua</span>
+                        ),
+                },
                 {
                     key: 'active_template',
                     label: 'Template Aktif',
@@ -93,6 +105,13 @@ export default function DocumentTypes({
                     type: 'switch',
                     hint: 'Dokumen disiapkan di luar sistem lalu diunggah pada tahapannya. Tombol generate dan edit tidak ditampilkan.',
                 },
+                {
+                    name: 'contract_number_format_id',
+                    label: 'Hanya untuk Format Kontrak',
+                    type: 'select',
+                    options: contractNumberFormats,
+                    hint: 'Bila dipilih, tahapan checklist hanya meminta dokumen ini pada pengadaan dengan format tersebut (mis. SPK - Syarat & Ketentuan (Pasal) hanya untuk SPK, karena PJ sudah memuat pasal di Surat Perjanjian).',
+                },
                 { name: 'sort_order', label: 'Urutan Tampil', type: 'number' },
                 { name: 'is_active', label: 'Aktif', type: 'switch' },
             ]}
@@ -101,6 +120,7 @@ export default function DocumentTypes({
                 code: '',
                 stage: 'perencanaan',
                 upload_only: false,
+                contract_number_format_id: 'none',
                 description: '',
                 sort_order: 0,
                 is_active: true,

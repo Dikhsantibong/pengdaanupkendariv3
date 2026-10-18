@@ -45,7 +45,7 @@ class ContractRequirementTest extends TestCase
     public function test_an_spk_jasa_reads_its_requirements_from_its_own_contract(): void
     {
         $procurement = $this->procurement('SPK', 'jasa');
-        $this->contract($procurement, 'spk');
+        $this->contract($procurement, 'spk-pasal');
 
         $this->sync($procurement);
 
@@ -69,7 +69,7 @@ class ContractRequirementTest extends TestCase
     public function test_an_edited_contract_changes_the_checklist_and_keeps_the_ticks(): void
     {
         $procurement = $this->procurement('SPK', 'jasa');
-        $document = $this->contract($procurement, 'spk');
+        $document = $this->contract($procurement, 'spk-pasal');
         $this->sync($procurement);
 
         $kept = $this->row($procurement, 'Laporan Pekerjaan');
@@ -123,7 +123,7 @@ class ContractRequirementTest extends TestCase
             ->assertInertia(fn ($page) => $page->where('detail.finance.requirements_source', ['penyerahan' => null, 'pembayaran' => null]));
 
         // Drawing the contract switches both tabs to it.
-        $document = $this->contract($procurement, 'spk');
+        $document = $this->contract($procurement, 'spk-pasal');
 
         $this->actingAs(User::factory()->administrator()->create())
             ->get(route('procurements.show', $procurement))
@@ -176,7 +176,7 @@ class ContractRequirementTest extends TestCase
     public function test_the_requirements_are_frozen_once_paid(): void
     {
         $procurement = $this->procurement('SPK', 'jasa');
-        $document = $this->contract($procurement, 'spk');
+        $document = $this->contract($procurement, 'spk-pasal');
         $this->sync($procurement);
 
         $procurement->forceFill(['payment_completed_at' => now()])->save();
@@ -192,7 +192,7 @@ class ContractRequirementTest extends TestCase
     public function test_an_unreadable_contract_falls_back_without_breaking_the_page(): void
     {
         $procurement = $this->procurement('SPK', 'jasa');
-        $document = $this->contract($procurement, 'spk');
+        $document = $this->contract($procurement, 'spk-pasal');
         $document->update(['rendered_body' => '<p>Kontrak tanpa daftar <ol><li>terputus']);
         $procurement->unsetRelation('documents');
 
@@ -209,7 +209,7 @@ class ContractRequirementTest extends TestCase
     public function test_a_contract_s_requirements_stay_with_its_procurement(): void
     {
         $first = $this->procurement('SPK', 'jasa');
-        $this->contract($first, 'spk');
+        $this->contract($first, 'spk-pasal');
         $this->sync($first);
 
         $second = $this->procurement('SPK', 'jasa');

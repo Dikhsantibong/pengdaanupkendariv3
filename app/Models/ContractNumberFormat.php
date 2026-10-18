@@ -26,6 +26,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property bool $uses_work_category
  * @property int|null $procurement_method_id
  * @property bool $for_amendment
+ * @property bool $for_delivery_order
  * @property string|null $description
  * @property int $sort_order
  * @property bool $is_active
@@ -44,6 +45,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'uses_work_category',
     'procurement_method_id',
     'for_amendment',
+    'for_delivery_order',
     'description',
     'sort_order',
     'is_active',
@@ -76,14 +78,14 @@ class ContractNumberFormat extends Model
 
     /**
      * Limit the query to the formats a contract is numbered with, leaving
-     * out the one that numbers amendments.
+     * out the ones that number amendments and Delivery Orders.
      *
      * @param  Builder<static>  $query
      * @return Builder<static>
      */
     public function scopeForContracts(Builder $query): Builder
     {
-        return $query->where('for_amendment', false);
+        return $query->where('for_amendment', false)->where('for_delivery_order', false);
     }
 
     /**
@@ -92,6 +94,14 @@ class ContractNumberFormat extends Model
     public static function forAmendments(): ?self
     {
         return self::query()->active()->where('for_amendment', true)->ordered()->first();
+    }
+
+    /**
+     * The format Delivery Orders are numbered with (D26252.DO/612/UPKD/2026).
+     */
+    public static function forDeliveryOrders(): ?self
+    {
+        return self::query()->active()->where('for_delivery_order', true)->ordered()->first();
     }
 
     /**
@@ -142,6 +152,7 @@ class ContractNumberFormat extends Model
             'starting_sequence' => 'integer',
             'uses_work_category' => 'boolean',
             'for_amendment' => 'boolean',
+            'for_delivery_order' => 'boolean',
         ];
     }
 }

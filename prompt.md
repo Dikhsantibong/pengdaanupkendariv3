@@ -246,6 +246,16 @@ Form ini (menu **Buat Perencanaan Pengadaan**) diisi oleh **Team Leader Pengadaa
 
 ### Bagian Calon Mitra
 
+> **Revisi kode rekanan:** setiap calon mitra punya isian **Kode Rekanan** (opsional).
+> - Saat mitra dipilih sebagai pelaksana (atau langsung untuk SPPL), kode rekanannya disalin ke pengadaan (`partner_vendor_code`).
+> - Kode ini tercetak otomatis di SPK tabel (`{{kode_rekanan_mitra}}`) dan menjadi isian awal Kode Rekanan di setiap DO (bisa diubah per DO).
+> - Migrasi: `add_vendor_code_to_partner_candidates`.
+>
+> **Revisi seeder demo:**
+> - Dua dari enam pola kontrak demo kini **KHS** (PJ Barang dan SPK Barang). Pekerjaan yang masih berjalan dengan kontrak KHS mendapat Daftar Harga Satuan Kontrak (material MAK 8M) dan 3 DO: satu **Terbit** (dengan dokumen), satu **Di Laksdan** (bernomor), dan satu **Menunggu Persetujuan Asman**.
+> - Sebagian pekerjaan non-KHS yang masih berjalan mendapat **Amandemen I Terbit** (dengan dokumen, pasal diambil dari kontrak) dan Amandemen II yang **Di Laksdan** atau **Menunggu Persetujuan TL**.
+> - Semua calon mitra demo punya kode rekanan.
+
 > **Revisi (calon mitra di checklist, wajib lengkap):**
 > - Calon mitra tidak lagi tampil di bagian atas tab Perencanaan, tetapi **di dalam tahapan checklist "Penawaran"**.
 > - Setiap calon wajib berisi: nama, direktur, alamat, nomor dan tanggal surat penawaran, **nilai total penawaran sebelum nego**, dan **unggahan berkas penawaran harga** (PDF/JPG/PNG, bisa diganti).
@@ -579,6 +589,20 @@ Setelah dokumen perencanaan disetujui, **Team Leader Pengadaan** menunjuk **1 or
 
 ### Checklist Pelaksanaan — format SPK & PJ
 
+> **Revisi SPK tabel + Pasal:**
+> - **SPK (format SPK)** kini berbentuk tabel seperti contoh SPK UP Kendari (template `kontrak/spk.html`, khusus format SPK):
+>   - Nomor, tanggal, dan judul.
+>   - Dokumen terkait: Permintaan Penawaran, Surat Penawaran, BA Klarifikasi/Negosiasi.
+>   - Sumber dana, Kepada (mitra + alamat), kode rekanan, dan tempat penyerahan.
+>   - Tabel barang/pekerjaan (jumlah, satuan, harga satuan, jumlah harga, batas waktu), jumlah/PPN/total/terbilang dari nilai setelah nego.
+>   - Tanda tangan Direktur mitra dan Manager.
+>   - Rincian item dan data yang belum ada di sistem (nomor PP, BA Klarifikasi, kode rekanan) diisi di editor dokumen.
+> - **Pasal-pasal SPK** yang lama dipindah menjadi dokumen baru **"SPK - Syarat & Ketentuan (Pasal)"** (kode `spk-pasal`, template SPK Barang/Jasa sesuai kategori), tetap di tahapan checklist **Kontrak** tepat di bawah SPK.
+> - Jenis dokumen kini bisa dibatasi untuk satu format kontrak (Data Master → Jenis Dokumen → "Hanya untuk Format Kontrak"). Dokumen Pasal hanya diminta untuk format SPK; PJ tetap satu dokumen Surat Perjanjian.
+> - Kebutuhan Penyerahan/Pembayaran untuk SPK kini dibaca dari dokumen Pasal.
+> - Dokumen SPK lama yang berisi pasal otomatis dipindah menjadi dokumen Pasal (migrasi `split_spk_into_table_and_articles`), sehingga tidak ada dokumen yang hilang; SPK tabelnya tinggal digenerate.
+> - **Test:** `SpkContractDocumentsTest`.
+
 | Tahapan | Cara penyelesaian |
 |---------|-------------------|
 | Penyusunan HPS | Unggah saja |
@@ -586,7 +610,7 @@ Setelah dokumen perencanaan disetujui, **Team Leader Pengadaan** menunjuk **1 or
 | Berita Acara | **Generate** 6 dokumen (Aanwijzing, Lampiran BAPP, Evaluasi Teknis, Evaluasi Harga, Hasil Evaluasi, Klarifikasi) lalu unggah hasil TTD |
 | Surat Pesanan | Centang |
 | Jaminan Bank | Unggah saja |
-| Kontrak | **Generate SPK** (berisi pasal-pasal kontrak) lalu unggah hasil TTD — hanya satu dokumen; Lampiran SPK dan BA Negosiasi tidak lagi diminta |
+| Kontrak | **Format SPK:** dua dokumen, masing-masing digenerate lalu diunggah hasil TTD-nya: (1) **SPK (Surat Perintah Kerja)** berbentuk tabel; (2) **SPK - Syarat & Ketentuan (Pasal)** berisi pasal-pasal (dulu isi SPK). **Format PJ:** satu dokumen Surat Perjanjian (sudah berisi pasal). Lampiran SPK dan BA Negosiasi tidak diminta |
 | Rentang Waktu | Centang |
 | Amandemen — opsional | Unggah saja |
 | Masa Pemeliharaan | Unggah saja |
@@ -1176,7 +1200,69 @@ Di bagian atas dashboard tampil daftar tugas sesuai akun yang login. Setiap bari
 
 ---
 
+# Delivery Order (DO) — Kontrak KHS
+
+- **Kapan tampil:** tab **DO Delivery Order** (di sebelah Amandemen) hanya muncul untuk format **SPK / PJ** dengan jenis kontrak **KHS**. DO baru bisa diajukan setelah dokumen kontrak (SPK / Surat Perjanjian) dibuat. Satu kontrak bisa punya banyak DO, dan beberapa bisa berjalan bersamaan.
+- **Daftar Harga Satuan Kontrak** (diisi Laksdan: PIC Pelaksana / TL Pengadaan):
+  - Berisi material/jasa dari lampiran kontrak: kelompok (mis. MATERIAL MAK 8M 453 C), uraian, part number, satuan, dan harga satuan.
+  - Setiap DO menarik item dari daftar ini.
+  - Uraian dan harga disalin ke DO, sehingga perubahan daftar di kemudian hari tidak mengubah DO yang sudah dibuat.
+- **Alur:**
+  1. **Pengusul → Rendan:** mengisi nomor dan tanggal nota dinas usulan, mengunggah dokumennya, dan memilih item + volume dari daftar harga.
+  2. Disetujui **TL**, lalu **Asman** bidang. Bila dikembalikan, pengusul memperbaiki lalu mengajukan ulang.
+  3. **Rendan → Laksdan:** PIC Perencana (atau TL ICC/TL) mengisi nomor dan tanggal **Nota Dinas DO**, lalu meneruskan ke Laksdan.
+  4. **Laksdan:** nomor DO terisi **otomatis**, berurutan untuk seluruh DO kontrak KHS (format "DO" di Data Master Format Nomor Kontrak, contoh D26252.DO/612/UPKD/2026), dan tetap bisa dikoreksi.
+     - Laksdan mengisi tanggal DO, kode rekanan, uraian pekerjaan, tempat penyerahan, dan waktu penyerahan (hari), dan bisa menyesuaikan item.
+     - Klik **Terbitkan DO** → dokumen DO digenerate dan status menjadi "DO Terbit".
+- **Dokumen DO** (template `kontrak/delivery-order.html`), mengikuti contoh DO:
+  - Header: nomor & tanggal DO, nomor & tanggal kontrak, Kepada (mitra + alamat), kode rekanan, uraian pekerjaan.
+  - Tabel item dikelompokkan A, B, … (No, Uraian, Part Number, Volume, Satuan, Harga Satuan, Jumlah Harga), PR, total, dan terbilang.
+  - Ketentuan 1–6 (tempat dan waktu penyerahan, jaminan, acuan kontrak).
+  - Tanda tangan Direktur mitra dan **Manager** (Data Master Manager).
+  - Dokumen bisa dibuka di editor, dipratinjau, dan diunduh.
+- **Hak:** TL ICC dan PIC Perencana tidak bisa mengurus daftar harga atau menerbitkan DO; PIC Pelaksana tidak bisa mengisi Nota Dinas DO.
+- **Migrasi:** `create_procurement_delivery_orders_table` (tabel DO, item DO, daftar harga kontrak, format nomor DO, jenis dokumen `delivery-order`, template).
+- **Test:** `DeliveryOrderTest`.
+
 # Amandemen Kontrak
+
+> **Revisi alur Amandemen (Pengusul → TL → Asman → Laksdan):**
+> 1. **Pengusul → Pengadaan:** mengisi **nomor dan tanggal nota dinas usulan** dan tanggal notulen, lalu mengunggah **dokumen nota dinas usulan** dan **notulen** (wajib) serta **surat permohonan mitra** (opsional). Daftar hadir, nomor/tanggal surat permohonan, dan perubahan pasal tidak lagi diisi pengusul.
+> 2. Disetujui **TL**, lalu **Asman** bidang. Bila dikembalikan, pengusul memperbaiki dan mengajukan ulang.
+> 3. **Laksdan** (PIC Pelaksana / TL Pengadaan / Administrator), tanpa singgah di perencana:
+>    - Nomor Amd terisi **otomatis** saat Asman menyetujui, berurutan dengan nomor amandemen kontrak lainnya (format Amd), dan tetap bisa dikoreksi.
+>    - Laksdan mengisi tanggal amandemen dan memilih **pasal yang diubah dari dokumen kontrak**. Teks "Semula berbunyi" terisi otomatis dari pasal kontrak (SPK – Syarat & Ketentuan (Pasal) / Surat Perjanjian), lalu Laksdan mengisi "Menjadi".
+>    - Klik **Terbitkan Amandemen** → dokumen Amandemen I/II/… digenerate dan status menjadi "Amandemen Terbit".
+> - Persetujuan akhir TL Pengadaan dan hak "Setujui / tolak amandemen kontrak" dihapus. Amandemen yang tadinya menunggu TL Pengadaan kini menunggu Laksdan.
+> - **Narasi template amandemen** disesuaikan dengan kontrak:
+>   - Para pihak disebut **PIHAK KESATU / PIHAK KEDUA** dengan uraian seperti di kontrak.
+>   - Dasar amandemen: kontrak beserta lampirannya, Nota Dinas Usulan, dan Notulen Rapat; Surat Permohonan Amandemen dari mitra hanya dicantumkan bila diunggah (placeholder `{{butir_surat_permohonan}}`).
+> - **Migrasi:** `hand_amendments_to_laksdan`. **Test:** `AmendmentTest`.
+
+> **Revisi format & isian perubahan pasal Amandemen:**
+> - **Pilihan per ayat:** pasal kontrak ditawarkan per ayat (mis. "PASAL 8 MASA GARANSI Ayat 2"). Teks semula terisi lengkap dengan butir a./b./1./- sebagai baris menjorok (`AmendmentService::contractArticles`).
+> - **Isian lebih sederhana:**
+>   - Laksdan cukup memilih ayat; teks *Semula* tampil sebagai pratinjau baca-saja, dengan tombol "Koreksi teks semula" bila perlu.
+>   - Kolom *Menjadi* sudah terisi teks semula, jadi tinggal diubah. Satu baris = satu butir; butir dimulai "a." / "1." / "-", dan spasi di depan membuatnya menjorok.
+>   - Ada pratinjau "Tampilan di dokumen".
+> - **Format dokumen rapi:**
+>   - Pasal ditulis tebal kapital dan ayat ditambahkan.
+>   - Teks Semula/Menjadi disusun sebagai tabel bernomor menjorok (`table.teks`), seperti di kontrak.
+>   - PASAL 2 Penutup tidak terpotong halaman.
+> - **Setiap halaman PDF** (`DocumentPdfRenderer::stampAmendmentPages`):
+>   - logo di atas;
+>   - footer miring "Amandemen {ke} {nomor} tanggal {tgl kontrak}" beserta nama pengadaan;
+>   - kolom "Paraf Pihak 1 / Pihak 2".
+> - `LAYOUT_VERSION` disertakan pada cache PDF agar PDF lama digambar ulang.
+> - **Data demo:** kolom "Menjadi" kini berisi ayat yang sama dengan jangka waktu (hari kalender) diperpanjang 30 hari dan tanggal batasnya ikut diundur, bukan lagi satu kalimat yang tidak berhubungan dengan pasalnya (`DemoProcurementSeeder::extendedTerm`). Ringkasan amandemen di tab memakai tampilan bernomor yang sama dengan dokumen.
+> - Template disinkron lewat migrasi `hand_amendments_to_laksdan`. Server yang sudah menjalankannya cukup menjalankan `php artisan templates:sync kontrak.amandemen`.
+
+> **Menu Monitoring:** grup sidebar "Pengawasan" diganti menjadi **Monitoring**, berisi:
+> - **Monitoring Pengadaan** (halaman lama);
+> - **Monitoring Amandemen** (`/monitoring/amandemen`);
+> - **Monitoring Delivery Order** (`/monitoring/delivery-order`).
+>
+> Keduanya memakai hak `menu.monitoring` dan cakupan data yang sama dengan Monitoring Pengadaan, dengan ringkasan status, filter, dan pencarian. **Test:** `ContractMonitoringTest`.
 
 Amandemen punya **tab tersendiri** di detail pengadaan (tab *Amandemen*). Langkah checklist pelaksanaan "Amandemen" yang lama dinonaktifkan; centang lamanya tetap tersimpan sebagai histori.
 

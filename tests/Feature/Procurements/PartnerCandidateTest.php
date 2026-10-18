@@ -45,6 +45,7 @@ class PartnerCandidateTest extends TestCase
             $this->actingAs($this->planner)
                 ->post(route('procurements.partner-candidates.store', $procurement), [
                     'name' => $name,
+                    'vendor_code' => "V0700{$index}",
                     'director_name' => "Direktur {$index}",
                     'quotation_number' => "00{$index}/SPH/2026",
                     'quotation_date' => '2026-08-01',
@@ -86,6 +87,8 @@ class PartnerCandidateTest extends TestCase
         $this->assertSame('PT Dua', $procurement->partner_name);
         $this->assertSame('Direktur 1', $procurement->partner_director_name);
         $this->assertSame('001/SPH/2026', $procurement->quotation_number);
+        // ... and its kode rekanan, which the SPK and DO print.
+        $this->assertSame('V07001', $procurement->partner_vendor_code);
         $this->assertTrue($step->checklistItem->input_kind->isFilledOn($procurement));
 
         // The picked one cannot be removed; another can.

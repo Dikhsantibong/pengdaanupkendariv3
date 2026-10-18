@@ -3,8 +3,12 @@
 namespace App\Enums;
 
 /**
- * Where a contract amendment stands: drafted by the proposer, decided by
- * their TL, the division's Asman, then TL Pengadaan.
+ * Where a contract amendment stands: requested by the proposer, agreed by
+ * their TL and the division's Asman, then numbered, dated and issued by the
+ * execution side (Laksdan).
+ *
+ * The stored values predate that flow: "menunggu_tl_pengadaan" is the
+ * request waiting with Laksdan, "disetujui" the amendment issued.
  */
 enum AmendmentState: string
 {
@@ -24,18 +28,27 @@ enum AmendmentState: string
             self::Draft => 'Draft',
             self::MenungguPersetujuanTl => 'Menunggu Persetujuan TL',
             self::MenungguPersetujuanAsman => 'Menunggu Persetujuan Asman',
-            self::MenungguTlPengadaan => 'Menunggu Persetujuan TL Pengadaan',
-            self::Disetujui => 'Disetujui',
+            self::MenungguTlPengadaan => 'Di Laksdan (Penerbitan Amandemen)',
+            self::Disetujui => 'Amandemen Terbit',
             self::Dikembalikan => 'Dikembalikan',
         };
     }
 
     /**
-     * Whether the amendment waits on someone's decision.
+     * Whether the amendment waits on someone: the TL or Asman's decision,
+     * or Laksdan issuing it.
      */
     public function isWaiting(): bool
     {
         return in_array($this, [self::MenungguPersetujuanTl, self::MenungguPersetujuanAsman, self::MenungguTlPengadaan], true);
+    }
+
+    /**
+     * Whether it waits on the TL or Asman's decision.
+     */
+    public function awaitsApproval(): bool
+    {
+        return in_array($this, [self::MenungguPersetujuanTl, self::MenungguPersetujuanAsman], true);
     }
 
     /**

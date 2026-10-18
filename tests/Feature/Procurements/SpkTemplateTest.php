@@ -37,7 +37,8 @@ class SpkTemplateTest extends TestCase
             'warranty_months' => 6,
         ])->save();
 
-        $type = DocumentType::query()->where('code', 'spk')->firstOrFail();
+        // The agreement layout with its articles is the SPK's Pasal document.
+        $type = DocumentType::query()->where('code', 'spk-pasal')->firstOrFail();
         $document = app(DocumentGenerator::class)
             ->generate($procurement, $type, User::factory()->administrator()->create());
         $text = preg_replace('/\s+/u', ' ', str_replace("\u{00A0}", ' ', html_entity_decode(strip_tags($document->rendered_body), ENT_QUOTES | ENT_HTML5, 'UTF-8')));

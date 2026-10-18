@@ -31,6 +31,7 @@ use Illuminate\Support\Collection;
  * @property int|null $contract_number_format_id
  * @property string $name
  * @property string|null $partner_name
+ * @property string|null $partner_vendor_code
  * @property string|null $partner_director_name
  * @property string|null $partner_address
  * @property int|null $partner_candidate_id
@@ -103,6 +104,7 @@ use Illuminate\Support\Collection;
 #[Fillable([
     'name',
     'partner_name',
+    'partner_vendor_code',
     'partner_director_name',
     'partner_address',
     'work_director_id',
@@ -621,6 +623,37 @@ class Procurement extends Model
     public function amendments(): HasMany
     {
         return $this->hasMany(ProcurementAmendment::class)->orderBy('sequence');
+    }
+
+    /**
+     * The Delivery Orders called off under the contract (KHS), oldest first.
+     *
+     * @return HasMany<ProcurementDeliveryOrder, $this>
+     */
+    public function deliveryOrders(): HasMany
+    {
+        return $this->hasMany(ProcurementDeliveryOrder::class)->orderBy('sequence');
+    }
+
+    /**
+     * The price list of a KHS contract, from which the Delivery Orders draw
+     * their lines.
+     *
+     * @return HasMany<ProcurementContractItem, $this>
+     */
+    public function contractItems(): HasMany
+    {
+        return $this->hasMany(ProcurementContractItem::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    /**
+     * Whether the contract is called off by Delivery Orders: an SPK or PJ
+     * whose jenis kontrak is KHS.
+     */
+    public function usesDeliveryOrders(): bool
+    {
+        return in_array($this->contractNumberFormat?->code, ['SPK', 'PJ'], true)
+            && $this->contractType?->code === 'khs';
     }
 
     /**

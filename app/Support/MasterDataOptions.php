@@ -84,8 +84,8 @@ class MasterDataOptions
             // Upload-only documents are filed on their checklist step, never
             // generated, so they are not offered here.
             'documentTypes' => DocumentType::query()->active()->where('upload_only', false)
-                // Drawn from the Amandemen tab only.
-                ->where('code', '!=', 'amandemen-kontrak')
+                // Drawn from the Amandemen and DO tabs only.
+                ->whereNotIn('code', ['amandemen-kontrak', 'delivery-order'])
                 ->ordered()->get()
                 ->map(fn (DocumentType $type): array => [
                     'value' => $type->id,

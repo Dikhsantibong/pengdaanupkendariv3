@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $id
  * @property int $procurement_id
  * @property int|null $procurement_amendment_id
+ * @property int|null $procurement_delivery_order_id
  * @property int $document_type_id
  * @property int|null $document_template_id
  * @property string $title

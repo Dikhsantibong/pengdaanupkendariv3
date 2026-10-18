@@ -1,0 +1,105 @@
+<section style="font-family: Arial, Helvetica, sans-serif; font-size: 8.5pt; line-height: 1.3; color: #000;">
+    <div style="margin-bottom: 6px;">
+        <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="height: 40px; width: auto; display: block;">
+    </div>
+
+    <div style="text-align: center; font-weight: bold; font-size: 10pt; margin: 6px 0 10px;">
+        <div style="text-decoration: underline;">DELIVERY ORDER (DO)</div>
+        <div style="text-decoration: underline;">{{uraian_pekerjaan_do}}</div>
+        <div>{{unit_tujuan}}</div>
+    </div>
+
+    <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; font-size: 8.5pt;">
+        <tr>
+            <td style="width: 4%; padding: 3px 6px; vertical-align: top;">1</td>
+            <td style="width: 16%; padding: 3px 6px; vertical-align: top;">D/O Nomor</td>
+            <td style="width: 2%; padding: 3px 0; vertical-align: top;">:</td>
+            <td style="width: 44%; padding: 3px 6px; vertical-align: top; font-weight: bold;">{{nomor_do}}</td>
+            <td style="width: 34%; padding: 3px 6px; vertical-align: top; font-weight: bold; text-align: right;">Tanggal D/O : {{tanggal_do}}</td>
+        </tr>
+        <tr>
+            <td style="padding: 3px 6px; vertical-align: top;">2</td>
+            <td style="padding: 3px 6px; vertical-align: top;">Nomor Kontrak</td>
+            <td style="padding: 3px 0; vertical-align: top;">:</td>
+            <td style="padding: 3px 6px; vertical-align: top; font-weight: bold;">{{nomor_kontrak}}</td>
+            <td style="padding: 3px 6px; vertical-align: top; font-weight: bold; text-align: right;">Tanggal Kontrak : {{tanggal_kontrak}}</td>
+        </tr>
+        <tr>
+            <td style="padding: 3px 6px; vertical-align: top;">3</td>
+            <td style="padding: 3px 6px; vertical-align: top;">Kepada</td>
+            <td style="padding: 3px 0; vertical-align: top;">:</td>
+            <td style="padding: 3px 6px; vertical-align: top;">
+                <div style="font-weight: bold;">{{nama_mitra}}</div>
+                <div>{{alamat_mitra}}</div>
+            </td>
+            <td style="padding: 3px 6px; vertical-align: top; font-weight: bold; text-align: right;">Kode Rekanan : {{kode_rekanan}}</td>
+        </tr>
+        <tr>
+            <td style="padding: 3px 6px 8px; vertical-align: top;">4</td>
+            <td style="padding: 3px 6px 8px; vertical-align: top;">Uraian Pekerjaan</td>
+            <td style="padding: 3px 0 8px; vertical-align: top;">:</td>
+            <td colspan="2" style="padding: 3px 6px 8px; vertical-align: top; font-weight: bold;">{{uraian_pekerjaan_do}}</td>
+        </tr>
+    </table>
+
+    <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; font-size: 8pt; margin-top: 8px;">
+        <tr style="font-weight: bold; text-align: center;">
+            <td style="width: 5%; border: 1px solid #000; padding: 4px;">NO.</td>
+            <td style="width: 31%; border: 1px solid #000; padding: 4px;">URAIAN</td>
+            <td style="width: 12%; border: 1px solid #000; padding: 4px;">PART NUMBER</td>
+            <td style="width: 9%; border: 1px solid #000; padding: 4px;">VOLUME</td>
+            <td style="width: 9%; border: 1px solid #000; padding: 4px;">SATUAN</td>
+            <td style="width: 16%; border: 1px solid #000; padding: 4px;">HARGA SATUAN</td>
+            <td style="width: 18%; border: 1px solid #000; padding: 4px;">JUMLAH HARGA</td>
+        </tr>
+        {{rincian_do}}
+        <tr>
+            <td style="border: 1px solid #000; padding: 2px 4px;"></td>
+            <td colspan="6" style="border: 1px solid #000; padding: 2px 4px;">PR : {{nomor_pr_ro}}</td>
+        </tr>
+        <tr>
+            <td colspan="4" rowspan="2" style="border: 1px solid #000; padding: 4px; vertical-align: top;">
+                <div style="font-weight: bold;">TERBILANG :</div>
+                <div style="font-style: italic;">{{total_do_terbilang}}</div>
+            </td>
+            <td style="border: 1px solid #000; padding: 4px; font-weight: bold; text-align: center;">TOTAL</td>
+            <td style="border: 1px solid #000; padding: 4px; font-weight: bold;">Rp</td>
+            <td style="border: 1px solid #000; padding: 4px; font-weight: bold; text-align: right;">{{total_do}}</td>
+        </tr>
+        <tr>
+            <td colspan="3" style="border: 1px solid #000; padding: 2px;"></td>
+        </tr>
+    </table>
+
+    <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; font-size: 8pt; margin-top: 8px;">
+        <tr>
+            <td style="padding: 6px 10px; line-height: 1.45;">
+                <div>1 . Harga adalah sebelum Pajak Pertambahan Nilai (PPN)</div>
+                <div>2 . Tempat Penyerahan Pekerjaan&nbsp; : {{tempat_penyerahan_do}}</div>
+                <div>3 . Waktu Penyerahan Material&nbsp; : {{waktu_penyerahan_do}} ({{waktu_penyerahan_do_terbilang}}) hari kalender terhitung sejak terbitnya Delivery Order (DO)</div>
+                <div>4 . Jaminan Pelaksanaan berupa Bank Garansi dengan nilai 5% dari nilai DO, diserahkan selambat-lambatnya 5 (lima) hari kerja sejak tanggal penerbitan DO dan berlaku sekurang-kurangnya hingga 30 (tiga puluh) hari kalender setelah berakhirnya periode pelaksanaan pekerjaan.</div>
+                <div>5 . Jaminan Garansi berupa Bank Garansi dengan nilai 5% dari nilai DO, diserahkan selambat-lambatnya 14 (empat belas) hari kerja dan berlaku selama 12 (dua belas) bulan sejak tanggal penerbitan Berita Acara Pemeriksaan Barang (BAPB).</div>
+                <div>6 . Segala aturan yang tidak terdapat dalam DO ini tetap mengacu pada {{jenis_dokumen_kontrak_judul}} No. {{nomor_kontrak}}.</div>
+            </td>
+        </tr>
+    </table>
+
+    <table style="width: 100%; border-collapse: collapse; border: 1px solid #000; font-size: 8.5pt; margin-top: 8px; text-align: center;">
+        <tr>
+            <td style="width: 50%; border: 1px solid #000; padding: 8px; vertical-align: top;">
+                <div style="font-weight: bold;">{{nama_mitra}}</div>
+                <div style="font-weight: bold;">DIREKTUR</div>
+                <div style="height: 80px;"></div>
+                <div style="font-weight: bold;">{{nama_direktur}}</div>
+            </td>
+            <td style="width: 50%; border: 1px solid #000; padding: 8px; vertical-align: top;">
+                <div style="font-weight: bold;">PEMBERI PEKERJAAN,</div>
+                <div style="font-weight: bold;">PT PLN NUSANTARA POWER</div>
+                <div style="font-weight: bold;">UNIT PEMBANGKITAN KENDARI</div>
+                <div style="font-weight: bold;">MANAGER</div>
+                <div style="height: 64px;"></div>
+                <div style="font-weight: bold;">{{nama_manager}}</div>
+            </td>
+        </tr>
+    </table>
+</section>

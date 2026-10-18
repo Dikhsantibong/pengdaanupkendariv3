@@ -13,6 +13,7 @@ type ContractNumberFormat = MasterRecord & {
     starting_sequence: number;
     uses_work_category: boolean;
     for_amendment: boolean;
+    for_delivery_order: boolean;
     procurement_method_id: string;
     procurement_method: string | null;
     description: string | null;
@@ -105,6 +106,12 @@ export default function ContractNumberFormats({
                     hint: 'Format ini dipakai untuk menomori amandemen kontrak (contoh KDD054.Amd/612/UPKD/2026), tidak ditawarkan sebagai format kontrak pengadaan.',
                 },
                 {
+                    name: 'for_delivery_order',
+                    label: 'Untuk Nomor Delivery Order (DO)',
+                    type: 'switch',
+                    hint: 'Format ini dipakai untuk menomori Delivery Order kontrak KHS (contoh D26252.DO/612/UPKD/2026), tidak ditawarkan sebagai format kontrak pengadaan.',
+                },
+                {
                     name: 'procurement_method_id',
                     label: 'Metode Pengadaan',
                     type: 'select',
@@ -134,6 +141,7 @@ export default function ContractNumberFormats({
                 starting_sequence: 1,
                 uses_work_category: false,
                 for_amendment: false,
+                for_delivery_order: false,
                 procurement_method_id: 'none',
                 description: '',
                 sort_order: 0,

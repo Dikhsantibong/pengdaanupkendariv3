@@ -5,6 +5,7 @@ namespace Tests\Feature\Procurements;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Models\ChecklistItem;
+use App\Models\ContractNumberFormat;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
 use App\Models\Procurement;
@@ -350,7 +351,7 @@ class ChecklistDocumentRequirementTest extends TestCase
         ], $item->documentTypes->pluck('code')->all());
     }
 
-    public function test_the_kontrak_step_asks_only_for_the_spk(): void
+    public function test_the_kontrak_step_asks_for_the_spk_and_its_articles(): void
     {
         $this->seed(MasterDataSeeder::class);
 
@@ -359,7 +360,13 @@ class ChecklistDocumentRequirementTest extends TestCase
             ->where('name', 'Kontrak')
             ->firstOrFail();
 
-        $this->assertSame(['spk'], $item->documentTypes->pluck('code')->all());
+        // The SPK table, then its Syarat & Ketentuan (Pasal), asked for
+        // under the SPK format only.
+        $this->assertSame(['spk', 'spk-pasal'], $item->documentTypes->pluck('code')->all());
+        $this->assertSame(
+            ContractNumberFormat::query()->where('code', 'SPK')->value('id'),
+            $item->documentTypes->firstWhere('code', 'spk-pasal')?->contract_number_format_id,
+        );
     }
 
     public function test_a_multi_document_step_needs_every_signed_copy(): void
@@ -469,9 +476,13 @@ class ChecklistDocumentRequirementTest extends TestCase
 
         $this->assertGreaterThan(0, $linked->count());
 
+        // A template may serve one contract format (the SPK table, the
+        // Surat Perjanjian); any format having one is enough.
+        $formats = [null, ...ContractNumberFormat::query()->pluck('id')->all()];
+
         foreach ($linked as $type) {
-            $this->assertNotNull(
-                DocumentTemplate::resolveFor($type->id, null),
+            $this->assertTrue(
+                collect($formats)->contains(fn (?int $format): bool => DocumentTemplate::resolveFor($type->id, null, null, $format) !== null),
                 "Jenis dokumen [{$type->code}] belum punya template aktif.",
             );
         }

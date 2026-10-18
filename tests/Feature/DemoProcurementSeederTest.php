@@ -2,13 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Enums\AmendmentState;
+use App\Enums\DeliveryOrderState;
 use App\Enums\FinanceSection;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Enums\ProposalState;
 use App\Models\ChecklistItem;
 use App\Models\Procurement;
+use App\Models\ProcurementAmendment;
 use App\Models\ProcurementChecklist;
+use App\Models\ProcurementDeliveryOrder;
+use App\Models\ProcurementPartnerCandidate;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoProcurementSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -107,6 +112,34 @@ class DemoProcurementSeederTest extends TestCase
         $this->assertContains('pelaksanaan_disetujui', $approvals->all());
         $this->assertSame('pembayaran_selesai', $approvals->last());
         $this->assertTrue($closed->documents()->get()->every(fn ($document) => $document->generated_at->lessThan($closed->payment_completed_at)));
+
+        // Every calon mitra carries its kode rekanan, and the picked one's is
+        // on the job.
+        $this->assertSame(0, ProcurementPartnerCandidate::query()->whereNull('vendor_code')->count());
+        $this->assertTrue($demo()->whereNotNull('partner_candidate_id')->get()->every(fn ($job) => filled($job->partner_vendor_code)));
+
+        // KHS contracts are called off by Delivery Orders at every step.
+        $orders = ProcurementDeliveryOrder::query()->with(['procurement.contractType', 'items'])->get();
+        $this->assertNotEmpty($orders);
+        $this->assertTrue($orders->every(fn ($order) => $order->procurement->contractType?->code === 'khs' && $order->items->isNotEmpty()));
+        $this->assertEqualsCanonicalizing(['terbit', 'di_laksdan', 'menunggu_persetujuan_asman'], $orders->pluck('state')->map->value->unique()->values()->all());
+        $this->assertTrue($orders->where('state', DeliveryOrderState::Terbit)->every(fn ($order) => $order->procurement_document_id !== null));
+        $numbers = $orders->pluck('number')->filter();
+        $this->assertSame($numbers->count(), $numbers->unique()->count());
+
+        // Amendments: issued with their document, others with Laksdan or the TL.
+        $amendments = ProcurementAmendment::query()->get();
+        $this->assertNotEmpty($amendments->where('state', AmendmentState::Disetujui));
+        $this->assertTrue($amendments->where('state', AmendmentState::Disetujui)->every(fn ($amendment) => $amendment->procurement_document_id !== null && filled($amendment->number)));
+        $this->assertNotEmpty($amendments->whereIn('state', [AmendmentState::MenungguTlPengadaan, AmendmentState::MenungguPersetujuanTl]));
+
+        // The changed ayat is reworded, not replaced by an unrelated sentence.
+        foreach ($amendments->where('state', AmendmentState::Disetujui) as $amendment) {
+            foreach ($amendment->changedArticles as $change) {
+                $this->assertNotSame($change->original_text, $change->new_text);
+                $this->assertSame(strtok($change->original_text, ' '), strtok($change->new_text, ' '));
+            }
+        }
     }
 
     public function test_running_it_again_replaces_the_previous_demo_only(): void

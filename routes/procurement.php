@@ -12,6 +12,7 @@ use App\Http\Controllers\Procurements\ApprovalController;
 use App\Http\Controllers\Procurements\ChecklistController;
 use App\Http\Controllers\Procurements\ChecklistFileController;
 use App\Http\Controllers\Procurements\CompletionController;
+use App\Http\Controllers\Procurements\DeliveryOrderController;
 use App\Http\Controllers\Procurements\DocumentArchiveDownloadController;
 use App\Http\Controllers\Procurements\DocumentController;
 use App\Http\Controllers\Procurements\ExecutionApprovalController;
@@ -57,6 +58,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('amandemen/{amendment}/berkas/{file}', [AmendmentController::class, 'file'])->name('amendments.file');
         Route::post('amandemen/{amendment}/ajukan', [AmendmentController::class, 'submit'])->name('amendments.submit');
         Route::post('amandemen/{amendment}/keputusan', [AmendmentController::class, 'decide'])->name('amendments.decide');
+        Route::put('amandemen/{amendment}/penerbitan', [AmendmentController::class, 'saveIssue'])->name('amendments.issue-data');
+        Route::post('amandemen/{amendment}/terbitkan', [AmendmentController::class, 'issue'])->name('amendments.issue');
+        // Delivery Orders of a KHS contract, on the DO tab.
+        Route::put('do/daftar-harga', [DeliveryOrderController::class, 'saveContractItems'])->name('delivery-orders.contract-items');
+        Route::post('do', [DeliveryOrderController::class, 'store'])->name('delivery-orders.store');
+        Route::put('do/{order}/permohonan', [DeliveryOrderController::class, 'saveRequest'])->name('delivery-orders.request');
+        Route::post('do/{order}/nodis-usulan', [DeliveryOrderController::class, 'uploadRequest'])->name('delivery-orders.upload-request');
+        Route::get('do/{order}/nodis-usulan', [DeliveryOrderController::class, 'requestFile'])->name('delivery-orders.request-file');
+        Route::post('do/{order}/ajukan', [DeliveryOrderController::class, 'submit'])->name('delivery-orders.submit');
+        Route::post('do/{order}/keputusan', [DeliveryOrderController::class, 'decide'])->name('delivery-orders.decide');
+        Route::put('do/{order}/nodis-do', [DeliveryOrderController::class, 'saveMemo'])->name('delivery-orders.memo');
+        Route::post('do/{order}/teruskan', [DeliveryOrderController::class, 'forward'])->name('delivery-orders.forward');
+        Route::put('do/{order}/penerbitan', [DeliveryOrderController::class, 'saveIssue'])->name('delivery-orders.issue-data');
+        Route::post('do/{order}/terbitkan', [DeliveryOrderController::class, 'issue'])->name('delivery-orders.issue');
         // Every file of the procurement at once, as a ZIP.
         Route::get('arsip-zip', DocumentArchiveDownloadController::class)->name('documents.archive');
         Route::post('documents', [DocumentController::class, 'store'])->name('documents.store');
@@ -104,6 +119,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('can:menu.approvals')->name('approvals.index');
     Route::get('monitoring', [MonitoringController::class, 'index'])
         ->middleware('can:menu.monitoring')->name('monitoring.index');
+    // Amendments and Delivery Orders across every contract, on the same right.
+    Route::get('monitoring/amandemen', [MonitoringController::class, 'amendments'])
+        ->middleware('can:menu.monitoring')->name('monitoring.amendments');
+    Route::get('monitoring/delivery-order', [MonitoringController::class, 'deliveryOrders'])
+        ->middleware('can:menu.monitoring')->name('monitoring.delivery-orders');
     Route::get('documents', [DocumentArchiveController::class, 'index'])
         ->middleware('can:menu.documents')->name('documents.index');
 

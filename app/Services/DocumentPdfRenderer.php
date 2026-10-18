@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ProcurementAmendment;
 use App\Models\ProcurementDocument;
 use DOMElement;
 use Dompdf\Canvas;
@@ -24,6 +25,12 @@ class DocumentPdfRenderer
      * Where the generated PDFs live on the local disk.
      */
     private const DIRECTORY = 'documents/pdf';
+
+    /**
+     * Raised whenever the running headers or footers change, so cached PDFs
+     * are drawn again with them.
+     */
+    private const LAYOUT_VERSION = '3';
 
     /**
      * Where the PDFs of unsaved drafts are kept between previews.
@@ -233,6 +240,15 @@ class DocumentPdfRenderer
            || str_contains(strtolower($document?->title ?? ''), 'lampiran sp')
            || str_contains(strtolower($body), 'syarat umum');
 
+        // Amendment: the logo atop every page, and the running reference
+        // (which amendment of which contract, for what work) beside the
+        // parties' initials at the foot.
+        if ($docTypeCode === 'amandemen-kontrak') {
+            $this->stampAmendmentPages($dompdf, $font, $document);
+
+            return;
+        }
+
         if ($isLampiranSp) {
             $contractNumber = ! empty($document?->procurement?->number)
                 ? trim($document->procurement->number)
@@ -255,7 +271,7 @@ class DocumentPdfRenderer
         }
 
         // SPK: contract number left, initials boxes right, page number centred.
-        if ($docTypeCode === 'spk') {
+        if (in_array($docTypeCode, ['spk', 'spk-pasal'], true)) {
             $contractNumber = trim((string) ($document?->procurement?->number ?? '')) ?: '—';
             $bold = $dompdf->getFontMetrics()->getFont('DejaVu Sans', 'bold') ?? $font;
 
@@ -308,9 +324,73 @@ class DocumentPdfRenderer
      * serves the PDF of the version before the correction: a changed body is
      * simply a different, still immutable, cache entry.
      */
+    /**
+     * The logo atop every later page of an amendment, and its footer: the
+     * amendment and the contract it amends, the work, and the initials of
+     * both parties.
+     */
+    protected function stampAmendmentPages(Dompdf $dompdf, mixed $font, ?ProcurementDocument $document): void
+    {
+        $canvas = $dompdf->getCanvas();
+        $metrics = $dompdf->getFontMetrics();
+        $italic = $metrics->getFont('DejaVu Sans', 'italic') ?? $font;
+        $procurement = $document?->procurement;
+        $amendment = $document?->procurement_amendment_id === null
+            ? null
+            : ProcurementAmendment::query()->find($document->procurement_amendment_id);
+
+        $reference = trim('Amandemen '.($amendment?->roman() ?? '').' '.($procurement->number ?? '')
+            .($amendment?->contract_date !== null ? ' tanggal '.$amendment->contract_date->translatedFormat('d F Y') : ''));
+
+        // The work's name, wrapped to the left half of the footer.
+        $lines = [$reference];
+        $current = '';
+
+        foreach (preg_split('/\s+/u', trim((string) ($procurement->name ?? ''))) ?: [] as $word) {
+            $candidate = trim($current.' '.$word);
+
+            if ($current !== '' && $metrics->getTextWidth($candidate, $italic, 6.5) > 250) {
+                $lines[] = $current;
+                $current = $word;
+            } else {
+                $current = $candidate;
+            }
+        }
+
+        if ($current !== '') {
+            $lines[] = $current;
+        }
+
+        $lines = array_slice($lines, 0, 4);
+        $logo = public_path('logo/sidebar-logo.png');
+        $size = is_file($logo) ? getimagesize($logo) : false;
+
+        $canvas->page_script(function ($pageNumber, $pageCount, $canvas, $fontMetrics) use ($italic, $lines, $logo, $size): void {
+            $pageWidth = $canvas->get_width();
+
+            // The first page carries the template's own logo.
+            if ($pageNumber > 1 && $size !== false && $size[1] > 0) {
+                $height = 34;
+                $width = $height * $size[0] / $size[1];
+                $canvas->image($logo, ($pageWidth - $width) / 2, 30, $width, $height);
+            }
+
+            $top = 790 - (count($lines) - 1) * 8;
+
+            foreach ($lines as $at => $line) {
+                $canvas->text(62, $top + $at * 8, $line, $italic, 6.5, [0, 0, 0]);
+            }
+
+            $paraf = 'Paraf Pihak 1: ____________     Pihak 2: ____________';
+            $canvas->text($pageWidth - 57 - $fontMetrics->getTextWidth($paraf, $italic, 7), $top + (count($lines) - 1) * 8, $paraf, $italic, 7, [0, 0, 0]);
+        });
+    }
+
     protected function path(ProcurementDocument $document): string
     {
-        $fingerprint = substr(sha1($document->rendered_body), 0, 12);
+        // The layout version is part of the key, so a change to the running
+        // headers and footers reaches PDFs already cached.
+        $fingerprint = substr(sha1(self::LAYOUT_VERSION.'|'.$document->rendered_body), 0, 12);
 
         return self::DIRECTORY.'/'.$document->getKey().'-'.$fingerprint.'.pdf';
     }

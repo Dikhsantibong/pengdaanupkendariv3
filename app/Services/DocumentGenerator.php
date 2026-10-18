@@ -3,12 +3,15 @@
 namespace App\Services;
 
 use App\Enums\ActivityType;
+use App\Enums\AmendmentFileKind;
 use App\Enums\ProcurementStage;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementAmendment;
 use App\Models\ProcurementAmendmentChange;
+use App\Models\ProcurementDeliveryOrder;
+use App\Models\ProcurementDeliveryOrderItem;
 use App\Models\ProcurementDocument;
 use App\Models\UnitManager;
 use App\Models\User;
@@ -35,6 +38,7 @@ class DocumentGenerator
             'nomor_pengadaan' => 'Nomor pengadaan internal',
             'nama_pengadaan' => 'Nama/judul pekerjaan',
             'nama_mitra' => 'Nama calon mitra / pelaksana pekerjaan',
+            'kode_rekanan_mitra' => 'Kode rekanan (vendor) mitra pelaksana',
             'nama_direktur' => 'Nama direktur calon mitra',
             'alamat_mitra' => 'Alamat calon mitra / pelaksana (default: DI TEMPAT bila kosong)',
             'alamat_perusahaan' => 'Alamat perusahaan calon mitra',
@@ -117,6 +121,22 @@ class DocumentGenerator
             'nomor_surat_permohonan_amandemen' => 'Amandemen: nomor surat permohonan amandemen',
             'tanggal_surat_permohonan_amandemen' => 'Amandemen: tanggal surat permohonan amandemen',
             'daftar_perubahan' => 'Amandemen: daftar perubahan pasal (Semula berbunyi / Menjadi)',
+            'butir_surat_permohonan' => 'Amandemen: butir dasar "Surat Permohonan Amandemen" dari mitra (kosong bila tidak diunggah)',
+            // Filled only on the Delivery Order document (tab DO, kontrak KHS).
+            'nomor_do' => 'DO: nomor Delivery Order (format DO)',
+            'tanggal_do' => 'DO: tanggal Delivery Order',
+            'kode_rekanan' => 'DO: kode rekanan (vendor)',
+            'uraian_pekerjaan_do' => 'DO: uraian pekerjaan',
+            'tempat_penyerahan_do' => 'DO: tempat penyerahan pekerjaan',
+            'waktu_penyerahan_do' => 'DO: waktu penyerahan (hari kalender)',
+            'waktu_penyerahan_do_terbilang' => 'DO: waktu penyerahan dieja dalam huruf',
+            'rincian_do' => 'DO: baris tabel rincian barang / pekerjaan',
+            'total_do' => 'DO: total nilai DO (angka)',
+            'total_do_terbilang' => 'DO: total nilai DO dieja dalam huruf',
+            'nomor_nota_dinas_usulan_do' => 'DO: nomor nota dinas usulan dari pengusul',
+            'tanggal_nota_dinas_usulan_do' => 'DO: tanggal nota dinas usulan dari pengusul',
+            'nomor_nota_dinas_do' => 'DO: nomor nota dinas DO dari Rendan',
+            'tanggal_nota_dinas_do' => 'DO: tanggal nota dinas DO dari Rendan',
             'checklist_perencanaan' => 'Daftar checklist tahap perencanaan',
             'checklist_pelaksanaan' => 'Daftar checklist tahap pelaksanaan',
         ];
@@ -170,6 +190,7 @@ class DocumentGenerator
             'nomor_pengadaan' => $procurement->number,
             'nama_pengadaan' => $procurement->name,
             'nama_mitra' => $procurement->partner_name ?? '-',
+            'kode_rekanan_mitra' => $procurement->partner_vendor_code ?: '-',
             'nama_direktur' => $procurement->partner_director_name ?: ($procurement->bank_account_holder ?: '-'),
             'alamat_mitra' => $partnerAddress ?? 'DI TEMPAT',
             'alamat_perusahaan' => $partnerAddress ?? '-',
@@ -555,6 +576,15 @@ class DocumentGenerator
      */
     protected function renderFor(ProcurementDocument $document, DocumentTemplate $template, ?CarbonInterface $issuedAt = null): string
     {
+        // A Delivery Order document also takes the values of its DO.
+        $order = $document->procurement_delivery_order_id === null
+            ? null
+            : ProcurementDeliveryOrder::query()->find($document->procurement_delivery_order_id);
+
+        if ($order !== null) {
+            return $this->renderDeliveryOrder($template, $order, $issuedAt);
+        }
+
         $amendment = $document->procurement_amendment_id === null
             ? null
             : ProcurementAmendment::query()->find($document->procurement_amendment_id);
@@ -588,15 +618,15 @@ class DocumentGenerator
      */
     public function amendmentValues(ProcurementAmendment $amendment): array
     {
-        $amendment->loadMissing(['procurement.contractNumberFormat', 'changedArticles']);
+        $amendment->loadMissing(['procurement.contractNumberFormat', 'changedArticles', 'files']);
         $procurement = $amendment->procurement;
         $date = $amendment->amendment_date ?? CarbonImmutable::now();
         $format = $procurement->contractNumberFormat?->code;
 
         $changes = $amendment->changedArticles->values()->map(
-            fn (ProcurementAmendmentChange $change): string => '<li><p>Mengubah ketentuan <b>'.e($change->article).'</b> :</p>'
-                .'<p class="label"><b>Semula Berbunyi :</b></p><div class="isi">'.nl2br(e($change->original_text), false).'</div>'
-                .'<p class="label"><b>Menjadi :</b></p><div class="isi">'.nl2br(e($change->new_text), false).'</div></li>',
+            fn (ProcurementAmendmentChange $change): string => '<li><p class="ketentuan">Mengubah ketentuan '.$this->amendedArticle($change->article).' :</p>'
+                .'<p class="label"><b>Semula Berbunyi :</b></p><div class="isi">'.$this->amendmentText($change->original_text).'</div>'
+                .'<p class="label"><b>Menjadi :</b></p><div class="isi">'.$this->amendmentText($change->new_text).'</div></li>',
         )->implode('');
 
         return [
@@ -627,7 +657,75 @@ class DocumentGenerator
             'nomor_surat_permohonan_amandemen' => $amendment->request_number ?? '-',
             'tanggal_surat_permohonan_amandemen' => $amendment->request_date?->translatedFormat('d F Y') ?? '-',
             'daftar_perubahan' => $changes === '' ? '<li>-</li>' : $changes,
+            // The partner's request letter is optional: cited only when filed.
+            'butir_surat_permohonan' => $amendment->files->contains('kind', AmendmentFileKind::SuratPermohonan)
+                ? '<li>Surat Permohonan Amandemen dari '.e((string) ($procurement->partner_name ?: 'PIHAK KEDUA')).'.</li>'
+                : '',
         ];
+    }
+
+    /**
+     * The article an amendment changes, as the amendment cites it: the
+     * article in bold capitals, its ayat after it ("PASAL 8 HARGA PEKERJAAN
+     * Ayat 1"). Escaped, being typed in.
+     */
+    protected function amendedArticle(string $article): string
+    {
+        if (preg_match('/^(.*?)(\s+Ayat\s+\S+)$/iu', trim($article), $match) === 1) {
+            return '<b>'.e(Str::upper($match[1])).'</b>'.e($match[2]);
+        }
+
+        return '<b>'.e(Str::upper(trim($article))).'</b>';
+    }
+
+    /**
+     * The wording of an article in an amendment, laid out as in the
+     * contract: a numbered ayat ("1. ...") with its text hanging beside the
+     * number, its list items indented under it ("   a. ..."). Each line is
+     * escaped, being typed in.
+     */
+    protected function amendmentText(string $text): string
+    {
+        $rows = '';
+        $numbered = false;
+
+        foreach (preg_split('/\R/u', $text) ?: [] as $raw) {
+            if (trim($raw) === '') {
+                continue;
+            }
+
+            $indented = preg_match('/^\s+/u', $raw) === 1;
+            $line = trim($raw);
+            $marker = null;
+
+            if (preg_match('/^((?:\d+|[a-z]|[ivxlc]+)\.|\(\d+\)|-)\s+(.*)$/u', $line, $match) === 1) {
+                [$marker, $line] = [$match[1], $match[2]];
+            }
+
+            $body = e($line);
+
+            if ($indented) {
+                $rows .= '<tr><td class="n"></td>'.($marker === null
+                    ? '<td colspan="2">'.$body.'</td>'
+                    : '<td class="n">'.e($marker).'</td><td>'.$body.'</td>').'</tr>';
+
+                continue;
+            }
+
+            if ($marker !== null) {
+                $numbered = true;
+                $rows .= '<tr><td class="n">'.e($marker).'</td><td colspan="2">'.$body.'</td></tr>';
+
+                continue;
+            }
+
+            // A plain line: under the ayat's text when it is numbered.
+            $rows .= $numbered
+                ? '<tr><td class="n"></td><td colspan="2">'.$body.'</td></tr>'
+                : '<tr><td colspan="3">'.$body.'</td></tr>';
+        }
+
+        return $rows === '' ? '-' : '<table class="teks">'.$rows.'</table>';
     }
 
     /**
@@ -693,6 +791,161 @@ class DocumentGenerator
             ActivityType::DokumenDigenerate,
             "Dokumen {$title} digenerate.",
             ['document_type' => 'amandemen-kontrak', 'amendment_id' => $amendment->id],
+        );
+
+        return $document;
+    }
+
+    /**
+     * Render a Delivery Order template: the procurement's values, the
+     * contract it is called off under, and the DO's own.
+     */
+    public function renderDeliveryOrder(DocumentTemplate $template, ProcurementDeliveryOrder $order, ?CarbonInterface $issuedAt = null): string
+    {
+        return $this->fillPlaceholders($template->body, [
+            ...$this->placeholderValues($order->procurement, $issuedAt),
+            ...$this->deliveryOrderValues($order),
+        ]);
+    }
+
+    /**
+     * The placeholder values of a Delivery Order.
+     *
+     * Everything typed in by the proposer is escaped before it becomes part
+     * of the document. Lines sharing a heading are listed under it (A, B,
+     * ...), numbered from one within each heading.
+     *
+     * @return array<string, string>
+     */
+    public function deliveryOrderValues(ProcurementDeliveryOrder $order): array
+    {
+        $order->loadMissing(['procurement.contractNumberFormat', 'items']);
+        $procurement = $order->procurement;
+        $format = $procurement->contractNumberFormat?->code;
+        $money = fn (float $value): string => number_format($value, 0, ',', '.');
+        $quantity = fn (string $value): string => rtrim(rtrim(number_format((float) $value, 2, ',', '.'), '0'), ',');
+        $cell = 'border:1px solid #000;padding:2px 4px;';
+        $blank = '<td style="'.$cell.'"></td>';
+
+        $rows = '';
+        $groups = $order->items->groupBy(fn (ProcurementDeliveryOrderItem $item): string => (string) $item->group_name);
+        $letter = 'A';
+
+        foreach ($groups as $heading => $items) {
+            $heading = (string) $heading;
+
+            if ($heading !== '') {
+                if ($rows !== '') {
+                    $rows .= '<tr><td style="'.$cell.'height:12px;"></td>'.str_repeat($blank, 6).'</tr>';
+                }
+
+                $rows .= '<tr><td style="'.$cell.'text-align:center;font-weight:bold;">'.$letter.'</td>'
+                    .'<td colspan="6" style="'.$cell.'font-weight:bold;">'.e($heading).'</td></tr>';
+                $letter++;
+            }
+
+            foreach ($items->values() as $index => $item) {
+                $rows .= '<tr>'
+                    .'<td style="'.$cell.'text-align:center;">'.($index + 1).'</td>'
+                    .'<td style="'.$cell.'">'.e($item->description).'</td>'
+                    .'<td style="'.$cell.'text-align:center;">'.e($item->part_number ?? '').'</td>'
+                    .'<td style="'.$cell.'text-align:center;">'.$quantity($item->quantity).'</td>'
+                    .'<td style="'.$cell.'text-align:center;">'.e($item->unit).'</td>'
+                    .'<td style="'.$cell.'text-align:right;">'.$money((float) $item->unit_price).'</td>'
+                    .'<td style="'.$cell.'text-align:right;">'.$money($item->total()).'</td>'
+                    .'</tr>';
+            }
+        }
+
+        $total = $order->total();
+        $days = $order->delivery_days;
+
+        return [
+            'nomor_do' => $order->number ?: '-',
+            'tanggal_do' => $order->order_date?->translatedFormat('d F Y') ?? '-',
+            // The DO's own code, else the partner's from the calon mitra.
+            'kode_rekanan' => $order->vendor_code ?: ($procurement->partner_vendor_code ?: '-'),
+            'uraian_pekerjaan_do' => $order->work_description ?: $procurement->name,
+            'tempat_penyerahan_do' => $order->delivery_place ?: '-',
+            'waktu_penyerahan_do' => $days === null ? '-' : (string) $days,
+            'waktu_penyerahan_do_terbilang' => $days === null ? '-' : IndonesianNumber::spell($days),
+            'rincian_do' => $rows === '' ? '<tr><td colspan="7" style="'.$cell.'text-align:center;">-</td></tr>' : $rows,
+            'total_do' => $money($total),
+            'total_do_terbilang' => Str::title(IndonesianNumber::spellRupiah($total)),
+            'nomor_nota_dinas_usulan_do' => $order->request_memo_number ?: '-',
+            'tanggal_nota_dinas_usulan_do' => $order->request_memo_date?->translatedFormat('d F Y') ?? '-',
+            'nomor_nota_dinas_do' => $order->do_memo_number ?: '-',
+            'tanggal_nota_dinas_do' => $order->do_memo_date?->translatedFormat('d F Y') ?? '-',
+            // The contract the DO is called off under.
+            'nomor_kontrak' => $procurement->number,
+            'tanggal_kontrak' => $order->contract_date?->translatedFormat('d F Y') ?? '-',
+            'jenis_dokumen_kontrak_judul' => $format === 'PJ' ? 'Surat Perjanjian' : 'Surat Perintah Kerja',
+        ];
+    }
+
+    /**
+     * Draw (or redraw) the document of a Delivery Order from its template.
+     *
+     * Redrawn while it is unsigned, so the latest lines are what the
+     * approvers read; a signed one stays as it was signed.
+     */
+    public function generateDeliveryOrder(ProcurementDeliveryOrder $order, User $author): ProcurementDocument
+    {
+        $order->loadMissing('procurement');
+        $procurement = $order->procurement;
+        $documentType = DocumentType::query()->where('code', 'delivery-order')->first();
+
+        $template = $documentType === null ? null : DocumentTemplate::resolveFor(
+            $documentType->id,
+            $procurement->procurement_method_id,
+            $procurement->work_category,
+            $procurement->contract_number_format_id,
+        );
+
+        if ($documentType === null || $template === null) {
+            throw new RuntimeException('Template aktif untuk dokumen Delivery Order (DO) belum tersedia.');
+        }
+
+        $document = $order->procurement_document_id === null
+            ? null
+            : ProcurementDocument::query()->find($order->procurement_document_id);
+
+        if ($document !== null && $this->isFrozen($document)) {
+            return $document;
+        }
+
+        $title = "Delivery Order {$order->number} - {$procurement->name}";
+        $values = [
+            'document_type_id' => $documentType->id,
+            'document_template_id' => $template->id,
+            'title' => Str::limit($title, 250, ''),
+            'file_name' => Str::slug("{$procurement->number}-delivery-order-{$order->sequence}").'.html',
+            'template_version' => $template->version,
+            'rendered_body' => $this->renderDeliveryOrder($template, $order),
+            'revision' => 0,
+            'edited_by' => null,
+            'edited_at' => null,
+            'generated_by' => $author->id,
+            'generated_at' => now(),
+        ];
+
+        if ($document === null) {
+            $document = new ProcurementDocument($values);
+            $document->procurement_id = $procurement->id;
+            $document->procurement_delivery_order_id = $order->id;
+            $document->save();
+
+            $order->forceFill(['procurement_document_id' => $document->id])->save();
+        } else {
+            $document->forceFill($values)->save();
+        }
+
+        $this->procurements->recordActivity(
+            $procurement,
+            $author,
+            ActivityType::DokumenDigenerate,
+            "Dokumen {$title} digenerate.",
+            ['document_type' => 'delivery-order', 'delivery_order_id' => $order->id],
         );
 
         return $document;

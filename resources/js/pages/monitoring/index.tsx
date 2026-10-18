@@ -46,7 +46,7 @@ export default function MonitoringIndex({
 
             <div className="flex flex-col gap-5 p-4 md:p-6">
                 <PageHeader
-                    eyebrow="Pengawasan"
+                    eyebrow="Monitoring"
                     title="Monitoring Progress Pengadaan"
                     description="Distribusi pengadaan pada setiap status progres beserta detail per pengadaan."
                 />

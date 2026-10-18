@@ -10,6 +10,7 @@ use App\Enums\WorkCategory;
 use Database\Factories\ChecklistItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -94,14 +95,16 @@ class ChecklistItem extends Model
      * choice: a single signed copy among them is enough.
      *
      * @param  callable(int): bool  $isSigned  Whether a document type is signed.
+     * @param  Procurement|null  $procurement  The job, so a document of another contract format is not asked for.
      * @return array<int, string> Names of what is missing, ready to show.
      */
-    public function missingDocuments(callable $isSigned): array
+    public function missingDocuments(callable $isSigned, ?Procurement $procurement = null): array
     {
         $missing = [];
+        $types = $procurement === null ? $this->documentTypes : $this->documentTypesFor($procurement);
 
-        $required = $this->documentTypes->reject(fn (DocumentType $type): bool => $type->isAlternative());
-        $alternatives = $this->documentTypes->filter(fn (DocumentType $type): bool => $type->isAlternative());
+        $required = $types->reject(fn (DocumentType $type): bool => $type->isAlternative());
+        $alternatives = $types->filter(fn (DocumentType $type): bool => $type->isAlternative());
 
         foreach ($required as $type) {
             if (! $isSigned($type->id)) {
@@ -114,6 +117,19 @@ class ChecklistItem extends Model
         }
 
         return $missing;
+    }
+
+    /**
+     * The documents this step asks for on one procurement, leaving out
+     * those that belong to another contract format.
+     *
+     * @return Collection<int, DocumentType>
+     */
+    public function documentTypesFor(?Procurement $procurement): Collection
+    {
+        return $this->documentTypes
+            ->filter(fn (DocumentType $type): bool => $type->appliesTo($procurement))
+            ->values();
     }
 
     /**
