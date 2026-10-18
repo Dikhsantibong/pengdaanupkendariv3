@@ -296,7 +296,9 @@ export function ItemListCard({
         { groups: 0, items: 0 },
     );
 
-    const cell = 'h-8 px-2 text-xs';
+    // Filled, darker fields: the grid reads at once as something to type in.
+    const cell =
+        'h-8 border-input bg-muted px-2 text-xs shadow-none hover:border-primary/60 focus-visible:bg-background';
     const numberFields = [
         ['part_number', 'text-left'],
         ['volume', 'text-right'],
@@ -314,7 +316,7 @@ export function ItemListCard({
             ) : (
                 <div className="overflow-x-auto">
                     <table className="w-full min-w-[56rem] text-xs">
-                        <thead className="bg-muted/60 text-left text-[11px] tracking-wide text-muted-foreground uppercase">
+                        <thead className="border-b border-input bg-muted text-left text-[11px] font-semibold tracking-wide text-foreground/80 uppercase">
                             <tr>
                                 <th className="w-10 px-2 py-2 text-center">
                                     No
@@ -372,7 +374,7 @@ export function ItemListCard({
                                                             cell,
                                                             row.kind ===
                                                                 'group' &&
-                                                                'font-semibold',
+                                                                'border-primary/50 bg-primary/10 font-semibold',
                                                         )}
                                                         value={row.description}
                                                         title="Bisa tempel baris dari Excel"

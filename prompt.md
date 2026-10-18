@@ -1025,6 +1025,13 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 - **Perbaikan bug:** baris kelompok yang terketik dengan volume 1 dan harga 0 (mis. "Material & Tools Tangki 50 KL") dulu terbaca sebagai item Rp 0 di Surat Pesanan. Sekarang baris tanpa harga dibaca sebagai judul kelompok, dan Surat Pesanan mencetaknya sebagai baris kelompok.
 - **Test:** `ProcurementItemsTest`.
 
+### 15. Kolom Isian Lebih Jelas
+- **Seluruh aplikasi:** border kolom isian (token `--input`) dibuat lebih gelap, dari `oklch(0.88 …)` menjadi `oklch(0.72 …)` di mode terang dan dari `0.35` menjadi `0.48` di mode gelap. Input, Textarea, dan Select juga diberi latar `bg-background`, sehingga setiap kolom yang perlu diisi tampak jelas berbeda dari kartu di sekitarnya. Ini berlaku di semua form (usulan, perencanaan, checklist, master data, penilaian, login, dan lain-lain), begitu juga Checkbox dan Switch yang memakai token yang sama.
+- **Grid Rincian Item:**
+  - Sel isian berlatar abu-biru (`bg-muted`) dengan border gelap, lalu berubah putih saat diketik.
+  - Kolom nama kelompok bernuansa biru.
+  - Kepala tabel dibuat lebih tegas.
+
 ### 14. Nama Penanda Tangan Huruf Besar
 - Di seluruh template, nama penanda tangan di blok tanda tangan dicetak **huruf besar** lewat `text-transform: uppercase` pada namanya saja. Ini berlaku untuk Manager, Direktur, Direksi Pekerjaan, PIC Perencana/Pelaksana, dan TL Pelaksana Pengadaan.
 - Data tetap tersimpan apa adanya, dan nama yang sama di teks isi (mis. "arahan dari Direksi Pekerjaan" di TOR, uraian para pihak) tidak berubah.
