@@ -33,12 +33,15 @@ export function IdentityPanel({
     notes,
     editsInline,
     contractTypes,
+    candidateCount = 0,
 }: {
     procurement: ProcurementRow;
     notes: string | null;
     /** The planning PIC edits the contract type and target date in place. */
     editsInline: boolean;
     contractTypes: Option[];
+    /** How many calon mitra are listed, shown until one is picked. */
+    candidateCount?: number;
 }) {
     const [open, setOpen] = useState(() => {
         try {
@@ -87,7 +90,14 @@ export function IdentityPanel({
                 date(procurement.target_completion_date)
             ),
         },
-        { label: 'Calon Mitra', value: procurement.partner_name ?? '—' },
+        {
+            label: 'Pelaksana (Mitra)',
+            value:
+                procurement.partner_name ??
+                (candidateCount > 0
+                    ? `${candidateCount} calon mitra, belum dipilih`
+                    : '—'),
+        },
         {
             label: 'Nilai (Sebelum Nego)',
             value: formatCurrency(procurement.hpe_value),
@@ -138,13 +148,6 @@ export function IdentityPanel({
                 procurement.proposal_memo_date,
             ),
         },
-        {
-            label: 'Nota Dinas ke Manager',
-            value: joinDated(
-                procurement.icc_memo_number,
-                procurement.icc_memo_date,
-            ),
-        },
     ];
 
     return (
@@ -166,7 +169,10 @@ export function IdentityPanel({
 
                 <CollapsibleContent>
                     <div className="space-y-3 border-t border-border py-3">
-                        <FieldGroup title="Calon Mitra" fields={partner} />
+                        <FieldGroup
+                            title="Pelaksana (Mitra)"
+                            fields={partner}
+                        />
                         <FieldGroup
                             title="Usulan Pekerjaan"
                             fields={references}

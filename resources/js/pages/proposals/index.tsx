@@ -26,6 +26,8 @@ export type ProposalRow = {
         | 'dikembalikan'
         | 'disetujui';
     state_label: string;
+    /** Waiting but incomplete: still with the proposer. */
+    is_held?: boolean;
     division: string | null;
     proposer: string | null;
     proposer_position: string | null;
@@ -49,7 +51,19 @@ export const STATE_STYLE: Record<ProposalRow['state'], string> = {
         'bg-emerald-500/10 text-emerald-700 ring-emerald-500/30 dark:text-emerald-400',
 };
 
-export function StateBadge({ row }: { row: Pick<ProposalRow, 'state'> }) {
+export function StateBadge({
+    row,
+}: {
+    row: Pick<ProposalRow, 'state' | 'is_held'>;
+}) {
+    if (row.is_held) {
+        return (
+            <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground ring-1 ring-border ring-inset">
+                Belum Lengkap
+            </span>
+        );
+    }
+
     const label = {
         menunggu_persetujuan_tl: 'Menunggu Persetujuan TL',
         menunggu_persetujuan: 'Menunggu Persetujuan Asman',

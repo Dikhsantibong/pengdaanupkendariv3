@@ -23,6 +23,7 @@ export type ProcurementColumn =
     | 'hpe'
     | 'status'
     | 'approval'
+    | 'executionApproval'
     | 'planner'
     | 'executor'
     | 'planningProgress'
@@ -37,6 +38,7 @@ const columnHeadings: Record<ProcurementColumn, string> = {
     hpe: 'Nilai HPE',
     status: 'Status Progres',
     approval: 'Persetujuan',
+    executionApproval: 'Persetujuan Pelaksanaan',
     planner: 'PIC Perencana',
     executor: 'PIC Pelaksana',
     planningProgress: 'Progres Perencanaan',
@@ -164,6 +166,13 @@ function renderCell(column: ProcurementColumn, row: ProcurementRow) {
                 <ApprovalBadge
                     state={row.planning_approval_state}
                     label={row.planning_approval_label}
+                />
+            );
+        case 'executionApproval':
+            return (
+                <ApprovalBadge
+                    state={row.execution_approval_state}
+                    label={row.execution_approval_label}
                 />
             );
         case 'planner':

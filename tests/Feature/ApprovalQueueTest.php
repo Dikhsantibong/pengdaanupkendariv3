@@ -1,0 +1,131 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Enums\PlanningApprovalState;
+use App\Models\Procurement;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
+use Tests\TestCase;
+
+/**
+ * The approval menu shows each team leader only the queue they decide on,
+ * filtered and paginated on the server.
+ */
+class ApprovalQueueTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected Procurement $planningWaiting;
+
+    protected Procurement $executionWaiting;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->planningWaiting = Procurement::factory()->planningSubmitted()->create(['name' => 'Perencanaan Menunggu']);
+        $this->executionWaiting = Procurement::factory()->planningApproved()->create([
+            'name' => 'Pelaksanaan Menunggu',
+            'execution_approval_state' => PlanningApprovalState::MenungguPersetujuan,
+            'execution_submitted_at' => now(),
+        ]);
+    }
+
+    public function test_tl_icc_sees_only_the_planning_queue(): void
+    {
+        $this->actingAs(User::factory()->teamLeaderIcc()->create())
+            ->get(route('approvals.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('approvals/index')
+                ->where('queue', 'planning')
+                ->has('queues', 1)
+                ->where('queues.0.key', 'planning')
+                ->where('queues.0.waiting', 1)
+                ->has('procurements.data', 1)
+                ->where('procurements.data.0.id', $this->planningWaiting->id));
+
+        // Asking for the other queue falls back to their own.
+        $this->actingAs(User::factory()->teamLeaderIcc()->create())
+            ->get(route('approvals.index', ['queue' => 'execution']))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('queue', 'planning')
+                ->has('procurements.data', 1)
+                ->where('procurements.data.0.id', $this->planningWaiting->id));
+    }
+
+    public function test_tl_pengadaan_sees_only_the_execution_queue(): void
+    {
+        $this->actingAs(User::factory()->teamLeaderPengadaan()->create())
+            ->get(route('approvals.index', ['queue' => 'planning']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('queue', 'execution')
+                ->has('queues', 1)
+                ->where('queues.0.key', 'execution')
+                ->has('procurements.data', 1)
+                ->where('procurements.data.0.id', $this->executionWaiting->id));
+    }
+
+    public function test_the_administrator_switches_between_both_queues(): void
+    {
+        $admin = User::factory()->administrator()->create();
+
+        $this->actingAs($admin)
+            ->get(route('approvals.index', ['queue' => 'execution']))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('queues', 2)
+                ->where('queue', 'execution')
+                ->where('procurements.data.0.id', $this->executionWaiting->id));
+    }
+
+    public function test_a_user_without_review_rights_sees_no_queue(): void
+    {
+        $this->actingAs(User::factory()->planner()->create())
+            ->get(route('approvals.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('queues', 0)
+                ->where('queue', null)
+                ->where('procurements', null));
+    }
+
+    public function test_the_history_lists_only_the_decisions_of_that_queue(): void
+    {
+        $decided = Procurement::factory()->planningApproved()->create([
+            'execution_approval_state' => PlanningApprovalState::Disetujui,
+            'execution_submitted_at' => now()->subDay(),
+            'execution_reviewed_at' => now(),
+        ]);
+
+        $this->actingAs(User::factory()->teamLeaderPengadaan()->create())
+            ->get(route('approvals.index', ['view' => 'decided']))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('view', 'decided')
+                ->has('procurements.data', 1)
+                ->where('procurements.data.0.id', $decided->id));
+    }
+
+    public function test_the_queue_is_searchable_and_paginated(): void
+    {
+        Procurement::factory()->planningSubmitted()->count(20)->create();
+
+        $teamLeader = User::factory()->teamLeaderIcc()->create();
+
+        $this->actingAs($teamLeader)
+            ->get(route('approvals.index'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('queues.0.waiting', 21)
+                ->has('procurements.data', 15)
+                ->where('procurements.meta.total', 21));
+
+        $this->actingAs($teamLeader)
+            ->get(route('approvals.index', ['search' => 'Perencanaan Menunggu']))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('procurements.data', 1)
+                ->where('procurements.data.0.id', $this->planningWaiting->id)
+                ->where('filters.search', 'Perencanaan Menunggu'));
+    }
+}

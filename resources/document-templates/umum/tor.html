@@ -485,11 +485,13 @@
         </div>
         <div class="approval-date">{{unit_tujuan}}, {{tanggal_dokumen}}</div>
 
+        <!-- Disusun dan Diperiksa diketik manual di editor dokumen; yang
+             menyetujui di bagian paling bawah adalah Manager (Data Master). -->
         <table class="approval-table">
             <tr><td><b>Disusun oleh:</b></td></tr>
             <tr><td class="small-gap"></td></tr>
-            <tr><td>{{status_progres}}</td></tr>
-            <tr><td><div class="gap"></div><span class="name">( {{pic_perencana}} )</span></td></tr>
+            <tr><td>.........................................</td></tr>
+            <tr><td><div class="gap"></div><span class="name">( ......................................... )</span></td></tr>
         </table>
 
         <table class="approval-table two" style="margin-top:20px;">
@@ -500,16 +502,16 @@
                 <td>Pengguna Barang/Jasa</td>
             </tr>
             <tr>
-                <td><div class="gap"></div><span class="name">( {{direksi_pekerjaan}} )</span></td>
-                <td><div class="gap"></div><span class="name">( {{unit_tujuan}} )</span></td>
+                <td><div class="gap"></div><span class="name">( ......................................... )</span></td>
+                <td><div class="gap"></div><span class="name">( ......................................... )</span></td>
             </tr>
         </table>
 
         <table class="approval-table" style="margin-top:20px;">
             <tr><td><b>Disetujui oleh:</b></td></tr>
             <tr><td class="small-gap"></td></tr>
-            <tr><td>Pejabat yang berwenang</td></tr>
-            <tr><td><div class="gap"></div><span class="name">( {{direksi_pekerjaan}} )</span></td></tr>
+            <tr><td>Manager</td></tr>
+            <tr><td><div class="gap"></div><span class="name">( {{nama_manager}} )</span></td></tr>
         </table>
     </section>
 

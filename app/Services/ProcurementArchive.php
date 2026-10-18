@@ -48,7 +48,7 @@ class ProcurementArchive
      */
     public function build(Procurement $procurement): string
     {
-        $procurement->loadMissing(['documents.documentType', 'documents.signedUploads', 'attachments']);
+        $procurement->loadMissing(['documents.documentType', 'documents.signedUploads', 'attachments', 'checklists.checklistItem', 'checklists.files']);
 
         $path = tempnam(sys_get_temp_dir(), 'pengadaan-zip-');
 
@@ -77,6 +77,20 @@ class ProcurementArchive
 
         foreach ($procurement->documents->sortBy('generated_at') as $document) {
             $files += $this->addDocument($zip, $document, $used);
+        }
+
+        // The papers uploaded on the Penyerahan / Pembayaran steps.
+        foreach ($procurement->checklists as $checklist) {
+            foreach ($checklist->files as $file) {
+                if (Storage::disk('local')->exists($file->path)) {
+                    $zip->addFromString(
+                        $this->unique($used, self::FOLDERS[$checklist->stage->value].'/'
+                            .$this->clean(Str::limit($checklist->checklistItem->name, 80, '')).'/'.$this->clean($file->file_name)),
+                        (string) Storage::disk('local')->get($file->path),
+                    );
+                    $files++;
+                }
+            }
         }
 
         $zip->addFromString('BACA SAYA.txt', $this->readme($procurement, $files));

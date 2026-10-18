@@ -3,6 +3,7 @@
 namespace App\Enums;
 
 use App\Models\Procurement;
+use App\Models\ProcurementPartnerCandidate;
 
 /**
  * Data a checklist step asks for before it can be ticked.
@@ -16,6 +17,8 @@ enum ChecklistInput: string
     case ContractPeriod = 'contract_period';
     case Warranty = 'warranty';
     case BankAccount = 'bank_account';
+    case PartnerCandidates = 'partner_candidates';
+    case ProcurementMemo = 'procurement_memo';
 
     /**
      * The name shown when choosing the input on the master data screen.
@@ -25,7 +28,9 @@ enum ChecklistInput: string
         return match ($this) {
             self::ContractPeriod => 'Rentang waktu (tanggal mulai + jumlah hari)',
             self::Warranty => 'Masa garansi (bulan)',
-            self::BankAccount => 'Rekening pelaksana (nomor, bank, nama)',
+            self::BankAccount => 'Pelaksana (pilih dari calon mitra + rekening)',
+            self::PartnerCandidates => 'Calon mitra & penawaran harga',
+            self::ProcurementMemo => 'Nomor & tanggal nota dinas ke pengadaan',
         };
     }
 
@@ -39,7 +44,12 @@ enum ChecklistInput: string
         return match ($this) {
             self::ContractPeriod => ['execution_start_date', 'execution_duration_days'],
             self::Warranty => ['warranty_months'],
-            self::BankAccount => ['bank_account_number', 'bank_name', 'bank_account_holder'],
+            // The partner picked from the candidates, then its account.
+            self::BankAccount => ['partner_candidate_id', 'bank_account_number', 'bank_name', 'bank_account_holder'],
+            // Kept on the candidates themselves, not on the procurement.
+            self::PartnerCandidates => [],
+            // The memo once known as the Nota Dinas ke Manager / ICC.
+            self::ProcurementMemo => ['icc_memo_number', 'icc_memo_date'],
         };
     }
 
@@ -48,6 +58,14 @@ enum ChecklistInput: string
      */
     public function isFilledOn(Procurement $procurement): bool
     {
+        // At least one candidate, each with its full offer.
+        if ($this === self::PartnerCandidates) {
+            $candidates = $procurement->partnerCandidates()->get();
+
+            return $candidates->isNotEmpty()
+                && $candidates->every(fn (ProcurementPartnerCandidate $candidate): bool => $candidate->missing() === []);
+        }
+
         foreach ($this->fields() as $field) {
             $value = $procurement->getAttribute($field);
 

@@ -117,6 +117,7 @@ class RoleDashboard
         if ($user->leadsTeam()) {
             $cards[] = self::card('team', 'Usulan Tim Menunggu Anda', Procurement::query()
                 ->where('proposal_state', ProposalState::MenungguPersetujuanTl->value)
+                ->whereNotNull('proposal_completed_at')
                 ->whereIn('created_by', User::query()->select('id')->where('team_leader_id', $user->id))
                 ->count(), 'Perlu persetujuan Anda sebagai TL', 'violet');
         }
@@ -137,6 +138,7 @@ class RoleDashboard
         return [[
             self::card('waiting', 'Usulan Menunggu Anda', $division()
                 ->where('proposal_state', ProposalState::MenungguPersetujuan->value)
+                ->whereNotNull('proposal_completed_at')
                 ->count(), 'Sudah disetujui TL, menunggu persetujuan Asman', 'violet'),
             self::card('running', 'Pengadaan Bidang Berjalan', $division()->proposalApproved()->whereNull('completed_at')->count(), 'Di perencanaan, pelaksanaan, atau keuangan', 'sky'),
             self::card('done', 'Selesai', $division()->whereNotNull('completed_at')->count(), 'Sudah dibayar dan ditutup', 'emerald'),
@@ -332,6 +334,7 @@ class RoleDashboard
                 ? 'Menunggu penunjukan PIC Perencana oleh TL ICC'
                 : 'Dalam perencanaan',
             $procurement->proposal_state === ProposalState::Dikembalikan => 'Usulan dikembalikan, perlu diperbaiki',
+            $procurement->isProposalHeld() => 'Usulan belum lengkap, belum diteruskan ke TL / Asman',
             $procurement->proposal_state === ProposalState::MenungguPersetujuanTl => 'Menunggu persetujuan TL',
             default => 'Menunggu persetujuan Asman',
         };

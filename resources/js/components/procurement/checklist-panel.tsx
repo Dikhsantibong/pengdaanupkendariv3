@@ -8,14 +8,22 @@ import {
     Lock,
     Pencil,
 } from 'lucide-react';
+import { ChecklistFileList } from '@/components/procurement/checklist-file-list';
 import { ChecklistInputForm } from '@/components/procurement/checklist-input-form';
-import { SignedUploadList } from '@/components/procurement/signed-upload-list';
+import {
+    SignedUploadDeleteButton,
+    SignedUploadList,
+} from '@/components/procurement/signed-upload-list';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { formatDateTime } from '@/lib/format';
 import procurements from '@/routes/procurements';
-import type { ChecklistDocument, ChecklistRow } from '@/types';
+import type {
+    ChecklistDocument,
+    ChecklistRow,
+    PartnerCandidate,
+} from '@/types';
 
 export function ChecklistPanel({
     procurementId,
@@ -25,6 +33,9 @@ export function ChecklistPanel({
     editable,
     canManageDocuments,
     lockedReason,
+    partnerCandidates = [],
+    candidatesEditable = false,
+    directAppointment = false,
 }: {
     procurementId: number;
     /** Left out where the surrounding tab already names the stage. */
@@ -35,6 +46,12 @@ export function ChecklistPanel({
     /** Generating, editing and filing documents follows the document policy. */
     canManageDocuments: boolean;
     lockedReason?: string;
+    /** The calon mitra the "Pelaksana" step picks the executor from. */
+    partnerCandidates?: PartnerCandidate[];
+    /** Whether the "Penawaran" step may list and correct the calon mitra. */
+    candidatesEditable?: boolean;
+    /** SPPL: one partner, appointed directly. */
+    directAppointment?: boolean;
 }) {
     const completed = rows.filter((row) => row.is_completed).length;
     const percentage =
@@ -134,8 +151,20 @@ export function ChecklistPanel({
                                         checklistId={row.id}
                                         input={row.input}
                                         canManage={editable}
+                                        partnerCandidates={partnerCandidates}
+                                        candidatesEditable={candidatesEditable}
+                                        directAppointment={directAppointment}
                                     />
                                 </div>
+                            )}
+
+                            {row.needs_upload && (
+                                <ChecklistFileList
+                                    procurementId={procurementId}
+                                    checklistId={row.id}
+                                    files={row.files}
+                                    canManage={editable}
+                                />
                             )}
 
                             {row.documents.some((d) => !d.is_alternative) && (
@@ -303,6 +332,13 @@ export function ChecklistDocumentActions({
                                 </Link>
                             </Button>
                         )}
+                        {canManage && (
+                            <SignedUploadDeleteButton
+                                procurementId={procurementId}
+                                documentId={document.id}
+                                uploads={document.uploads}
+                            />
+                        )}
                     </div>
 
                     <SignedUploadList
@@ -310,6 +346,7 @@ export function ChecklistDocumentActions({
                         documentId={document.id}
                         uploads={document.uploads}
                         canManage={canManage}
+                        deleteInline={false}
                     />
                 </>
             )}

@@ -282,6 +282,11 @@ trailer<</Root 1 0 R>>
             'budget_source_id' => BudgetSource::query()->active()->ordered()->get()[$index % 2]->id ?? null,
             'hpe_value' => fake()->numberBetween(25, 3_500) * 1_000_000,
             'prk_number' => sprintf('PRK-%03d/%s', 100 + $index, $at->format('Y')),
+            // Everything a proposal must carry before it reaches the TL.
+            'pr_po_number' => (string) (1_000_012_000 + $index),
+            'coa_number' => sprintf('5110%06d', 100 + $index),
+            'proposal_memo_number' => sprintf('ND-%03d/USL/%s', 20 + $index, $at->format('Y')),
+            'proposal_memo_date' => $at->toDateString(),
             // Worked out by ProgressStatusResolver once the job is laid out.
             'progress_status_id' => $this->initialStatus,
             'target_completion_date' => $at->addDays(90 + ($index % 5) * 30)->toDateString(),
@@ -297,8 +302,6 @@ trailer<</Root 1 0 R>>
         $procurement->targetUnits()->sync([$unit->id => ['sort_order' => 1]]);
 
         $this->log($procurement, $proposer, ActivityType::Dibuat, "Pengadaan {$procurement->number} dibuat.", $at);
-        $this->log($procurement, $proposer, ActivityType::UsulanDiajukan, 'Usulan pekerjaan diajukan ke '
-            .($teamLeader !== null ? "TL {$teamLeader->name}" : 'Direksi Pekerjaan (Asman)').' untuk disetujui.', $at->addMinutes(10));
         $this->draw($procurement, ['tor', 'nota-dinas-usulan'], $proposer, $at->addMinutes(5));
 
         // The signed TOR and Nota Dinas Usulan; a few fresh proposals are
@@ -311,6 +314,12 @@ trailer<</Root 1 0 R>>
 
         if ($drafted >= 2) {
             $this->file($procurement, ['nota-dinas-usulan'], $proposer, $at->addMinutes(30));
+
+            // Complete: only now does it reach the TL / Asman. A proposal
+            // still being drafted stays with its proposer.
+            $procurement->forceFill(['proposal_completed_at' => $at->addMinutes(31)])->save();
+            $this->log($procurement, $proposer, ActivityType::UsulanDiajukan, 'Usulan pekerjaan diajukan ke '
+                .($teamLeader !== null ? "TL {$teamLeader->name}" : 'Direksi Pekerjaan (Asman)').' untuk disetujui.', $at->addMinutes(31));
         }
 
         if ($track === 'usulan_tl' && $teamLeader !== null) {
@@ -379,6 +388,7 @@ trailer<</Root 1 0 R>>
         $procurement->save();
 
         $this->log($procurement, $people['icc'], ActivityType::PicDitunjuk, "PIC Perencana diubah menjadi {$people['planner']->name}.", $at, ['pic' => 'perencana']);
+        $this->listCandidates($procurement, $contract['format'], $index, $at);
         $this->procurements->syncChecklists($procurement);
 
         if ($track === 'penyusunan' || $track === 'batal') {
@@ -443,18 +453,10 @@ trailer<</Root 1 0 R>>
             'planning_reviewed_at' => $at,
             'planning_reviewed_by' => $people['icc']->id,
             'planning_review_note' => null,
-            'partner_name' => $partner['name'],
-            'partner_director_name' => $partner['director'],
-            'partner_address' => $partner['address'],
-            'quotation_number' => sprintf('%03d/SPH/%s/%s', 40 + $index, strtoupper(substr($partner['name'], 3, 3)), $at->format('Y')),
-            'quotation_date' => $at->subDays(5)->toDateString(),
             'value_after_negotiation' => round((float) $procurement->hpe_value * fake()->randomFloat(2, 0.86, 0.97), -3),
             'execution_start_date' => $start->toDateString(),
             'execution_duration_days' => [30, 45, 60, 90][$index % 4],
             'warranty_months' => [6, 12, 18][$index % 3],
-            'bank_name' => $partner['bank'],
-            'bank_account_number' => (string) (1_250_000_000 + $index * 7_919),
-            'bank_account_holder' => $partner['name'],
             'target_completion_date' => $start->addDays([30, 45, 60, 90][$index % 4] + 14)->toDateString(),
         ])->save();
         $this->log($procurement, $people['icc'], ActivityType::PerencanaanDisetujui, 'Dokumen perencanaan disetujui.', $at);
@@ -464,7 +466,17 @@ trailer<</Root 1 0 R>>
             return $procurement;
         }
 
-        $procurement->forceFill(['executor_id' => $people['executor']->id])->save();
+        // The executor picks the partner from the candidates (the "Pelaksana"
+        // step) and fills in its account.
+        $picked = $procurement->partnerCandidates()->orderBy('sort_order')->first();
+
+        $procurement->forceFill([
+            'executor_id' => $people['executor']->id,
+            ...($picked === null ? [] : ['partner_candidate_id' => $picked->id, ...$picked->partnerFields()]),
+            'bank_name' => $partner['bank'],
+            'bank_account_number' => (string) (1_250_000_000 + $index * 7_919),
+            'bank_account_holder' => $picked->name ?? $partner['name'],
+        ])->save();
         $this->log($procurement, $people['procurement'], ActivityType::PicDitunjuk, "PIC Pelaksana diubah menjadi {$people['executor']->name}.", $at->addHour(), ['pic' => 'pelaksana']);
 
         // The contract itself, from its template.
@@ -578,6 +590,20 @@ trailer<</Root 1 0 R>>
                 'completed_by' => $by->id,
                 'updated_at' => $at,
             ])->save();
+
+            // A Penyerahan / Pembayaran requirement is ticked with its paper.
+            if ($row->needsOwnUpload()) {
+                $path = 'checklist-berkas/'.$row->id.'/'.Str::random(20).'.pdf';
+                Storage::disk('local')->put($path, self::PLACEHOLDER_PDF);
+
+                $row->files()->create([
+                    'path' => $path,
+                    'file_name' => Str::slug(Str::limit($row->checklistItem->name, 60, '')).'.pdf',
+                    'mime' => 'application/pdf',
+                    'size' => strlen(self::PLACEHOLDER_PDF),
+                    'uploaded_by' => $by->id,
+                ])->forceFill(['created_at' => $at, 'updated_at' => $at])->save();
+            }
         }
     }
 
@@ -619,6 +645,35 @@ trailer<</Root 1 0 R>>
     }
 
     /**
+     * The calon mitra the planner lists: three offers to compare, or one
+     * partner appointed directly for an SPPL (who is the executor at once).
+     */
+    protected function listCandidates(Procurement $procurement, string $format, int $index, CarbonImmutable $at): void
+    {
+        $count = $format === 'SPPL' ? 1 : 3;
+
+        for ($offset = 0; $offset < $count; $offset++) {
+            $partner = self::PARTNERS[($index + $offset) % count(self::PARTNERS)];
+
+            $candidate = $procurement->partnerCandidates()->create([
+                'name' => $partner['name'],
+                'director_name' => $partner['director'],
+                'address' => $partner['address'],
+                'quotation_number' => sprintf('%03d/SPH/%s/%s', 40 + $index + $offset, strtoupper(substr($partner['name'], 3, 3)), $at->format('Y')),
+                'quotation_date' => $at->addDays(3 + $offset)->toDateString(),
+                // The offer's total before negotiation; the scan follows
+                // when the offers are in (filePlanning).
+                'quotation_value' => round((float) $procurement->hpe_value * (0.95 + $offset * 0.03), -3),
+                'sort_order' => $offset + 1,
+            ]);
+
+            if ($format === 'SPPL') {
+                $procurement->forceFill(['partner_candidate_id' => $candidate->id, ...$candidate->partnerFields()])->save();
+            }
+        }
+    }
+
+    /**
      * Draw and file the planning papers up to a point.
      *
      * 0: nothing yet; 1: the RKS, UPB and HPE drawn and the RAB filed;
@@ -632,11 +687,26 @@ trailer<</Root 1 0 R>>
             $this->file($procurement, ['rab'], $planner, $at->addHour());
         }
 
+        // The offers: each calon mitra's scanned quotation.
         if ($upTo >= 2) {
-            $this->file($procurement, ['penawaran'], $planner, $at->addDay());
+            foreach ($procurement->partnerCandidates()->get() as $candidate) {
+                $path = 'penawaran-calon-mitra/'.$procurement->id.'/penawaran-'.$candidate->id.'-'.Str::random(10).'.pdf';
+                Storage::disk('local')->put($path, self::PLACEHOLDER_PDF);
+
+                $candidate->forceFill([
+                    'quotation_file_path' => $path,
+                    'quotation_file_name' => 'penawaran-'.Str::slug($candidate->name).'.pdf',
+                    'quotation_file_mime' => 'application/pdf',
+                    'quotation_file_size' => strlen(self::PLACEHOLDER_PDF),
+                ])->save();
+            }
         }
 
         if ($upTo >= 3) {
+            $procurement->forceFill([
+                'icc_memo_number' => sprintf('ND-%03d/ICC/%s', $procurement->id % 1000, $at->format('Y')),
+                'icc_memo_date' => $at->addDays(2)->toDateString(),
+            ])->save();
             $this->file($procurement, ['nota-dinas-perintah-pekerjaan'], $planner, $at->addDays(2));
         }
     }
@@ -711,6 +781,11 @@ trailer<</Root 1 0 R>>
         $previous = Procurement::withTrashed()->where('notes', self::MARKER)->get();
 
         foreach ($previous as $procurement) {
+            // The calon mitra's quotation scans go with their job.
+            Storage::disk('local')->deleteDirectory('penawaran-calon-mitra/'.$procurement->id);
+            $procurement->checklists()->pluck('id')->each(
+                fn (int $id) => Storage::disk('local')->deleteDirectory('checklist-berkas/'.$id),
+            );
             $procurement->forceDelete();
         }
 

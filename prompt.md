@@ -124,11 +124,31 @@ Fitur berbasis peran tidak lagi terkunci di kode, tetapi diatur Administrator me
 | Administrasi | Kelola data master (seluruh menu Data Master) | (hanya Administrator) |
 | Akses Menu | Menu Perencanaan | Semua peran (TL Pengadaan, TL ICC, PIC Perencana, PIC Pelaksana) |
 | Akses Menu | Menu Pelaksanaan | Semua peran (TL Pengadaan, TL ICC, PIC Perencana, PIC Pelaksana) |
-| Akses Menu | Menu Approval | Semua peran (TL Pengadaan, TL ICC, PIC Perencana, PIC Pelaksana) |
+| Akses Menu | Menu Approval | Semua peran (TL Pengadaan, TL ICC, PIC Perencana, PIC Pelaksana) — isi antrean mengikuti hak persetujuan (lihat catatan di bawah) |
 | Akses Menu | Menu Arsip Dokumen | Semua peran (TL Pengadaan, TL ICC, PIC Perencana, PIC Pelaksana) |
 | Akses Menu | Menu Monitoring | Semua peran (TL Pengadaan, TL ICC, PIC Perencana, PIC Pelaksana) |
 | Akses Menu | Menu Laporan (termasuk ekspor) | Semua peran (TL Pengadaan, TL ICC, PIC Perencana, PIC Pelaksana) |
 | Akses Menu | Menu Monitoring Publik (tautan di menu; halaman publik tetap terbuka) | Semua peran (TL Pengadaan, TL ICC, PIC Perencana, PIC Pelaksana) |
+
+> **Revisi menu Approval (antrean sesuai hak):**
+> - Antrean **Perencanaan** hanya tampil bagi pemegang hak *Setujui / tolak perencanaan* (TL ICC).
+> - Antrean **Pelaksanaan** hanya tampil bagi pemegang hak *Setujui pelaksanaan* (TL Pengadaan).
+> - Akun yang memegang keduanya (mis. Administrator) berpindah lewat tab. Akun tanpa hak persetujuan melihat pesan kosong.
+> - Parameter `queue` di URL tidak bisa dipakai untuk membuka antrean milik peran lain; permintaan itu dikembalikan ke antrean milik akun sendiri.
+> - "Keputusan Terakhir" kini menjadi tab **Riwayat Keputusan** milik antrean itu sendiri (TL Pengadaan melihat keputusan pelaksanaan, bukan keputusan perencanaan).
+> - Siap untuk data banyak: filter dan pencarian yang sama dengan menu Pelaksanaan dijalankan di server, paginasi 15 per halaman, dan indeks database untuk antrean (migrasi `add_approval_queue_indexes_to_procurements_table`).
+> - **Test:** `ApprovalQueueTest`.
+
+> **Revisi hak Pelaksanaan:**
+> - **TL ICC** sekarang sama seperti PIC Perencana biasa di tab Pelaksanaan: **hanya bisa melihat**. Tidak bisa mencentang checklist, mengisi isian tahapan, membuat/mengedit/mengunggah/menghapus dokumen pelaksanaan.
+> - Yang bekerja di Pelaksanaan: PIC Pelaksana, TL Pengadaan, dan Administrator.
+> - Hak dokumen kini mengikuti **tahap** tempat dokumen itu diminta checklist:
+>   - Perencanaan: PIC Perencana dan para TL.
+>   - Pelaksanaan: PIC Pelaksana, TL Pengadaan, dan Administrator.
+>   - Keuangan: pemegang hak proses pembayaran.
+>   - Dokumen yang tidak diminta tahapan mana pun (mis. dokumen usulan) tetap mengikuti hak lama.
+> - Akibatnya, PIC Perencana juga tidak lagi bisa membuat dokumen pelaksanaan.
+> - **Test:** `ExecutionRightsTest`.
 
 ### Fleksibilitas Peran oleh Super Admin
 
@@ -226,9 +246,32 @@ Form ini (menu **Buat Perencanaan Pengadaan**) diisi oleh **Team Leader Pengadaa
 
 ### Bagian Calon Mitra
 
+> **Revisi (calon mitra di checklist, wajib lengkap):**
+> - Calon mitra tidak lagi tampil di bagian atas tab Perencanaan, tetapi **di dalam tahapan checklist "Penawaran"**.
+> - Setiap calon wajib berisi: nama, direktur, alamat, nomor dan tanggal surat penawaran, **nilai total penawaran sebelum nego**, dan **unggahan berkas penawaran harga** (PDF/JPG/PNG, bisa diganti).
+> - Tahapan Penawaran baru bisa dicentang bila minimal ada satu calon dan semua calon lengkap. Unggahan dokumen "Penawaran" yang terpisah dilepas dari tahapan ini.
+> - Tahapan yang terlanjur dicentang tetapi calonnya belum lengkap tetap dihitung belum selesai, jadi perencanaan belum bisa diajukan.
+> - Status otomatis "Menunggu Penawaran" mengikuti kelengkapan penawaran calon mitra.
+> - **Nota Dinas ke Pengadaan** (dulu "Nota Dinas ke Manager"):
+>   - Nomor dan tanggalnya kini diisi di tahapan checklist "Nota Dinas ke Pengadaan" bersama unggahan berkasnya, dan wajib sebelum tahapan dicentang.
+>   - Inputannya dihapus dari form Edit Identitas dan dari panel Identitas.
+>   - Data lama tetap tersimpan dan tetap dipakai dokumen.
+> - **Test:** `PlanningInputsTest`.
+
+> **Revisi (calon mitra lebih dari satu):** calon mitra tidak lagi diisi di form Ubah Data, tetapi di kartu **Calon Mitra** pada tab Perencanaan (tabel `procurement_partner_candidates`). Kartu ini diisi oleh PIC Perencana atau pemegang hak isi perencanaan.
+> - **SPK/PJ:** calon mitra boleh lebih dari satu (tambah/ubah/hapus). Mendaftarkan calon belum berarti memilih pelaksana.
+> - **SPPL (tunjuk langsung):** hanya boleh **satu** mitra, dan mitra itu langsung menjadi pelaksana.
+> - Tahapan pelaksanaan **"Rekening Pelaksana" diganti menjadi "Pelaksana"**. Isinya: PIC Pelaksana memilih pelaksana dari daftar calon mitra, lalu mengisi nomor rekening, bank, dan pemilik rekening.
+> - Data calon yang dipilih (nama, direktur, alamat, no./tgl. surat penawaran) disalin ke pengadaan (`partner_candidate_id`, `partner_name`, dst.), sehingga placeholder dokumen lama tetap berfungsi.
+> - Calon yang sudah dipilih tidak bisa dihapus. Bila calon itu dikoreksi, data pengadaan ikut diperbarui.
+> - Data mitra lama otomatis dipindah menjadi calon terpilih (migrasi `create_procurement_partner_candidates_table`).
+> - **Test:** `PartnerCandidateTest`.
+>
+> Field calon mitra:
+
 | No | Field | Tipe Input | Keterangan |
 |----|-------|-----------|------------|
-| 1 | Nama Calon Mitra | Text | Opsional; nama mitra/penyedia yang melaksanakan pekerjaan (`partner_name`) |
+| 1 | Nama Calon Mitra | Text | Wajib per calon; nama mitra/penyedia (`partner_name` setelah dipilih) |
 | 2 | No. Surat Penawaran | Text | Opsional; nomor surat penawaran dari penyedia (`quotation_number`) |
 | 3 | Tgl. Surat Penawaran | Date | Opsional; tanggal surat penawaran (`quotation_date`) |
 | 4 | Nama Direktur | Text | Opsional; nama direktur perusahaan mitra (`partner_director_name`) — dipanggil di template dengan `{{nama_direktur}}` |
@@ -371,10 +414,30 @@ Agar template standar ini nantinya dapat diganti dengan template resmi **tanpa m
   - **Tautan lama:** `?tab=aktivitas` otomatis membuka tab ini.
 - Tombol Preview dokumen generate di checklist memakai gaya ringkas yang sama dengan tombol Preview berkas unggahan.
 
+> **Revisi tanda tangan TOR:**
+> - Di Lembar Pengesahan TOR, yang menyetujui di bagian paling bawah adalah **Manager**, namanya diambil dari Data Master → Manager lewat placeholder `{{nama_manager}}` yang sudah ada.
+> - "Disusun oleh" dan "Diperiksa/Diketahui oleh" (Direksi Pekerjaan, Pengguna Barang/Jasa) dikosongkan (titik-titik) untuk diketik manual di editor dokumen.
+> - Template terpasang sebagai versi baru lewat migrasi `update_tor_template_signed_by_manager`, kecuali template TOR sudah diubah sendiri oleh admin.
+> - TOR yang sudah digenerate sebelumnya tidak berubah.
+> - **Test:** `TorSignatureTest`.
+
 ### Output
 
 - Dokumen hasil generate dapat diunduh dalam format standar (mis. Word/PDF sesuai jenis dokumen).
 - Dokumen tersimpan otomatis pada Arsip Dokumen pengadaan terkait.
+
+> **Revisi Arsip Dokumen (folder) & tombol berkas TTD:**
+> - **Folder per jenis kontrak:** menu Arsip Dokumen menampilkan folder per format kontrak (**SPK, PJ, SPPL**, mengikuti data master Format Nomor Kontrak; format amandemen tidak dijadikan folder).
+>   - Folder **Lainnya** muncul bila ada pengadaan yang jenis kontraknya belum ditentukan.
+>   - Folder **Semua Dokumen** menampilkan seluruh arsip.
+>   - Setiap folder menampilkan jumlah dokumen yang boleh dilihat akun itu, mengikuti filter pencarian dan jenis dokumen.
+>   - Format nonaktif tetap punya folder selama masih berisi dokumen.
+> - **Arsip hanya untuk melihat:** tombol **Edit** (edit teks dokumen) dihapus dari Arsip Dokumen; yang tersisa Pratinjau dan Unduh PDF. Edit dokumen tetap dari checklist di halaman detail pengadaan.
+> - **Berkas TTD di checklist:**
+>   - Tombol **Preview** di samping tombol hapus dihapus; pratinjau tetap dibuka dengan mengklik nama berkas.
+>   - Tombol **Hapus** pindah ke kelompok tombol Preview PDF / Unduh PDF / Edit. Untuk satu berkas, langsung menghapus berkas itu dengan konfirmasi. Untuk beberapa berkas, membuka menu pilihan berkas atau "Hapus semua berkas".
+>   - Dokumen yang hanya diunggah (tanpa template, mis. Nota Dinas Usulan) tidak punya kelompok tombol, jadi Hapus berada di samping tombol Tambah Berkas.
+> - **Test:** `DocumentArchiveFolderTest`.
 
 ### Data Dokumen Selalu Terbaru (sinkron otomatis)
 
@@ -409,6 +472,20 @@ Pekerjaan dapat berawal dari bidang pengguna:
    12. **Dokumen Usulan** — pengusul hanya mengunggah **dua dokumen**: **TOR** dan **Nota Dinas Usulan** (PDF/JPG/PNG, maks. 20 MB). TOR otomatis **digenerate** dari template saat usulan dikirim; pengusul melengkapinya lewat **Edit TOR**, mencetak, menandatangani, lalu mengunggah TOR bertanda tangan. Keduanya boleh diunggah di form atau sesudahnya di halaman usulan. **Usulan baru dapat disetujui TL/Asman setelah kedua dokumen terunggah.** Kedua dokumen ini menggantikan tahapan *TOR / KAK* dan *Nota Dinas Usulan* yang dihapus dari checklist perencanaan, dan tetap wajib terunggah sebelum perencanaan diajukan (juga untuk pengadaan yang dibuat langsung oleh TL Pengadaan).
 
    Nomor yang lebih dari satu diisi per baris (tombol *Tambah*) dan disimpan sebagai satu daftar dipisah koma (`{{nomor_prk}}`, `{{nomor_sr}}`, dst. di dokumen menampilkan seluruh daftar). Metode pengadaan, nilai, calon mitra, nota dinas ke manager, dan catatan diisi kemudian oleh pengadaan/perencana setelah usulan disetujui (inputan perencana akan disesuaikan lagi). Status usulan: **Menunggu Persetujuan**.
+
+   > **Revisi (usulan wajib lengkap):** usulan **tidak masuk** ke persetujuan TL maupun Asman sebelum pengusul melengkapi semua item berikut:
+   > - Data: nama pengadaan, direksi pekerjaan, sumber anggaran, unit tujuan, nomor PRK, nomor PR, nomor COA, nomor dan tanggal nota dinas usulan.
+   > - Dokumen: TOR (generate lalu unggah yang sudah TTD) dan unggahan nota dinas usulan.
+   > - SR dan WO tetap opsional.
+   >
+   > Cara kerjanya:
+   > - Selama belum lengkap, usulan **tertahan di pengusul**. Statusnya "Belum Lengkap", tidak tampil di antrean dan dashboard TL/Asman, tidak dikirim notifikasi, dan tidak bisa disetujui.
+   > - Halaman usulan menampilkan daftar yang masih kurang.
+   > - Begitu lengkap, usulan **otomatis diteruskan** ke TL/Asman satu kali (riwayat "Usulan diajukan" dan notifikasi), dicatat di `proposal_completed_at`.
+   > - Bila berkas dihapus saat menunggu persetujuan, usulan kembali tertahan.
+   > - Usulan yang sudah terlanjur di antrean tetapi belum lengkap otomatis ditahan oleh migrasi `require_complete_proposals_and_planning_inputs`.
+   > - Perencanaan juga tidak bisa diajukan bila data identitas di atas belum lengkap. Tab Perencanaan menampilkan peringatan "Data identitas pengadaan belum lengkap" untuk dilengkapi lewat Edit Identitas Pengadaan.
+   > - **Test:** `ProposalCompletenessTest`.
 2. **Persetujuan dua tingkat.** Usulan staf lebih dulu disetujui **TL atasan langsung** pengusul (status *Menunggu Persetujuan TL*), lalu **Direksi Pekerjaan / Asman** bidang (status *Menunggu Persetujuan Asman*). TL atasan diatur per akun di **Manajemen Pengguna → TL / Atasan Langsung** (`users.team_leader_id`); siapa pun yang menjadi atasan staf otomatis mendapat antrean persetujuan di menu Usulan Pekerjaan dan dashboard. Usulan dari TL sendiri, atau dari staf tanpa TL, langsung ke Asman. Jika TL atasan sekaligus Direksi Pekerjaan bidangnya (K3 KAM, Lingkungan), cukup satu kali persetujuan.
    **Direksi Pekerjaan** (Asman bidang, atau TL untuk K3 KAM dan Lingkungan, peran `direksi_pekerjaan`) menerima notifikasi setelah TL menyetujui dan melihat usulan pada menu **Usulan Pekerjaan** dan kartu dashboard. Halaman **Tinjau Usulan** menampilkan PDF TOR (dan lampiran lain bila ada) berukuran besar di kiri dan ringkasan data serta tombol **Setujui Usulan** / **Kembalikan ke Pengusul** di kanan. Mengembalikan wajib disertai catatan.
 3. Usulan yang **dikembalikan** (oleh TL maupun Asman) dapat diperbaiki pengusul (ubah data, tambah/hapus lampiran) lalu **Ajukan Ulang**; pengajuan ulang mulai lagi dari TL.
@@ -594,7 +671,7 @@ SPK disusun sebagai perjanjian lengkap mengikuti format kontrak UP Kendari (±9�
 |---------|-------------------|
 | BA Negosiasi | **Generate** Berita Acara Negosiasi (format SPPL, Landscape) lalu unggah hasil TTD |
 | Surat Pesanan | **Generate** Surat Pesanan lalu unggah hasil TTD |
-| Rekening Pelaksana | **Isian**: nomor rekening, bank, dan nama pelaksana (pemilik rekening) |
+| Pelaksana | **Isian**: mitra tunjuk langsung (satu-satunya calon mitra, otomatis terpilih), lalu nomor rekening, bank, dan pemilik rekening |
 | Lampiran Surat Pesanan | Generate **Lampiran SP Barang dan Jasa** (satu dokumen untuk barang maupun jasa); unggah hasil TTD |
 | Rentang Waktu Pelaksanaan | **Isian**: tanggal mulai + jumlah hari; **tanggal akhir dihitung otomatis** (tanggal mulai dihitung hari ke-1, mis. 1 Okt + 30 hari = 30 Okt) |
 | Masa Garansi | **Isian**: jumlah bulan (mis. 2 atau 3 bulan) — menggantikan Masa Pemeliharaan |
@@ -630,6 +707,15 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 - Setelah seluruh tahapan **wajib** pelaksanaan selesai, PIC Pelaksana (atau TL) menekan **Serahkan ke Keuangan**. Sejak itu checklist pelaksanaan terkunci.
 
 ## 3. Tahap Keuangan
+
+> **Revisi (Penyerahan & Pembayaran = unggah dokumen):**
+> - Setiap item checklist Penyerahan dan Pembayaran kini **wajib unggah berkas** (PDF/JPG/PNG, bisa beberapa sekaligus), bukan sekadar centang.
+> - Item baru bisa dicentang setelah ada berkas.
+> - Menghapus semua berkas otomatis membatalkan centangnya.
+> - Item yang terlanjur dicentang tanpa berkas tetap dihitung belum selesai, sehingga pembayaran belum bisa diselesaikan.
+> - Item opsional ("apabila ada") tetap opsional.
+> - Berkas disimpan per item (tabel `procurement_checklist_files`, migrasi `create_procurement_checklist_files_table`) dan ikut di ZIP "Unduh Semua Dokumen" pada folder `4. Keuangan/<nama item>`.
+> - **Test:** `FinanceUploadTest`.
 
 - Pengadaan yang diserahkan muncul di menu **Keuangan** (antrean *Menunggu Pembayaran*, total nilai tagihan, dan riwayat *Sudah Dibayar*) serta kartu dashboard **Tagihan Menunggu Pembayaran**, dan seluruh akun Keuangan mendapat notifikasi.
 - Peran **Keuangan** (`keuangan`) mengerjakan dua tab di detail pengadaan, yaitu **Penyerahan** dan **Pembayaran** (dulu satu tab *Keuangan*). Tautan lama `?tab=keuangan` membuka tab Penyerahan.

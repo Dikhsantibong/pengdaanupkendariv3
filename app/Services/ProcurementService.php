@@ -101,10 +101,9 @@ class ProcurementService
                 $this->assignPic($procurement, $author, (int) $plannerId, $procurement->executor_id);
             }
 
-            if (! $procurement->isProposalApproved()) {
-                $this->announceProposal($procurement, $author, false);
-            }
-
+            // A proposal reaches its TL / Asman once nothing is missing (see
+            // syncProposalReadiness), which may be right away or only after
+            // its TOR and Nota Dinas are filed.
             return $procurement;
         });
     }
@@ -144,6 +143,55 @@ class ProcurementService
         return $user->work_director_id !== null
             && $user->work_director_id === (int) $procurement->work_director_id
             && $user->hasPermission(Permission::ApproveProposal);
+    }
+
+    /**
+     * Hand a waiting proposal to its TL / Asman once everything the proposer
+     * owes is in, or hold it back with the proposer while anything is missing.
+     *
+     * Runs whenever the procurement or one of its documents changes, so the
+     * proposal moves on at the moment it becomes complete, and is announced
+     * (logged and notified) exactly then. The state is read fresh from the
+     * database, so a stale model in memory cannot announce it twice.
+     */
+    public function syncProposalReadiness(Procurement $procurement): void
+    {
+        if ($procurement->getKey() === null || $procurement->proposal_submitted_at === null) {
+            return;
+        }
+
+        $fresh = Procurement::withTrashed()->with(['documents.signedUploads', 'creator.teamLeader'])->whereKey($procurement->getKey())->first();
+
+        if ($fresh === null
+            || ! in_array($fresh->proposal_state, [ProposalState::MenungguPersetujuanTl, ProposalState::MenungguPersetujuan], true)) {
+            return;
+        }
+
+        $complete = $fresh->missingProposalRequirements() === [];
+
+        if ($complete === ($fresh->proposal_completed_at !== null)) {
+            $procurement->setAttribute('proposal_completed_at', $fresh->proposal_completed_at);
+            $procurement->syncOriginalAttribute('proposal_completed_at');
+
+            return;
+        }
+
+        $completedAt = $complete ? now() : null;
+
+        // Written straight to the row: saving the model would run this again.
+        Procurement::withTrashed()->whereKey($fresh->getKey())->update(['proposal_completed_at' => $completedAt]);
+        $procurement->setAttribute('proposal_completed_at', $completedAt);
+        $procurement->syncOriginalAttribute('proposal_completed_at');
+
+        if ($complete && $fresh->creator !== null) {
+            $fresh->proposal_completed_at = $completedAt;
+
+            $this->announceProposal(
+                $fresh,
+                $fresh->creator,
+                $fresh->activities()->where('type', ActivityType::UsulanDikembalikan->value)->exists(),
+            );
+        }
     }
 
     /**
@@ -646,6 +694,8 @@ class ProcurementService
 
         if (! $approved) {
             $procurement->proposal_state = ProposalState::Dikembalikan;
+            // Handed on again only once it is complete after the revision.
+            $procurement->proposal_completed_at = null;
         } elseif ($atTeamLeader && ! $this->leadsDivision($reviewer, $procurement)) {
             $procurement->proposal_state = ProposalState::MenungguPersetujuan;
         } else {
@@ -704,11 +754,10 @@ class ProcurementService
         $procurement->proposal_reviewed_by = null;
         $procurement->proposal_tl_reviewed_at = null;
         $procurement->proposal_tl_reviewed_by = null;
+        // Announced by syncProposalReadiness when saved, or once the missing
+        // items are in.
+        $procurement->proposal_completed_at = null;
         $procurement->save();
-
-        if (! $procurement->isProposalApproved()) {
-            $this->announceProposal($procurement, $proposer, true);
-        }
 
         return $procurement;
     }

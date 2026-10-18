@@ -157,6 +157,23 @@ class EndToEndFlowTest extends TestCase
 
         $this->assertSame('2026-12-31', $procurement->refresh()->target_completion_date?->toDateString());
 
+        // The planner lists the calon mitra and their offers.
+        foreach (['PT Mitra Pompa Sejahtera', 'CV Teknik Pendingin'] as $name) {
+            $this->actingAs($planner)
+                ->post(route('procurements.partner-candidates.store', $procurement), [
+                    'name' => $name,
+                    'director_name' => 'Direktur '.$name,
+                    'address' => 'Jl. Ahmad Yani, Kendari',
+                    'quotation_number' => '012/SPH/2026',
+                    'quotation_date' => '2026-09-01',
+                    'quotation_value' => 245_000_000,
+                    'quotation_file' => UploadedFile::fake()->create('penawaran.pdf', 40, 'application/pdf'),
+                ])
+                ->assertSessionHasNoErrors();
+        }
+
+        $this->assertCount(2, $procurement->partnerCandidates()->get());
+
         $this->completeStage($procurement, ProcurementStage::Perencanaan, $planner);
 
         $this->actingAs($planner)
@@ -212,6 +229,7 @@ class EndToEndFlowTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->assertTrue($procurement->refresh()->isInFinance());
+        $this->assertSame('CV Teknik Pendingin', $procurement->partner_name);
 
         // 9. Keuangan files the invoice papers, records the payment and closes it.
         $this->actingAs($finance)
@@ -259,6 +277,15 @@ class EndToEndFlowTest extends TestCase
         foreach ($checklists as $checklist) {
             $this->fileDocuments($procurement, $checklist, $pic);
             $this->fillInput($procurement, $checklist, $pic);
+
+            // A Penyerahan / Pembayaran requirement is an upload.
+            if ($checklist->needsOwnUpload()) {
+                $this->actingAs($pic)
+                    ->post(route('procurements.checklists.files.store', [$procurement, $checklist]), [
+                        'files' => [UploadedFile::fake()->create('bukti.pdf', 20, 'application/pdf')],
+                    ])
+                    ->assertSessionHasNoErrors();
+            }
 
             $this->actingAs($pic)
                 ->put(route('procurements.checklists.update', [$procurement, $checklist]), ['is_completed' => true])
@@ -314,7 +341,14 @@ class EndToEndFlowTest extends TestCase
         $values = match ($checklist->checklistItem->input_kind?->value) {
             'contract_period' => ['execution_start_date' => '2026-11-01', 'execution_duration_days' => 60],
             'warranty' => ['warranty_months' => 6],
-            'bank_account' => ['bank_account_number' => '123-456-789', 'bank_name' => 'Bank Mandiri', 'bank_account_holder' => 'PT Mitra'],
+            'procurement_memo' => ['icc_memo_number' => 'ND-031/ICC/2026', 'icc_memo_date' => '2026-09-10'],
+            // The executor picks the partner from the calon mitra.
+            'bank_account' => [
+                'partner_candidate_id' => $procurement->partnerCandidates()->where('name', 'CV Teknik Pendingin')->value('id'),
+                'bank_account_number' => '123-456-789',
+                'bank_name' => 'Bank Mandiri',
+                'bank_account_holder' => 'CV Teknik Pendingin',
+            ],
             default => null,
         };
 

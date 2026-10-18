@@ -23,6 +23,7 @@ import { dashboard } from '@/routes';
 import procurements from '@/routes/procurements';
 import type {
     ChecklistRow,
+    PartnerCandidate,
     DocumentTypeOption,
     Option,
     ProcurementRow,
@@ -46,6 +47,7 @@ type ShowProps = {
         planner_name: string | null;
         planning_revision: number;
         missing_planning_data: string[];
+        missing_identity_data: string[];
         finance: FinanceDetail;
         proposal_documents: {
             proposer: string;
@@ -59,6 +61,8 @@ type ShowProps = {
     };
     approvalHistory: ApprovalHistory;
     amendments: Amendment[];
+    partnerCandidates: PartnerCandidate[];
+    directAppointment: boolean;
     options: {
         progressStatuses: StatusOption[];
         planners: Option[];
@@ -85,6 +89,7 @@ type ShowProps = {
         revertPlanningRejection: boolean;
         complete: boolean;
         generateDocument: boolean;
+        manageExecutionDocuments: boolean;
         editDocument: boolean;
     };
 };
@@ -95,6 +100,8 @@ export default function ShowProcurement({
     checklists,
     approvalHistory,
     amendments,
+    partnerCandidates,
+    directAppointment,
     options,
     can,
 }: ShowProps) {
@@ -237,6 +244,7 @@ export default function ShowProcurement({
                             notes={detail.notes}
                             editsInline={editsInline}
                             contractTypes={options.contractTypes}
+                            candidateCount={partnerCandidates.length}
                         />
 
                         <Tabs defaultValue={initialTab}>
@@ -302,6 +310,23 @@ export default function ShowProcurement({
                                         </span>
                                     </p>
                                 )}
+                                {detail.missing_identity_data.length > 0 && (
+                                    <p className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm">
+                                        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+                                        <span>
+                                            Data identitas pengadaan belum
+                                            lengkap:{' '}
+                                            <b>
+                                                {detail.missing_identity_data.join(
+                                                    ', ',
+                                                )}
+                                            </b>
+                                            . Perencanaan belum bisa diajukan
+                                            sebelum data ini dilengkapi lewat
+                                            Edit Identitas Pengadaan.
+                                        </span>
+                                    </p>
+                                )}
                                 <ChecklistPanel
                                     procurementId={procurement.id}
                                     description="Dokumen yang harus dilengkapi PIC Perencana sebelum diajukan ke TL ICC."
@@ -314,6 +339,11 @@ export default function ShowProcurement({
                                             ? 'Checklist terkunci karena perencanaan sudah disetujui.'
                                             : 'Anda tidak memiliki akses untuk mengubah checklist ini.'
                                     }
+                                    partnerCandidates={partnerCandidates}
+                                    candidatesEditable={
+                                        can.updatePlanningIdentity
+                                    }
+                                    directAppointment={directAppointment}
                                 />
                             </TabsContent>
 
@@ -326,7 +356,10 @@ export default function ShowProcurement({
                                     description="Tahapan pelaksanaan pengadaan hingga masa pemeliharaan selesai."
                                     rows={checklists.pelaksanaan}
                                     editable={can.updateExecutionChecklist}
-                                    canManageDocuments={can.generateDocument}
+                                    partnerCandidates={partnerCandidates}
+                                    canManageDocuments={
+                                        can.manageExecutionDocuments
+                                    }
                                     lockedReason={
                                         procurement.planning_approval_state !==
                                         'disetujui'

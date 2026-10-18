@@ -136,12 +136,46 @@ export type ChecklistRow = {
     completed_by: string | null;
     completed_at: string | null;
     documents: ChecklistDocument[];
+    /** Finished by uploading its paper on the step (Penyerahan / Pembayaran). */
+    needs_upload: boolean;
+    files: ChecklistFile[];
     /** Data the step asks for before it can be ticked, if any. */
     input: ChecklistInput | null;
 };
 
+/** A file uploaded on a checklist step. */
+export type ChecklistFile = {
+    id: number;
+    file_name: string;
+    size: number | null;
+    uploaded_by: string | null;
+    uploaded_at: string | null;
+    url: string;
+};
+
+/** A partner candidate (calon mitra) listed in planning. */
+export type PartnerCandidate = {
+    id: number;
+    name: string;
+    director_name: string | null;
+    address: string | null;
+    quotation_number: string | null;
+    quotation_date: string | null;
+    /** The offer's total before negotiation. */
+    quotation_value: number | null;
+    /** The scanned quotation (penawaran harga). */
+    quotation_file: { name: string; size: number | null; url: string } | null;
+    /** What is still to be filled in before the Penawaran step counts. */
+    missing: string[];
+    is_selected: boolean;
+};
+
 export type ChecklistInputKind =
-    'contract_period' | 'warranty' | 'bank_account';
+    | 'contract_period'
+    | 'warranty'
+    | 'bank_account'
+    | 'partner_candidates'
+    | 'procurement_memo';
 
 export type ChecklistInput = {
     kind: ChecklistInputKind;
@@ -152,9 +186,14 @@ export type ChecklistInput = {
         execution_duration_days: number | null;
         execution_end_date: string | null;
         warranty_months: number | null;
+        /** The calon mitra picked as the executor. */
+        partner_candidate_id: number | null;
         bank_account_number: string | null;
         bank_name: string | null;
         bank_account_holder: string | null;
+        /** The Nota Dinas ke Pengadaan. */
+        icc_memo_number: string | null;
+        icc_memo_date: string | null;
     };
 };
 

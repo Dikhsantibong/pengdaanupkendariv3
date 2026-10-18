@@ -364,8 +364,10 @@ class PlanningIdentityTest extends TestCase
 
     public function test_the_memo_number_is_available_to_document_templates(): void
     {
+        // The manager's number is the fallback when no other memo is known.
         $procurement = Procurement::factory()->create([
             'manager_memo_number' => 'ND-555/612/UPKD/2026',
+            'proposal_memo_number' => null,
         ]);
 
         $values = app(DocumentGenerator::class)->placeholderValues($procurement);

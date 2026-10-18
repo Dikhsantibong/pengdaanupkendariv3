@@ -128,10 +128,10 @@ class ExecutionApprovalTest extends TestCase
             ->get(route('approvals.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->has('procurements.data', 0)
-                ->has('executions.data', 1)
-                ->where('executions.data.0.id', $this->procurement->id)
-                ->where('executions.data.0.execution_approval_state', 'menunggu_persetujuan'));
+                ->where('queue', 'execution')
+                ->has('procurements.data', 1)
+                ->where('procurements.data.0.id', $this->procurement->id)
+                ->where('procurements.data.0.execution_approval_state', 'menunggu_persetujuan'));
     }
 
     public function test_the_asman_approval_goes_to_tl_icc_and_the_planning_approval_to_tl_pengadaan(): void

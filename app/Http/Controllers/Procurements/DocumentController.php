@@ -42,6 +42,7 @@ class DocumentController extends Controller
         $this->authorize('generateDocument', $procurement);
 
         $documentType = DocumentType::query()->findOrFail($request->integer('document_type_id'));
+        $this->authorize('manageStageDocument', [$procurement, $documentType]);
 
         // An amendment is drawn from its own tab, with the amendment's data.
         if ($documentType->code === 'amandemen-kontrak') {
@@ -134,6 +135,7 @@ class DocumentController extends Controller
         $this->authorize('editDocument', $procurement);
 
         $this->assertBelongsTo($procurement, $document);
+        $this->authorize('manageStageDocument', [$procurement, $document->documentType]);
 
         $document->load(['documentType', 'generatedBy', 'editedBy']);
 
@@ -201,6 +203,7 @@ class DocumentController extends Controller
         $this->authorize('editDocument', $procurement);
 
         $this->assertBelongsTo($procurement, $document);
+        $this->authorize('manageStageDocument', [$procurement, $document->documentType]);
 
         $this->generator->saveEdit(
             $document,
@@ -233,6 +236,7 @@ class DocumentController extends Controller
         $this->authorize('editDocument', $procurement);
 
         $this->assertBelongsTo($procurement, $document);
+        $this->authorize('manageStageDocument', [$procurement, $document->documentType]);
 
         $draft = clone $document;
         $draft->forceFill([
@@ -261,6 +265,7 @@ class DocumentController extends Controller
         $this->authorize('editDocument', $procurement);
 
         $this->assertBelongsTo($procurement, $document);
+        $this->authorize('manageStageDocument', [$procurement, $document->documentType]);
 
         $draft = clone $document;
         $draft->forceFill([
@@ -282,6 +287,7 @@ class DocumentController extends Controller
         $this->authorize('editDocument', $procurement);
 
         $this->assertBelongsTo($procurement, $document);
+        $this->authorize('manageStageDocument', [$procurement, $document->documentType]);
 
         try {
             $this->generator->regenerate($document, $request->user());
@@ -310,6 +316,7 @@ class DocumentController extends Controller
         $this->authorize('editDocument', $procurement);
 
         $this->assertBelongsTo($procurement, $document);
+        $this->authorize('manageStageDocument', [$procurement, $document->documentType]);
 
         /** @var array<int, UploadedFile> $files */
         $files = $request->file('files');
@@ -337,6 +344,7 @@ class DocumentController extends Controller
         $this->authorize('editDocument', $procurement);
 
         $type = DocumentType::query()->findOrFail($request->integer('document_type_id'));
+        $this->authorize('manageStageDocument', [$procurement, $type]);
 
         $document = $procurement->documentFor($type->id)
             ?? $procurement->documents()->create([
@@ -399,6 +407,7 @@ class DocumentController extends Controller
         $this->authorize('editDocument', $procurement);
 
         $this->assertBelongsTo($procurement, $document);
+        $this->authorize('manageStageDocument', [$procurement, $document->documentType]);
 
         abort_unless($upload->procurement_document_id === $document->id, 404);
 
@@ -423,6 +432,7 @@ class DocumentController extends Controller
         $this->authorize('editDocument', $procurement);
 
         $this->assertBelongsTo($procurement, $document);
+        $this->authorize('manageStageDocument', [$procurement, $document->documentType]);
 
         abort_unless($document->signedUploads()->exists(), 404);
 

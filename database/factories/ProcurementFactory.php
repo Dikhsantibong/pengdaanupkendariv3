@@ -31,8 +31,12 @@ class ProcurementFactory extends Factory
             'target_unit_id' => TargetUnit::factory(),
             'procurement_method_id' => ProcurementMethod::factory(),
             'budget_source_id' => BudgetSource::factory(),
-            'pr_po_number' => null,
+            // The identity data a proposal must carry before it moves on.
+            'pr_po_number' => fake()->numerify('PR-######'),
             'prk_number' => fake()->numerify('ND-###/PRK/####'),
+            'coa_number' => fake()->numerify('COA-####.##'),
+            'proposal_memo_number' => fake()->numerify('ND-###/USL/####'),
+            'proposal_memo_date' => fake()->dateTimeBetween('-2 months')->format('Y-m-d'),
             'hpe_value' => fake()->numberBetween(10_000_000, 5_000_000_000),
             'progress_status_id' => ProgressStatus::factory(),
             'planner_id' => null,

@@ -1,5 +1,12 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Archive, Download, Eye, Pencil, Search } from 'lucide-react';
+import {
+    Archive,
+    Download,
+    Eye,
+    Folder,
+    FolderOpen,
+    Search,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
@@ -23,6 +30,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { formatDateTime } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import documents from '@/routes/documents';
 import procurements from '@/routes/procurements';
@@ -42,15 +50,30 @@ type ArchiveRow = {
     generated_at: string;
 };
 
+type ArchiveFolder = {
+    key: string;
+    name: string;
+    description: string;
+    count: number;
+};
+
 export default function DocumentArchive({
     documents: page,
+    folders,
     filters,
     documentTypes,
 }: {
     documents: Paginated<ArchiveRow>;
-    filters: { search: string | null; document_type_id: number | null };
+    folders: ArchiveFolder[];
+    filters: {
+        search: string | null;
+        document_type_id: number | null;
+        folder: string | null;
+    };
     documentTypes: Option[];
 }) {
+    const openFolder = folders.find((folder) => folder.key === filters.folder);
+
     const [search, setSearch] = useState(filters.search ?? '');
     const isFirstRender = useRef(true);
 
@@ -94,8 +117,60 @@ export default function DocumentArchive({
                 <PageHeader
                     eyebrow="Pengadaan"
                     title="Arsip Dokumen"
-                    description="Seluruh dokumen yang pernah digenerate tersimpan apa adanya, termasuk versi template yang dipakai saat itu."
+                    description="Seluruh dokumen yang pernah digenerate tersimpan apa adanya, dikelompokkan dalam folder per jenis kontrak (SPK, PJ, SPPL)."
                 />
+
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                    {[
+                        {
+                            key: null,
+                            name: 'Semua Dokumen',
+                            description: 'Seluruh folder',
+                            count: folders.reduce(
+                                (total, folder) => total + folder.count,
+                                0,
+                            ),
+                        },
+                        ...folders,
+                    ].map((folder) => {
+                        const isOpen = folder.key === filters.folder;
+                        const Icon = isOpen ? FolderOpen : Folder;
+
+                        return (
+                            <button
+                                key={folder.key ?? 'all'}
+                                type="button"
+                                onClick={() => visit({ folder: folder.key })}
+                                aria-pressed={isOpen}
+                                className={cn(
+                                    'flex items-center gap-3 rounded-md border border-border bg-card p-3 text-left transition-colors hover:border-primary/50 hover:bg-accent/40',
+                                    isOpen &&
+                                        'border-primary bg-primary/5 ring-1 ring-primary/30',
+                                )}
+                            >
+                                <Icon
+                                    className={cn(
+                                        'size-8 shrink-0',
+                                        isOpen
+                                            ? 'text-primary'
+                                            : 'text-amber-500 dark:text-amber-400',
+                                    )}
+                                />
+                                <span className="min-w-0">
+                                    <span className="block truncate text-sm font-semibold text-foreground">
+                                        {folder.name}
+                                    </span>
+                                    <span className="block truncate text-xs text-muted-foreground">
+                                        {folder.description}
+                                    </span>
+                                    <span className="tabular block text-xs text-muted-foreground">
+                                        {folder.count} dokumen
+                                    </span>
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
 
                 <div className="flex flex-col gap-3 rounded-md border border-border bg-card p-3 lg:flex-row lg:items-end">
                     <div className="flex-1 space-y-1.5">
@@ -113,7 +188,11 @@ export default function DocumentArchive({
                                 onChange={(event) =>
                                     setSearch(event.target.value)
                                 }
-                                placeholder="Judul dokumen atau nomor pengadaan"
+                                placeholder={
+                                    openFolder
+                                        ? `Cari di folder ${openFolder.name}`
+                                        : 'Judul dokumen atau nomor pengadaan'
+                                }
                                 className="pl-9"
                             />
                         </div>
@@ -156,7 +235,11 @@ export default function DocumentArchive({
                     <div className="rounded-md border border-border bg-card">
                         <EmptyState
                             icon={Archive}
-                            title="Belum ada dokumen diarsipkan"
+                            title={
+                                openFolder
+                                    ? `Folder ${openFolder.name} masih kosong`
+                                    : 'Belum ada dokumen diarsipkan'
+                            }
                             description="Dokumen akan muncul di sini setelah digenerate dari halaman detail pengadaan."
                         />
                     </div>
@@ -205,27 +288,6 @@ export default function DocumentArchive({
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-2">
-                                                <Button
-                                                    asChild
-                                                    size="sm"
-                                                    variant="ghost"
-                                                >
-                                                    <Link
-                                                        href={
-                                                            procurements.documents.edit(
-                                                                {
-                                                                    procurement:
-                                                                        row.procurement_id,
-                                                                    document:
-                                                                        row.id,
-                                                                },
-                                                            ).url
-                                                        }
-                                                    >
-                                                        <Pencil className="size-3.5" />
-                                                        Edit
-                                                    </Link>
-                                                </Button>
                                                 <Button
                                                     asChild
                                                     size="sm"

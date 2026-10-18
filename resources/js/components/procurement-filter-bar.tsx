@@ -27,17 +27,20 @@ export function ProcurementFilterBar({
     filters,
     options,
     extraSelects = [],
+    persist = {},
 }: {
     url: string;
     filters: ProcurementFilters;
     options: FilterOptions;
     extraSelects?: ExtraSelect[];
+    /** Query values kept on every visit, e.g. the selected tab. */
+    persist?: Record<string, string>;
 }) {
     const [search, setSearch] = useState(filters.search ?? '');
     const isFirstRender = useRef(true);
 
     const visit = (overrides: Record<string, string | number | null>) => {
-        const query: Record<string, string> = {};
+        const query: Record<string, string> = { ...persist };
         const merged = {
             search: filters.search,
             progress_status_id: filters.progress_status_id,
@@ -151,11 +154,10 @@ export function ProcurementFilterBar({
                     size="sm"
                     onClick={() => {
                         setSearch('');
-                        router.get(
-                            url,
-                            {},
-                            { preserveScroll: true, replace: true },
-                        );
+                        router.get(url, persist, {
+                            preserveScroll: true,
+                            replace: true,
+                        });
                     }}
                 >
                     <X className="size-4" />

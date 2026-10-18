@@ -1,8 +1,8 @@
 import { router, useForm } from '@inertiajs/react';
 import {
+    ChevronDown,
     Download,
     ExternalLink,
-    Eye,
     FileCheck2,
     Trash2,
     Upload,
@@ -18,6 +18,14 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { formatDateTime } from '@/lib/format';
 import procurements from '@/routes/procurements';
 import type { SignedUpload } from '@/types';
@@ -42,10 +50,113 @@ function formatSize(bytes: number | null): string {
 }
 
 /**
+ * Remove the signed scans of one document. Sits in the document's button
+ * group (beside Unduh and Edit): one file is removed at once, several open a
+ * menu to pick one file or all of them.
+ */
+export function SignedUploadDeleteButton({
+    procurementId,
+    documentId,
+    uploads,
+}: {
+    procurementId: number;
+    documentId: number | null;
+    uploads: SignedUpload[];
+}) {
+    if (documentId === null || uploads.length === 0) {
+        return null;
+    }
+
+    const routeArgs = { procurement: procurementId, document: documentId };
+
+    const remove = (file: SignedUpload) => {
+        if (window.confirm(`Hapus berkas ${file.file_name}?`)) {
+            router.delete(
+                procurements.documents.signed.destroy({
+                    ...routeArgs,
+                    upload: file.id,
+                }).url,
+                { preserveScroll: true },
+            );
+        }
+    };
+
+    const buttonClass =
+        'text-destructive hover:bg-destructive/10 hover:text-destructive';
+
+    if (uploads.length === 1) {
+        return (
+            <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className={buttonClass}
+                onClick={() => remove(uploads[0])}
+            >
+                <Trash2 className="size-3.5" />
+                Hapus
+            </Button>
+        );
+    }
+
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className={buttonClass}
+                >
+                    <Trash2 className="size-3.5" />
+                    Hapus
+                    <ChevronDown className="size-3.5" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="max-w-80">
+                <DropdownMenuLabel className="text-xs text-muted-foreground">
+                    Pilih berkas yang dihapus
+                </DropdownMenuLabel>
+                {uploads.map((file) => (
+                    <DropdownMenuItem
+                        key={file.id}
+                        onSelect={() => remove(file)}
+                    >
+                        <span className="truncate">{file.file_name}</span>
+                    </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                    variant="destructive"
+                    onSelect={() => {
+                        if (
+                            window.confirm(
+                                `Hapus semua ${uploads.length} berkas?`,
+                            )
+                        ) {
+                            router.delete(
+                                procurements.documents.signed.destroyAll(
+                                    routeArgs,
+                                ).url,
+                                { preserveScroll: true },
+                            );
+                        }
+                    }}
+                >
+                    Hapus semua berkas
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+}
+
+/**
  * The signed scans of one generated document: upload several, list, remove.
  *
  * A signed berita acara rarely arrives as one file, so the control accepts a
- * whole batch at once and every file stays listed on its own.
+ * whole batch at once and every file stays listed on its own. A file opens
+ * its preview from its name; removing sits with the upload button unless the
+ * document has its own button group (`deleteInline`).
  */
 export function SignedUploadList({
     procurementId,
@@ -54,6 +165,7 @@ export function SignedUploadList({
     uploads,
     canManage,
     label = 'Unggah Hasil TTD',
+    deleteInline = true,
 }: {
     procurementId: number;
     /** Null for an upload-only step that has no files yet. */
@@ -63,6 +175,8 @@ export function SignedUploadList({
     uploads: SignedUpload[];
     canManage: boolean;
     label?: string;
+    /** False when the parent puts the delete button in its own button group. */
+    deleteInline?: boolean;
 }) {
     const [previewFile, setPreviewFile] = useState<SignedUpload | null>(null);
     const input = useRef<HTMLInputElement>(null);
@@ -89,9 +203,7 @@ export function SignedUploadList({
           ).url
         : '';
 
-    const isImage = Boolean(
-        previewFile?.file_name.match(/\.(jpg|jpeg|png)$/i),
-    );
+    const isImage = Boolean(previewFile?.file_name.match(/\.(jpg|jpeg|png)$/i));
 
     const upload = (files: FileList) => {
         form.setData('files', Array.from(files));
@@ -127,15 +239,15 @@ export function SignedUploadList({
                     {uploads.map((file) => (
                         <li
                             key={file.id}
-                            className="flex items-center justify-between gap-2 rounded px-2 py-1.5 hover:bg-muted/40 transition-colors"
+                            className="flex items-center justify-between gap-2 rounded px-2 py-1.5 transition-colors hover:bg-muted/40"
                         >
-                            <div className="flex min-w-0 items-start gap-1.5 flex-1">
+                            <div className="flex min-w-0 flex-1 items-start gap-1.5">
                                 <FileCheck2 className="mt-0.5 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
                                 <div className="min-w-0">
                                     <button
                                         type="button"
                                         onClick={() => setPreviewFile(file)}
-                                        className="block truncate text-left text-xs font-medium text-foreground underline-offset-2 hover:underline hover:text-primary cursor-pointer"
+                                        className="block cursor-pointer truncate text-left text-xs font-medium text-foreground underline-offset-2 hover:text-primary hover:underline"
                                         title="Klik untuk melihat pratinjau dokumen"
                                     >
                                         {file.file_name}
@@ -149,44 +261,6 @@ export function SignedUploadList({
                                             : ''}
                                     </p>
                                 </div>
-                            </div>
-
-                            <div className="flex items-center gap-1 shrink-0">
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-6.5 px-2 text-[11px] gap-1 font-medium text-foreground hover:bg-muted"
-                                    onClick={() => setPreviewFile(file)}
-                                    title="Pratinjau Berkas"
-                                >
-                                    <Eye className="size-3.5 text-primary" />
-                                    <span>Preview</span>
-                                </Button>
-
-                                {canManage && (
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-6.5 shrink-0 px-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                        title="Hapus Berkas"
-                                        onClick={() =>
-                                            router.delete(
-                                                procurements.documents.signed.destroy(
-                                                    {
-                                                        ...routeArgs,
-                                                        upload: file.id,
-                                                    },
-                                                ).url,
-                                                { preserveScroll: true },
-                                            )
-                                        }
-                                    >
-                                        <Trash2 className="size-3.5" />
-                                        <span className="sr-only">Hapus</span>
-                                    </Button>
-                                )}
                             </div>
                         </li>
                     ))}
@@ -209,22 +283,12 @@ export function SignedUploadList({
                                   ? 'Tambah Berkas'
                                   : label}
                         </Button>
-                        {uploads.length > 1 && (
-                            <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-destructive hover:text-destructive"
-                                onClick={() =>
-                                    router.delete(
-                                        procurements.documents.signed.destroyAll(
-                                            routeArgs,
-                                        ).url,
-                                        { preserveScroll: true },
-                                    )
-                                }
-                            >
-                                Hapus Semua
-                            </Button>
+                        {deleteInline && (
+                            <SignedUploadDeleteButton
+                                procurementId={procurementId}
+                                documentId={documentId}
+                                uploads={uploads}
+                            />
                         )}
                     </div>
 
@@ -282,10 +346,10 @@ export function SignedUploadList({
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="my-2 flex-1 min-h-0 w-full overflow-hidden rounded-md border border-border bg-muted/20">
+                    <div className="my-2 min-h-0 w-full flex-1 overflow-hidden rounded-md border border-border bg-muted/20">
                         {previewFile !== null &&
                             (isImage ? (
-                                <div className="flex h-full w-full items-center justify-center overflow-auto p-4 bg-muted/10">
+                                <div className="flex h-full w-full items-center justify-center overflow-auto bg-muted/10 p-4">
                                     <img
                                         src={previewUrl}
                                         alt={previewFile.file_name}
@@ -301,7 +365,7 @@ export function SignedUploadList({
                             ))}
                     </div>
 
-                    <DialogFooter className="shrink-0 flex flex-row items-center justify-between gap-2 sm:justify-between">
+                    <DialogFooter className="flex shrink-0 flex-row items-center justify-between gap-2 sm:justify-between">
                         <div className="flex items-center gap-2">
                             <Button asChild size="sm" variant="outline">
                                 <a

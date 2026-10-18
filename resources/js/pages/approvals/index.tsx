@@ -1,127 +1,205 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
+import { ShieldCheck } from 'lucide-react';
+import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
+import { ProcurementFilterBar } from '@/components/procurement-filter-bar';
 import { ProcurementTable } from '@/components/procurement-table';
-import { ApprovalBadge } from '@/components/status-badge';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import { formatCurrency } from '@/lib/format';
+import type { ProcurementColumn } from '@/components/procurement-table';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import approvals from '@/routes/approvals';
-import procurements from '@/routes/procurements';
-import type { Paginated, ProcurementRow } from '@/types';
+import type {
+    FilterOptions,
+    Paginated,
+    ProcurementFilters,
+    ProcurementRow,
+} from '@/types';
+
+type QueueKey = 'planning' | 'execution';
+
+type QueueView = 'waiting' | 'decided';
+
+type Queue = {
+    key: QueueKey;
+    label: string;
+    waiting: number;
+};
+
+/** What each queue shows, and who decides it. */
+const queueCopy: Record<
+    QueueKey,
+    {
+        decider: string;
+        columns: Record<QueueView, ProcurementColumn[]>;
+        empty: Record<QueueView, [string, string]>;
+    }
+> = {
+    planning: {
+        decider: 'TL ICC',
+        columns: {
+            waiting: ['unit', 'hpe', 'planner', 'planningProgress', 'status'],
+            decided: ['unit', 'hpe', 'planner', 'approval', 'status'],
+        },
+        empty: {
+            waiting: [
+                'Tidak ada antrean persetujuan perencanaan',
+                'Semua dokumen perencanaan sudah ditinjau.',
+            ],
+            decided: [
+                'Belum ada keputusan perencanaan',
+                'Perencanaan yang disetujui atau ditolak akan tampil di sini.',
+            ],
+        },
+    },
+    execution: {
+        decider: 'TL Pengadaan',
+        columns: {
+            waiting: ['unit', 'hpe', 'executor', 'executionProgress', 'status'],
+            decided: ['unit', 'hpe', 'executor', 'executionApproval', 'status'],
+        },
+        empty: {
+            waiting: [
+                'Tidak ada antrean persetujuan pelaksanaan',
+                'Semua pelaksanaan yang diajukan sudah ditinjau.',
+            ],
+            decided: [
+                'Belum ada keputusan pelaksanaan',
+                'Pelaksanaan yang disetujui atau dikembalikan akan tampil di sini.',
+            ],
+        },
+    },
+};
 
 export default function ApprovalIndex({
+    queues,
+    queue,
+    view,
     procurements: page,
-    executions,
-    recentDecisions,
+    filters,
+    options,
 }: {
-    procurements: Paginated<ProcurementRow>;
-    executions: Paginated<ProcurementRow>;
-    recentDecisions: ProcurementRow[];
+    queues: Queue[];
+    queue: QueueKey | null;
+    view: QueueView;
+    procurements: Paginated<ProcurementRow> | null;
+    filters: ProcurementFilters;
+    options: FilterOptions;
 }) {
+    const url = approvals.index().url;
+    const persist: Record<string, string> = {
+        ...(queue ? { queue } : {}),
+        view,
+    };
+
+    // Switching a tab keeps the filters and starts the
+    // list again from its first page.
+    const open = (next: Record<string, string>) => {
+        const query: Record<string, string> = {
+            ...Object.fromEntries(new URLSearchParams(window.location.search)),
+            ...persist,
+            ...next,
+        };
+        delete query.page;
+
+        router.get(url, query, { preserveScroll: true, replace: true });
+    };
+
     return (
         <>
             <Head title="Approval" />
 
-            <div className="flex flex-col gap-5 p-4 md:p-6">
+            <div className="flex flex-col gap-4 p-4 md:p-6">
                 <PageHeader
                     eyebrow="Persetujuan"
                     title="Antrean Approval"
-                    description="Perencanaan yang diajukan PIC Perencana menunggu keputusan TL ICC; pelaksanaan yang diajukan PIC Pelaksana menunggu keputusan TL Pengadaan sebelum diteruskan ke Penyerahan dan Pembayaran."
+                    description="Hanya antrean yang menjadi keputusan Anda yang ditampilkan: perencanaan untuk TL ICC, pelaksanaan untuk TL Pengadaan."
                 />
 
-                <h2 className="text-sm font-semibold text-foreground">
-                    Perencanaan · menunggu TL ICC
-                </h2>
-                <ProcurementTable
-                    page={page}
-                    columns={[
-                        'unit',
-                        'hpe',
-                        'planner',
-                        'planningProgress',
-                        'status',
-                    ]}
-                    emptyTitle="Tidak ada antrean persetujuan perencanaan"
-                    emptyDescription="Semua dokumen perencanaan sudah ditinjau."
-                />
-
-                <h2 className="text-sm font-semibold text-foreground">
-                    Pelaksanaan · menunggu TL Pengadaan
-                </h2>
-                <ProcurementTable
-                    page={executions}
-                    columns={[
-                        'unit',
-                        'hpe',
-                        'executor',
-                        'executionProgress',
-                        'status',
-                    ]}
-                    emptyTitle="Tidak ada antrean persetujuan pelaksanaan"
-                    emptyDescription="Semua pelaksanaan yang diajukan sudah ditinjau."
-                />
-
-                {recentDecisions.length > 0 && (
-                    <section className="overflow-hidden rounded-md border border-border bg-card">
-                        <header className="border-b border-border px-4 py-3">
-                            <h2 className="text-sm font-semibold text-foreground">
-                                Keputusan Terakhir
-                            </h2>
-                        </header>
-
-                        <Table>
-                            <TableHeader className="bg-muted/60">
-                                <TableRow className="hover:bg-transparent">
-                                    <TableHead>Pengadaan</TableHead>
-                                    <TableHead>PIC Perencana</TableHead>
-                                    <TableHead>Keputusan</TableHead>
-                                    <TableHead className="text-right">
-                                        Nilai HPE
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {recentDecisions.map((row) => (
-                                    <TableRow key={row.id}>
-                                        <TableCell>
-                                            <Link
-                                                href={procurements.show(row.id)}
-                                                className="block max-w-[20rem] truncate font-medium hover:text-primary hover:underline"
-                                            >
-                                                {row.name}
-                                            </Link>
-                                            <span className="tabular text-xs text-muted-foreground">
-                                                {row.number}
+                {queue === null || page === null ? (
+                    <div className="rounded-md border border-border bg-card">
+                        <EmptyState
+                            icon={ShieldCheck}
+                            title="Tidak ada antrean persetujuan untuk Anda"
+                            description="Akun ini tidak memegang hak persetujuan perencanaan maupun pelaksanaan."
+                        />
+                    </div>
+                ) : (
+                    <>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            {queues.length > 1 && (
+                                <div
+                                    role="tablist"
+                                    className="inline-flex rounded-md border border-border bg-muted/50 p-0.5"
+                                >
+                                    {queues.map((item) => (
+                                        <button
+                                            key={item.key}
+                                            type="button"
+                                            role="tab"
+                                            aria-selected={item.key === queue}
+                                            onClick={() =>
+                                                open({
+                                                    queue: item.key,
+                                                    view: 'waiting',
+                                                })
+                                            }
+                                            className={cn(
+                                                'inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground',
+                                                item.key === queue &&
+                                                    'bg-background text-foreground shadow-sm',
+                                            )}
+                                        >
+                                            {item.label}
+                                            <span className="tabular rounded-full bg-primary/10 px-1.5 text-xs text-primary">
+                                                {item.waiting}
                                             </span>
-                                        </TableCell>
-                                        <TableCell>
-                                            {row.planner?.name ?? '—'}
-                                        </TableCell>
-                                        <TableCell>
-                                            <ApprovalBadge
-                                                state={
-                                                    row.planning_approval_state
-                                                }
-                                                label={
-                                                    row.planning_approval_label
-                                                }
-                                            />
-                                        </TableCell>
-                                        <TableCell className="tabular text-right font-medium whitespace-nowrap">
-                                            {formatCurrency(row.hpe_value)}
-                                        </TableCell>
-                                    </TableRow>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div
+                                role="tablist"
+                                className="inline-flex rounded-md border border-border bg-muted/50 p-0.5"
+                            >
+                                {(
+                                    [
+                                        ['waiting', 'Menunggu Keputusan'],
+                                        ['decided', 'Riwayat Keputusan'],
+                                    ] as const
+                                ).map(([key, label]) => (
+                                    <button
+                                        key={key}
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={key === view}
+                                        onClick={() => open({ view: key })}
+                                        className={cn(
+                                            'rounded px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground',
+                                            key === view &&
+                                                'bg-background text-foreground shadow-sm',
+                                        )}
+                                    >
+                                        {label}
+                                    </button>
                                 ))}
-                            </TableBody>
-                        </Table>
-                    </section>
+                            </div>
+                        </div>
+
+                        <ProcurementFilterBar
+                            url={url}
+                            filters={filters}
+                            options={options}
+                            persist={persist}
+                        />
+
+                        <ProcurementTable
+                            page={page}
+                            columns={queueCopy[queue].columns[view]}
+                            emptyTitle={queueCopy[queue].empty[view][0]}
+                            emptyDescription={queueCopy[queue].empty[view][1]}
+                        />
+                    </>
                 )}
             </div>
         </>

@@ -329,7 +329,8 @@ class MasterDataSeeder extends Seeder
             ['BA Negosiasi', false],
             ['Penyusunan Kontrak', false],
             ['Surat Pesanan', false],
-            ['Rekening Pelaksana', false],
+            // Picks the executor from the calon mitra, then its account.
+            ['Pelaksana', false],
             ['Jaminan Bank', false],
             ['Kontrak', false],
             ['Lampiran Surat Pesanan', false],
@@ -341,9 +342,13 @@ class MasterDataSeeder extends Seeder
 
         /** @var array<string, ChecklistInput> $inputs */
         $inputs = [
-            'Rekening Pelaksana' => ChecklistInput::BankAccount,
+            'Pelaksana' => ChecklistInput::BankAccount,
             'Rentang Waktu Pelaksanaan' => ChecklistInput::ContractPeriod,
             'Masa Garansi' => ChecklistInput::Warranty,
+            // Planning: the calon mitra with their offers, and the memo
+            // that hands the job to procurement.
+            'Penawaran' => ChecklistInput::PartnerCandidates,
+            'Nota Dinas ke Pengadaan' => ChecklistInput::ProcurementMemo,
         ];
 
         foreach ($planning as $index => [$name, $isOptional]) {
@@ -355,6 +360,7 @@ class MasterDataSeeder extends Seeder
                 ['stage' => ProcurementStage::Perencanaan->value, 'name' => $name],
                 [
                     'is_optional' => $isOptional,
+                    'input_kind' => $inputs[$name] ?? null,
                     'sort_order' => $index + 1,
                     // The bare "Checklist Perencanaan" tick duplicated the
                     // stage heading; the Nota Dinas Usulan and TOR are filed
@@ -419,7 +425,7 @@ class MasterDataSeeder extends Seeder
                 'Nota Dinas Usulan' => ['nota-dinas-usulan'],
                 'TOR / KAK' => ['tor'],
                 'RAB (Rencana Anggaran Biaya)' => ['rab'],
-                'Penawaran' => ['penawaran'],
+                // Penawaran: each calon mitra carries its own quotation scan.
                 'CSMS (Sertifikat)' => ['csms'],
                 'Nota Dinas ke Pengadaan' => ['nota-dinas-perintah-pekerjaan'],
                 'HPE (Harga Perkiraan Engineer)' => ['hpe'],
@@ -518,6 +524,7 @@ class MasterDataSeeder extends Seeder
             ['stage' => ProcurementStage::Pelaksanaan, 'from' => 'Surat Pesanan', 'to' => 'Lampiran Surat Pesanan'],
             ['stage' => ProcurementStage::Pelaksanaan, 'from' => 'Purchase Order (PO)', 'to' => 'Surat Pesanan'],
             ['stage' => ProcurementStage::Pelaksanaan, 'from' => 'Proses SMART SCM', 'to' => 'Proses SMART SCM & Berita Acara'],
+            ['stage' => ProcurementStage::Pelaksanaan, 'from' => 'Rekening Pelaksana', 'to' => 'Pelaksana'],
         ];
 
         foreach ($renames as $rename) {

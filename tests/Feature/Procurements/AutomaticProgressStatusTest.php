@@ -76,7 +76,19 @@ class AutomaticProgressStatusTest extends TestCase
         $this->sign($this->document($procurement, 'rab'));
         $this->assertStatus(SystemStatus::MenungguPenawaran, $procurement);
 
-        $this->sign($this->document($procurement, 'penawaran'));
+        // The offers come with the calon mitra: one still lacking its scan
+        // keeps the job waiting.
+        $candidate = $procurement->partnerCandidates()->create([
+            'name' => 'PT Mitra Uji',
+            'director_name' => 'Budi',
+            'address' => 'Kendari',
+            'quotation_number' => '001/SPH/2026',
+            'quotation_date' => '2026-08-01',
+            'quotation_value' => 150_000_000,
+        ]);
+        $this->assertStatus(SystemStatus::MenungguPenawaran, $procurement);
+
+        $candidate->forceFill(['quotation_file_path' => 'penawaran-calon-mitra/uji.pdf'])->save();
         $this->assertStatus(SystemStatus::DraftNodisPengadaan, $procurement);
 
         $procurement->forceFill(['planning_approval_state' => PlanningApprovalState::MenungguPersetujuan])->save();

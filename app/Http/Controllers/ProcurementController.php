@@ -111,10 +111,12 @@ class ProcurementController extends Controller
 
         // A proposal waits on the Direksi Pekerjaan: show it where it is followed.
         if (! $procurement->isProposalApproved()) {
-            Inertia::flash('toast', [
-                'type' => 'success',
-                'message' => 'Usulan pekerjaan terkirim ke Direksi Pekerjaan untuk disetujui.',
-            ]);
+            // It only reaches the TL / Asman once nothing is missing.
+            $missing = $procurement->refresh()->missingProposalRequirements();
+
+            Inertia::flash('toast', $missing === []
+                ? ['type' => 'success', 'message' => 'Usulan pekerjaan terkirim untuk disetujui.']
+                : ['type' => 'warning', 'message' => 'Usulan tersimpan, tetapi belum diteruskan ke TL / Asman. Lengkapi dulu: '.implode(', ', $missing).'.']);
 
             return to_route('proposals.show', $procurement);
         }
@@ -192,6 +194,7 @@ class ProcurementController extends Controller
             'paymentCompleter',
             'checklists.checklistItem.documentTypes',
             'checklists.completedBy',
+            'checklists.files.uploader',
             'documents.documentType',
             'documents.generatedBy',
             'documents.editedBy',
@@ -213,6 +216,7 @@ class ProcurementController extends Controller
                 // Named so the planning PIC can see exactly what is holding the
                 // submission back instead of just finding the button missing.
                 'pending_required_planning' => [
+                    ...array_map(fn (string $name): string => "{$name} (data identitas)", $procurement->missingProposalData()),
                     ...array_map(fn (string $name): string => "{$name} (tab dokumen pengguna)", ProposalDocuments::missing($procurement)),
                     ...$procurement->pendingRequiredPlanningChecklists()
                         ->map(fn ($checklist): string => $checklist->checklistItem->name)
@@ -224,6 +228,9 @@ class ProcurementController extends Controller
                 // What procurement still has to fill in before a proposed job
                 // can have its planning documents drawn and submitted.
                 'missing_planning_data' => $procurement->missingPlanningData(),
+                // The proposal's identity data, required before planning is
+                // submitted (filled in through Edit Identitas Pengadaan).
+                'missing_identity_data' => $procurement->missingProposalData(),
                 // The TOR and Nota Dinas Usulan, shown on a tab of their own
                 // named after whoever proposed or registered the work.
                 'proposal_documents' => [
@@ -310,6 +317,27 @@ class ProcurementController extends Controller
                 // What the job waits for now, shown as the table's last row.
                 'waiting' => $procurement->completed_at === null ? RoleDashboard::note($procurement) : null,
             ],
+            // The calon mitra listed in planning; the picked one is the executor.
+            // An SPPL is a direct appointment: one partner, picked at once.
+            'directAppointment' => $procurement->isDirectAppointment(),
+            'partnerCandidates' => $procurement->partnerCandidates()->get()
+                ->map(fn ($candidate): array => [
+                    'id' => $candidate->id,
+                    'name' => $candidate->name,
+                    'director_name' => $candidate->director_name,
+                    'address' => $candidate->address,
+                    'quotation_number' => $candidate->quotation_number,
+                    'quotation_date' => $candidate->quotation_date?->toDateString(),
+                    'quotation_value' => $candidate->quotation_value === null ? null : (float) $candidate->quotation_value,
+                    'quotation_file' => $candidate->quotation_file_path === null ? null : [
+                        'name' => $candidate->quotation_file_name,
+                        'size' => $candidate->quotation_file_size,
+                        'url' => route('procurements.partner-candidates.quotation', [$procurement, $candidate]),
+                    ],
+                    'missing' => $candidate->missing(),
+                    'is_selected' => $candidate->id === $procurement->partner_candidate_id,
+                ])
+                ->all(),
             // The Amandemen tab: every amendment of the contract, oldest first.
             'amendments' => $this->amendmentsPayload($procurement, $user),
             'options' => MasterDataOptions::forProcurementDetail($procurement),
@@ -332,6 +360,8 @@ class ProcurementController extends Controller
                 'revertPlanningRejection' => $user->can('revertPlanningRejection', $procurement),
                 'complete' => $user->can('complete', $procurement),
                 'generateDocument' => $user->can('generateDocument', $procurement),
+                // TL ICC and the planning PIC only follow the execution.
+                'manageExecutionDocuments' => $user->can('manageExecutionDocuments', $procurement),
                 'editDocument' => $user->can('editDocument', $procurement),
             ],
         ]);
@@ -429,23 +459,16 @@ class ProcurementController extends Controller
                 'contract_number_format_id' => $procurement->contract_number_format_id,
                 'contract_type_id' => $procurement->contract_type_id,
                 'name' => $procurement->name,
-                'partner_name' => $procurement->partner_name ?? '',
-                'partner_director_name' => $procurement->partner_director_name ?? '',
-                'partner_address' => $procurement->partner_address ?? '',
                 'work_director_id' => $procurement->work_director_id,
                 'target_unit_ids' => $procurement->servedUnits()->pluck('id')->all(),
                 'budget_source_id' => $procurement->budget_source_id,
                 'prk_number' => $procurement->prk_number ?? '',
                 'proposal_memo_number' => $procurement->proposal_memo_number ?? '',
                 'proposal_memo_date' => $procurement->proposal_memo_date?->toDateString() ?? '',
-                'icc_memo_number' => $procurement->icc_memo_number ?? '',
-                'icc_memo_date' => $procurement->icc_memo_date?->toDateString() ?? '',
                 'pr_po_number' => $procurement->pr_po_number ?? '',
                 'coa_number' => $procurement->coa_number ?? '',
                 'wo_number' => $procurement->wo_number ?? '',
                 'sr_number' => $procurement->sr_number ?? '',
-                'quotation_number' => $procurement->quotation_number ?? '',
-                'quotation_date' => $procurement->quotation_date?->toDateString() ?? '',
                 'hpe_value' => (float) $procurement->hpe_value,
                 'value_after_negotiation' => $procurement->value_after_negotiation === null
                     ? null
@@ -563,6 +586,19 @@ class ProcurementController extends Controller
                     'completed_by' => $checklist->completedBy?->name,
                     'completed_at' => $checklist->completed_at?->toDateTimeString(),
                     'documents' => $documents,
+                    // A Penyerahan / Pembayaran requirement is finished by
+                    // uploading its paper on the step itself.
+                    'needs_upload' => $checklist->needsOwnUpload(),
+                    'files' => $checklist->needsOwnUpload()
+                        ? $checklist->files->map(fn ($file): array => [
+                            'id' => $file->id,
+                            'file_name' => $file->file_name,
+                            'size' => $file->size,
+                            'uploaded_by' => $file->uploader?->name,
+                            'uploaded_at' => $file->created_at?->toDateTimeString(),
+                            'url' => route('procurements.checklists.files.show', [$procurement, $checklist, $file]),
+                        ])->values()->all()
+                        : [],
                     'input' => $item->input_kind === null ? null : [
                         'kind' => $item->input_kind->value,
                         'label' => $item->input_kind->label(),
@@ -619,9 +655,12 @@ class ProcurementController extends Controller
             'execution_duration_days' => $procurement->execution_duration_days,
             'execution_end_date' => $procurement->executionEndDate()?->toDateString(),
             'warranty_months' => $procurement->warranty_months,
+            'partner_candidate_id' => $procurement->partner_candidate_id,
             'bank_account_number' => $procurement->bank_account_number,
             'bank_name' => $procurement->bank_name,
             'bank_account_holder' => $procurement->bank_account_holder,
+            'icc_memo_number' => $procurement->icc_memo_number,
+            'icc_memo_date' => $procurement->icc_memo_date?->toDateString(),
         ];
     }
 

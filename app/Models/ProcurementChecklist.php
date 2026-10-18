@@ -4,8 +4,10 @@ namespace App\Models;
 
 use App\Enums\ProcurementStage;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -20,6 +22,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read ChecklistItem $checklistItem
+ * @property-read Collection<int, ProcurementChecklistFile> $files
  */
 #[Fillable(['procurement_id', 'checklist_item_id', 'stage', 'is_completed', 'completed_at', 'completed_by', 'notes'])]
 class ProcurementChecklist extends Model
@@ -42,6 +45,27 @@ class ProcurementChecklist extends Model
     public function checklistItem(): BelongsTo
     {
         return $this->belongsTo(ChecklistItem::class)->withTrashed();
+    }
+
+    /**
+     * The files uploaded on this step, for a step without a document of its
+     * own (every Penyerahan and Pembayaran requirement).
+     *
+     * @return HasMany<ProcurementChecklistFile, $this>
+     */
+    public function files(): HasMany
+    {
+        return $this->hasMany(ProcurementChecklistFile::class)->oldest('id');
+    }
+
+    /**
+     * Whether this step is evidenced by files uploaded on it: a Keuangan
+     * step (Penyerahan / Pembayaran) that has no document of its own.
+     */
+    public function needsOwnUpload(): bool
+    {
+        return $this->stage === ProcurementStage::Keuangan
+            && ! $this->checklistItem->requiresDocument();
     }
 
     /**

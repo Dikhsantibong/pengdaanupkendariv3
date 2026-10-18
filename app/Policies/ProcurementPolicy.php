@@ -9,8 +9,10 @@ use App\Enums\ProcurementStage;
 use App\Enums\ProposalState;
 use App\Enums\StatusCategory;
 use App\Enums\UserRole;
+use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementAmendment;
+use App\Models\ProcurementChecklist;
 use App\Models\User;
 use App\Services\AmendmentService;
 use App\Support\ProposalDocuments;
@@ -73,8 +75,8 @@ class ProcurementPolicy
             return false;
         }
 
-        // Nothing is approved before its TOR and Nota Dinas are filed.
-        if (ProposalDocuments::missing($procurement) !== []) {
+        // Nothing is approved before its data, TOR and Nota Dinas are in.
+        if ($procurement->missingProposalRequirements() !== []) {
             return false;
         }
 
@@ -230,6 +232,7 @@ class ProcurementPolicy
         // The TOR and Nota Dinas Usulan are filed on the proposer's tab
         // rather than as checklist steps, but are still required.
         return $procurement->missingPlanningData() === []
+            && $procurement->missingProposalData() === []
             && ProposalDocuments::missing($procurement) === []
             && $procurement->isPlanningChecklistComplete();
     }
@@ -274,7 +277,66 @@ class ProcurementPolicy
             return false;
         }
 
-        return $user->isSupervisor() || $procurement->executor_id === $user->id;
+        return $this->worksOnExecution($user, $procurement);
+    }
+
+    /**
+     * Whether the user works on the execution of this job: its execution PIC,
+     * or TL Pengadaan / the administrator who oversee execution. TL ICC, like
+     * a planning PIC, only follows it.
+     */
+    protected function worksOnExecution(User $user, Procurement $procurement): bool
+    {
+        return in_array($user->role, [UserRole::Administrator, UserRole::TeamLeaderPengadaan], true)
+            || $procurement->executor_id === $user->id;
+    }
+
+    /**
+     * Whether the user works on the planning of this job: its planning PIC
+     * or a team leader.
+     */
+    protected function worksOnPlanning(User $user, Procurement $procurement): bool
+    {
+        return $user->isSupervisor() || $procurement->planner_id === $user->id;
+    }
+
+    /**
+     * Determine whether the user may generate, correct or file a document of
+     * the given type on this job.
+     *
+     * A document belongs to the stage whose checklist step asks for it, and
+     * only who works on that stage handles it: TL ICC and the planning PIC
+     * cannot touch an execution document, for instance. A document no step
+     * asks for (the proposal papers, say) follows the procurement-wide right.
+     */
+    public function manageStageDocument(User $user, Procurement $procurement, DocumentType $type): bool
+    {
+        $stages = ProcurementChecklist::query()
+            ->where('procurement_id', $procurement->id)
+            ->whereHas('checklistItem.documentTypes', fn ($query) => $query->whereKey($type->id))
+            ->pluck('stage')
+            ->map(fn (mixed $stage): string => $stage instanceof ProcurementStage ? $stage->value : (string) $stage)
+            ->unique();
+
+        if ($stages->isEmpty()) {
+            return true;
+        }
+
+        return $stages->contains(fn (string $stage): bool => match ($stage) {
+            ProcurementStage::Perencanaan->value => $this->worksOnPlanning($user, $procurement),
+            ProcurementStage::Pelaksanaan->value => $this->worksOnExecution($user, $procurement),
+            ProcurementStage::Keuangan->value => $this->updateFinanceChecklist($user, $procurement),
+            default => false,
+        });
+    }
+
+    /**
+     * Determine whether the user may handle the documents of the execution
+     * tab.
+     */
+    public function manageExecutionDocuments(User $user, Procurement $procurement): bool
+    {
+        return $this->generateDocument($user, $procurement) && $this->worksOnExecution($user, $procurement);
     }
 
     /**

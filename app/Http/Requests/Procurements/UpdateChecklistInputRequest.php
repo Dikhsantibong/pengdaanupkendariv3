@@ -6,6 +6,7 @@ use App\Enums\ChecklistInput;
 use App\Models\ProcurementChecklist;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * The data a checklist step asks for.
@@ -34,11 +35,21 @@ class UpdateChecklistInputRequest extends FormRequest
                 'warranty_months' => ['required', 'integer', 'min:0', 'max:120'],
             ],
             ChecklistInput::BankAccount => [
+                // One of this procurement's own candidates.
+                'partner_candidate_id' => [
+                    'required', 'integer',
+                    Rule::exists('procurement_partner_candidates', 'id')->where('procurement_id', $checklist->procurement_id),
+                ],
                 'bank_account_number' => ['required', 'string', 'max:50', 'regex:/^[0-9 .\-]+$/'],
                 'bank_name' => ['required', 'string', 'max:100'],
                 'bank_account_holder' => ['required', 'string', 'max:255'],
             ],
-            null => [],
+            ChecklistInput::ProcurementMemo => [
+                'icc_memo_number' => ['required', 'string', 'max:255'],
+                'icc_memo_date' => ['required', 'date'],
+            ],
+            // Filled through the calon mitra themselves.
+            ChecklistInput::PartnerCandidates, null => [],
         };
     }
 
@@ -53,9 +64,12 @@ class UpdateChecklistInputRequest extends FormRequest
             'execution_start_date' => 'tanggal mulai',
             'execution_duration_days' => 'jumlah hari',
             'warranty_months' => 'masa garansi',
+            'partner_candidate_id' => 'pelaksana',
             'bank_account_number' => 'nomor rekening',
             'bank_name' => 'nama bank',
             'bank_account_holder' => 'nama pemilik rekening',
+            'icc_memo_number' => 'nomor nota dinas ke pengadaan',
+            'icc_memo_date' => 'tanggal nota dinas ke pengadaan',
         ];
     }
 

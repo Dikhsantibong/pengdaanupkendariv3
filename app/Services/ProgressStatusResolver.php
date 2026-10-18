@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\ChecklistInput;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Enums\ProposalState;
@@ -124,6 +125,8 @@ class ProgressStatusResolver
                 $procurement->proposal_state === ProposalState::Dikembalikan => SystemStatus::RevisiUsulan,
                 ! $this->signed($documents, 'tor') => SystemStatus::PenyusunanTor,
                 ! $this->signed($documents, 'nota-dinas-usulan') => SystemStatus::DraftNodisUsulan,
+                // Papers filed but data still missing: held with the proposer.
+                $procurement->proposal_completed_at === null => SystemStatus::DraftNodisUsulan,
                 default => SystemStatus::ApprovalUsulan,
             };
         }
@@ -167,6 +170,11 @@ class ProgressStatusResolver
         }
 
         if ($required->contains('penawaran') && ! $this->signed($documents, 'penawaran')) {
+            return SystemStatus::MenungguPenawaran;
+        }
+
+        // The offers now come with the calon mitra on the Penawaran step.
+        if ($this->awaitsOffers($procurement)) {
             return SystemStatus::MenungguPenawaran;
         }
 
@@ -214,10 +222,7 @@ class ProgressStatusResolver
      */
     protected function isSuratPesanan(Procurement $procurement): bool
     {
-        $procurement->loadMissing(['contractNumberFormat', 'procurementMethod']);
-
-        return $procurement->contractNumberFormat?->code === 'SPPL'
-            || $procurement->procurementMethod?->code === 'surat-pesanan';
+        return $procurement->isDirectAppointment();
     }
 
     /**
@@ -277,6 +282,21 @@ class ProgressStatusResolver
             ->flatMap(fn (ProcurementChecklist $checklist) => $checklist->checklistItem->documentTypes->map(fn (DocumentType $type): string => $type->code))
             ->unique()
             ->values();
+    }
+
+    /**
+     * Whether the job has a planning step for the calon mitra whose offers
+     * are not all in yet.
+     */
+    protected function awaitsOffers(Procurement $procurement): bool
+    {
+        $hasStep = ProcurementChecklist::query()
+            ->where('procurement_id', $procurement->getKey())
+            ->where('stage', ProcurementStage::Perencanaan->value)
+            ->whereHas('checklistItem', fn ($item) => $item->where('input_kind', ChecklistInput::PartnerCandidates->value))
+            ->exists();
+
+        return $hasStep && ! ChecklistInput::PartnerCandidates->isFilledOn($procurement);
     }
 
     /**

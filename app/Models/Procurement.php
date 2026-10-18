@@ -9,7 +9,9 @@ use App\Enums\ProposalState;
 use App\Enums\StatusCategory;
 use App\Enums\WorkCategory;
 use App\Observers\ProcurementDocumentObserver;
+use App\Services\ProcurementService;
 use App\Services\ProgressStatusResolver;
+use App\Support\ProposalDocuments;
 use Carbon\CarbonImmutable;
 use Database\Factories\ProcurementFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -31,6 +33,7 @@ use Illuminate\Support\Collection;
  * @property string|null $partner_name
  * @property string|null $partner_director_name
  * @property string|null $partner_address
+ * @property int|null $partner_candidate_id
  * @property int $work_director_id
  * @property int $target_unit_id
  * @property int|null $procurement_method_id
@@ -39,6 +42,7 @@ use Illuminate\Support\Collection;
  * @property WorkCategory|null $work_category
  * @property ProposalState $proposal_state
  * @property CarbonImmutable|null $proposal_submitted_at
+ * @property CarbonImmutable|null $proposal_completed_at
  * @property CarbonImmutable|null $proposal_reviewed_at
  * @property int|null $proposal_reviewed_by
  * @property CarbonImmutable|null $proposal_tl_reviewed_at
@@ -195,6 +199,9 @@ class Procurement extends Model
         });
 
         static::saved(function (Procurement $procurement): void {
+            // Whether a waiting proposal may reach its TL / Asman yet, then
+            // the status that follows from it.
+            app(ProcurementService::class)->syncProposalReadiness($procurement);
             app(ProgressStatusResolver::class)->sync($procurement);
         });
 
@@ -411,6 +418,54 @@ class Procurement extends Model
     }
 
     /**
+     * The identity data a work proposal must carry before its TL / Asman
+     * sees it, and before planning can be submitted.
+     *
+     * The SR and WO numbers are optional. The Direksi Pekerjaan and the unit
+     * are not listed: the database never stores a job without them.
+     *
+     * @return array<int, string>
+     */
+    public function missingProposalData(): array
+    {
+        $filled = fn (mixed $value): bool => $value !== null && trim((string) $value) !== '';
+
+        return array_keys(array_filter([
+            'Nama Pengadaan' => ! $filled($this->name),
+            'Sumber Anggaran' => $this->budget_source_id === null,
+            'Nomor PRK' => ! $filled($this->prk_number),
+            'Nomor PR' => ! $filled($this->pr_po_number),
+            'Nomor COA' => ! $filled($this->coa_number),
+            'Nomor Nota Dinas Usulan' => ! $filled($this->proposal_memo_number),
+            'Tanggal Nota Dinas Usulan' => $this->proposal_memo_date === null,
+        ]));
+    }
+
+    /**
+     * Everything the proposer still owes: the identity data, then the signed
+     * TOR (generated from its template) and Nota Dinas Usulan.
+     *
+     * @return array<int, string>
+     */
+    public function missingProposalRequirements(): array
+    {
+        return [
+            ...$this->missingProposalData(),
+            ...array_map(fn (string $document): string => "Unggahan {$document}", ProposalDocuments::missing($this)),
+        ];
+    }
+
+    /**
+     * Whether a proposal waiting for approval is still held with its proposer
+     * because something is missing.
+     */
+    public function isProposalHeld(): bool
+    {
+        return in_array($this->proposal_state, [ProposalState::MenungguPersetujuanTl, ProposalState::MenungguPersetujuan], true)
+            && $this->proposal_completed_at === null;
+    }
+
+    /**
      * The procurement data still missing before planning documents are drawn.
      *
      * A job that came in as a work proposal has no contract format or
@@ -445,10 +500,13 @@ class Procurement extends Model
      */
     public function pendingRequiredChecklists(ProcurementStage $stage): Collection
     {
+        // A Penyerahan / Pembayaran requirement ticked without its upload
+        // still counts as pending.
         return $this->checklists
             ->where('stage', $stage)
-            ->where('is_completed', false)
             ->filter(fn (ProcurementChecklist $checklist): bool => ! $checklist->checklistItem->is_optional)
+            ->filter(fn (ProcurementChecklist $checklist): bool => ! $checklist->is_completed
+                || ($checklist->needsOwnUpload() && ! $checklist->files()->exists()))
             ->sortBy(fn (ProcurementChecklist $checklist): int => $checklist->checklistItem->sort_order)
             ->values();
     }
@@ -521,6 +579,38 @@ class Procurement extends Model
     public function documents(): HasMany
     {
         return $this->hasMany(ProcurementDocument::class);
+    }
+
+    /**
+     * The partner candidates (calon mitra) listed in planning.
+     *
+     * @return HasMany<ProcurementPartnerCandidate, $this>
+     */
+    public function partnerCandidates(): HasMany
+    {
+        return $this->hasMany(ProcurementPartnerCandidate::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    /**
+     * Whether the partner is appointed directly (SPPL, let by Surat
+     * Pesanan): one partner, no competing candidates.
+     */
+    public function isDirectAppointment(): bool
+    {
+        $this->loadMissing(['contractNumberFormat', 'procurementMethod']);
+
+        return $this->contractNumberFormat?->code === 'SPPL'
+            || $this->procurementMethod?->code === 'surat-pesanan';
+    }
+
+    /**
+     * The candidate picked as the executor in the "Pelaksana" step.
+     *
+     * @return BelongsTo<ProcurementPartnerCandidate, $this>
+     */
+    public function partnerCandidate(): BelongsTo
+    {
+        return $this->belongsTo(ProcurementPartnerCandidate::class, 'partner_candidate_id');
     }
 
     /**
@@ -663,10 +753,13 @@ class Procurement extends Model
      */
     public function pendingRequiredPlanningChecklists(): Collection
     {
+        // A step ticked before its input was asked for (or whose data was
+        // cleared since) still counts as pending until that data is in.
         return $this->checklists
             ->where('stage', ProcurementStage::Perencanaan)
-            ->where('is_completed', false)
             ->filter(fn (ProcurementChecklist $checklist): bool => ! $checklist->checklistItem->is_optional)
+            ->filter(fn (ProcurementChecklist $checklist): bool => ! $checklist->is_completed
+                || ($checklist->checklistItem->input_kind?->isFilledOn($this) === false))
             ->sortBy(fn (ProcurementChecklist $checklist): int => $checklist->checklistItem->sort_order)
             ->values();
     }
@@ -737,6 +830,7 @@ class Procurement extends Model
             'work_category' => WorkCategory::class,
             'proposal_state' => ProposalState::class,
             'proposal_submitted_at' => 'datetime',
+            'proposal_completed_at' => 'datetime',
             'proposal_reviewed_at' => 'datetime',
         ];
     }

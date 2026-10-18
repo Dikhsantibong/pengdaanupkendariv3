@@ -162,10 +162,21 @@ class FinanceStageTest extends TestCase
             ->assertForbidden();
 
         // Optional steps (those "apabila ada") do not hold the payment back.
-        $this->procurement->checklists()
+        $required = $this->procurement->checklists()
             ->where('stage', ProcurementStage::Keuangan)
-            ->whereHas('checklistItem', fn ($item) => $item->where('is_optional', false))
-            ->update(['is_completed' => true]);
+            ->whereHas('checklistItem', fn ($item) => $item->where('is_optional', false));
+
+        (clone $required)->update(['is_completed' => true]);
+
+        // Ticked without their papers, they still hold it back.
+        $this->actingAs($this->finance)
+            ->post(route('procurements.finance.complete', $this->procurement))
+            ->assertForbidden();
+
+        (clone $required)->get()->each(fn (ProcurementChecklist $step) => $step->files()->create([
+            'path' => "checklist-berkas/{$step->id}/bukti.pdf",
+            'file_name' => 'bukti.pdf',
+        ]));
 
         $this->actingAs($this->finance)
             ->post(route('procurements.finance.complete', $this->procurement))

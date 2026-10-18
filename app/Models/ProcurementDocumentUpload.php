@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ProcurementService;
 use App\Services\ProgressStatusResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -38,6 +39,8 @@ class ProcurementDocumentUpload extends Model
                 ->first();
 
             if ($procurement !== null) {
+                // A proposal's TOR or Nota Dinas may be what it was waiting for.
+                app(ProcurementService::class)->syncProposalReadiness($procurement);
                 app(ProgressStatusResolver::class)->sync($procurement);
             }
         };

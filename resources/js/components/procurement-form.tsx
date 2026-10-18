@@ -40,23 +40,16 @@ export type ProcurementFormValues = {
     contract_type_id: number | null;
     number: string;
     name: string;
-    partner_name: string;
-    partner_director_name: string;
-    partner_address: string;
     work_director_id: number | null;
     target_unit_ids: number[];
     budget_source_id: number | null;
     prk_number: string;
     proposal_memo_number: string;
     proposal_memo_date: string;
-    icc_memo_number: string;
-    icc_memo_date: string;
     pr_po_number: string;
     coa_number: string;
     sr_number: string;
     wo_number: string;
-    quotation_number: string;
-    quotation_date: string;
     hpe_value: number;
     value_after_negotiation: number | null;
     notes: string;
@@ -136,9 +129,6 @@ export function ProcurementForm({
                 ? ''
                 : (nextNumbers[startingFormatId] ?? '')),
         name: initialValues?.name ?? '',
-        partner_name: initialValues?.partner_name ?? '',
-        partner_director_name: initialValues?.partner_director_name ?? '',
-        partner_address: initialValues?.partner_address ?? '',
         work_director_id:
             initialValues?.work_director_id ??
             (isProposal ? (proposal?.workDirectorId ?? null) : null),
@@ -147,14 +137,10 @@ export function ProcurementForm({
         prk_number: initialValues?.prk_number ?? '',
         proposal_memo_number: initialValues?.proposal_memo_number ?? '',
         proposal_memo_date: initialValues?.proposal_memo_date ?? '',
-        icc_memo_number: initialValues?.icc_memo_number ?? '',
-        icc_memo_date: initialValues?.icc_memo_date ?? '',
         pr_po_number: initialValues?.pr_po_number ?? '',
         coa_number: initialValues?.coa_number ?? '',
         sr_number: initialValues?.sr_number ?? '',
         wo_number: initialValues?.wo_number ?? '',
-        quotation_number: initialValues?.quotation_number ?? '',
-        quotation_date: initialValues?.quotation_date ?? '',
         hpe_value: initialValues?.hpe_value ?? 0,
         value_after_negotiation: initialValues?.value_after_negotiation ?? null,
         notes: initialValues?.notes ?? '',
@@ -541,73 +527,6 @@ export function ProcurementForm({
                 </div>
             </section>
 
-            {!isProposal && (
-                <section className="space-y-4 rounded-md border border-border bg-card p-5">
-                    <p className="section-label">Calon Mitra</p>
-
-                    <div className="grid gap-4 md:grid-cols-2">
-                        <TextField
-                            id="partner_name"
-                            label="Nama Calon Mitra"
-                            value={data.partner_name}
-                            onChange={(value) => setData('partner_name', value)}
-                            placeholder="Contoh: PT Konstruksi Indonesia"
-                            error={errors.partner_name}
-                        />
-
-                        <TextField
-                            id="partner_director_name"
-                            label="Nama Direktur"
-                            value={data.partner_director_name}
-                            onChange={(value) =>
-                                setData('partner_director_name', value)
-                            }
-                            error={errors.partner_director_name}
-                        />
-
-                        <TextField
-                            id="quotation_number"
-                            label="Nomor Surat Penawaran"
-                            value={data.quotation_number}
-                            onChange={(value) =>
-                                setData('quotation_number', value)
-                            }
-                            placeholder="Contoh: 012/PMR/X/2026"
-                            error={errors.quotation_number}
-                        />
-
-                        <DateField
-                            id="quotation_date"
-                            label="Tanggal Surat Penawaran"
-                            value={data.quotation_date}
-                            onChange={(value) =>
-                                setData('quotation_date', value)
-                            }
-                            error={errors.quotation_date}
-                        />
-
-                        <div className="grid gap-2 md:col-span-2">
-                            <Label htmlFor="partner_address">
-                                Alamat Perusahaan
-                            </Label>
-                            <Textarea
-                                id="partner_address"
-                                value={data.partner_address}
-                                onChange={(event) =>
-                                    setData(
-                                        'partner_address',
-                                        event.target.value,
-                                    )
-                                }
-                                rows={3}
-                                placeholder="Alamat lengkap kantor / perusahaan calon mitra"
-                            />
-                            <InputError message={errors.partner_address} />
-                        </div>
-                    </div>
-                </section>
-            )}
-
             <section className="space-y-4 rounded-md border border-border bg-card p-5">
                 <div>
                     <p className="section-label">Nomor Referensi</p>
@@ -693,30 +612,6 @@ export function ProcurementForm({
                         required={isProposal}
                         error={errors.proposal_memo_date}
                     />
-
-                    {!isProposal && (
-                        <>
-                            <TextField
-                                id="icc_memo_number"
-                                label="Nomor Nota Dinas ke Manager"
-                                value={data.icc_memo_number}
-                                onChange={(value) =>
-                                    setData('icc_memo_number', value)
-                                }
-                                placeholder="Contoh: ND-014/ND-MGR/2026"
-                                error={errors.icc_memo_number}
-                            />
-                            <DateField
-                                id="icc_memo_date"
-                                label="Tanggal Nota Dinas ke Manager"
-                                value={data.icc_memo_date}
-                                onChange={(value) =>
-                                    setData('icc_memo_date', value)
-                                }
-                                error={errors.icc_memo_date}
-                            />
-                        </>
-                    )}
 
                     {!isProposal && (
                         <div className="grid gap-2">

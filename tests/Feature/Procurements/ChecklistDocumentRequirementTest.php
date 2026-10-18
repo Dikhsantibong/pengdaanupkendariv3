@@ -42,7 +42,7 @@ class ChecklistDocumentRequirementTest extends TestCase
             'Nota Dinas Usulan',
             'TOR / KAK',
             'RAB (Rencana Anggaran Biaya)',
-            'Penawaran',
+            // Penawaran: each calon mitra carries its own quotation scan.
             'CSMS (Sertifikat)',
             'Nota Dinas ke Pengadaan',
             'HPE (Harga Perkiraan Engineer)',
@@ -110,7 +110,9 @@ class ChecklistDocumentRequirementTest extends TestCase
             'Inisiasi SMART SCM',
             'Masa Garansi',
             'PR / RO',
-            'Rekening Pelaksana',
+            'Pelaksana',
+            // The calon mitra carry their own quotation scans.
+            'Penawaran',
             'Rentang Waktu',
             'Rentang Waktu Pelaksanaan',
             // Keuangan checks the invoice papers by hand.
@@ -197,6 +199,8 @@ class ChecklistDocumentRequirementTest extends TestCase
             ->active()
             ->forStage(ProcurementStage::Perencanaan)
             ->whereDoesntHave('documentTypes')
+            // A step asking for data is not a plain tick.
+            ->whereNull('input_kind')
             ->firstOrFail();
 
         $checklist = $procurement->checklists()

@@ -1,12 +1,20 @@
 import { useForm } from '@inertiajs/react';
 import { CheckCircle2, Save } from 'lucide-react';
 import InputError from '@/components/input-error';
+import { PartnerCandidatesCard } from '@/components/procurement/partner-candidates-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { formatDate } from '@/lib/format';
 import procurements from '@/routes/procurements';
-import type { ChecklistInput } from '@/types';
+import type { ChecklistInput, PartnerCandidate } from '@/types';
 
 /**
  * The last day of an execution period, counting the start date as day one,
@@ -35,11 +43,20 @@ export function ChecklistInputForm({
     checklistId,
     input,
     canManage,
+    partnerCandidates = [],
+    candidatesEditable = false,
+    directAppointment = false,
 }: {
     procurementId: number;
     checklistId: number;
     input: ChecklistInput;
     canManage: boolean;
+    /** The calon mitra the executor is picked from. */
+    partnerCandidates?: PartnerCandidate[];
+    /** Whether the calon mitra may be listed and corrected here. */
+    candidatesEditable?: boolean;
+    /** SPPL: one partner, appointed directly. */
+    directAppointment?: boolean;
 }) {
     const { values } = input;
 
@@ -53,9 +70,15 @@ export function ChecklistInputForm({
             values.warranty_months === null
                 ? ''
                 : String(values.warranty_months),
+        partner_candidate_id:
+            values.partner_candidate_id === null
+                ? ''
+                : String(values.partner_candidate_id),
         bank_account_number: values.bank_account_number ?? '',
         bank_name: values.bank_name ?? '',
         bank_account_holder: values.bank_account_holder ?? '',
+        icc_memo_number: values.icc_memo_number ?? '',
+        icc_memo_date: values.icc_memo_date ?? '',
     });
 
     const save = () =>
@@ -71,6 +94,18 @@ export function ChecklistInputForm({
         form.data.execution_start_date,
         form.data.execution_duration_days,
     );
+
+    // The calon mitra are kept on their own records, each with its offer.
+    if (input.kind === 'partner_candidates') {
+        return (
+            <PartnerCandidatesCard
+                procurementId={procurementId}
+                candidates={partnerCandidates}
+                editable={candidatesEditable}
+                direct={directAppointment}
+            />
+        );
+    }
 
     return (
         <div className="space-y-2 rounded-sm border border-border bg-muted/30 p-2.5">
@@ -161,8 +196,111 @@ export function ChecklistInputForm({
                     </Field>
                 )}
 
+                {input.kind === 'procurement_memo' && (
+                    <>
+                        <Field
+                            id={`memo-number-${checklistId}`}
+                            label="Nomor Nota Dinas ke Pengadaan"
+                            error={form.errors.icc_memo_number}
+                        >
+                            <Input
+                                id={`memo-number-${checklistId}`}
+                                className="h-8"
+                                value={form.data.icc_memo_number}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'icc_memo_number',
+                                        event.target.value,
+                                    )
+                                }
+                            />
+                        </Field>
+                        <Field
+                            id={`memo-date-${checklistId}`}
+                            label="Tanggal Nota Dinas"
+                            error={form.errors.icc_memo_date}
+                        >
+                            <Input
+                                id={`memo-date-${checklistId}`}
+                                type="date"
+                                className="tabular h-8"
+                                value={form.data.icc_memo_date}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'icc_memo_date',
+                                        event.target.value,
+                                    )
+                                }
+                            />
+                        </Field>
+                    </>
+                )}
+
                 {input.kind === 'bank_account' && (
                     <>
+                        <div className="sm:col-span-3">
+                            <Field
+                                id={`partner-${checklistId}`}
+                                label="Pelaksana (dari Calon Mitra)"
+                                error={form.errors.partner_candidate_id}
+                            >
+                                {partnerCandidates.length === 0 ? (
+                                    <p className="text-xs text-muted-foreground">
+                                        Belum ada calon mitra. Calon mitra diisi
+                                        PIC Perencana pada tahapan Penawaran di
+                                        tab Perencanaan.
+                                    </p>
+                                ) : (
+                                    <Select
+                                        value={form.data.partner_candidate_id}
+                                        onValueChange={(value) => {
+                                            const picked =
+                                                partnerCandidates.find(
+                                                    (candidate) =>
+                                                        String(candidate.id) ===
+                                                        value,
+                                                );
+
+                                            form.setData((data) => ({
+                                                ...data,
+                                                partner_candidate_id: value,
+                                                // The account usually bears
+                                                // the partner's name.
+                                                bank_account_holder:
+                                                    data.bank_account_holder ===
+                                                    ''
+                                                        ? (picked?.name ?? '')
+                                                        : data.bank_account_holder,
+                                            }));
+                                        }}
+                                    >
+                                        <SelectTrigger
+                                            id={`partner-${checklistId}`}
+                                            className="h-8 w-full"
+                                        >
+                                            <SelectValue placeholder="Pilih pelaksana" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {partnerCandidates.map(
+                                                (candidate) => (
+                                                    <SelectItem
+                                                        key={candidate.id}
+                                                        value={String(
+                                                            candidate.id,
+                                                        )}
+                                                    >
+                                                        {candidate.name}
+                                                        {candidate.quotation_number
+                                                            ? ` · ${candidate.quotation_number}`
+                                                            : ''}
+                                                    </SelectItem>
+                                                ),
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            </Field>
+                        </div>
                         <Field
                             id={`account-${checklistId}`}
                             label="Nomor Rekening"

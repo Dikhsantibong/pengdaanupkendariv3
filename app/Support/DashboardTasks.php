@@ -141,6 +141,8 @@ class DashboardTasks
 
         $query = Procurement::query()
             ->whereIn('proposal_state', $levels)
+            // An incomplete proposal is still with its proposer.
+            ->whereNotNull('proposal_completed_at')
             ->when($user->role !== UserRole::Administrator, fn (Builder $query) => $query
                 ->where('created_by', '!=', $user->id)
                 ->where(fn (Builder $waiting) => $waiting
@@ -185,9 +187,10 @@ class DashboardTasks
 
         return self::collect(
             $query,
-            fn (Procurement $procurement): string => match ($procurement->proposal_state) {
-                ProposalState::Dikembalikan => 'Dikembalikan: '.($procurement->proposal_review_note ?? 'perlu diperbaiki'),
-                ProposalState::MenungguPersetujuanTl => 'Menunggu persetujuan TL',
+            fn (Procurement $procurement): string => match (true) {
+                $procurement->proposal_state === ProposalState::Dikembalikan => 'Dikembalikan: '.($procurement->proposal_review_note ?? 'perlu diperbaiki'),
+                $procurement->isProposalHeld() => 'Belum lengkap, belum diteruskan ke TL / Asman',
+                $procurement->proposal_state === ProposalState::MenungguPersetujuanTl => 'Menunggu persetujuan TL',
                 default => 'Menunggu persetujuan Asman',
             },
             fn (Procurement $procurement): ?string => $procurement->proposal_submitted_at?->toDateTimeString(),

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Procurements;
 
 use App\Enums\ActivityType;
+use App\Enums\ChecklistInput;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Procurements\UpdateChecklistInputRequest;
 use App\Http\Requests\Procurements\UpdateChecklistRequest;
@@ -46,9 +47,19 @@ class ChecklistController extends Controller
 
         $kind = $checklist->checklistItem->input_kind;
 
-        abort_if($kind === null, 404);
+        // A kind without fields of its own (the calon mitra) is not saved here.
+        abort_if($kind === null || $kind->fields() === [], 404);
 
-        $procurement->forceFill($request->safe()->only($kind->fields()))->save();
+        $values = $request->safe()->only($kind->fields());
+
+        // Picking the executor puts that candidate's details on the
+        // procurement, where the contract documents read them.
+        if ($kind === ChecklistInput::BankAccount) {
+            $candidate = $procurement->partnerCandidates()->whereKey((int) $values['partner_candidate_id'])->firstOrFail();
+            $values = [...$values, ...$candidate->partnerFields()];
+        }
+
+        $procurement->forceFill($values)->save();
 
         $this->procurements->recordActivity(
             $procurement,
@@ -96,6 +107,14 @@ class ChecklistController extends Controller
                         .'tahapan ini selesai: '.implode(', ', $missing).'.',
                 ]);
             }
+        }
+
+        // A Penyerahan / Pembayaran requirement is an upload, not a bare tick.
+        if ($isCompleted && ! $checklist->checklistItem->is_optional
+            && $checklist->needsOwnUpload() && ! $checklist->files()->exists()) {
+            throw ValidationException::withMessages([
+                'is_completed' => "Unggah berkas {$checklist->checklistItem->name} sebelum menandai tahapan ini selesai.",
+            ]);
         }
 
         // A step that asks for data is only finished once that data is in.

@@ -33,7 +33,7 @@ class SpplExecutionTest extends TestCase
         $this->assertSame([
             'BA Negosiasi',
             'Surat Pesanan',
-            'Rekening Pelaksana',
+            'Pelaksana',
             'Lampiran Surat Pesanan',
             'Rentang Waktu Pelaksanaan',
             'Masa Garansi',
@@ -48,7 +48,7 @@ class SpplExecutionTest extends TestCase
             'Proses SMART SCM & Berita Acara',
             'Surat Pesanan',
             // The SPK states the partner's bank account and the warranty too.
-            'Rekening Pelaksana',
+            'Pelaksana',
             'Jaminan Bank',
             'Kontrak',
             'Rentang Waktu',
@@ -98,10 +98,14 @@ class SpplExecutionTest extends TestCase
 
     public function test_the_bank_account_and_warranty_are_saved(): void
     {
-        [$procurement, $executor, $rekening] = $this->spplStep('Rekening Pelaksana');
+        [$procurement, $executor, $rekening] = $this->spplStep('Pelaksana');
+
+        // The step picks the executor from the calon mitra.
+        $candidate = $procurement->partnerCandidates()->create(['name' => 'CV Maju Jaya']);
 
         $this->actingAs($executor)
             ->put(route('procurements.checklists.input', [$procurement, $rekening]), [
+                'partner_candidate_id' => $candidate->id,
                 'bank_account_number' => '0123 4567 89',
                 'bank_name' => 'BRI',
                 'bank_account_holder' => 'CV Maju Jaya',
@@ -121,6 +125,8 @@ class SpplExecutionTest extends TestCase
         $this->assertSame('0123 4567 89', $procurement->bank_account_number);
         $this->assertSame('BRI', $procurement->bank_name);
         $this->assertSame('CV Maju Jaya', $procurement->bank_account_holder);
+        $this->assertSame($candidate->id, $procurement->partner_candidate_id);
+        $this->assertSame('CV Maju Jaya', $procurement->partner_name);
         $this->assertSame(3, $procurement->warranty_months);
     }
 

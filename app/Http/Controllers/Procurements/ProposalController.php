@@ -124,6 +124,10 @@ class ProposalController extends Controller
                 // the Nota Dinas Usulan: the two documents a proposal files.
                 'documents' => ProposalDocuments::payload($procurement),
                 'missing_documents' => ProposalDocuments::missing($procurement),
+                // Everything still owed; until it is in, the proposal stays
+                // with the proposer instead of reaching the TL / Asman.
+                'missing' => $procurement->missingProposalRequirements(),
+                'is_held' => $procurement->isProposalHeld(),
                 'attachments' => $procurement->attachments->map(fn (ProcurementAttachment $file): array => [
                     'id' => $file->id,
                     'file_name' => $file->file_name,
@@ -189,7 +193,11 @@ class ProposalController extends Controller
 
         $this->procurements->resubmitProposal($procurement, $request->user());
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Usulan diajukan ulang ke Direksi Pekerjaan.']);
+        $missing = $procurement->refresh()->missingProposalRequirements();
+
+        Inertia::flash('toast', $missing === []
+            ? ['type' => 'success', 'message' => 'Usulan diajukan ulang untuk disetujui.']
+            : ['type' => 'warning', 'message' => 'Usulan disimpan, tetapi belum diteruskan ke TL / Asman karena belum lengkap: '.implode(', ', $missing).'.']);
 
         return back();
     }
@@ -254,6 +262,9 @@ class ProposalController extends Controller
      */
     protected function awaitingDecisionBy(Builder $query, User $user): Builder
     {
+        // An incomplete proposal is still with its proposer.
+        $query->whereNotNull('proposal_completed_at');
+
         if ($user->role === UserRole::Administrator) {
             return $query->whereIn('proposal_state', [
                 ProposalState::MenungguPersetujuanTl->value,
@@ -285,7 +296,10 @@ class ProposalController extends Controller
             'number' => $procurement->number,
             'name' => $procurement->name,
             'state' => $procurement->proposal_state->value,
-            'state_label' => $procurement->proposal_state->label(),
+            'state_label' => $procurement->isProposalHeld()
+                ? 'Belum Lengkap (belum diteruskan)'
+                : $procurement->proposal_state->label(),
+            'is_held' => $procurement->isProposalHeld(),
             'division' => $procurement->workDirector->name,
             'proposer' => $procurement->creator?->name,
             'proposer_position' => $procurement->creator?->position,

@@ -61,6 +61,10 @@ type Proposal = ProposalRow & {
     review_note: string | null;
     documents: ProposalDocument[];
     missing_documents: string[];
+    /** Everything the proposer still owes, data and papers. */
+    missing: string[];
+    /** Waiting but incomplete: not yet with the TL / Asman. */
+    is_held: boolean;
     attachments: Attachment[];
     history: HistoryItem[];
 };
@@ -459,7 +463,23 @@ export default function ProposalShow({
                             </section>
                         )}
 
+                        {proposal.is_held && (
+                            <section className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-sm">
+                                <p className="font-semibold text-amber-800 dark:text-amber-300">
+                                    Belum diteruskan ke TL / Asman
+                                </p>
+                                <p className="mt-1 text-muted-foreground">
+                                    Usulan tertahan di pengusul sampai semua
+                                    data lengkap. Lengkapi dulu:{' '}
+                                    <b>{proposal.missing.join(', ')}</b>.
+                                    Setelah lengkap, usulan otomatis diteruskan
+                                    untuk disetujui.
+                                </p>
+                            </section>
+                        )}
+
                         {awaitingDecision &&
+                            !proposal.is_held &&
                             proposal.missing_documents.length > 0 && (
                                 <section className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-sm">
                                     <p className="font-semibold text-amber-800 dark:text-amber-300">
