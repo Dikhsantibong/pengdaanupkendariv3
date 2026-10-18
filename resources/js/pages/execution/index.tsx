@@ -58,6 +58,7 @@ export default function ExecutionIndex({
 
                 <ProcurementTable
                     page={page}
+                    numbered
                     columns={[
                         'unit',
                         'hpe',

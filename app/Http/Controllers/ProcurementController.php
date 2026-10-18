@@ -353,13 +353,11 @@ class ProcurementController extends Controller
                 : [],
             // The DO tab, shown for a KHS SPK / PJ only: the contract's price
             // list and every Delivery Order called off under it.
-            'deliveryOrders' => $procurement->usesDeliveryOrders() ? $this->deliveryOrdersPayload($procurement, $user) : null,
-            'options' => MasterDataOptions::forProcurementDetail($procurement),
+            'deliveryOrders' => $procurement->usesDeliveryOrders() ? $this->deliveryOrdersPayload($procurement, $user) : null,            'options' => MasterDataOptions::forProcurementDetail($procurement),
             'can' => [
                 'startAmendment' => $user->can('startAmendment', $procurement),
                 'startDeliveryOrder' => $user->can('startDeliveryOrder', $procurement),
-                'manageContractItems' => $user->can('manageContractItems', $procurement),
-                'update' => $user->can('update', $procurement),
+                'manageContractItems' => $user->can('manageContractItems', $procurement),                'update' => $user->can('update', $procurement),
                 'assignPic' => $user->can('assignPic', $procurement),
                 'assignPlanner' => $user->can('assignPlanner', $procurement),
                 'assignExecutor' => $user->can('assignExecutor', $procurement),

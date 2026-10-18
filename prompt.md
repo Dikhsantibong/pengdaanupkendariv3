@@ -990,6 +990,47 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
   - Jenis baru seperti "Barang dan Jasa" cukup ditambahkan di Data Master → Jenis Kontrak, lalu otomatis muncul di filter.
 - **Test:** `ContractFormatFilterTest`.
 
+### 11. Tab Aktif Berwarna Biru
+- **Komponen tab bawaan** (`components/ui/tabs.tsx`): tab aktif kini bergaris bawah dan berteks **biru (primary)** tebal; tab lain berubah biru saat disorot. Berlaku di detail pengadaan (Perencanaan, Pelaksanaan, Penyerahan, Pembayaran, Amandemen, DO, Riwayat Approval), editor dokumen, dan detail penilaian penyedia.
+- **Halaman Approval:** tab antrean (Usulan/Perencanaan/Pelaksanaan) dan tab **Menunggu Keputusan / Riwayat Keputusan** yang aktif berlatar biru dengan teks putih (sebelumnya putih di atas abu-abu sehingga tidak terlihat). Lencana jumlah ikut menyesuaikan warnanya.
+- **Pengaturan → Tampilan:** pilihan tema yang aktif juga berlatar biru.
+
+### 12. Kolom No di Perencanaan, Pelaksanaan, dan Penunjukan PIC
+- Ketiga daftar punya kolom **No** di paling kiri. Nomor berlanjut antarhalaman (halaman 2 mulai dari 16), dihitung dari `meta.from` paginasi.
+- `ProcurementTable` mendapat opsi `numbered` (hanya dipakai di Perencanaan dan Pelaksanaan, jadi daftar lain tidak berubah). Tabel Penunjukan PIC menambah kolom yang sama memakai helper `firstRowNumber`.
+- **Test:** `PaginationContractTest::test_numbered_lists_learn_where_their_page_starts`.
+
+### 13. Rincian Item di Editor Dokumen (tabel item tidak lagi diketik per sel)
+- **Lokasi:** editor dokumen yang berisi tabel item punya tab **Rincian Item** paling kiri dan langsung terbuka. Dokumennya: BA Negosiasi (SPPL), Surat Pesanan/PO, SPK (tabel), HPE, Penyusunan HPS, Penawaran, dan Lampiran SPK.
+  - Tab hanya muncul bila tabel itemnya benar-benar ada (`ItemTableRenderer::hasTable`).
+  - Dokumen pasal (SPK Pasal, Surat Perjanjian PJ, Lampiran SP) tetap memakai editor biasa tanpa perubahan.
+- **Isian berbentuk grid**, dengan kolom Uraian, Part No., Volume, Satuan, Harga Satuan Sebelum Nego, Harga Satuan Setelah Nego, dan Jumlah (otomatis), serta total.
+  - Baris **Kelompok** menjadi judul (A, B, …) bercetak tebal. Item di bawahnya bernomor 1, 2, … dan baris kelompok tidak dihitung sebagai item.
+  - Tombol yang tersedia: **Tambah Item**, **Tambah Kelompok**, **+ Item** di baris kelompok (menambah di akhir kelompok itu, sehingga Kelompok A tetap bisa ditambah setelah Kelompok B dibuat), **+** di baris item (menyisipkan tepat di bawahnya), naik/turun, dan hapus.
+  - Bisa **tempel dari Excel** di kolom Uraian, dengan urutan kolom Uraian, Part No, Volume, Satuan, Harga Sebelum, Harga Setelah. Baris yang hanya berisi uraian menjadi kelompok.
+- **Realtime:** setiap perubahan isian (jeda 0,4 detik) menyusun ulang tabel di draf Editor Visual lewat server (`documents.items-preview`, renderer yang sama dengan cetakan), sehingga Editor Visual dan Pratinjau Cetak langsung menampilkan hasilnya.
+- **Simpan:** isian ikut tersimpan dengan tombol **Simpan Perubahan** dokumen (`item_rows` di `documents.update`, hak `manageItems`).
+  - Pihak yang boleh mengisi: perencana selama perencanaan, pelaksana setelah perencanaan disetujui. Isian terkunci setelah diserahkan ke Keuangan atau bila pengadaan Batal.
+  - Setelah disimpan, semua tabel item dokumen pengadaan itu ikut tersusun ulang, dan **Nilai Setelah Nego** mengikuti total setelah nego.
+- **Tanpa fitur ganda:** di Editor Visual dokumen bertabel item, tombol sisip tabel serta aksi tambah/hapus baris/kolom dan Hitung Ulang disembunyikan. Dokumen lain tidak berubah.
+- **Output tidak berubah:** tabel disusun dengan markup dan gaya sel yang sama seperti template (`ItemTableRenderer`).
+  - SPK: baris pekerjaan, baris "A. kelompok" dan "- item"; baris JUMLAH/PPN/TOTAL tetap.
+  - HPE: kolom Stock Code berisi part number, Harga HPE berisi jumlah, lalu baris Jumlah.
+  - HPS/Penawaran/Lampiran SPK: Sub Total, PPN 12%, Total, dan Terbilang.
+  - Tabel yang kolom harganya belum terisi dibiarkan seperti template.
+- **Data:** tabel `procurement_contract_items` (juga daftar harga DO KHS) ditambah `volume` dan `price_before`, dan `unit_price` boleh kosong (migrasi `extend_contract_items_into_procurement_items`).
+  - Tabel BA Negosiasi yang sudah ada dibaca sekali menjadi Rincian Item.
+  - Untuk BA Negosiasi tanpa Rincian Item, editor langsung menampilkan baris tabelnya sebagai isian awal.
+  - Tabel yang masih diketik di editor BA Negosiasi juga dibaca menjadi Rincian Item saat disimpan.
+- **Perbaikan bug:** baris kelompok yang terketik dengan volume 1 dan harga 0 (mis. "Material & Tools Tangki 50 KL") dulu terbaca sebagai item Rp 0 di Surat Pesanan. Sekarang baris tanpa harga dibaca sebagai judul kelompok, dan Surat Pesanan mencetaknya sebagai baris kelompok.
+- **Test:** `ProcurementItemsTest`.
+
+### 14. Nama Penanda Tangan Huruf Besar
+- Di seluruh template, nama penanda tangan di blok tanda tangan dicetak **huruf besar** lewat `text-transform: uppercase` pada namanya saja. Ini berlaku untuk Manager, Direktur, Direksi Pekerjaan, PIC Perencana/Pelaksana, dan TL Pelaksana Pengadaan.
+- Data tetap tersimpan apa adanya, dan nama yang sama di teks isi (mis. "arahan dari Direksi Pekerjaan" di TOR, uraian para pihak) tidak berubah.
+- Sebanyak 26 template diperbarui dan disinkron lewat migrasi `uppercase_signatory_names_in_templates`. Template yang sudah diubah admin tidak ditimpa, dan dokumen lama tetap seperti saat digenerate.
+- **Test:** `SignatoryNamesTest`.
+
 ---
 
 # Fitur Utama

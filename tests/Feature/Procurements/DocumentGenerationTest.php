@@ -133,14 +133,17 @@ class DocumentGenerationTest extends TestCase
             'document_type_id' => $documentType->id,
         ]);
 
+        // The archive lists one folder per work the user may see.
         $this->actingAs($planner)
             ->get(route('documents.index'))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->has('documents.data', 1));
+            ->assertInertia(fn ($page) => $page
+                ->has('groups.data', 1)
+                ->where('groups.data.0.id', $procurement->id));
 
         $this->actingAs($teamLeader)
             ->get(route('documents.index'))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->has('documents.data', 2));
+            ->assertInertia(fn ($page) => $page->has('groups.data', 2));
     }
 }

@@ -144,13 +144,21 @@ export default function ApprovalIndex({
                                                 })
                                             }
                                             className={cn(
-                                                'inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground',
-                                                item.key === queue &&
-                                                    'bg-background text-foreground shadow-sm',
+                                                'inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors',
+                                                item.key === queue
+                                                    ? 'bg-primary text-primary-foreground shadow-sm'
+                                                    : 'text-muted-foreground hover:bg-primary/10 hover:text-primary',
                                             )}
                                         >
                                             {item.label}
-                                            <span className="tabular rounded-full bg-primary/10 px-1.5 text-xs text-primary">
+                                            <span
+                                                className={cn(
+                                                    'tabular rounded-full px-1.5 text-xs',
+                                                    item.key === queue
+                                                        ? 'bg-primary-foreground/20 text-primary-foreground'
+                                                        : 'bg-primary/10 text-primary',
+                                                )}
+                                            >
                                                 {item.waiting}
                                             </span>
                                         </button>
@@ -175,9 +183,10 @@ export default function ApprovalIndex({
                                         aria-selected={key === view}
                                         onClick={() => open({ view: key })}
                                         className={cn(
-                                            'rounded px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground',
-                                            key === view &&
-                                                'bg-background text-foreground shadow-sm',
+                                            'rounded px-3 py-1.5 text-sm font-medium transition-colors',
+                                            key === view
+                                                ? 'bg-primary text-primary-foreground shadow-sm'
+                                                : 'text-muted-foreground hover:bg-primary/10 hover:text-primary',
                                         )}
                                     >
                                         {label}

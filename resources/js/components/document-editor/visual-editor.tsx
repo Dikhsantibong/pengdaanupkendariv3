@@ -403,6 +403,7 @@ export function VisualEditor({
     disabled = false,
     pagesEndpoint,
     title = '',
+    tableTools = true,
 }: {
     value: string;
     onChange: (html: string) => void;
@@ -410,6 +411,12 @@ export function VisualEditor({
     /** Where the PDF engine reports the printed sheets of the draft. */
     pagesEndpoint?: string;
     title?: string;
+    /**
+     * The table actions (insert a table, add or remove rows and columns,
+     * recalculate). Off where the table is filled from the Rincian Item,
+     * so a row is never added in two places.
+     */
+    tableTools?: boolean;
 }) {
     const area = useRef<HTMLDivElement>(null);
     const lastEmitted = useRef(value);
@@ -1100,11 +1107,13 @@ export function VisualEditor({
 
                     <Separator orientation="vertical" className="mx-1 h-6" />
 
-                    <ToolButton
-                        label="Sisipkan tabel 3 kolom"
-                        icon={<TableIcon className="size-4" />}
-                        onClick={() => insertTable(3, 3)}
-                    />
+                    {tableTools && (
+                        <ToolButton
+                            label="Sisipkan tabel 3 kolom"
+                            icon={<TableIcon className="size-4" />}
+                            onClick={() => insertTable(3, 3)}
+                        />
+                    )}
                     <ToolButton
                         label="Isian titik-titik"
                         icon={<PenLine className="size-4" />}
@@ -1154,7 +1163,7 @@ export function VisualEditor({
                     />
                 </div>
 
-                {inTable && (
+                {tableTools && inTable && (
                     <div className="flex animate-in flex-wrap items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1.5 shadow-sm fade-in slide-in-from-top-1">
                         <span className="mr-1 flex items-center gap-1 text-xs font-semibold text-primary">
                             <TableIcon className="size-3.5" />
@@ -1235,7 +1244,7 @@ export function VisualEditor({
                 className="relative h-[72vh] min-h-[520px] overflow-y-auto bg-muted/25 p-4 sm:p-8"
             >
                 {/* Floating Quick Action Menu right at the Table/Cell */}
-                {tableMenuPos !== null && inTable && (
+                {tableTools && tableMenuPos !== null && inTable && (
                     <div
                         style={{
                             top: `${tableMenuPos.top}px`,

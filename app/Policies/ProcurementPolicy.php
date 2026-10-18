@@ -532,6 +532,23 @@ class ProcurementPolicy
     }
 
     /**
+     * Determine whether the user may keep the Rincian Item: the planning
+     * side while the job is planned, the execution side once planning is
+     * approved, until it goes to Keuangan or is cancelled.
+     */
+    public function manageItems(User $user, Procurement $procurement): bool
+    {
+        if ($procurement->finance_submitted_at !== null
+            || $procurement->progressStatus->category === StatusCategory::Batal) {
+            return false;
+        }
+
+        return $procurement->isPlanningApproved()
+            ? $this->worksOnExecution($user, $procurement)
+            : $this->worksOnPlanning($user, $procurement);
+    }
+
+    /**
      * Determine whether the user may keep the KHS contract's price list,
      * which every DO draws its lines from: the execution side.
      */

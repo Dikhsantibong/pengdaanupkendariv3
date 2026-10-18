@@ -58,6 +58,7 @@ export default function PlanningIndex({
 
                 <ProcurementTable
                     page={page}
+                    numbered
                     columns={[
                         'unit',
                         'hpe',

@@ -6,6 +6,7 @@ import {
     PenLine,
     RefreshCw,
     RotateCcw,
+    Rows3,
     Save,
 } from 'lucide-react';
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
@@ -13,6 +14,11 @@ import { PdfPreview } from '@/components/document-editor/pdf-preview';
 import { VisualEditor } from '@/components/document-editor/visual-editor';
 import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/page-header';
+import { ItemListCard } from '@/components/procurement/item-list-card';
+import type {
+    ItemRowPayload,
+    ProcurementItem,
+} from '@/components/procurement/item-list-card';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -48,7 +54,19 @@ type PlaceholderRow = {
     value: string;
 };
 
-type ViewMode = 'visual' | 'preview';
+type ViewMode = 'visual' | 'preview' | 'items';
+
+/** The XSRF header Laravel accepts, read from the cookie it sets. */
+function xsrfHeader(): Record<string, string> {
+    const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
+
+    return match === null
+        ? {}
+        : { 'X-XSRF-TOKEN': decodeURIComponent(match[1]) };
+}
+
+/** How long the Rincian Item waits after typing before redrawing, in ms. */
+const ITEM_REDRAW_DELAY = 400;
 
 /** How often the editor pulls the latest procurement data, in ms. */
 const LIVE_REFRESH_INTERVAL = 4000;
@@ -101,18 +119,91 @@ export default function DocumentEditor({
     document: doc,
     placeholders = [],
     liveVersion,
+    items = null,
+    canManageItems = false,
 }: {
     procurement: { id: number; number: string; name: string };
     document: EditorDocument;
     placeholders?: PlaceholderRow[];
     /** Fingerprint of the stored body, polled instead of the body itself. */
     liveVersion?: string;
+    /** The Rincian Item, for a document with an item table; null otherwise. */
+    items?: ProcurementItem[] | null;
+    canManageItems?: boolean;
 }) {
     const form = useForm({ title: doc.title, body: doc.body });
-    const [mode, setMode] = useState<ViewMode>('visual');
+    const [mode, setMode] = useState<ViewMode>(
+        items !== null ? 'items' : 'visual',
+    );
     const [confirmReload, setConfirmReload] = useState(false);
 
-    const dirty = form.data.title !== doc.title || form.data.body !== doc.body;
+    // The Rincian Item as changed in this editor; null while untouched.
+    const [itemRows, setItemRows] = useState<ItemRowPayload[] | null>(null);
+
+    const dirty =
+        form.data.title !== doc.title ||
+        form.data.body !== doc.body ||
+        itemRows !== null;
+
+    // Each change of the Rincian Item redraws the draft's item table on the
+    // server's renderer, so the Editor Visual shows the printed table as
+    // it is typed.
+    const draftBody = useRef(form.data.body);
+
+    useEffect(() => {
+        draftBody.current = form.data.body;
+    }, [form.data.body]);
+
+    useEffect(() => {
+        if (itemRows === null) {
+            return;
+        }
+
+        const controller = new AbortController();
+        const timer = window.setTimeout(() => {
+            fetch(
+                procurements.documents.itemsPreview({
+                    procurement: procurement.id,
+                    document: doc.id,
+                }).url,
+                {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        ...xsrfHeader(),
+                    },
+                    body: JSON.stringify({
+                        rows: itemRows,
+                        body: draftBody.current,
+                    }),
+                    signal: controller.signal,
+                },
+            )
+                .then((response) =>
+                    response.ok
+                        ? (response.json() as Promise<{ body: string }>)
+                        : null,
+                )
+                .then((data) => {
+                    if (data && data.body !== draftBody.current) {
+                        form.setData('body', data.body);
+                    }
+                })
+                .catch(() => {
+                    // Aborted by the next change, or offline: the rows are
+                    // still kept on save, which draws the table again.
+                });
+        }, ITEM_REDRAW_DELAY);
+
+        return () => {
+            window.clearTimeout(timer);
+            controller.abort();
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [itemRows]);
 
     // Keep the document in step with the procurement while it is open: data
     // changed on another screen (or by a colleague) shows up here without
@@ -198,12 +289,18 @@ export default function DocumentEditor({
     }).url;
 
     const save = () => {
+        form.transform((data) =>
+            itemRows === null ? data : { ...data, item_rows: itemRows },
+        );
         form.put(
             procurements.documents.update({
                 procurement: procurement.id,
                 document: doc.id,
             }).url,
-            { preserveScroll: true },
+            {
+                preserveScroll: true,
+                onSuccess: () => setItemRows(null),
+            },
         );
     };
 
@@ -319,6 +416,13 @@ export default function DocumentEditor({
                 >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <TabsList>
+                            {items !== null && (
+                                <TabsTrigger value="items">
+                                    <Rows3 className="size-3.5" />
+                                    Rincian Item
+                                    {items.length > 0 && ` (${items.length})`}
+                                </TabsTrigger>
+                            )}
                             <TabsTrigger value="visual">
                                 <PenLine className="size-3.5" />
                                 Editor Visual
@@ -361,14 +465,34 @@ export default function DocumentEditor({
                             onChange={(html) => form.setData('body', html)}
                             pagesEndpoint={pagesUrl}
                             title={form.data.title}
+                            // The item table is filled in the Rincian Item.
+                            tableTools={items === null}
                         />
-                        <p className="mt-2 text-xs text-muted-foreground">
-                            Ketik langsung pada dokumen seperti mengetik di
-                            Word. Klik di dalam tabel untuk menambah atau
-                            menghapus baris dan kolom.
-                        </p>
+                        {items === null && (
+                            <p className="mt-2 text-xs text-muted-foreground">
+                                Ketik langsung pada dokumen seperti mengetik di
+                                Word. Klik di dalam tabel untuk menambah atau
+                                menghapus baris dan kolom.
+                            </p>
+                        )}
                         <InputError message={form.errors.body} />
                     </TabsContent>
+
+                    {items !== null && (
+                        <TabsContent value="items" className="mt-3">
+                            <ItemListCard
+                                items={items}
+                                editable={canManageItems}
+                                errors={
+                                    form.errors as Record<
+                                        string,
+                                        string | undefined
+                                    >
+                                }
+                                onRowsChange={setItemRows}
+                            />
+                        </TabsContent>
+                    )}
 
                     <TabsContent value="preview" className="mt-3">
                         <PdfPreview

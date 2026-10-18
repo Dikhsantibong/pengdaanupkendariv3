@@ -88,8 +88,8 @@ function TabsTrigger({
       className={cn(
         "focus-visible:ring-ring/50 -mb-px inline-flex h-9 items-center gap-2 border-b-2 px-3 text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50",
         isActive
-          ? "border-primary text-foreground"
-          : "text-muted-foreground hover:text-foreground border-transparent",
+          ? "border-primary text-primary font-semibold"
+          : "text-muted-foreground hover:text-primary hover:border-primary/40 border-transparent",
         className
       )}
       {...props}

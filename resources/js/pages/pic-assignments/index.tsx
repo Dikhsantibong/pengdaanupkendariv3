@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/page-header';
 import { PicSelect, WorkloadBadge } from '@/components/procurement/pic-select';
 import type { PicRole } from '@/components/procurement/pic-select';
 import { ProcurementFilterBar } from '@/components/procurement-filter-bar';
+import { firstRowNumber } from '@/components/procurement-table';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -104,6 +105,9 @@ export default function PicAssignmentIndex({
                         <Table>
                             <TableHeader className="bg-muted/60">
                                 <TableRow className="hover:bg-transparent">
+                                    <TableHead className="w-12 text-center">
+                                        No
+                                    </TableHead>
                                     <TableHead className="w-[20rem]">
                                         Pengadaan
                                     </TableHead>
@@ -121,9 +125,10 @@ export default function PicAssignmentIndex({
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {page.data.map((row) => (
+                                {page.data.map((row, index) => (
                                     <AssignmentRow
                                         key={row.id}
+                                        number={firstRowNumber(page) + index}
                                         row={row}
                                         planners={options.planners}
                                         executors={options.executors}
@@ -142,11 +147,14 @@ export default function PicAssignmentIndex({
 }
 
 function AssignmentRow({
+    number,
     row,
     planners,
     executors,
     can,
 }: {
+    /** Its place in the list, counting on across pages. */
+    number: number;
     row: ProcurementRow;
     planners: PicOption[];
     executors: PicOption[];
@@ -169,6 +177,9 @@ function AssignmentRow({
 
     return (
         <TableRow>
+            <TableCell className="tabular text-center text-xs text-muted-foreground">
+                {number}
+            </TableCell>
             <TableCell>
                 <Link
                     href={procurements.show(row.id)}

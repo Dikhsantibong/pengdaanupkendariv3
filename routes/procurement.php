@@ -81,6 +81,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('documents/{document}', [DocumentController::class, 'update'])->name('documents.update');
         Route::post('documents/{document}/preview', [DocumentController::class, 'preview'])
             ->name('documents.preview');
+        // The item table the Rincian Item being typed would print.
+        Route::post('documents/{document}/rincian-item/preview', [DocumentController::class, 'itemsPreview'])
+            ->middleware('throttle:60,1')
+            ->name('documents.items-preview');
         Route::post('documents/{document}/pages', [DocumentController::class, 'pages'])
             ->name('documents.pages');
         Route::post('documents/{document}/regenerate', [DocumentController::class, 'regenerate'])

@@ -10,6 +10,7 @@ use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementAmendment;
 use App\Models\ProcurementAmendmentChange;
+use App\Models\ProcurementContractItem;
 use App\Models\ProcurementDeliveryOrder;
 use App\Models\ProcurementDeliveryOrderItem;
 use App\Models\ProcurementDocument;
@@ -19,13 +20,27 @@ use App\Models\VendorAssessmentRequest;
 use App\Support\IndonesianNumber;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use RuntimeException;
 
 class DocumentGenerator
 {
-    public function __construct(protected ProcurementService $procurements) {}
+    public function __construct(
+        protected ProcurementService $procurements,
+        protected ItemTableRenderer $itemTables,
+    ) {}
+
+    /**
+     * The document types whose item table is drawn from the Rincian Item.
+     *
+     * @var list<string>
+     */
+    public const ITEM_TABLE_TYPES = [
+        'ba-negosiasi-sppl', 'ba-negosiasi', 'purchase-order', 'surat-pesanan',
+        'spk', 'hpe', 'penyusunan-hps', 'penawaran', 'lampiran-spk',
+    ];
 
     /**
      * The placeholders every template may reference, with a human readable label.
@@ -308,6 +323,12 @@ class DocumentGenerator
         $body = $this->fillPlaceholders($template->body, $values);
 
         $typeCode = $template->documentType?->code ?? $template->documentType()->value('code');
+
+        // The Rincian Item, once filled in, draws the item table.
+        if ($procurement->contractItems()->exists()) {
+            return $this->applyItemTables($body, $typeCode, $procurement);
+        }
+
         if (in_array($typeCode, ['purchase-order', 'surat-pesanan'])) {
             $baNegoDoc = $procurement->documents()
                 ->whereHas('documentType', fn ($q) => $q->whereIn('code', ['ba-negosiasi-sppl', 'ba-negosiasi']))
@@ -1035,29 +1056,155 @@ class DocumentGenerator
             return;
         }
 
-        $totalAfter = array_sum(array_column($items, 'total_after'));
-        if ($totalAfter > 0) {
-            $procurement->value_after_negotiation = $totalAfter;
-            $procurement->save();
+        // The table typed in the editor becomes the Rincian Item, and every
+        // item table follows it.
+        $this->importNegotiationItems($procurement, $items);
+        $this->syncItemDocuments($procurement);
+    }
+
+    /**
+     * Draw the item table of a document body from the Rincian Item: the
+     * Surat Pesanan's rows, or the table the renderer knows for the type.
+     * Unsaved items may be given, to preview the table they make.
+     *
+     * @param  Collection<int, ProcurementContractItem>|null  $items
+     */
+    public function applyItemTables(string $body, ?string $typeCode, Procurement $procurement, ?Collection $items = null): string
+    {
+        $items ??= $procurement->contractItems()->get();
+
+        if ($items->isEmpty()) {
+            return $body;
         }
 
-        $suratPesananDoc = $procurement->documents()
-            ->whereHas('documentType', fn ($q) => $q->whereIn('code', ['purchase-order', 'surat-pesanan']))
-            ->first();
+        if (in_array($typeCode, ['purchase-order', 'surat-pesanan'], true)) {
+            // Only once the prices after negotiation are known.
+            if ($items->every(fn (ProcurementContractItem $item): bool => $item->unit_price === null)) {
+                return $body;
+            }
 
-        if ($suratPesananDoc !== null) {
-            $updatedBody = $this->syncItemsIntoSuratPesanan($suratPesananDoc->rendered_body, $items, $procurement);
-            if ($updatedBody !== $suratPesananDoc->rendered_body) {
-                $suratPesananDoc->rendered_body = $updatedBody;
-                $suratPesananDoc->save();
+            return $this->syncItemsIntoSuratPesanan($body, $this->suratPesananItems($items), $procurement);
+        }
+
+        return $this->itemTables->apply($body, $typeCode, $items);
+    }
+
+    /**
+     * Whether a document holds an item table drawn from the Rincian Item.
+     */
+    public function hasItemTable(ProcurementDocument $document): bool
+    {
+        $code = $document->documentType->code;
+
+        return in_array($code, self::ITEM_TABLE_TYPES, true)
+            && $this->itemTables->hasTable($document->rendered_body, $code);
+    }
+
+    /**
+     * Bring every item table of a procurement's documents in line with its
+     * Rincian Item, and the value after negotiation with its total.
+     */
+    public function syncItemDocuments(Procurement $procurement): void
+    {
+        $items = $procurement->contractItems()->get();
+
+        if ($items->isEmpty()) {
+            return;
+        }
+
+        if ($items->contains(fn (ProcurementContractItem $item): bool => $item->unit_price !== null)) {
+            $totalAfter = $items->sum(fn (ProcurementContractItem $item): float => $item->totalAfter());
+
+            if ($totalAfter > 0 && (float) $procurement->value_after_negotiation !== $totalAfter) {
+                $procurement->value_after_negotiation = (string) $totalAfter;
+                $procurement->save();
+            }
+        }
+
+        $documents = $procurement->documents()
+            ->with('documentType')
+            ->whereHas('documentType', fn ($query) => $query->whereIn('code', self::ITEM_TABLE_TYPES))
+            ->get();
+
+        foreach ($documents as $document) {
+            $body = $this->applyItemTables($document->rendered_body, $document->documentType->code, $procurement);
+
+            if ($body !== $document->rendered_body) {
+                $document->rendered_body = $body;
+                $document->save();
             }
         }
     }
 
     /**
+     * The Rincian Item as the Surat Pesanan's rows.
+     *
+     * @param  Collection<int, ProcurementContractItem>  $items
+     * @return array<int, array{no: int, name: string, volume: string, satuan: string, price_before: float, total_before: float, price_after: float, total_after: float, group: string|null}>
+     */
+    protected function suratPesananItems(Collection $items): array
+    {
+        return $items->sortBy('sort_order')->values()->map(fn (ProcurementContractItem $item, int $index): array => [
+            'no' => $index + 1,
+            'name' => e($item->description),
+            'volume' => rtrim(rtrim(number_format((float) $item->volume, 3, ',', '.'), '0'), ','),
+            'satuan' => e($item->unit),
+            'price_before' => (float) $item->price_before,
+            'total_before' => $item->totalBefore(),
+            'price_after' => (float) $item->unit_price,
+            'total_after' => $item->totalAfter(),
+            'group' => filled($item->group_name) ? trim((string) $item->group_name) : null,
+        ])->all();
+    }
+
+    /**
+     * Take the items read from a BA Negosiasi table as the Rincian Item.
+     *
+     * The lines keep their place: the n-th line read updates the n-th item
+     * (so a Delivery Order line still points at it and its part number
+     * stays), new lines are added and lines no longer there are removed.
+     *
+     * @param  array<int, array{no: int, name: string, volume: string, satuan: string, price_before: float, total_before: float, price_after: float, total_after: float, group?: string|null}>  $parsed
+     */
+    public function importNegotiationItems(Procurement $procurement, array $parsed): void
+    {
+        $existing = $procurement->contractItems()->get()->values();
+        $kept = [];
+
+        foreach (array_values($parsed) as $index => $line) {
+            $volume = (float) str_replace(',', '.', (string) preg_replace('/[^0-9.,]/', '', $line['volume']));
+
+            $values = [
+                'sort_order' => $index + 1,
+                'group_name' => $line['group'] ?? null,
+                'description' => mb_substr($line['name'], 0, 500),
+                'volume' => $volume > 0 ? $volume : 1,
+                'unit' => mb_substr($line['satuan'], 0, 50),
+                'price_before' => $line['price_before'] > 0 ? $line['price_before'] : null,
+                'unit_price' => $line['price_after'] > 0 ? $line['price_after'] : null,
+            ];
+
+            $item = $existing->get($index);
+
+            if ($item instanceof ProcurementContractItem) {
+                $item->update($values);
+                $kept[] = $item->id;
+            } else {
+                $kept[] = $procurement->contractItems()->create($values)->id;
+            }
+        }
+
+        $procurement->contractItems()->whereNotIn('id', $kept)->delete();
+    }
+
+    /**
      * Parse item rows from a BA Negosiasi rendered HTML body.
      *
-     * @return array<int, array{no: int, name: string, volume: string, satuan: string, price_before: float, total_before: float, price_after: float, total_after: float}>
+     * A row with no price at all is a group heading ("Material & Tools
+     * Tangki 50 KL"), even when a volume was typed into it: it names the
+     * items below it and is never an item of its own.
+     *
+     * @return array<int, array{no: int, name: string, volume: string, satuan: string, price_before: float, total_before: float, price_after: float, total_after: float, group: string|null}>
      */
     public function parseNegotiationItems(string $html): array
     {
@@ -1071,6 +1218,7 @@ class DocumentGenerator
 
         $items = [];
         $itemIndex = 1;
+        $group = null;
 
         foreach ($rowMatches[1] as $rowContent) {
             if (! preg_match_all('/<td([^>]*)>(.*?)<\/td>/is', $rowContent, $tdMatches)) {
@@ -1097,20 +1245,26 @@ class DocumentGenerator
                 continue;
             }
 
-            // A group heading ("A | Fabrikasi Material") or a blank spacer row
-            // has no volume and no prices: it is layout, not an item.
-            $isLayoutRow = collect([2, 4, 5, 6, 7])->every(
-                fn (int $index): bool => preg_replace('/[^0-9]/', '', strip_tags($cells[$index])) === '',
-            );
-
-            if ($isLayoutRow) {
-                continue;
-            }
-
             // A line break typed inside the cell separates words, not glues them.
             $nameHtml = (string) preg_replace('/<br\s*\/?>|<\/(p|div)>/i', ' ', $cells[1]);
             $name = trim(html_entity_decode(strip_tags($nameHtml), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
             $name = trim((string) preg_replace('/\s+/u', ' ', str_replace("\xc2\xa0", ' ', $name)));
+
+            // No price in any of the four price columns: a group heading
+            // ("A | Fabrikasi Material", or one typed with a volume of 1 and
+            // prices of 0) or a blank spacer row. Layout, not an item.
+            $hasPrice = collect([4, 5, 6, 7])->contains(
+                fn (int $index): bool => trim((string) preg_replace('/[^0-9]/', '', strip_tags($cells[$index])), '0') !== '',
+            );
+
+            if (! $hasPrice) {
+                if ($name !== '' && $name !== '&nbsp;') {
+                    $group = $name;
+                }
+
+                continue;
+            }
+
             if ($name === '' || $name === '&nbsp;') {
                 $name = 'Item Pengadaan '.$itemIndex;
             }
@@ -1149,6 +1303,7 @@ class DocumentGenerator
                 'total_before' => $totalBefore,
                 'price_after' => $priceAfter,
                 'total_after' => $totalAfter,
+                'group' => $group,
             ];
         }
 
@@ -1158,7 +1313,7 @@ class DocumentGenerator
     /**
      * Generate the tbody HTML for Surat Pesanan item table with multiple items and totals.
      *
-     * @param  array<int, array{no: int, name: string, volume: string, satuan: string, price_before: float, total_before: float, price_after: float, total_after: float}>  $items
+     * @param  array<int, array{no: int, name: string, volume: string, satuan: string, price_before: float, total_before: float, price_after: float, total_after: float, group?: string|null}>  $items
      */
     public function generateSuratPesananTbody(array $items, Procurement $procurement, ?string $existingDeadline = null): string
     {
@@ -1170,25 +1325,60 @@ class DocumentGenerator
             ? trim((string) $procurement->prk_number)
             : '-';
 
-        $itemCount = count($items);
+        // A group heading row (A, B, …) opens each named group; its items are
+        // numbered from 1 again, and the deadline spans every row.
+        $rows = [];
+        $group = null;
+        $letter = 'A';
+        $number = 0;
+
+        foreach ($items as $item) {
+            $itemGroup = $item['group'] ?? null;
+
+            if ($itemGroup !== null && $itemGroup !== $group) {
+                $rows[] = ['heading' => true, 'letter' => (string) $letter++, 'name' => $itemGroup, 'no' => 0, 'item' => null];
+                $number = 0;
+            }
+
+            $group = $itemGroup;
+            $rows[] = ['heading' => false, 'letter' => '', 'name' => '', 'no' => $group === null ? $item['no'] : ++$number, 'item' => $item];
+        }
+
+        $rowCount = count($rows);
         $totalAfter = 0;
         $itemRowsHtml = '';
+        $cell = 'border: 1px solid #000; vertical-align: middle;';
 
-        foreach ($items as $index => $item) {
+        foreach ($rows as $index => $row) {
+            $deadlineTd = '';
+            if ($index === 0) {
+                $rowspan = $rowCount > 1 ? " rowspan=\"{$rowCount}\"" : '';
+                $deadlineTd = "\n                        <td{$rowspan} style=\"border: 1px solid #000; padding: 8px 6px; text-align: center; vertical-align: middle; font-weight: bold;\">{$deadline}</td>";
+            }
+
+            $item = $row['item'];
+
+            if ($item === null) {
+                $name = e($row['name']);
+                $itemRowsHtml .= <<<HTML
+
+                    <tr>
+                        <td style="{$cell} padding: 8px 4px; text-align: center; font-weight: bold;">{$row['letter']}</td>
+                        <td colspan="5" style="{$cell} padding: 8px 6px; font-weight: bold;">{$name}</td>{$deadlineTd}
+                    </tr>
+HTML;
+
+                continue;
+            }
+
             $priceFormatted = number_format($item['price_after'], 0, ',', '.');
             $totalFormatted = number_format($item['total_after'], 0, ',', '.');
             $totalAfter += $item['total_after'];
 
-            $deadlineTd = '';
-            if ($index === 0) {
-                $rowspan = $itemCount > 1 ? " rowspan=\"{$itemCount}\"" : '';
-                $deadlineTd = "\n                        <td{$rowspan} style=\"border: 1px solid #000; padding: 8px 6px; text-align: center; vertical-align: middle; font-weight: bold;\">{$deadline}</td>";
-            }
-
             $itemRowsHtml .= <<<HTML
 
                     <tr>
-                        <td style="border: 1px solid #000; padding: 8px 4px; text-align: center; vertical-align: middle;">{$item['no']}</td>
+                        <td style="border: 1px solid #000; padding: 8px 4px; text-align: center; vertical-align: middle;">{$row['no']}</td>
                         <td style="border: 1px solid #000; padding: 8px 6px; vertical-align: middle;">{$item['name']}</td>
                         <td style="border: 1px solid #000; padding: 8px 4px; text-align: center; vertical-align: middle;">{$item['volume']}</td>
                         <td style="border: 1px solid #000; padding: 8px 4px; text-align: center; vertical-align: middle;">{$item['satuan']}</td>
@@ -1229,7 +1419,7 @@ HTML;
     /**
      * Synchronize items into an existing or template Surat Pesanan document body.
      *
-     * @param  array<int, array{no: int, name: string, volume: string, satuan: string, price_before: float, total_before: float, price_after: float, total_after: float}>  $items
+     * @param  array<int, array{no: int, name: string, volume: string, satuan: string, price_before: float, total_before: float, price_after: float, total_after: float, group?: string|null}>  $items
      */
     public function syncItemsIntoSuratPesanan(string $suratPesananHtml, array $items, Procurement $procurement): string
     {

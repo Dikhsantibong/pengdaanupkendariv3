@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Procurements;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Procurements\GenerateDocumentRequest;
 use App\Http\Requests\Procurements\UpdateDocumentRequest;
+use App\Http\Requests\Procurements\UpdateProcurementItemsRequest;
 use App\Http\Requests\Procurements\UploadDocumentRequest;
 use App\Http\Requests\Procurements\UploadSignedDocumentRequest;
 use App\Models\DocumentType;
@@ -15,6 +16,7 @@ use App\Models\ProcurementDocument;
 use App\Models\ProcurementDocumentUpload;
 use App\Services\DocumentGenerator;
 use App\Services\DocumentPdfRenderer;
+use App\Services\ProcurementItemService;
 use App\Services\SignedDocumentStore;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -33,6 +35,7 @@ class DocumentController extends Controller
         protected DocumentGenerator $generator,
         protected DocumentPdfRenderer $pdf,
         protected SignedDocumentStore $signed,
+        protected ProcurementItemService $items,
     ) {}
 
     /**
@@ -138,7 +141,7 @@ class DocumentController extends Controller
     /**
      * Open the editor for a generated document.
      */
-    public function edit(Procurement $procurement, ProcurementDocument $document): Response
+    public function edit(Request $request, Procurement $procurement, ProcurementDocument $document): Response
     {
         $this->authorize('editDocument', $procurement);
 
@@ -183,6 +186,12 @@ class DocumentController extends Controller
             // Polled every few seconds: only this fingerprint is sent each
             // time, and the full body is fetched again only when it moves.
             'liveVersion' => sha1($document->revision.'|'.$document->rendered_body),
+            // A document with an item table gets the Rincian Item tab: the
+            // table is filled there, not cell by cell in the editor.
+            'items' => $this->generator->hasItemTable($document)
+                ? fn (): array => $this->editorItems($procurement, $document)
+                : null,
+            'canManageItems' => $request->user()->can('manageItems', $procurement),
             'document' => fn (): array => [
                 'id' => $document->id,
                 'title' => $document->title,
@@ -228,6 +237,13 @@ class DocumentController extends Controller
             $request->string('title')->value(),
             $request->string('body')->value(),
         );
+
+        // The Rincian Item changed alongside: kept, and every item table
+        // (this document's too) drawn from it.
+        if ($request->has('item_rows')) {
+            $this->authorize('manageItems', $procurement);
+            $this->items->save($procurement, array_values((array) $request->validated('item_rows')), $request->user());
+        }
 
         Inertia::flash('toast', [
             'type' => 'success',
@@ -461,6 +477,42 @@ class DocumentController extends Controller
         ]);
 
         return back();
+    }
+
+    /**
+     * The editor's draft with its item table drawn from the Rincian Item
+     * being typed, before anything is saved: the same renderer as the saved
+     * documents, so the Editor Visual shows the printed table as it is typed.
+     */
+    public function itemsPreview(UpdateProcurementItemsRequest $request, Procurement $procurement, ProcurementDocument $document): JsonResponse
+    {
+        $this->authorize('view', $procurement);
+        $this->assertBelongsTo($procurement, $document);
+
+        $document->load('documentType');
+        $items = $this->items->unsavedItems(array_values((array) $request->validated('rows')));
+        $draft = $request->has('body') ? $request->string('body')->value() : $document->rendered_body;
+
+        return response()->json([
+            'body' => $this->generator->applyItemTables($draft, $document->documentType->code, $procurement, $items),
+        ]);
+    }
+
+    /**
+     * The Rincian Item the editor opens with: the saved items, or, for a job
+     * without any yet, the rows its BA Negosiasi table already holds.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    protected function editorItems(Procurement $procurement, ProcurementDocument $document): array
+    {
+        $items = $this->items->payload($procurement);
+
+        if ($items === [] && in_array($document->documentType->code, ['ba-negosiasi-sppl', 'ba-negosiasi'], true)) {
+            return $this->items->draftFromNegotiation($document->rendered_body);
+        }
+
+        return $items;
     }
 
     /**

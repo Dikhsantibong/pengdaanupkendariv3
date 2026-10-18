@@ -7,8 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * One line of a KHS contract's price list: a material or service with its
- * unit price, from which every Delivery Order draws its lines.
+ * One line of a procurement's Rincian Item: a material or service with its
+ * volume and unit price, before and after negotiation, under an optional
+ * group heading. The item tables of the documents (BA Negosiasi, Surat
+ * Pesanan, SPK, HPE, …) are drawn from these, and a KHS contract's Delivery
+ * Orders draw their lines from them as its price list.
  *
  * @property int $id
  * @property int $procurement_id
@@ -16,10 +19,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $group_name
  * @property string $description
  * @property string|null $part_number
+ * @property string $volume
  * @property string $unit
- * @property string $unit_price
+ * @property string|null $price_before
+ * @property string|null $unit_price
  */
-#[Fillable(['sort_order', 'group_name', 'description', 'part_number', 'unit', 'unit_price'])]
+#[Fillable(['sort_order', 'group_name', 'description', 'part_number', 'volume', 'unit', 'price_before', 'unit_price'])]
 class ProcurementContractItem extends Model
 {
     /**
@@ -33,6 +38,22 @@ class ProcurementContractItem extends Model
     }
 
     /**
+     * The amount before negotiation: volume times the unit price.
+     */
+    public function totalBefore(): float
+    {
+        return round((float) $this->volume * (float) $this->price_before, 2);
+    }
+
+    /**
+     * The amount after negotiation: volume times the unit price.
+     */
+    public function totalAfter(): float
+    {
+        return round((float) $this->volume * (float) $this->unit_price, 2);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -41,6 +62,8 @@ class ProcurementContractItem extends Model
     {
         return [
             'sort_order' => 'integer',
+            'volume' => 'decimal:3',
+            'price_before' => 'decimal:2',
             'unit_price' => 'decimal:2',
         ];
     }

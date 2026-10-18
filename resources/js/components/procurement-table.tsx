@@ -52,11 +52,14 @@ export function ProcurementTable({
     columns = ['unit', 'director', 'hpe', 'status', 'planner', 'executor'],
     emptyTitle = 'Belum ada data pengadaan',
     emptyDescription,
+    numbered = false,
 }: {
     page: Paginated<ProcurementRow>;
     columns?: ProcurementColumn[];
     emptyTitle?: string;
     emptyDescription?: string;
+    /** A "No" column, counting on across the pages. */
+    numbered?: boolean;
 }) {
     if (page.data.length === 0) {
         return (
@@ -70,11 +73,18 @@ export function ProcurementTable({
         );
     }
 
+    const firstNumber = firstRowNumber(page);
+
     return (
         <div className="overflow-hidden rounded-md border border-border bg-card">
             <Table>
                 <TableHeader className="bg-muted/60">
                     <TableRow className="hover:bg-transparent">
+                        {numbered && (
+                            <TableHead className="w-12 text-center">
+                                No
+                            </TableHead>
+                        )}
                         <TableHead className="w-[22rem]">Pengadaan</TableHead>
                         {columns.map((column) => (
                             <TableHead
@@ -90,8 +100,13 @@ export function ProcurementTable({
                 </TableHeader>
 
                 <TableBody>
-                    {page.data.map((procurement) => (
+                    {page.data.map((procurement, index) => (
                         <TableRow key={procurement.id}>
+                            {numbered && (
+                                <TableCell className="tabular text-center text-xs text-muted-foreground">
+                                    {firstNumber + index}
+                                </TableCell>
+                            )}
                             <TableCell>
                                 <Link
                                     href={procurements.show(procurement.id)}
@@ -127,6 +142,11 @@ export function ProcurementTable({
             <DataPagination page={page} />
         </div>
     );
+}
+
+/** The number of a page's first row, so numbering runs on across pages. */
+export function firstRowNumber(page: Paginated<unknown>): number {
+    return page.meta?.from ?? page.from ?? 1;
 }
 
 function renderCell(column: ProcurementColumn, row: ProcurementRow) {

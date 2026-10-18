@@ -22,6 +22,8 @@ class UpdateDocumentRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string', 'max:2000000'],
+            // The Rincian Item changed in the editor, saved with the text.
+            ...UpdateProcurementItemsRequest::rowRules('item_rows', ['sometimes']),
         ];
     }
 
@@ -35,6 +37,7 @@ class UpdateDocumentRequest extends FormRequest
         return [
             'title' => 'judul dokumen',
             'body' => 'isi dokumen',
+            ...UpdateProcurementItemsRequest::rowAttributes('item_rows'),
         ];
     }
 }
