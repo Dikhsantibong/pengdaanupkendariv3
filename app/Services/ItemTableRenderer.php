@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\ProcurementContractItem;
+use App\Models\ProcurementPartnerCandidate;
 use App\Support\IndonesianNumber;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -27,6 +28,7 @@ class ItemTableRenderer
         'spk' => 'spk',
         'hpe' => 'hpe',
         'upb' => 'upb',
+        'rab' => 'evaluasi',
         'penyusunan-hps' => 'standard',
         'penawaran' => 'standard',
         'lampiran-spk' => 'standard',
@@ -40,6 +42,7 @@ class ItemTableRenderer
         'spk' => 'BATAS WAKTU/ PENYERAHAN',
         'hpe' => 'Harga HPE',
         'upb' => 'Tgl Dibutuhkan',
+        'evaluasi' => 'Harga Lalu',
         'standard' => 'Harga Satuan (Rp)',
         'surat-pesanan' => 'PERHATIAN',
     ];
@@ -69,11 +72,13 @@ class ItemTableRenderer
     }
 
     /**
-     * Redraw the item table of a document body, if it has one.
+     * Redraw the item table of a document body, if it has one. The
+     * Evaluasi Harga gives each calon mitra its own price column.
      *
      * @param  Collection<int, ProcurementContractItem>  $items
+     * @param  Collection<int, ProcurementPartnerCandidate>|null  $partners
      */
-    public function apply(string $html, ?string $typeCode, Collection $items): string
+    public function apply(string $html, ?string $typeCode, Collection $items, ?Collection $partners = null): string
     {
         $layout = self::LAYOUTS[$typeCode] ?? null;
 
@@ -86,6 +91,7 @@ class ItemTableRenderer
             'spk' => $this->replaceTable($html, self::SIGNATURES['spk'], fn (string $table): string => $this->spk($table, $items)),
             'hpe' => $this->replaceTable($html, self::SIGNATURES['hpe'], fn (string $table): string => $this->hpe($table, $items)),
             'upb' => $this->replaceTable($html, self::SIGNATURES['upb'], fn (string $table): string => $this->upb($table, $items)),
+            'evaluasi' => $this->replaceTable($html, self::SIGNATURES['evaluasi'], fn (string $table): string => $this->evaluation($table, $items, $partners ?? new Collection)),
             'standard' => $this->replaceTable($html, self::SIGNATURES['standard'], fn (string $table): string => $this->standard($table, $items, $typeCode === 'lampiran-spk')),
         };
     }
@@ -302,6 +308,68 @@ class ItemTableRenderer
         }
 
         return $this->rebuild($table, [$rows[0], ...$drawn, ...$this->blankRows($rows, 0, count($rows))]);
+    }
+
+    /**
+     * The Evaluasi Harga's table: a row per item with the unit price each
+     * calon mitra quoted in its own column (headed by its name) and the
+     * HPE price, the item's own or else the lowest quote. The previous
+     * purchase columns (No PO, Tgl PO, Supplier, Harga Lalu) stay as the
+     * template prints them.
+     *
+     * @param  Collection<int, ProcurementContractItem>  $items
+     * @param  Collection<int, ProcurementPartnerCandidate>  $partners
+     */
+    protected function evaluation(string $table, Collection $items, Collection $partners): string
+    {
+        $rows = $this->tableRows($table);
+
+        if (count($rows) < 2) {
+            return $table;
+        }
+
+        $head = '<tr><th rowspan="2" style="width: 3%;">No.</th>'
+            .'<th rowspan="2" style="width: 7%;">Stock Code</th>'
+            .'<th rowspan="2" style="width: 21%;">Nama Barang dan Spesifikasi</th>'
+            .'<th colspan="4">Harga</th>';
+
+        foreach ($partners as $partner) {
+            $head .= '<th rowspan="2">'.e(Str::upper($partner->name)).'</th>';
+        }
+
+        $head .= '<th rowspan="2" style="width: 10%;">Harga HPE</th></tr>';
+        $columns = 8 + $partners->count();
+        $price = fn (float|string|null $value): string => $value === null ? '' : number_format((float) $value, 2, ',', '.');
+        $drawn = [];
+
+        foreach ($this->rows($items) as $row) {
+            if ($row['item'] === null) {
+                $drawn[] = '<tr class="group"><td class="center"><b>'.$row['label'].'</b></td><td></td>'
+                    .'<td><b>'.e($row['name']).'</b></td>'.str_repeat('<td></td>', $columns - 3).'</tr>';
+
+                continue;
+            }
+
+            $item = $row['item'];
+            $quotes = $partners->map(fn (ProcurementPartnerCandidate $partner): ?string => $item->quotedBy($partner->id));
+            $lowest = $quotes->filter(fn (?string $quote): bool => $quote !== null)->min(fn (string $quote): float => (float) $quote);
+
+            $line = '<tr><td class="center">'.$row['label'].'</td>'
+                .'<td>'.e($item->part_number ?? '').'</td>'
+                .'<td>'.$this->description($item).'</td>'
+                .'<td></td><td></td><td></td><td>0,00</td>';
+
+            foreach ($quotes as $quote) {
+                $line .= '<td>'.$price($quote).'</td>';
+            }
+
+            $drawn[] = $line.'<td class="right">'.$price($item->price_before ?? $lowest).'</td></tr>';
+        }
+
+        $blank = '<tr class="blank"><td>&nbsp;</td>'.str_repeat('<td></td>', $columns - 1).'</tr>';
+        $blanks = array_fill(0, count($this->blankRows($rows, 1, count($rows))), $blank);
+
+        return $this->rebuild($table, [$head, $rows[1], ...$drawn, ...$blanks]);
     }
 
     /**

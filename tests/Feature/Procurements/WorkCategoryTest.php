@@ -178,9 +178,11 @@ class WorkCategoryTest extends TestCase
         $this->seed(KontrakTemplateSeeder::class);
         // The SPK's articles follow the category (the SPK table does not).
         $spk = DocumentType::query()->where('code', 'spk-pasal')->firstOrFail();
+        $goods = DocumentTemplate::query()->where('document_type_id', $spk->id)->where('work_category', 'barang')->sole();
 
+        // The goods template is revised in place: a document keeps one template.
         $this->actingAs(User::factory()->administrator()->create())
-            ->post(route('master-data.document-templates.store'), [
+            ->put(route('master-data.document-templates.update', $goods), [
                 'document_type_id' => $spk->id,
                 'work_category' => 'barang',
                 'name' => 'SPK Barang Revisi',
@@ -192,6 +194,6 @@ class WorkCategoryTest extends TestCase
         $active = DocumentTemplate::query()->where('document_type_id', $spk->id)->where('is_active', true)->get();
 
         $this->assertEqualsCanonicalizing(['barang', 'jasa'], $active->map(fn (DocumentTemplate $template): string => $template->work_category->value)->all());
-        $this->assertSame(2, DocumentTemplate::query()->where('name', 'SPK Barang Revisi')->value('version'));
+        $this->assertSame(1, DocumentTemplate::query()->where('name', 'SPK Barang Revisi')->value('version'));
     }
 }

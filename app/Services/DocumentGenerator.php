@@ -14,6 +14,7 @@ use App\Models\ProcurementContractItem;
 use App\Models\ProcurementDeliveryOrder;
 use App\Models\ProcurementDeliveryOrderItem;
 use App\Models\ProcurementDocument;
+use App\Models\ProcurementItemQuotation;
 use App\Models\UnitManager;
 use App\Models\User;
 use App\Models\VendorAssessmentRequest;
@@ -39,7 +40,7 @@ class DocumentGenerator
      */
     public const ITEM_TABLE_TYPES = [
         'ba-negosiasi-sppl', 'ba-negosiasi', 'purchase-order', 'surat-pesanan',
-        'spk', 'hpe', 'upb', 'penyusunan-hps', 'penawaran', 'lampiran-spk',
+        'spk', 'hpe', 'upb', 'rab', 'penyusunan-hps', 'penawaran', 'lampiran-spk',
     ];
 
     /**
@@ -494,6 +495,8 @@ class DocumentGenerator
             $document->updated_at?->getTimestamp(),
             $document->revision,
             strlen($document->rendered_body),
+            // The Rincian Item draws the item table, so it counts too.
+            $this->itemsFingerprint($document),
         ]));
 
         if (Cache::get($cacheKey) === $fingerprint()) {
@@ -516,6 +519,30 @@ class DocumentGenerator
         Cache::put($cacheKey, $fingerprint(), now()->addDay());
 
         return $changed;
+    }
+
+    /**
+     * What the Rincian Item looks like now, for a document whose item table
+     * is drawn from it: a document is rebuilt once its items change.
+     */
+    protected function itemsFingerprint(ProcurementDocument $document): string
+    {
+        $document->loadMissing('documentType');
+
+        if (! in_array($document->documentType->code, self::ITEM_TABLE_TYPES, true)) {
+            return '';
+        }
+
+        $items = ProcurementContractItem::query()->where('procurement_id', $document->procurement_id);
+        $quotes = ProcurementItemQuotation::query()->whereIn('procurement_contract_item_id', (clone $items)->select('id'));
+
+        return implode('/', [
+            $items->count(),
+            $items->max('updated_at'),
+            $quotes->count(),
+            $quotes->max('updated_at'),
+            $document->procurement->partnerCandidates()->max('updated_at'),
+        ]);
     }
 
     /**
@@ -1071,7 +1098,7 @@ class DocumentGenerator
      */
     public function applyItemTables(string $body, ?string $typeCode, Procurement $procurement, ?Collection $items = null): string
     {
-        $items ??= $procurement->contractItems()->get();
+        $items ??= $procurement->contractItems()->with('quotations')->get();
 
         if ($items->isEmpty()) {
             return $body;
@@ -1086,7 +1113,10 @@ class DocumentGenerator
             return $this->syncItemsIntoSuratPesanan($body, $this->suratPesananItems($items), $procurement);
         }
 
-        return $this->itemTables->apply($body, $typeCode, $items);
+        // The Evaluasi Harga compares the calon mitra's quotes.
+        $partners = $typeCode === 'rab' ? $procurement->partnerCandidates()->get() : null;
+
+        return $this->itemTables->apply($body, $typeCode, $items, $partners);
     }
 
     /**
@@ -1106,7 +1136,7 @@ class DocumentGenerator
      */
     public function syncItemDocuments(Procurement $procurement): void
     {
-        $items = $procurement->contractItems()->get();
+        $items = $procurement->contractItems()->with('quotations')->get();
 
         if ($items->isEmpty()) {
             return;
@@ -1122,12 +1152,17 @@ class DocumentGenerator
         }
 
         $documents = $procurement->documents()
-            ->with('documentType')
+            ->with(['documentType', 'signedUploads'])
             ->whereHas('documentType', fn ($query) => $query->whereIn('code', self::ITEM_TABLE_TYPES))
             ->get();
 
         foreach ($documents as $document) {
-            $body = $this->applyItemTables($document->rendered_body, $document->documentType->code, $procurement);
+            // A signed document is a record of what was signed: it stays put.
+            if ($this->isFrozen($document)) {
+                continue;
+            }
+
+            $body = $this->applyItemTables($document->rendered_body, $document->documentType->code, $procurement, $items);
 
             if ($body !== $document->rendered_body) {
                 $document->rendered_body = $body;

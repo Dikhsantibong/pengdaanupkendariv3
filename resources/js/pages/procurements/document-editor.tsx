@@ -16,6 +16,7 @@ import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/page-header';
 import { ItemListCard } from '@/components/procurement/item-list-card';
 import type {
+    ItemPartner,
     ItemRowPayload,
     ProcurementItem,
 } from '@/components/procurement/item-list-card';
@@ -120,6 +121,8 @@ export default function DocumentEditor({
     placeholders = [],
     liveVersion,
     items = null,
+    itemPartners = [],
+    itemLayout = null,
     canManageItems = false,
 }: {
     procurement: { id: number; number: string; name: string };
@@ -129,6 +132,10 @@ export default function DocumentEditor({
     liveVersion?: string;
     /** The Rincian Item, for a document with an item table; null otherwise. */
     items?: ProcurementItem[] | null;
+    /** The calon mitra compared in the Evaluasi Harga, a column each. */
+    itemPartners?: ItemPartner[];
+    /** The document type, whose item table decides the grid's columns. */
+    itemLayout?: string | null;
     canManageItems?: boolean;
 }) {
     const form = useForm({ title: doc.title, body: doc.body });
@@ -482,6 +489,8 @@ export default function DocumentEditor({
                         <TabsContent value="items" className="mt-3">
                             <ItemListCard
                                 items={items}
+                                layout={itemLayout}
+                                partners={itemPartners}
                                 editable={canManageItems}
                                 errors={
                                     form.errors as Record<

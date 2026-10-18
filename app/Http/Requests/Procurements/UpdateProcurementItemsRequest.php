@@ -58,6 +58,9 @@ class UpdateProcurementItemsRequest extends FormRequest
             "{$key}.*.unit" => ['nullable', 'string', 'max:50'],
             "{$key}.*.price_before" => ['nullable', 'numeric', 'min:0', 'max:999999999999999'],
             "{$key}.*.unit_price" => ['nullable', 'numeric', 'min:0', 'max:999999999999999'],
+            // Each calon mitra's unit price, keyed by the mitra (Evaluasi Harga).
+            "{$key}.*.quotes" => ['nullable', 'array', 'max:50'],
+            "{$key}.*.quotes.*" => ['nullable', 'numeric', 'min:0', 'max:999999999999999'],
         ];
     }
 
@@ -74,6 +77,7 @@ class UpdateProcurementItemsRequest extends FormRequest
             "{$key}.*.unit" => 'satuan',
             "{$key}.*.price_before" => 'harga satuan sebelum nego',
             "{$key}.*.unit_price" => 'harga satuan setelah nego',
+            "{$key}.*.quotes.*" => 'harga mitra',
         ];
     }
 }

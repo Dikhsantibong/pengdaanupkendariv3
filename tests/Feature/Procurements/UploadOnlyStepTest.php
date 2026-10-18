@@ -32,14 +32,14 @@ class UploadOnlyStepTest extends TestCase
             [
                 'amandemen', 'bast', 'bukti-pembayaran', 'csms', 'faktur-pajak', 'invoice', 'jaminan-bank',
                 'kuitansi', 'masa-pemeliharaan', 'nota-dinas-perintah-pekerjaan', 'nota-dinas-usulan',
-                'penawaran', 'pengajuan-pembayaran', 'penyusunan-hps', 'proses-smart-scm', 'rab',
+                'penawaran', 'pengajuan-pembayaran', 'penyusunan-hps', 'proses-smart-scm',
             ],
             DocumentType::query()->where('upload_only', true)->orderBy('code')->pluck('code')->all(),
         );
 
-        // HPE, UPB and RKS in planning, and the Berita Acara and Kontrak
-        // documents in execution, are still generated.
-        foreach (['tor', 'hpe', 'upb', 'rks', 'ba-aanwijzing', 'spk', 'ba-negosiasi', 'surat-pesanan'] as $code) {
+        // HPE, UPB, RKS and the Evaluasi Harga in planning, and the Berita
+        // Acara and Kontrak documents in execution, are still generated.
+        foreach (['tor', 'rab', 'hpe', 'upb', 'rks', 'ba-aanwijzing', 'spk', 'ba-negosiasi', 'surat-pesanan'] as $code) {
             $this->assertFalse(DocumentType::query()->where('code', $code)->firstOrFail()->upload_only, $code);
         }
     }
@@ -48,7 +48,7 @@ class UploadOnlyStepTest extends TestCase
     {
         Storage::fake('local');
 
-        [$procurement, $planner, $checklist, $type] = $this->planningStep('RAB (Rencana Anggaran Biaya)');
+        [$procurement, $planner, $checklist, $type] = $this->planningStep('Nota Dinas ke Pengadaan');
 
         $this->actingAs($planner)
             ->post(route('procurements.documents.upload', $procurement), [
@@ -64,6 +64,11 @@ class UploadOnlyStepTest extends TestCase
         $this->assertNull($document->document_template_id);
         $this->assertSame(1, $document->signedUploads()->count());
 
+        // The step's own memo number and date, which it also asks for.
+        $procurement->forceFill(collect($checklist->checklistItem->input_kind?->fields() ?? [])
+            ->mapWithKeys(fn (string $field): array => [$field => str_contains($field, 'date') ? now()->toDateString() : 'ND-01'])
+            ->all())->save();
+
         $this->actingAs($planner)
             ->put(route('procurements.checklists.update', [$procurement, $checklist]), [
                 'is_completed' => true,
@@ -75,7 +80,7 @@ class UploadOnlyStepTest extends TestCase
 
     public function test_an_upload_only_step_still_needs_its_upload(): void
     {
-        [$procurement, $planner, $checklist] = $this->planningStep('RAB (Rencana Anggaran Biaya)');
+        [$procurement, $planner, $checklist] = $this->planningStep('Nota Dinas ke Pengadaan');
 
         $this->actingAs($planner)
             ->put(route('procurements.checklists.update', [$procurement, $checklist]), [
@@ -86,7 +91,7 @@ class UploadOnlyStepTest extends TestCase
 
     public function test_an_upload_only_document_cannot_be_generated(): void
     {
-        [$procurement, $planner, , $type] = $this->planningStep('RAB (Rencana Anggaran Biaya)');
+        [$procurement, $planner, , $type] = $this->planningStep('Nota Dinas ke Pengadaan');
 
         $this->actingAs($planner)
             ->post(route('procurements.documents.store', $procurement), [
@@ -99,7 +104,7 @@ class UploadOnlyStepTest extends TestCase
 
     public function test_a_generated_document_cannot_be_filed_through_the_upload_route(): void
     {
-        [$procurement, $planner] = $this->planningStep('RAB (Rencana Anggaran Biaya)');
+        [$procurement, $planner] = $this->planningStep('Nota Dinas ke Pengadaan');
         $hpe = DocumentType::query()->where('code', 'hpe')->firstOrFail();
 
         $this->actingAs($planner)
@@ -112,7 +117,7 @@ class UploadOnlyStepTest extends TestCase
 
     public function test_an_unassigned_pic_cannot_upload(): void
     {
-        [$procurement, , , $type] = $this->planningStep('RAB (Rencana Anggaran Biaya)');
+        [$procurement, , , $type] = $this->planningStep('Nota Dinas ke Pengadaan');
 
         $this->actingAs(User::factory()->planner()->create())
             ->post(route('procurements.documents.upload', $procurement), [
@@ -122,7 +127,7 @@ class UploadOnlyStepTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_sppl_merges_the_rab_into_the_penawaran(): void
+    public function test_sppl_merges_the_evaluasi_harga_into_the_penawaran(): void
     {
         $this->seed(MasterDataSeeder::class);
 
@@ -141,10 +146,10 @@ class UploadOnlyStepTest extends TestCase
             ->pluck('checklistItem.name')
             ->all();
 
-        $this->assertNotContains('RAB (Rencana Anggaran Biaya)', $names($withSppl));
+        $this->assertNotContains('Evaluasi Harga', $names($withSppl));
         $this->assertContains('Penawaran', $names($withSppl));
 
-        $this->assertContains('RAB (Rencana Anggaran Biaya)', $names($withSpk));
+        $this->assertContains('Evaluasi Harga', $names($withSpk));
     }
 
     public function test_an_administrator_sets_which_formats_skip_a_step(): void

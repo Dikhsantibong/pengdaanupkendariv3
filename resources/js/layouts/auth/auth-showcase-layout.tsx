@@ -48,7 +48,7 @@ const flow = [
     {
         title: 'Tahap Perencanaan',
         actor: 'PIC Perencana',
-        detail: 'Nota Dinas, TOR, RAB, HPE, UPB, RKS, hingga Smart SCM.',
+        detail: 'Nota Dinas, TOR, Evaluasi Harga, HPE, UPB, RKS, hingga Smart SCM.',
     },
     {
         title: 'Persetujuan Dokumen',

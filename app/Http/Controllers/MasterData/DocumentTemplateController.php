@@ -13,6 +13,7 @@ use App\Services\DocumentTemplateLibrary;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -103,22 +104,18 @@ class DocumentTemplateController extends Controller
     }
 
     /**
-     * Register a new template version for a document type.
+     * Register the template of a document type.
+     *
+     * A document keeps a single template: one already serving the same
+     * scope is changed in place, never joined by a second version.
      */
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate($this->rules());
-
-        // Versions run independently per document type and procurement method.
-        $nextVersion = (int) DocumentTemplate::query()
-            ->where('document_type_id', $validated['document_type_id'])
-            ->where('procurement_method_id', $validated['procurement_method_id'] ?? null)
-            ->where('contract_number_format_id', $validated['contract_number_format_id'] ?? null)
-            ->where('work_category', $validated['work_category'] ?? null)
-            ->max('version') + 1;
+        $this->ensureScopeIsFree($validated);
 
         $template = new DocumentTemplate($validated);
-        $template->version = $nextVersion;
+        $template->version = 1;
         $template->placeholders = $this->extractPlaceholders($validated['body']);
         $template->save();
 
@@ -138,6 +135,7 @@ class DocumentTemplateController extends Controller
     public function update(Request $request, DocumentTemplate $documentTemplate): RedirectResponse
     {
         $validated = $request->validate($this->rules($documentTemplate));
+        $this->ensureScopeIsFree($validated, $documentTemplate);
 
         $documentTemplate->fill($validated);
         $documentTemplate->placeholders = $this->extractPlaceholders($validated['body']);
@@ -222,6 +220,31 @@ class DocumentTemplateController extends Controller
             'body' => ['required', 'string', 'max:200000'],
             'is_active' => ['required', 'boolean'],
         ];
+    }
+
+    /**
+     * Refuse a second template for a scope that already has one (an
+     * archived template does not count).
+     *
+     * @param  array<string, mixed>  $validated
+     *
+     * @throws ValidationException
+     */
+    protected function ensureScopeIsFree(array $validated, ?DocumentTemplate $except = null): void
+    {
+        $existing = DocumentTemplate::query()
+            ->where('document_type_id', $validated['document_type_id'])
+            ->where('procurement_method_id', $validated['procurement_method_id'] ?? null)
+            ->where('contract_number_format_id', $validated['contract_number_format_id'] ?? null)
+            ->where('work_category', $validated['work_category'] ?? null)
+            ->when($except !== null, fn ($query) => $query->whereKeyNot($except?->getKey()))
+            ->first();
+
+        if ($existing !== null) {
+            throw ValidationException::withMessages([
+                'document_type_id' => "Dokumen ini sudah punya template ({$existing->name}). Ubah template itu saja; satu dokumen hanya memakai satu template.",
+            ]);
+        }
     }
 
     /**

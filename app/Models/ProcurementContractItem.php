@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * One line of a procurement's Rincian Item: a material or service with its
@@ -35,6 +36,24 @@ class ProcurementContractItem extends Model
     public function procurement(): BelongsTo
     {
         return $this->belongsTo(Procurement::class)->withTrashed();
+    }
+
+    /**
+     * The unit price each calon mitra quoted for the item.
+     *
+     * @return HasMany<ProcurementItemQuotation, $this>
+     */
+    public function quotations(): HasMany
+    {
+        return $this->hasMany(ProcurementItemQuotation::class);
+    }
+
+    /**
+     * The unit price a calon mitra quoted, if it did.
+     */
+    public function quotedBy(int $candidateId): ?string
+    {
+        return $this->quotations->firstWhere('procurement_partner_candidate_id', $candidateId)?->unit_price;
     }
 
     /**

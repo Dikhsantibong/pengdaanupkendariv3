@@ -40,7 +40,7 @@ return [
         'procurement_method' => null,
         'contract_format' => null,
         'work_category' => null,
-        'name' => 'Template Standar RAB (Rencana Anggaran Biaya)',
+        'name' => 'Evaluasi Harga Perkiraan Enjiniring - Template Standar UP Kendari',
     ],
     'umum.hpe' => [
         'group' => 'umum',

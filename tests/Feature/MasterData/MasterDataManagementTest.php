@@ -127,7 +127,7 @@ class MasterDataManagementTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_administrator_can_publish_a_new_template_version_and_deactivate_the_previous_one(): void
+    public function test_administrator_cannot_add_a_second_version_of_a_template(): void
     {
         $administrator = User::factory()->administrator()->create();
         $documentType = DocumentType::factory()->create();
@@ -135,22 +135,56 @@ class MasterDataManagementTest extends TestCase
             'document_type_id' => $documentType->id,
             'version' => 1,
         ]);
+        $payload = [
+            'document_type_id' => $documentType->id,
+            'name' => 'Template Resmi RKS',
+            'body' => '<h1>{{nama_pengadaan}}</h1><p>{{unit_tujuan}}</p>',
+            'is_active' => true,
+        ];
 
         $this->actingAs($administrator)
-            ->post(route('master-data.document-templates.store'), [
-                'document_type_id' => $documentType->id,
-                'name' => 'Template Resmi RKS',
-                'body' => '<h1>{{nama_pengadaan}}</h1><p>{{unit_tujuan}}</p>',
+            ->post(route('master-data.document-templates.store'), $payload)
+            ->assertSessionHasErrors('document_type_id');
+
+        $this->assertSame(1, DocumentTemplate::query()->count());
+        $this->assertTrue($first->refresh()->is_active);
+
+        // The template itself is changed instead, and stays version 1.
+        $this->actingAs($administrator)
+            ->put(route('master-data.document-templates.update', $first), $payload)
+            ->assertSessionHasNoErrors();
+
+        $first->refresh();
+        $this->assertSame(1, $first->version);
+        $this->assertSame('Template Resmi RKS', $first->name);
+        $this->assertSame(['nama_pengadaan', 'unit_tujuan'], $first->placeholders);
+
+        // Once archived, the document may get a new template, as version 1.
+        $first->delete();
+
+        $this->actingAs($administrator)
+            ->post(route('master-data.document-templates.store'), $payload)
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(1, DocumentTemplate::query()->sole()->version);
+    }
+
+    public function test_a_template_cannot_be_moved_onto_a_document_that_has_one(): void
+    {
+        $administrator = User::factory()->administrator()->create();
+        $taken = DocumentTemplate::factory()->create();
+        $other = DocumentTemplate::factory()->create();
+
+        $this->actingAs($administrator)
+            ->put(route('master-data.document-templates.update', $other), [
+                'document_type_id' => $taken->document_type_id,
+                'name' => $other->name,
+                'body' => $other->body,
                 'is_active' => true,
             ])
-            ->assertRedirect();
+            ->assertSessionHasErrors('document_type_id');
 
-        $latest = DocumentTemplate::query()->orderByDesc('version')->firstOrFail();
-
-        $this->assertSame(2, $latest->version);
-        $this->assertTrue($latest->is_active);
-        $this->assertSame(['nama_pengadaan', 'unit_tujuan'], $latest->placeholders);
-        $this->assertFalse($first->refresh()->is_active);
+        $this->assertNotSame($taken->document_type_id, $other->refresh()->document_type_id);
     }
 
     public function test_administrator_can_manage_unit_managers(): void

@@ -1055,6 +1055,50 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
   - Hasil di database lokal: 38 template, semuanya aktif dan versi 1.
 - **Test:** `SingleTemplateVersionTest`, `ProcurementItemsTest` (tabel UPB), `DocumentTemplateLibraryTest`, `RksPjJasaTest`, `WorkCategoryTest`, `SignatoryNamesTest`.
 
+### 17. Tidak Ada Template Versi 2
+- Di Data Master → Template Dokumen, menambah template untuk dokumen (dengan metode, format kontrak, dan kategori yang sama) yang sudah punya template kini **ditolak** dengan pesan "Dokumen ini sudah punya template (…). Ubah template itu saja; satu dokumen hanya memakai satu template."
+- Template baru selalu **versi 1**. Mengubah template memperbarui template itu sendiri, dan memindahkan template ke dokumen yang sudah punya template juga ditolak.
+- Template yang sudah diarsipkan tidak dihitung, jadi dokumennya boleh diberi template baru (versi 1).
+- **Test:** `MasterDataManagementTest` (`test_administrator_cannot_add_a_second_version_of_a_template`, `test_a_template_cannot_be_moved_onto_a_document_that_has_one`), `WorkCategoryTest`.
+
+### 18. Semua Nama Penanda Tangan Huruf Besar (lanjutan)
+- Melengkapi poin 14: seluruh blok tanda tangan di 31 template kini dijamin huruf besar lewat `<span style="text-transform: uppercase;">`, termasuk:
+  - kolom nama yang dikosongkan untuk diketik nanti ("( Nama Jelas )" dan titik-titik), sehingga nama yang diketik di editor ikut tercetak huruf besar;
+  - nama yang sebelumnya hanya mengandalkan class `.upper` milik template (Direktur di SPK Pasal, Surat Perjanjian, Amandemen; PIC Perencana di RKS PJ), karena class bisa hilang saat diedit di Editor Visual;
+  - nama mitra di atas tanda tangannya (Surat Pesanan, SPK tabel, DO, BA Negosiasi SPPL) dan nama/jabatan penyedia di lampiran RKS PJ.
+- Nama di teks isi tetap seperti data tersimpan. Disinkron lewat migrasi `uppercase_every_signatory_name_in_templates` (template yang diubah admin tidak ditimpa).
+- **Test:** `SignatoryNamesTest::test_every_name_under_a_signature_in_every_template_prints_in_capitals`.
+
+### 19. RAB menjadi Evaluasi Harga
+- Langkah checklist perencanaan **RAB (Rencana Anggaran Biaya)** berganti nama menjadi **Evaluasi Harga**, begitu juga jenis dokumennya (kode tetap `rab`). Dokumen ini sekarang **digenerate** (tidak lagi hanya unggah), lalu tetap diunggah versi bertanda tangannya.
+- **Format dokumen** sesuai contoh "EVALUASI HARGA PERKIRAAN ENJINIRING" (A4 lanskap):
+  - Kolom No., Stock Code, Nama Barang dan Spesifikasi, Harga (No PO, Tgl PO, Supplier, Harga Lalu), satu kolom per calon mitra (nama mitra huruf besar), dan Harga HPE.
+  - Di bawah tabel tercantum Informasi Tambahan dan RKAP Budget.
+- **Harga per mitra diisi di Rincian Item:** editor Evaluasi Harga menampilkan satu kolom harga untuk setiap calon mitra, dan tabel dokumen tersusun realtime.
+  - Disimpan di tabel baru `procurement_item_quotations` (item × calon mitra).
+  - Harga HPE memakai harga HPE item; bila kosong, otomatis diisi harga mitra terendah.
+  - Menyimpan Rincian Item dari editor dokumen lain tidak menghapus harga mitra.
+  - Menambah, mengubah, atau menghapus calon mitra langsung menyusun ulang kolom mitra di dokumen.
+- SPPL tetap melewati langkah ini. Teks "RAB" di halaman login, beranda, Item Checklist, dan status progres ikut diganti.
+- Migrasi: `create_procurement_item_quotations_table`, `rename_rab_to_evaluasi_harga` (template `umum.rab` dipasang ulang dengan format baru).
+- **Test:** `EvaluasiHargaTest`; `UploadOnlyStepTest` dan `ChecklistDocumentRequirementTest` disesuaikan.
+
+### 20. Kolom Rincian Item Mengikuti Dokumennya
+- Grid Rincian Item kini menampilkan kolom sesuai tabel dokumen yang sedang diedit (data item tetap satu; kolom yang tidak tampil tidak berubah):
+
+| Dokumen | Kolom harga |
+|---|---|
+| BA Negosiasi / BA Negosiasi SPPL | Harga Sblm Nego & Harga Stlh Nego |
+| Surat Pesanan, SPK, Lampiran SPK | Harga Satuan (harga setelah nego) |
+| HPE | Harga HPE (Stock Code, Qty) |
+| Evaluasi Harga | harga tiap calon mitra + Harga HPE |
+| Penyusunan HPS / Penawaran | Harga Satuan HPS / Harga Penawaran |
+| UPB | tanpa harga (Stock Code, Qty, Satuan) |
+
+- Tempel dari Excel mengikuti urutan kolom yang tampil.
+- **Perbaikan:** dokumen yang belum diedit (mis. Surat Pesanan) kini ikut tersusun ulang saat Rincian Item berubah. Sebelumnya cache pembaruan dokumen tidak memperhitungkan Rincian Item, sehingga Surat Pesanan masih mencetak judul kelompok sebagai item "Lot Rp 0". Selain itu, `syncItemDocuments` tidak lagi mengubah dokumen yang sudah diunggah versi bertanda tangannya.
+- **Test:** `ProcurementItemsTest::test_an_unedited_document_follows_items_changed_elsewhere`.
+
 ---
 
 # Fitur Utama

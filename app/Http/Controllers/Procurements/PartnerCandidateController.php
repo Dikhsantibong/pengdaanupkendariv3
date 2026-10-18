@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Procurements\PartnerCandidateRequest;
 use App\Models\Procurement;
 use App\Models\ProcurementPartnerCandidate;
+use App\Services\DocumentGenerator;
 use App\Services\ProcurementService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,7 +23,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class PartnerCandidateController extends Controller
 {
-    public function __construct(protected ProcurementService $procurements) {}
+    public function __construct(
+        protected ProcurementService $procurements,
+        protected DocumentGenerator $documents,
+    ) {}
 
     /**
      * Add a candidate.
@@ -52,6 +56,8 @@ class PartnerCandidateController extends Controller
             $procurement->forceFill(['partner_candidate_id' => $candidate->id, ...$candidate->partnerFields()])->save();
         }
 
+        // The Evaluasi Harga gives every calon mitra a column.
+        $this->documents->syncItemDocuments($procurement);
         $this->log($request, $procurement, "Calon mitra {$candidate->name} ditambahkan.");
 
         Inertia::flash('toast', ['type' => 'success', 'message' => "Calon mitra {$candidate->name} ditambahkan."]);
@@ -75,6 +81,7 @@ class PartnerCandidateController extends Controller
             $procurement->forceFill($candidate->partnerFields())->save();
         }
 
+        $this->documents->syncItemDocuments($procurement);
         $this->log($request, $procurement, "Calon mitra {$candidate->name} diperbarui.");
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Calon mitra diperbarui.']);
@@ -102,6 +109,7 @@ class PartnerCandidateController extends Controller
             Storage::disk('local')->delete($candidate->quotation_file_path);
         }
 
+        $this->documents->syncItemDocuments($procurement);
         $this->log($request, $procurement, "Calon mitra {$candidate->name} dihapus.");
 
         Inertia::flash('toast', ['type' => 'success', 'message' => "Calon mitra {$candidate->name} dihapus."]);

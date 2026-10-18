@@ -256,6 +256,29 @@ class ProcurementItemsTest extends TestCase
         $this->assertSame($template, $renderer->apply($template, 'hpe', $empty));
     }
 
+    public function test_an_unedited_document_follows_items_changed_elsewhere(): void
+    {
+        [$procurement, , $suratPesanan] = $this->spplWithDocuments();
+        $edit = fn () => $this->actingAs($this->executor)
+            ->get(route('procurements.documents.edit', [$procurement, $suratPesanan]))
+            ->assertOk();
+
+        // Seen once (and remembered as unchanged) before any item exists.
+        $edit()->assertInertia(fn (Assert $page) => $page->where('itemLayout', 'surat-pesanan'));
+
+        // Items filled in elsewhere (the backfill, another document's editor).
+        $procurement->contractItems()->create(['sort_order' => 1, 'group_name' => 'Material & Tools Tangki 50 KL', 'description' => '- Sarung tangan', 'volume' => 40, 'unit' => 'Pcs', 'price_before' => 25000, 'unit_price' => 23750]);
+
+        $edit();
+
+        $body = $suratPesanan->refresh()->rendered_body;
+        $this->assertSame(0, (int) $suratPesanan->revision);
+        $this->assertStringContainsString('Sarung tangan', $body);
+        // The group prints as a heading, never as a "Lot" item at Rp 0.
+        $this->assertStringContainsString('Material &amp; Tools Tangki 50 KL', $body);
+        $this->assertStringNotContainsString('>Rp 0<', $body);
+    }
+
     public function test_the_upb_table_lists_the_items_without_prices(): void
     {
         $renderer = app(ItemTableRenderer::class);

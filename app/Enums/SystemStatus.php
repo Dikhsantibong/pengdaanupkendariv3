@@ -88,7 +88,7 @@ enum SystemStatus: string
             self::ApprovalUsulan => 'Usulan menunggu persetujuan TL / Asman.',
             self::RevisiUsulan => 'Usulan dikembalikan ke pengusul.',
             self::InisiasiRendan => 'Usulan disetujui, menunggu TL ICC menunjuk PIC Perencana.',
-            self::PenyusunanRks => 'SPK/PJ: RKS, UPB, HPE belum digenerate atau RAB belum diunggah.',
+            self::PenyusunanRks => 'SPK/PJ: RKS, UPB, HPE, atau Evaluasi Harga belum lengkap.',
             self::MenungguPenawaran => 'SPK/PJ: Penawaran harga belum diunggah.',
             self::DraftNodisPengadaan => 'SPK/PJ: Nota Dinas ke Pengadaan belum diunggah / belum diajukan.',
             self::DraftNodisLaksdan => 'SPPL: PIC ditunjuk, dokumen rendan belum lengkap / belum diajukan.',

@@ -42,7 +42,7 @@ class ChecklistDocumentRequirementTest extends TestCase
         return [
             'Nota Dinas Usulan',
             'TOR / KAK',
-            'RAB (Rencana Anggaran Biaya)',
+            'Evaluasi Harga',
             // Penawaran: each calon mitra carries its own quotation scan.
             'CSMS (Sertifikat)',
             'Nota Dinas ke Pengadaan',

@@ -29,7 +29,7 @@ const capabilities = [
         icon: FileCheck2,
         title: 'Dokumen Otomatis',
         description:
-            'Nota Dinas, TOR, RAB, HPE, UPB, RKS, hingga kontrak digenerate dari data pengadaan.',
+            'Nota Dinas, TOR, Evaluasi Harga, HPE, UPB, RKS, hingga kontrak digenerate dari data pengadaan.',
     },
 ];
 

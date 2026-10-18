@@ -336,7 +336,7 @@ class MasterDataSeeder extends Seeder
             ['Checklist Perencanaan', false],
             ['Nota Dinas Usulan', false],
             ['TOR / KAK', false],
-            ['RAB (Rencana Anggaran Biaya)', false],
+            ['Evaluasi Harga', false],
             ['Penawaran', false],
             ['CSMS (Sertifikat)', true],
             ['Nota Dinas ke Pengadaan', false],
@@ -452,7 +452,7 @@ class MasterDataSeeder extends Seeder
             ProcurementStage::Perencanaan->value => [
                 'Nota Dinas Usulan' => ['nota-dinas-usulan'],
                 'TOR / KAK' => ['tor'],
-                'RAB (Rencana Anggaran Biaya)' => ['rab'],
+                'Evaluasi Harga' => ['rab'],
                 // Penawaran: each calon mitra carries its own quotation scan.
                 'CSMS (Sertifikat)' => ['csms'],
                 'Nota Dinas ke Pengadaan' => ['nota-dinas-perintah-pekerjaan'],
@@ -554,6 +554,7 @@ class MasterDataSeeder extends Seeder
             ['stage' => ProcurementStage::Pelaksanaan, 'from' => 'Purchase Order (PO)', 'to' => 'Surat Pesanan'],
             ['stage' => ProcurementStage::Pelaksanaan, 'from' => 'Proses SMART SCM', 'to' => 'Proses SMART SCM & Berita Acara'],
             ['stage' => ProcurementStage::Pelaksanaan, 'from' => 'Rekening Pelaksana', 'to' => 'Pelaksana'],
+            ['stage' => ProcurementStage::Perencanaan, 'from' => 'RAB (Rencana Anggaran Biaya)', 'to' => 'Evaluasi Harga'],
         ];
 
         foreach ($renames as $rename) {
@@ -593,10 +594,11 @@ class MasterDataSeeder extends Seeder
         };
 
         if (isset($formats['SPPL'])) {
-            // SPPL folds the RAB into its Penawaran, so it skips the RAB step,
-            // and has its own execution steps in place of the SPK/PJ ones.
+            // SPPL folds the Evaluasi Harga into its Penawaran, so it skips
+            // that step, and has its own execution steps in place of the
+            // SPK/PJ ones.
             $skip(ProcurementStage::Perencanaan, [
-                'RAB (Rencana Anggaran Biaya)',
+                'Evaluasi Harga',
                 'RKS (Rencana Kerja dan Syarat)',
                 'Inisiasi SMART SCM',
                 'PR / RO',
@@ -631,7 +633,8 @@ class MasterDataSeeder extends Seeder
         $types = [
             ['nota-dinas-usulan', 'Nota Dinas Usulan', ProcurementStage::Perencanaan],
             ['tor', 'TOR (Term of Reference)', ProcurementStage::Perencanaan],
-            ['rab', 'RAB (Rencana Anggaran Biaya)', ProcurementStage::Perencanaan],
+            // The calon mitra's prices against the HPE, item by item.
+            ['rab', 'Evaluasi Harga', ProcurementStage::Perencanaan],
             ['penawaran', 'Penawaran', ProcurementStage::Perencanaan],
             ['csms', 'CSMS', ProcurementStage::Perencanaan],
             ['nota-dinas-perintah-pekerjaan', 'Nota Dinas Perintah Pekerjaan', ProcurementStage::Perencanaan],
@@ -696,7 +699,7 @@ class MasterDataSeeder extends Seeder
             // during execution; the rest is uploaded.
             ->whereIn('code', [
                 // The TOR is generated when the work is proposed.
-                'nota-dinas-usulan', 'rab', 'penawaran', 'csms', 'nota-dinas-perintah-pekerjaan',
+                'nota-dinas-usulan', 'penawaran', 'csms', 'nota-dinas-perintah-pekerjaan',
                 'penyusunan-hps', 'proses-smart-scm', 'jaminan-bank', 'amandemen', 'masa-pemeliharaan',
             ])
             ->update(['upload_only' => true]);

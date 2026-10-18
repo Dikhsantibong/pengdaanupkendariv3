@@ -472,7 +472,7 @@ export default function ChecklistItems({
                     label: 'Dilewati oleh Format Kontrak',
                     type: 'multiselect',
                     options: contractNumberFormats,
-                    hint: 'Centang format kontrak yang tidak melalui tahapan ini, misalnya SPPL (metode Surat Pesanan) tidak memakai RAB, HPE, UPB, RKS, Inisiasi SMART SCM, dan PR/RO. Metode pengadaan mengikuti format, jadi pengecualian cukup diatur di sini. Berlaku untuk pengadaan baru dan saat data pengadaan disimpan ulang.',
+                    hint: 'Centang format kontrak yang tidak melalui tahapan ini, misalnya SPPL (metode Surat Pesanan) tidak memakai Evaluasi Harga, HPE, UPB, RKS, Inisiasi SMART SCM, dan PR/RO. Metode pengadaan mengikuti format, jadi pengecualian cukup diatur di sini. Berlaku untuk pengadaan baru dan saat data pengadaan disimpan ulang.',
                 },
                 { name: 'sort_order', label: 'Urutan Tampil', type: 'number' },
                 { name: 'is_active', label: 'Aktif', type: 'switch' },
