@@ -1084,17 +1084,22 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 - **Test:** `EvaluasiHargaTest`; `UploadOnlyStepTest` dan `ChecklistDocumentRequirementTest` disesuaikan.
 
 ### 20. Kolom Rincian Item Mengikuti Dokumennya
-- Grid Rincian Item kini menampilkan kolom sesuai tabel dokumen yang sedang diedit (data item tetap satu; kolom yang tidak tampil tidak berubah):
+- Grid Rincian Item kini menampilkan kolom yang sama dengan tabel cetakan dokumen yang sedang diedit, dengan urutan dan istilahnya. Data item tetap satu, dan kolom yang tidak tampil tidak berubah:
 
-| Dokumen | Kolom harga |
+| Dokumen | Kolom grid (setelah No & Uraian) |
 |---|---|
-| BA Negosiasi / BA Negosiasi SPPL | Harga Sblm Nego & Harga Stlh Nego |
-| Surat Pesanan, SPK, Lampiran SPK | Harga Satuan (harga setelah nego) |
-| HPE | Harga HPE (Stock Code, Qty) |
-| Evaluasi Harga | harga tiap calon mitra + Harga HPE |
-| Penyusunan HPS / Penawaran | Harga Satuan HPS / Harga Penawaran |
-| UPB | tanpa harga (Stock Code, Qty, Satuan) |
+| BA Negosiasi / BA Negosiasi SPPL | Volume, Satuan, Harga Sblm Nego, Harga Stlh Nego, Jumlah |
+| Surat Pesanan | Volume, Satuan, Harga Satuan, Jumlah Harga |
+| SPK, Lampiran SPK | Volume, Satuan, Harga Satuan, Jumlah |
+| HPE | Stock Code, Qty, Stn, Harga Satuan, Harga HPE (jumlah) |
+| Evaluasi Harga | Stock Code, No PO, Tgl PO, Supplier, Harga Lalu, satu kolom per calon mitra, Harga HPE |
+| Penyusunan HPS / Penawaran | Volume, Satuan, Harga Satuan, Jumlah |
+| UPB | Stock Code, Qty, Satuan |
 
+- Part No. tidak lagi tampil di dokumen yang tidak mencetaknya (BA Nego, Surat Pesanan, SPK, HPS, Penawaran).
+- **Pembelian terakhir (Evaluasi Harga):** item kini menyimpan No PO, Tgl PO, Supplier, dan Harga Lalu (migrasi `add_previous_purchase_to_procurement_contract_items`). Keempatnya tercetak di kolom "Harga"; Harga Lalu yang kosong tercetak 0,00 seperti contoh. Menyimpan dari editor dokumen lain tidak menghapusnya.
+- Bila pengadaan belum punya calon mitra, editor Evaluasi Harga menampilkan pesan agar calon mitra ditambahkan dulu.
+- **Isian awal:** HPE, UPB, dan Evaluasi Harga tanpa Rincian Item langsung membuka grid berisi baris pekerjaan seperti yang tercetak di template (nama pekerjaan, 1 LOT, nilai HPE). Baris ini baru tersimpan saat Simpan Perubahan.
 - Tempel dari Excel mengikuti urutan kolom yang tampil.
 - **Perbaikan:** dokumen yang belum diedit (mis. Surat Pesanan) kini ikut tersusun ulang saat Rincian Item berubah. Sebelumnya cache pembaruan dokumen tidak memperhitungkan Rincian Item, sehingga Surat Pesanan masih mencetak judul kelompok sebagai item "Lot Rp 0". Selain itu, `syncItemDocuments` tidak lagi mengubah dokumen yang sudah diunggah versi bertanda tangannya.
 - **Test:** `ProcurementItemsTest::test_an_unedited_document_follows_items_changed_elsewhere`.

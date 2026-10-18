@@ -506,7 +506,8 @@ class DocumentController extends Controller
 
     /**
      * The Rincian Item the editor opens with: the saved items, or, for a job
-     * without any yet, the rows its BA Negosiasi table already holds.
+     * without any yet, the rows its BA Negosiasi table already holds or
+     * the work's own line of an HPE, UPB or Evaluasi Harga.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -516,6 +517,11 @@ class DocumentController extends Controller
 
         if ($items === [] && in_array($document->documentType->code, ['ba-negosiasi-sppl', 'ba-negosiasi'], true)) {
             return $this->items->draftFromNegotiation($document->rendered_body);
+        }
+
+        // The work's own line, as the template prints it before any item.
+        if ($items === [] && in_array($document->documentType->code, ['hpe', 'upb', 'rab'], true)) {
+            return $this->items->draftFromWork($procurement);
         }
 
         return $items;

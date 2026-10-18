@@ -16,6 +16,11 @@ export type ProcurementItem = {
     unit: string;
     price_before: number | null;
     unit_price: number | null;
+    /** The item's last purchase (Evaluasi Harga). */
+    previous_po_number?: string | null;
+    previous_po_date?: string | null;
+    previous_supplier?: string | null;
+    previous_price?: number | null;
     /** The unit price each calon mitra quoted, keyed by the mitra's id. */
     quotes?: Record<string, number>;
 };
@@ -24,7 +29,13 @@ export type ProcurementItem = {
 export type ItemPartner = { id: number; name: string };
 
 type PriceField = 'price_before' | 'unit_price';
-type Field = 'part_number' | 'volume' | 'unit' | PriceField;
+type TextField =
+    | 'part_number'
+    | 'unit'
+    | 'previous_po_number'
+    | 'previous_po_date'
+    | 'previous_supplier';
+type Field = TextField | 'volume' | 'previous_price' | PriceField;
 
 /** A row of the grid: a group heading or an item, every field as typed. */
 type Row = {
@@ -37,63 +48,110 @@ type Row = {
     unit: string;
     price_before: string;
     unit_price: string;
+    previous_po_number: string;
+    previous_po_date: string;
+    previous_supplier: string;
+    previous_price: string;
     quotes: Record<string, string>;
 };
 
 type Column = { field: Field; label: string };
 
 /**
- * The columns a document's item table asks for, in its own words: the BA
- * Negosiasi compares the prices before and after negotiation, the Surat
- * Pesanan and SPK print the agreed price, the HPE/HPS/offer the price
- * before negotiation, and the UPB no price at all. Fields a document does
- * not show are kept as they are.
+ * The columns of a document's item table, in its own words and order, and
+ * the label of the line amount when the table prints one. Fields a document
+ * does not print are not shown, and are kept as they are.
  */
-function columnsFor(layout: string | null): Column[] {
-    const goods = (part: string, volume: string): Column[] => [
-        { field: 'part_number', label: part },
-        { field: 'volume', label: volume },
+function layoutFor(layout: string | null): {
+    columns: Column[];
+    amount: string | null;
+} {
+    const quantity: Column[] = [
+        { field: 'volume', label: 'Volume' },
         { field: 'unit', label: 'Satuan' },
     ];
 
     switch (layout) {
+        // No, Nama Barang, Volume, Satuan, Harga Satuan, Jumlah Harga.
         case 'surat-pesanan':
         case 'purchase-order':
+            return {
+                columns: [
+                    ...quantity,
+                    { field: 'unit_price', label: 'Harga Satuan' },
+                ],
+                amount: 'Jumlah Harga',
+            };
         case 'spk':
         case 'lampiran-spk':
-            return [
-                ...goods('Part No.', 'Volume'),
-                { field: 'unit_price', label: 'Harga Satuan' },
-            ];
+            return {
+                columns: [
+                    ...quantity,
+                    { field: 'unit_price', label: 'Harga Satuan' },
+                ],
+                amount: 'Jumlah',
+            };
+        // No, Stock Code, Nama Barang, Qty, Stn, Harga HPE (the amount).
         case 'hpe':
+            return {
+                columns: [
+                    { field: 'part_number', label: 'Stock Code' },
+                    { field: 'volume', label: 'Qty' },
+                    { field: 'unit', label: 'Stn' },
+                    { field: 'price_before', label: 'Harga Satuan' },
+                ],
+                amount: 'Harga HPE',
+            };
+        // No, Stock Code, Nama Barang, Harga (No PO, Tgl PO, Supplier,
+        // Harga Lalu), a column per calon mitra, Harga HPE.
         case 'rab':
-            return [
-                ...goods('Stock Code', 'Qty'),
-                { field: 'price_before', label: 'Harga HPE' },
-            ];
+            return {
+                columns: [
+                    { field: 'part_number', label: 'Stock Code' },
+                    { field: 'previous_po_number', label: 'No PO' },
+                    { field: 'previous_po_date', label: 'Tgl PO' },
+                    { field: 'previous_supplier', label: 'Supplier' },
+                    { field: 'previous_price', label: 'Harga Lalu' },
+                    { field: 'price_before', label: 'Harga HPE' },
+                ],
+                amount: null,
+            };
         case 'penyusunan-hps':
-            return [
-                ...goods('Part No.', 'Volume'),
-                { field: 'price_before', label: 'Harga Satuan HPS' },
-            ];
         case 'penawaran':
-            return [
-                ...goods('Part No.', 'Volume'),
-                { field: 'price_before', label: 'Harga Penawaran' },
-            ];
+            return {
+                columns: [
+                    ...quantity,
+                    { field: 'price_before', label: 'Harga Satuan' },
+                ],
+                amount: 'Jumlah',
+            };
+        // No, Stock Code, Nama Barang, Qty, Satuan.
         case 'upb':
-            return goods('Stock Code', 'Qty');
+            return {
+                columns: [
+                    { field: 'part_number', label: 'Stock Code' },
+                    { field: 'volume', label: 'Qty' },
+                    { field: 'unit', label: 'Satuan' },
+                ],
+                amount: null,
+            };
+        // The BA Negosiasi: the prices before and after negotiation.
         default:
-            return [
-                ...goods('Part No.', 'Volume'),
-                { field: 'price_before', label: 'Harga Sblm Nego' },
-                { field: 'unit_price', label: 'Harga Stlh Nego' },
-            ];
+            return {
+                columns: [
+                    ...quantity,
+                    { field: 'price_before', label: 'Harga Sblm Nego' },
+                    { field: 'unit_price', label: 'Harga Stlh Nego' },
+                ],
+                amount: 'Jumlah',
+            };
     }
 }
 
 const isPrice = (field: Field): field is PriceField =>
     field === 'price_before' || field === 'unit_price';
+const isText = (field: Field): field is TextField =>
+    field !== 'volume' && field !== 'previous_price' && !isPrice(field);
 
 let nextKey = 0;
 const newKey = () => `row-${++nextKey}`;
@@ -108,6 +166,10 @@ const emptyItem = (): Row => ({
     unit: '',
     price_before: '',
     unit_price: '',
+    previous_po_number: '',
+    previous_po_date: '',
+    previous_supplier: '',
+    previous_price: '',
     quotes: {},
 });
 
@@ -169,6 +231,13 @@ function rowsFrom(items: ProcurementItem[]): Row[] {
                     : formatNumber(item.price_before),
             unit_price:
                 item.unit_price === null ? '' : formatNumber(item.unit_price),
+            previous_po_number: item.previous_po_number ?? '',
+            previous_po_date: item.previous_po_date ?? '',
+            previous_supplier: item.previous_supplier ?? '',
+            previous_price:
+                item.previous_price == null
+                    ? ''
+                    : formatNumber(item.previous_price),
             quotes: Object.fromEntries(
                 Object.entries(item.quotes ?? {}).map(([partner, price]) => [
                     partner,
@@ -222,6 +291,10 @@ export type ItemRowPayload = {
     unit: string | null;
     price_before: number | null;
     unit_price: number | null;
+    previous_po_number: string | null;
+    previous_po_date: string | null;
+    previous_supplier: string | null;
+    previous_price: number | null;
     /** Kept as they are, so saving from any editor keeps every quote. */
     quotes: Record<string, number>;
 };
@@ -239,6 +312,10 @@ function payloadOf(rows: Row[]): ItemRowPayload[] {
             unit: row.unit.trim() || null,
             price_before: parseMoney(row.price_before),
             unit_price: parseMoney(row.unit_price),
+            previous_po_number: row.previous_po_number.trim() || null,
+            previous_po_date: row.previous_po_date.trim() || null,
+            previous_supplier: row.previous_supplier.trim() || null,
+            previous_price: parseMoney(row.previous_price),
             quotes: Object.fromEntries(
                 Object.entries(row.quotes).flatMap(([partner, price]) => {
                     const value = parseMoney(price);
@@ -289,13 +366,13 @@ export function ItemListCard({
         setRowsState(rowsFrom(items));
     }, [items]);
 
-    const columns = columnsFor(layout);
+    const { columns, amount: amountLabel } = layoutFor(layout);
     const goodsColumns = columns.filter((column) => !isPrice(column.field));
     const priceColumns = columns.filter(
         (column): column is Column & { field: PriceField } =>
             isPrice(column.field),
     );
-    const hasAmount = priceColumns.length > 0;
+    const hasAmount = amountLabel !== null;
     // Uraian, then every column up to the amount.
     const span = 1 + columns.length + partners.length + (hasAmount ? 1 : 0);
 
@@ -411,25 +488,21 @@ export function ItemListCard({
     const cell =
         'h-8 border-input bg-muted px-2 text-xs shadow-none hover:border-primary/60 focus-visible:bg-background';
     const alignOf = (field: Field) =>
-        field === 'part_number' || field === 'unit'
-            ? 'text-left'
-            : 'text-right';
+        isText(field) ? 'text-left' : 'text-right';
     const widthOf = (field: Field) =>
-        field === 'part_number'
-            ? 'w-28'
-            : field === 'volume' || field === 'unit'
-              ? 'w-20'
-              : 'w-32';
+        field === 'volume' || field === 'unit'
+            ? 'w-20'
+            : field === 'previous_supplier'
+              ? 'w-36'
+              : isText(field)
+                ? 'w-28'
+                : 'w-32';
 
     const fieldInput = (row: Row, index: number, field: Field) => (
         <td key={field} className="px-1 py-1">
             <Input
                 className={cn(cell, alignOf(field), 'tabular')}
-                inputMode={
-                    field === 'part_number' || field === 'unit'
-                        ? 'text'
-                        : 'decimal'
-                }
+                inputMode={isText(field) ? 'text' : 'decimal'}
                 value={row[field]}
                 onChange={(event) =>
                     update(index, { [field]: event.target.value })
@@ -455,6 +528,12 @@ export function ItemListCard({
 
     return (
         <section className="rounded-md border border-border bg-card">
+            {layout === 'rab' && partners.length === 0 && (
+                <p className="border-b border-border px-4 py-2 text-xs text-muted-foreground">
+                    Belum ada calon mitra. Tambahkan calon mitra pada pengadaan
+                    ini agar kolom harga tiap mitra muncul di sini.
+                </p>
+            )}
             {rows.length === 0 && !editable ? (
                 <p className="px-4 py-6 text-center text-xs text-muted-foreground">
                     Belum ada rincian item.
@@ -506,7 +585,7 @@ export function ItemListCard({
                                 ))}
                                 {hasAmount && (
                                     <th className="w-32 px-2 py-2 text-right">
-                                        Jumlah
+                                        {amountLabel}
                                     </th>
                                 )}
                                 {editable && <th className="w-40 px-2 py-2" />}
@@ -749,22 +828,41 @@ export function ItemListCard({
                                 >
                                     Total ({itemRows.length} item)
                                 </td>
+                                {/* Two prices (BA Negosiasi) total each under
+                                    its own column; one price totals under the
+                                    amount; a table without amounts has none. */}
                                 {priceColumns.map((column) => (
                                     <td
                                         key={column.field}
                                         className="tabular px-2 py-2 text-right"
                                     >
-                                        {formatNumber(
-                                            itemRows.reduce(
-                                                (sum, row) =>
-                                                    sum +
-                                                    amount(row, column.field),
-                                                0,
-                                            ),
-                                        )}
+                                        {hasAmount &&
+                                            priceColumns.length > 1 &&
+                                            formatNumber(
+                                                itemRows.reduce(
+                                                    (sum, row) =>
+                                                        sum +
+                                                        amount(
+                                                            row,
+                                                            column.field,
+                                                        ),
+                                                    0,
+                                                ),
+                                            )}
                                     </td>
                                 ))}
-                                {hasAmount && <td className="px-2 py-2" />}
+                                {hasAmount && (
+                                    <td className="tabular px-2 py-2 text-right">
+                                        {priceColumns.length === 1 &&
+                                            formatNumber(
+                                                itemRows.reduce(
+                                                    (sum, row) =>
+                                                        sum + lineTotal(row),
+                                                    0,
+                                                ),
+                                            )}
+                                    </td>
+                                )}
                                 {editable && <td />}
                             </tr>
                         </tfoot>

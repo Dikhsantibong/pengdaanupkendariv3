@@ -24,8 +24,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $unit
  * @property string|null $price_before
  * @property string|null $unit_price
+ * @property string|null $previous_po_number
+ * @property string|null $previous_po_date
+ * @property string|null $previous_supplier
+ * @property string|null $previous_price
  */
-#[Fillable(['sort_order', 'group_name', 'description', 'part_number', 'volume', 'unit', 'price_before', 'unit_price'])]
+#[Fillable(['sort_order', 'group_name', 'description', 'part_number', 'volume', 'unit', 'price_before', 'unit_price', 'previous_po_number', 'previous_po_date', 'previous_supplier', 'previous_price'])]
 class ProcurementContractItem extends Model
 {
     /**
@@ -84,6 +88,7 @@ class ProcurementContractItem extends Model
             'volume' => 'decimal:3',
             'price_before' => 'decimal:2',
             'unit_price' => 'decimal:2',
+            'previous_price' => 'decimal:2',
         ];
     }
 }

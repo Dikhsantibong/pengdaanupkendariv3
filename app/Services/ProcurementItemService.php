@@ -25,7 +25,7 @@ class ProcurementItemService
     /**
      * The items as the document editor's Rincian Item tab lists them.
      *
-     * @return array<int, array{id: int, group_name: string|null, description: string, part_number: string|null, volume: float, unit: string, price_before: float|null, unit_price: float|null, quotes: array<int, float>}>
+     * @return array<int, array{id: int, group_name: string|null, description: string, part_number: string|null, volume: float, unit: string, price_before: float|null, unit_price: float|null, previous_po_number: string|null, previous_po_date: string|null, previous_supplier: string|null, previous_price: float|null, quotes: array<int, float>}>
      */
     public function payload(Procurement $procurement): array
     {
@@ -39,12 +39,38 @@ class ProcurementItemService
                 'unit' => $item->unit,
                 'price_before' => $item->price_before === null ? null : (float) $item->price_before,
                 'unit_price' => $item->unit_price === null ? null : (float) $item->unit_price,
+                'previous_po_number' => $item->previous_po_number,
+                'previous_po_date' => $item->previous_po_date,
+                'previous_supplier' => $item->previous_supplier,
+                'previous_price' => $item->previous_price === null ? null : (float) $item->previous_price,
                 'quotes' => $item->quotations
                     ->mapWithKeys(fn (ProcurementItemQuotation $quote): array => [$quote->procurement_partner_candidate_id => (float) $quote->unit_price])
                     ->all(),
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * The one line the HPE, UPB and Evaluasi Harga templates print before
+     * any item exists (the work itself, 1 Lot at its HPE value), offered as
+     * the starting Rincian Item (unsaved: no id).
+     *
+     * @return array<int, array{id: null, group_name: null, description: string, part_number: null, volume: float, unit: string, price_before: float|null, unit_price: null, quotes: array<int, float>}>
+     */
+    public function draftFromWork(Procurement $procurement): array
+    {
+        return [[
+            'id' => null,
+            'group_name' => null,
+            'description' => $procurement->name,
+            'part_number' => null,
+            'volume' => 1.0,
+            'unit' => 'LOT',
+            'price_before' => (float) $procurement->hpe_value > 0 ? (float) $procurement->hpe_value : null,
+            'unit_price' => null,
+            'quotes' => [],
+        ]];
     }
 
     /**
@@ -175,7 +201,7 @@ class ProcurementItemService
      *
      * @param  array<int, mixed>  $rows
      * @param  array<int, int>|null  $candidates
-     * @return list<array{0: int|null, 1: array{sort_order: int, group_name: string|null, description: string, part_number: string|null, volume: string|int, unit: string, price_before: string|null, unit_price: string|null}, 2: array<int, string>|null}>
+     * @return list<array{0: int|null, 1: array{sort_order: int, group_name: string|null, description: string, part_number: string|null, volume: string|int, unit: string, price_before: string|null, unit_price: string|null, previous_po_number?: string|null, previous_po_date?: string|null, previous_supplier?: string|null, previous_price?: string|null}, 2: array<int, string>|null}>
      */
     protected function flatten(array $rows, ?array $candidates = null): array
     {
@@ -209,18 +235,28 @@ class ProcurementItemService
 
             $lowest = $quotes === null || $quotes === [] ? null : (string) min(array_map('floatval', $quotes));
 
+            $values = [
+                'sort_order' => ++$order,
+                'group_name' => $group,
+                'description' => $description,
+                'part_number' => $text('part_number'),
+                'volume' => $text('volume') ?? 1,
+                'unit' => $text('unit') ?? 'Lot',
+                'price_before' => $text('price_before') ?? $lowest,
+                'unit_price' => $text('unit_price'),
+            ];
+
+            // The last purchase, as the Evaluasi Harga lists it; rows sent
+            // without it leave it as it is.
+            foreach (['previous_po_number', 'previous_po_date', 'previous_supplier', 'previous_price'] as $key) {
+                if (array_key_exists($key, $row)) {
+                    $values[$key] = $text($key);
+                }
+            }
+
             $items[] = [
                 filled($row['id'] ?? null) ? (int) $row['id'] : null,
-                [
-                    'sort_order' => ++$order,
-                    'group_name' => $group,
-                    'description' => $description,
-                    'part_number' => $text('part_number'),
-                    'volume' => $text('volume') ?? 1,
-                    'unit' => $text('unit') ?? 'Lot',
-                    'price_before' => $text('price_before') ?? $lowest,
-                    'unit_price' => $text('unit_price'),
-                ],
+                $values,
                 $quotes,
             ];
         }

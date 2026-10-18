@@ -313,9 +313,8 @@ class ItemTableRenderer
     /**
      * The Evaluasi Harga's table: a row per item with the unit price each
      * calon mitra quoted in its own column (headed by its name) and the
-     * HPE price, the item's own or else the lowest quote. The previous
-     * purchase columns (No PO, Tgl PO, Supplier, Harga Lalu) stay as the
-     * template prints them.
+     * HPE price, the item's own or else the lowest quote, after its last
+     * purchase (No PO, Tgl PO, Supplier, Harga Lalu).
      *
      * @param  Collection<int, ProcurementContractItem>  $items
      * @param  Collection<int, ProcurementPartnerCandidate>  $partners
@@ -357,7 +356,11 @@ class ItemTableRenderer
             $line = '<tr><td class="center">'.$row['label'].'</td>'
                 .'<td>'.e($item->part_number ?? '').'</td>'
                 .'<td>'.$this->description($item).'</td>'
-                .'<td></td><td></td><td></td><td>0,00</td>';
+                .'<td>'.e($item->previous_po_number ?? '').'</td>'
+                .'<td>'.e($item->previous_po_date ?? '').'</td>'
+                .'<td>'.e($item->previous_supplier ?? '').'</td>'
+                // No earlier purchase prints 0,00, as SMART SCM does.
+                .'<td>'.$price($item->previous_price ?? 0).'</td>';
 
             foreach ($quotes as $quote) {
                 $line .= '<td>'.$price($quote).'</td>';

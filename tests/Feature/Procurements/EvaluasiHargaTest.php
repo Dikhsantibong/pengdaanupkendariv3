@@ -76,7 +76,11 @@ class EvaluasiHargaTest extends TestCase
                     ['id' => $this->green->id, 'name' => 'Mitra Hijau. PT'],
                     ['id' => $this->sultra->id, 'name' => 'Sultra Alam Perkasa. PT'],
                 ])
-                ->where('items', []));
+                ->where('itemLayout', 'rab')
+                // No item yet: the work's own line, as the template prints it.
+                ->where('items.0.description', $this->procurement->name)
+                ->where('items.0.id', null)
+                ->where('items.0.unit', 'LOT'));
     }
 
     public function test_the_quotes_are_kept_and_drawn_in_their_columns(): void
@@ -89,6 +93,7 @@ class EvaluasiHargaTest extends TestCase
                 'quotes' => [$this->green->id => 8500, $this->sultra->id => 7500, $foreign->id => 1]],
             ['id' => null, 'kind' => 'group', 'description' => 'Biaya Transportasi Darat'],
             ['id' => null, 'kind' => 'item', 'description' => 'PLTD Raha', 'part_number' => 'SC-7', 'volume' => 1, 'unit' => 'Ls', 'price_before' => 12500000, 'unit_price' => null,
+                'previous_po_number' => 'PO-4471', 'previous_po_date' => '12 Jan 2025', 'previous_supplier' => 'PT Lama', 'previous_price' => 11000000,
                 'quotes' => [$this->green->id => 13000000, $this->sultra->id => null]],
         ])->assertSessionHasNoErrors();
 
@@ -107,7 +112,8 @@ class EvaluasiHargaTest extends TestCase
         $this->assertStringContainsString("BIAYA PEMUSNAHAN (B105D)<br>\nHASIL SEPARASI OIL TRAP", $body);
         $this->assertStringContainsString('<td><b>Biaya Transportasi Darat</b></td>', $body);
         $this->assertStringContainsString('<td>SC-7</td>', $body);
-        $this->assertStringContainsString('<td>13.000.000,00</td><td></td><td class="right">12.500.000,00</td>', $body);
+        // The last purchase under "Harga"; none prints 0,00 (above).
+        $this->assertStringContainsString('<td>PO-4471</td><td>12 Jan 2025</td><td>PT Lama</td><td>11.000.000,00</td><td>13.000.000,00</td><td></td><td class="right">12.500.000,00</td>', $body);
         // The template's empty rows, one cell per column.
         $this->assertSame(2, substr_count($body, '<tr class="blank"><td>&nbsp;</td>'.str_repeat('<td></td>', 9).'</tr>'));
 
@@ -119,6 +125,8 @@ class EvaluasiHargaTest extends TestCase
         ])->all();
         $this->save($hpe, $rows)->assertSessionHasNoErrors();
         $this->assertSame(3, ProcurementContractItem::query()->withCount('quotations')->get()->sum('quotations_count'));
+        // ... and so does the last purchase.
+        $this->assertSame('PO-4471', ProcurementContractItem::query()->where('description', 'PLTD Raha')->value('previous_po_number'));
     }
 
     public function test_a_new_calon_mitra_gets_its_column_in_the_document(): void
