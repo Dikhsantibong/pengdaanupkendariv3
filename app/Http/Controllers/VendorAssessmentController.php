@@ -8,6 +8,7 @@ use App\Http\Requests\VendorAssessments\UpdateVendorAssessmentRequest;
 use App\Http\Requests\VendorAssessments\UpdateVendorAssessmentScoresRequest;
 use App\Models\AssessmentAspect;
 use App\Models\AssessmentForm;
+use App\Models\Partner;
 use App\Models\Procurement;
 use App\Models\VendorAssessment;
 use App\Models\VendorAssessmentRequest;
@@ -17,6 +18,7 @@ use App\Services\VendorAssessmentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -27,6 +29,7 @@ use OpenSpout\Common\Entity\Style\CellVerticalAlignment;
 use OpenSpout\Common\Entity\Style\Style;
 use OpenSpout\Writer\XLSX\Options;
 use OpenSpout\Writer\XLSX\Writer;
+use stdClass;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use ZipArchive;
 
@@ -43,8 +46,10 @@ class VendorAssessmentController extends Controller
      */
     public function index(Request $request): Response
     {
-        $assessments = VendorAssessment::query()
-            ->with(['procurement', 'creator', 'scores'])
+        // One folder per vendor (spelling and spacing aside), the vendor
+        // assessed most recently first, with how many of its assessments
+        // have every aspect scored.
+        $vendors = VendorAssessment::query()
             ->when($request->string('search')->trim()->value(), function ($query, string $search): void {
                 $query->where(function ($inner) use ($search): void {
                     $inner->where('project', 'like', "%{$search}%")
@@ -52,13 +57,69 @@ class VendorAssessmentController extends Controller
                         ->orWhere('po_number', 'like', "%{$search}%");
                 });
             })
-            ->latest('created_at')
-            ->paginate(15)
+            ->selectRaw('LOWER(TRIM(vendor_name)) as vendor_key')
+            ->selectRaw('MIN(TRIM(vendor_name)) as vendor_name')
+            ->selectRaw('COUNT(*) as assessment_count')
+            ->selectRaw('SUM(CASE WHEN EXISTS (SELECT 1 FROM vendor_assessment_scores s WHERE s.vendor_assessment_id = vendor_assessments.id)
+                AND NOT EXISTS (SELECT 1 FROM vendor_assessment_scores s WHERE s.vendor_assessment_id = vendor_assessments.id AND s.level IS NULL)
+                THEN 1 ELSE 0 END) as complete_count')
+            ->selectRaw('MAX(created_at) as latest_at')
+            ->groupByRaw('LOWER(TRIM(vendor_name))');
+
+        $folders = DB::query()
+            ->fromSub($vendors, 'vendors')
+            ->orderByDesc('latest_at')
+            ->orderBy('vendor_name')
+            ->paginate(30)
             ->withQueryString()
-            ->through(fn (VendorAssessment $assessment): array => [
+            ->through(fn (stdClass $row): array => [
+                'name' => (string) $row->vendor_name,
+                'assessment_count' => (int) $row->assessment_count,
+                'complete_count' => (int) $row->complete_count,
+                'latest_at' => $row->latest_at === null ? null : (string) $row->latest_at,
+            ]);
+
+        return Inertia::render('vendor-assessments/index', [
+            'vendors' => $folders,
+            'requests' => $this->requestsPayload(),
+            'requestFormUrl' => VendorAssessmentRequest::formUrl(),
+            'filters' => [
+                'search' => $request->string('search')->trim()->value() ?: null,
+            ],
+        ]);
+    }
+
+    /**
+     * Open one vendor's folder on a page of its own: its assessments listed,
+     * the chosen one's certificate or sheets shown large as a PDF.
+     */
+    public function vendor(Request $request): Response
+    {
+        $name = $request->string('nama')->trim()->value();
+        abort_if($name === '', 404);
+
+        $assessments = VendorAssessment::query()
+            ->whereRaw('LOWER(TRIM(vendor_name)) = ?', [mb_strtolower($name)])
+            ->with(['procurement', 'creator', 'scores'])
+            ->latest('created_at')
+            ->latest('id')
+            ->get();
+
+        abort_if($assessments->isEmpty(), 404);
+
+        $partner = Partner::query()->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])->first();
+
+        return Inertia::render('vendor-assessments/vendor', [
+            'vendor' => [
+                // Spelled as in Data Master Mitra when the vendor is there.
+                'name' => $partner->name ?? trim($assessments->first()->vendor_name),
+                'vendor_code' => $partner?->vendor_code,
+                'director_name' => $partner?->director_name,
+                'address' => $partner?->address,
+            ],
+            'assessments' => $assessments->map(fn (VendorAssessment $assessment): array => [
                 'id' => $assessment->id,
                 'project' => $assessment->project,
-                'vendor_name' => $assessment->vendor_name,
                 'po_number' => $assessment->po_number,
                 'po_date' => $assessment->po_date?->toDateString(),
                 'amendment_number' => $assessment->amendment_number,
@@ -68,15 +129,11 @@ class VendorAssessmentController extends Controller
                 'total' => $assessment->scores->count(),
                 'created_by' => $assessment->creator?->name,
                 'created_at' => $assessment->created_at?->toDateTimeString(),
-            ]);
-
-        return Inertia::render('vendor-assessments/index', [
-            'assessments' => $assessments,
-            'requests' => $this->requestsPayload(),
-            'requestFormUrl' => VendorAssessmentRequest::formUrl(),
-            'filters' => [
+            ])->all(),
+            'back' => array_filter([
                 'search' => $request->string('search')->trim()->value() ?: null,
-            ],
+                'page' => $request->integer('page') > 1 ? $request->integer('page') : null,
+            ]),
         ]);
     }
 
@@ -185,14 +242,7 @@ class VendorAssessmentController extends Controller
                     'value' => $row->id,
                     'label' => "{$row->number} — {$row->name}",
                 ])->all(),
-            'vendors' => cache()->remember('unique_vendor_names', 3600, function () {
-                return VendorAssessment::query()
-                    ->select('vendor_name')
-                    ->distinct()
-                    ->orderBy('vendor_name')
-                    ->pluck('vendor_name')
-                    ->all();
-            }),
+            // The vendor's name is suggested from the Mitra master data.
         ]);
     }
 

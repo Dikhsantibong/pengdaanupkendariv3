@@ -13,6 +13,8 @@ Route::middleware(['auth', 'verified', 'can:manage-vendor-assessments'])
         Route::get('/', [VendorAssessmentController::class, 'index'])->name('index');
         Route::get('ekspor', [VendorAssessmentController::class, 'export'])->name('export');
         Route::get('buat', [VendorAssessmentController::class, 'create'])->name('create');
+        // One vendor's folder: its assessments with the PDF shown large.
+        Route::get('mitra', [VendorAssessmentController::class, 'vendor'])->name('vendor');
         // Invoice details sent in by vendors through the fixed request link.
         Route::delete('permintaan/{assessmentRequest}', [VendorAssessmentRequestController::class, 'destroy'])
             ->name('requests.destroy');

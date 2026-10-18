@@ -37,6 +37,27 @@ class DocumentEditingTest extends TestCase
             );
     }
 
+    public function test_the_editor_opens_when_the_pic_accounts_were_deleted(): void
+    {
+        $planner = User::factory()->teamLeader()->create();
+        $executor = User::factory()->create();
+        [$procurement, $document] = $this->generate([], $planner);
+        $procurement->forceFill(['executor_id' => $executor->id])->save();
+
+        $planner->delete();
+        $executor->delete();
+
+        $this->actingAs(User::factory()->teamLeader()->create())
+            ->get(route('procurements.documents.edit', [$procurement, $document]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('procurements/document-editor')
+                ->where('placeholders', fn ($placeholders) => collect($placeholders)
+                    ->whereIn('key', ['pic_perencana', 'pic_pelaksana'])
+                    ->every(fn (array $placeholder): bool => $placeholder['value'] === '-'))
+            );
+    }
+
     public function test_an_edit_replaces_the_body_and_counts_as_a_revision(): void
     {
         [$procurement, $document] = $this->generate();

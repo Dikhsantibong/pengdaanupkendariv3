@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
+import { PartnerNameInput } from '@/components/partner-name-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -301,7 +302,30 @@ function CandidateForm({
             }}
         >
             <div className="grid gap-3 md:grid-cols-2">
-                {text('name', 'Nama Calon Mitra')}
+                <div className="grid gap-1.5">
+                    <Label htmlFor={`${prefix}-name`}>Nama Calon Mitra</Label>
+                    <PartnerNameInput
+                        id={`${prefix}-name`}
+                        value={form.data.name}
+                        onChange={(name) => form.setData('name', name)}
+                        // A known partner brings its details from Data Master
+                        // Mitra; they stay editable here.
+                        onPick={(partner) =>
+                            form.setData((data) => ({
+                                ...data,
+                                name: partner.name,
+                                vendor_code: partner.vendor_code ?? '',
+                                director_name: partner.director_name ?? '',
+                                address: partner.address ?? '',
+                            }))
+                        }
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                        Ketik awal nama mitra untuk memilih dari Data Master
+                        Mitra; mitra baru otomatis tersimpan ke sana.
+                    </p>
+                    <InputError message={form.errors.name} />
+                </div>
                 {text('vendor_code', 'Kode Rekanan')}
                 {text('director_name', 'Nama Direktur')}
                 {text('quotation_number', 'Nomor Surat Penawaran')}

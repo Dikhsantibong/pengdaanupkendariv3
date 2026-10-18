@@ -271,6 +271,8 @@ export type ProcurementFilters = {
     work_director_id: number | null;
     target_unit_id: number | null;
     budget_source_id: number | null;
+    contract_number_format_id: number | null;
+    contract_type_id: number | null;
     planner_id: number | null;
     executor_id: number | null;
 };

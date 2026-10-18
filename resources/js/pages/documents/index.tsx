@@ -1,17 +1,9 @@
 import { Head, Link, router } from '@inertiajs/react';
-import {
-    Archive,
-    Download,
-    Eye,
-    Folder,
-    FolderOpen,
-    Search,
-} from 'lucide-react';
+import { Archive, Folder, FolderOpen, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -21,33 +13,19 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import { formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import documents from '@/routes/documents';
-import procurements from '@/routes/procurements';
 import type { Option, Paginated } from '@/types';
 
 const ALL = 'all';
 
-type ArchiveRow = {
+/** One procurement (pekerjaan), opened as a folder of its own page. */
+type ArchiveGroup = {
     id: number;
-    title: string;
-    type: string;
-    template_version: number;
-    procurement_id: number;
-    procurement_number: string;
-    procurement_name: string;
-    generated_by: string | null;
-    generated_at: string;
+    number: string;
+    name: string;
+    document_count: number;
 };
 
 type ArchiveFolder = {
@@ -58,12 +36,12 @@ type ArchiveFolder = {
 };
 
 export default function DocumentArchive({
-    documents: page,
+    groups: page,
     folders,
     filters,
     documentTypes,
 }: {
-    documents: Paginated<ArchiveRow>;
+    groups: Paginated<ArchiveGroup>;
     folders: ArchiveFolder[];
     filters: {
         search: string | null;
@@ -75,6 +53,18 @@ export default function DocumentArchive({
     const openFolder = folders.find((folder) => folder.key === filters.folder);
 
     const [search, setSearch] = useState(filters.search ?? '');
+    // The filters a work folder is opened from, to come back to them.
+    const folderQuery = Object.fromEntries(
+        Object.entries({
+            ...filters,
+            page:
+                (page.meta?.current_page ?? page.current_page ?? 1) > 1
+                    ? (page.meta?.current_page ?? page.current_page)
+                    : null,
+        }).filter(([, value]) => value !== null && value !== undefined),
+    ) as Record<string, string | number>;
+    const perPage = page.meta?.per_page ?? page.per_page ?? 30;
+    const isFullPage = page.data.length >= perPage;
     const isFirstRender = useRef(true);
 
     const visit = (overrides: Record<string, string | number | null>) => {
@@ -113,11 +103,11 @@ export default function DocumentArchive({
         <>
             <Head title="Arsip Dokumen" />
 
-            <div className="flex flex-col gap-4 p-4 md:p-6">
+            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
                 <PageHeader
                     eyebrow="Pengadaan"
                     title="Arsip Dokumen"
-                    description="Seluruh dokumen yang pernah digenerate tersimpan apa adanya, dikelompokkan dalam folder per jenis kontrak (SPK, PJ, SPPL)."
+                    description="Seluruh dokumen yang pernah digenerate tersimpan apa adanya, dikelompokkan dalam folder per jenis kontrak (SPK, PJ, SPPL) lalu per pekerjaan."
                 />
 
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -191,7 +181,7 @@ export default function DocumentArchive({
                                 placeholder={
                                     openFolder
                                         ? `Cari di folder ${openFolder.name}`
-                                        : 'Judul dokumen atau nomor pengadaan'
+                                        : 'Judul dokumen, nomor, atau nama pekerjaan'
                                 }
                                 className="pl-9"
                             />
@@ -244,102 +234,46 @@ export default function DocumentArchive({
                         />
                     </div>
                 ) : (
-                    <div className="overflow-hidden rounded-md border border-border bg-card">
-                        <Table>
-                            <TableHeader className="bg-muted/60">
-                                <TableRow className="hover:bg-transparent">
-                                    <TableHead>Dokumen</TableHead>
-                                    <TableHead>Pengadaan</TableHead>
-                                    <TableHead>Jenis</TableHead>
-                                    <TableHead>Digenerate</TableHead>
-                                    <TableHead className="text-right">
-                                        Aksi
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {page.data.map((row) => (
-                                    <TableRow key={row.id}>
-                                        <TableCell className="font-medium">
-                                            {row.title}
-                                            <span className="tabular block text-xs font-normal text-muted-foreground">
-                                                Template v{row.template_version}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Link
-                                                href={procurements.show(
-                                                    row.procurement_id,
-                                                )}
-                                                className="block max-w-[16rem] truncate hover:text-primary hover:underline"
-                                            >
-                                                {row.procurement_name}
-                                            </Link>
-                                            <span className="tabular text-xs text-muted-foreground">
-                                                {row.procurement_number}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell>{row.type}</TableCell>
-                                        <TableCell className="tabular text-xs text-muted-foreground">
-                                            {formatDateTime(row.generated_at)}
-                                            {row.generated_by
-                                                ? ` · ${row.generated_by}`
-                                                : ''}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <Button
-                                                    asChild
-                                                    size="sm"
-                                                    variant="ghost"
-                                                >
-                                                    <a
-                                                        href={`${
-                                                            procurements.documents.show(
-                                                                {
-                                                                    procurement:
-                                                                        row.procurement_id,
-                                                                    document:
-                                                                        row.id,
-                                                                },
-                                                            ).url
-                                                        }?format=html`}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                    >
-                                                        <Eye className="size-3.5" />
-                                                        Pratinjau
-                                                    </a>
-                                                </Button>
-                                                <Button
-                                                    asChild
-                                                    size="sm"
-                                                    variant="outline"
-                                                >
-                                                    <a
-                                                        href={
-                                                            procurements.documents.show(
-                                                                {
-                                                                    procurement:
-                                                                        row.procurement_id,
-                                                                    document:
-                                                                        row.id,
-                                                                },
-                                                            ).url
-                                                        }
-                                                    >
-                                                        <Download className="size-3.5" />
-                                                        Unduh PDF
-                                                    </a>
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                    <div className="flex flex-1 flex-col gap-4">
+                        <div
+                            className={cn(
+                                'grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5',
+                                // A full page stretches its rows to the bottom
+                                // of the screen, leaving no empty band.
+                                isFullPage && 'flex-1 auto-rows-fr',
+                            )}
+                        >
+                            {page.data.map((group) => (
+                                <Link
+                                    key={group.id}
+                                    href={
+                                        documents.procurement(group.id, {
+                                            query: folderQuery,
+                                        }).url
+                                    }
+                                    title={group.name}
+                                    className="group flex h-full items-start gap-2 rounded-md border border-border bg-card p-2.5 text-left transition-colors hover:border-primary/50 hover:bg-accent/40"
+                                >
+                                    <Folder className="mt-0.5 size-5 shrink-0 text-amber-500 group-hover:hidden dark:text-amber-400" />
+                                    <FolderOpen className="mt-0.5 hidden size-5 shrink-0 text-primary group-hover:block" />
+                                    <span className="min-w-0">
+                                        <span className="line-clamp-2 text-xs font-semibold text-foreground">
+                                            {group.name}
+                                        </span>
+                                        <span className="tabular block truncate text-[11px] text-muted-foreground">
+                                            {group.number}
+                                        </span>
+                                        <span className="tabular block text-[11px] text-muted-foreground">
+                                            {group.document_count} dokumen
+                                        </span>
+                                    </span>
+                                </Link>
+                            ))}
+                        </div>
 
-                        <DataPagination page={page} />
+                        <div className="mt-auto overflow-hidden rounded-md border border-border bg-card">
+                            <DataPagination page={page} />
+                        </div>
                     </div>
                 )}
             </div>

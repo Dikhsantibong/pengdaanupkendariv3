@@ -37,6 +37,8 @@ class ProcurementFilters
                     ->orWhereHas('targetUnits', fn (Builder $units) => $units->where('target_units.id', $id)),
             ))
             ->when($request->integer('budget_source_id'), fn (Builder $builder, int $id) => $builder->where('budget_source_id', $id))
+            ->when($request->integer('contract_number_format_id'), fn (Builder $builder, int $id) => $builder->where('contract_number_format_id', $id))
+            ->when($request->integer('contract_type_id'), fn (Builder $builder, int $id) => $builder->where('contract_type_id', $id))
             ->when($request->integer('planner_id'), fn (Builder $builder, int $id) => $builder->where('planner_id', $id))
             ->when($request->integer('executor_id'), fn (Builder $builder, int $id) => $builder->where('executor_id', $id))
             ->when(
@@ -58,6 +60,8 @@ class ProcurementFilters
             'work_director_id' => $request->integer('work_director_id') ?: null,
             'target_unit_id' => $request->integer('target_unit_id') ?: null,
             'budget_source_id' => $request->integer('budget_source_id') ?: null,
+            'contract_number_format_id' => $request->integer('contract_number_format_id') ?: null,
+            'contract_type_id' => $request->integer('contract_type_id') ?: null,
             'planner_id' => $request->integer('planner_id') ?: null,
             'executor_id' => $request->integer('executor_id') ?: null,
             'approval_state' => PlanningApprovalState::tryFrom(

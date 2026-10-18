@@ -1,27 +1,51 @@
 import { router, useForm } from '@inertiajs/react';
-import { FileCheck2, Trash2, Upload } from 'lucide-react';
-import { useRef } from 'react';
+import {
+    ChevronDown,
+    FileCheck2,
+    FileWarning,
+    Trash2,
+    Upload,
+} from 'lucide-react';
+import { useRef, useState } from 'react';
 import InputError from '@/components/input-error';
+import {
+    UploadedFileRows,
+    UploadPreviewDialog,
+} from '@/components/procurement/signed-upload-list';
 import { Button } from '@/components/ui/button';
-import { formatDateTime } from '@/lib/format';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import procurements from '@/routes/procurements';
 import type { ChecklistFile } from '@/types';
 
 /**
  * The papers that evidence a Penyerahan or Pembayaran requirement: the step
  * is finished by uploading them, not by a bare tick.
+ *
+ * Laid out like a document of the Perencanaan and Pelaksanaan steps: a
+ * labelled box with its status, the files opening a preview from their
+ * name, and the upload and delete buttons side by side.
  */
 export function ChecklistFileList({
     procurementId,
     checklistId,
+    name,
     files,
     canManage,
 }: {
     procurementId: number;
     checklistId: number;
+    /** The requirement the files evidence. */
+    name: string;
     files: ChecklistFile[];
     canManage: boolean;
 }) {
+    const [previewFile, setPreviewFile] = useState<ChecklistFile | null>(null);
     const input = useRef<HTMLInputElement>(null);
     const form = useForm<{ files: File[] }>({ files: [] });
 
@@ -66,73 +90,102 @@ export function ChecklistFileList({
         .map(([, message]) => message)
         .filter(Boolean);
 
-    return (
-        <div className="mt-2 space-y-1.5 rounded-sm border border-border p-2">
-            <p className="text-xs font-medium text-muted-foreground">
-                {files.length > 0
-                    ? `Berkas terunggah · ${files.length}`
-                    : 'Wajib unggah berkas sebelum dicentang'}
-            </p>
+    const filed = files.length > 0;
+    const deleteClass =
+        'text-destructive hover:bg-destructive/10 hover:text-destructive';
 
-            {files.length > 0 && (
-                <ul className="space-y-1">
-                    {files.map((file) => (
-                        <li
-                            key={file.id}
-                            className="flex items-center justify-between gap-2 rounded px-1.5 py-1 hover:bg-muted/40"
-                        >
-                            <div className="flex min-w-0 items-start gap-1.5">
-                                <FileCheck2 className="mt-0.5 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                                <div className="min-w-0">
-                                    <a
-                                        href={file.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="block truncate text-xs font-medium text-foreground hover:text-primary hover:underline"
-                                    >
-                                        {file.file_name}
-                                    </a>
-                                    <p className="tabular text-[11px] text-muted-foreground">
-                                        {formatDateTime(file.uploaded_at)}
-                                        {file.uploaded_by
-                                            ? ` · ${file.uploaded_by}`
-                                            : ''}
-                                    </p>
-                                </div>
-                            </div>
-                            {canManage && (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6.5 shrink-0 px-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                    title="Hapus berkas"
-                                    onClick={() => remove(file)}
-                                >
-                                    <Trash2 className="size-3.5" />
-                                    <span className="sr-only">Hapus</span>
-                                </Button>
-                            )}
-                        </li>
-                    ))}
-                </ul>
-            )}
+    return (
+        <div className="mt-2 space-y-1.5 rounded-sm border border-border bg-muted/30 p-2.5">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="flex items-center gap-1.5 text-xs font-medium">
+                    {filed ? (
+                        <FileCheck2 className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                    ) : (
+                        <FileWarning className="size-3.5 text-amber-600 dark:text-amber-400" />
+                    )}
+                    Dokumen {name}
+                </span>
+                <span
+                    className={
+                        filed
+                            ? 'rounded-sm bg-emerald-500/10 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400'
+                            : 'rounded-sm bg-amber-500/10 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400'
+                    }
+                >
+                    {filed
+                        ? `Terunggah · ${files.length} berkas`
+                        : 'Wajib diunggah'}
+                </span>
+            </div>
+
+            <UploadedFileRows files={files} onPreview={setPreviewFile} />
 
             {canManage && (
                 <>
-                    <Button
-                        size="sm"
-                        variant={files.length > 0 ? 'ghost' : 'outline'}
-                        disabled={form.processing}
-                        onClick={() => input.current?.click()}
-                    >
-                        <Upload className="size-3.5" />
-                        {form.processing
-                            ? 'Mengunggah…'
-                            : files.length > 0
-                              ? 'Tambah Berkas'
-                              : 'Unggah Berkas'}
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <Button
+                            size="sm"
+                            variant={filed ? 'ghost' : 'outline'}
+                            disabled={form.processing}
+                            onClick={() => input.current?.click()}
+                        >
+                            <Upload className="size-3.5" />
+                            {form.processing
+                                ? 'Mengunggah…'
+                                : filed
+                                  ? 'Tambah Berkas'
+                                  : 'Unggah Dokumen'}
+                        </Button>
+
+                        {files.length === 1 && (
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className={deleteClass}
+                                onClick={() => remove(files[0])}
+                            >
+                                <Trash2 className="size-3.5" />
+                                Hapus
+                            </Button>
+                        )}
+
+                        {files.length > 1 && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="outline"
+                                        className={deleteClass}
+                                    >
+                                        <Trash2 className="size-3.5" />
+                                        Hapus
+                                        <ChevronDown className="size-3.5" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                    align="start"
+                                    className="max-w-80"
+                                >
+                                    <DropdownMenuLabel className="text-xs text-muted-foreground">
+                                        Pilih berkas yang dihapus
+                                    </DropdownMenuLabel>
+                                    {files.map((file) => (
+                                        <DropdownMenuItem
+                                            key={file.id}
+                                            onSelect={() => remove(file)}
+                                        >
+                                            <span className="truncate">
+                                                {file.file_name}
+                                            </span>
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        )}
+                    </div>
+
                     <input
                         ref={input}
                         type="file"
@@ -147,10 +200,11 @@ export function ChecklistFileList({
                             }
                         }}
                     />
-                    {files.length === 0 && (
+
+                    {!filed && (
                         <p className="text-[11px] text-muted-foreground">
-                            PDF/JPG/PNG, maks 20 MB per berkas, bisa beberapa
-                            sekaligus.
+                            Bisa pilih beberapa berkas sekaligus. PDF/JPG/PNG,
+                            maks 20 MB per berkas.
                         </p>
                     )}
                 </>
@@ -159,6 +213,17 @@ export function ChecklistFileList({
             {errors.map((message) => (
                 <InputError key={message} message={message} />
             ))}
+
+            <UploadPreviewDialog
+                file={previewFile}
+                previewUrl={previewFile?.url ?? ''}
+                downloadUrl={
+                    previewFile
+                        ? `${previewFile.url}${previewFile.url.includes('?') ? '&' : '?'}download=1`
+                        : ''
+                }
+                onClose={() => setPreviewFile(null)}
+            />
         </div>
     );
 }

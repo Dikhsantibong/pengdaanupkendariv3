@@ -249,6 +249,22 @@ class MasterDataOptions
     }
 
     /**
+     * Get the contract formats (SPK, PJ, SPPL) a list can be filtered by,
+     * without the Amandemen and Delivery Order numbering.
+     *
+     * @return array<int, array{value: int, label: string, description: string}>
+     */
+    public static function contractFormats(): array
+    {
+        return ContractNumberFormat::query()->forContracts()->ordered()->get()
+            ->map(fn (ContractNumberFormat $format): array => [
+                'value' => $format->id,
+                'label' => $format->code,
+                'description' => $format->name,
+            ])->all();
+    }
+
+    /**
      * Get the selectable sumber anggaran.
      *
      * @return array<int, array{value: int, label: string, description: string|null}>

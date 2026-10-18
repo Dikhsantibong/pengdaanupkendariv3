@@ -9,11 +9,13 @@ use App\Http\Controllers\MasterData\ContractNumberFormatController;
 use App\Http\Controllers\MasterData\ContractTypeController;
 use App\Http\Controllers\MasterData\DocumentTemplateController;
 use App\Http\Controllers\MasterData\DocumentTypeController;
+use App\Http\Controllers\MasterData\PartnerController;
 use App\Http\Controllers\MasterData\ProcurementMethodController;
 use App\Http\Controllers\MasterData\ProgressStatusController;
 use App\Http\Controllers\MasterData\TargetUnitController;
 use App\Http\Controllers\MasterData\UnitManagerController;
 use App\Http\Controllers\MasterData\WorkDirectorController;
+use App\Http\Controllers\PartnerSuggestionController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -34,7 +36,14 @@ Route::middleware(['auth', 'verified', 'can:manage-master-data'])
         Route::resource('document-templates', DocumentTemplateController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
         Route::resource('assessment-aspects', AssessmentAspectController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('assessment-forms', AssessmentFormController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::resource('partners', PartnerController::class)->only(['index', 'store', 'update', 'destroy']);
     });
+
+// The Mitra master data offered while a partner's name is typed (calon
+// mitra, penilaian penyedia).
+Route::middleware(['auth', 'verified', 'throttle:120,1'])
+    ->get('mitra/saran', PartnerSuggestionController::class)
+    ->name('partners.suggest');
 
 Route::middleware(['auth', 'verified', 'can:manage-users'])->group(function () {
     Route::get('hak-akses', [AccessRightController::class, 'index'])->name('access-rights.index');

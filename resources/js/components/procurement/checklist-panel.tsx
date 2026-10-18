@@ -162,6 +162,7 @@ export function ChecklistPanel({
                                 <ChecklistFileList
                                     procurementId={procurementId}
                                     checklistId={row.id}
+                                    name={row.name}
                                     files={row.files}
                                     canManage={editable}
                                 />

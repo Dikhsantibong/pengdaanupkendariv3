@@ -119,6 +119,112 @@ class VendorAssessmentTest extends TestCase
         $this->assertSame(3.5, $assessment->averageFor($k3Aspect->id));
     }
 
+    public function test_the_list_tells_a_fully_scored_assessment_apart(): void
+    {
+        [$complete, $administrator] = $this->openAssessment();
+        $partial = app(VendorAssessmentService::class)->create([
+            'project' => 'Pengadaan Pompa',
+            'vendor_name' => 'CV. Lain',
+            'form_number' => 'SMT-FM-DAN-02.02',
+            'revision_number' => '03',
+            'form_date' => '2026-06-10',
+            'place' => 'Kendari',
+        ], $administrator);
+
+        // Every sheet of one assessment scored, the other only one aspect.
+        foreach (AssessmentForm::query()->with('aspects')->get() as $form) {
+            $this->scoreSheet($complete, $administrator, $form->code, $form->aspects->mapWithKeys(fn (AssessmentAspect $aspect): array => [$aspect->id => 4])->all());
+        }
+        $this->scoreSheet($partial, $administrator, 'pengadaan', [AssessmentAspect::query()->where('code', 'integritas')->value('id') => 4]);
+
+        // Each vendor's folder counts its fully scored assessments.
+        $this->actingAs($administrator)
+            ->get(route('vendor-assessments.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('vendors.data', function ($rows): bool {
+                    $byName = collect($rows)->keyBy('name');
+
+                    return $byName['PT. Surveyor Indonesia']['complete_count'] === 1
+                        && $byName['PT. Surveyor Indonesia']['assessment_count'] === 1
+                        && $byName['CV. Lain']['complete_count'] === 0;
+                }));
+
+        // ... and the folder's page tells each assessment apart.
+        $this->actingAs($administrator)
+            ->get(route('vendor-assessments.vendor', ['nama' => 'CV. Lain']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('assessments.0.id', $partial->id)
+                ->where('assessments.0.scored', 1)
+                ->where('assessments.0.total', 16));
+
+        $this->actingAs($administrator)
+            ->get(route('vendor-assessments.vendor', ['nama' => 'PT. Surveyor Indonesia']))
+            ->assertInertia(fn ($page) => $page
+                ->where('assessments.0.id', $complete->id)
+                ->where('assessments.0.scored', 16)
+                ->where('assessments.0.total', 16));
+    }
+
+    public function test_assessments_are_filed_in_one_folder_per_vendor(): void
+    {
+        [$first, $administrator] = $this->openAssessment();
+        $service = app(VendorAssessmentService::class);
+        $header = ['form_number' => 'SMT-FM-DAN-02.02', 'revision_number' => '03', 'form_date' => '2026-06-10', 'place' => 'Kendari'];
+
+        // The same vendor spelled differently is one folder.
+        $this->travel(1)->minute();
+        $second = $service->create([...$header, 'project' => 'Pengadaan Pompa', 'vendor_name' => ' pt. surveyor indonesia '], $administrator);
+        $service->create([...$header, 'project' => 'Pengadaan Trafo', 'vendor_name' => 'CV. Lain'], $administrator);
+
+        $this->actingAs($administrator)
+            ->get(route('vendor-assessments.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('vendor-assessments/index')
+                ->has('vendors.data', 2)
+                ->where('vendors.data', fn ($rows) => collect($rows)->pluck('assessment_count', 'name')->sortKeys()->all() === [
+                    'CV. Lain' => 1,
+                    'PT. Surveyor Indonesia' => 2,
+                ]));
+
+        // A search keeps the folders holding a matching assessment.
+        $this->actingAs($administrator)
+            ->get(route('vendor-assessments.index', ['search' => 'Trafo']))
+            ->assertInertia(fn ($page) => $page
+                ->has('vendors.data', 1)
+                ->where('vendors.data.0.name', 'CV. Lain'));
+
+        // The folder opens every assessment of that vendor, newest first,
+        // with the way back to the list.
+        $this->actingAs($administrator)
+            ->get(route('vendor-assessments.vendor', ['nama' => 'PT. Surveyor Indonesia', 'search' => 'pompa']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('vendor-assessments/vendor')
+                ->where('vendor.name', 'PT. Surveyor Indonesia')
+                ->where('assessments', fn ($rows) => collect($rows)->pluck('id')->all() === [$second->id, $first->id])
+                ->where('back.search', 'pompa'));
+    }
+
+    public function test_an_unknown_vendor_folder_is_not_found(): void
+    {
+        [, $administrator] = $this->openAssessment();
+
+        $this->actingAs($administrator)
+            ->get(route('vendor-assessments.vendor', ['nama' => 'PT Tidak Ada']))
+            ->assertNotFound();
+
+        $this->actingAs($administrator)
+            ->get(route('vendor-assessments.vendor'))
+            ->assertNotFound();
+
+        $this->actingAs(User::factory()->planner()->create())
+            ->get(route('vendor-assessments.vendor', ['nama' => 'PT. Surveyor Indonesia']))
+            ->assertForbidden();
+    }
+
     public function test_an_unscored_sheet_does_not_drag_the_average_down(): void
     {
         [$assessment, $administrator] = $this->openAssessment();

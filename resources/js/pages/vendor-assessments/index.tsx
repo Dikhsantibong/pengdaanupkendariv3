@@ -1,5 +1,12 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ClipboardCheck, Plus, Search, FileSpreadsheet } from 'lucide-react';
+import {
+    ClipboardCheck,
+    FileSpreadsheet,
+    Folder,
+    FolderOpen,
+    Plus,
+    Search,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { AssessmentRequestsPanel } from '@/components/assessment-requests-panel';
 import type { AssessmentRequestRow } from '@/components/assessment-requests-panel';
@@ -8,41 +15,26 @@ import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import { formatDate } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import vendorAssessments from '@/routes/vendor-assessments';
 import type { Paginated } from '@/types';
 
-type AssessmentRow = {
-    id: number;
-    project: string;
-    vendor_name: string;
-    po_number: string | null;
-    po_date: string | null;
-    amendment_number: string | null;
-    procurement_number: string | null;
-    overall_average: number | null;
-    scored: number;
-    total: number;
-    created_by: string | null;
-    created_at: string | null;
+/** One vendor's folder: how many assessments, and how many fully scored. */
+type VendorFolder = {
+    name: string;
+    assessment_count: number;
+    complete_count: number;
+    latest_at: string | null;
 };
 
 export default function VendorAssessmentIndex({
-    assessments,
+    vendors,
     requests,
     requestFormUrl,
     filters,
 }: {
-    assessments: Paginated<AssessmentRow>;
+    vendors: Paginated<VendorFolder>;
     requests: AssessmentRequestRow[];
     requestFormUrl: string;
     filters: { search: string | null };
@@ -68,15 +60,20 @@ export default function VendorAssessmentIndex({
         return () => clearTimeout(timer);
     }, [search]);
 
+    const currentPage = vendors.meta?.current_page ?? vendors.current_page ?? 1;
+    const perPage = vendors.meta?.per_page ?? vendors.per_page ?? 30;
+    // A full page stretches its rows to the bottom of the screen.
+    const isFullPage = vendors.data.length >= perPage;
+
     return (
         <>
             <Head title="Penilaian Kinerja Penyedia" />
 
-            <div className="flex flex-col gap-4 p-4 md:p-6">
+            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
                 <PageHeader
                     eyebrow="SMT-FM-DAN-02.02"
                     title="Penilaian Kinerja Penyedia Barang dan Jasa"
-                    description="Formulir penilaian penyedia yang dinilai oleh lima fungsi, dengan rekapitulasi hasil akhir."
+                    description="Formulir penilaian penyedia yang dinilai oleh lima fungsi, dikelompokkan dalam folder per mitra. Klik folder untuk melihat penilaian mitra itu beserta PDF-nya."
                     actions={
                         <Button asChild>
                             <Link href={vendorAssessments.create()}>
@@ -117,7 +114,7 @@ export default function VendorAssessmentIndex({
                     </Button>
                 </div>
 
-                {assessments.data.length === 0 ? (
+                {vendors.data.length === 0 ? (
                     <div className="rounded-md border border-border bg-card">
                         <EmptyState
                             icon={ClipboardCheck}
@@ -126,76 +123,70 @@ export default function VendorAssessmentIndex({
                         />
                     </div>
                 ) : (
-                    <div className="overflow-hidden rounded-md border border-border bg-card">
-                        <Table>
-                            <TableHeader className="bg-muted/60">
-                                <TableRow className="hover:bg-transparent">
-                                    <TableHead>Pekerjaan</TableHead>
-                                    <TableHead>Penyedia</TableHead>
-                                    <TableHead>No Kontrak</TableHead>
-                                    <TableHead>Kelengkapan</TableHead>
-                                    <TableHead>Nilai Akhir</TableHead>
-                                    <TableHead className="text-right">
-                                        Aksi
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {assessments.data.map((row) => (
-                                    <TableRow key={row.id}>
-                                        <TableCell className="font-medium">
-                                            {row.project}
-                                            {row.procurement_number && (
-                                                <div className="tabular text-xs text-muted-foreground">
-                                                    {row.procurement_number}
-                                                </div>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>{row.vendor_name}</TableCell>
-                                        <TableCell className="tabular text-xs">
-                                            {row.po_number ?? '—'}
-                                            {row.po_date && (
-                                                <div className="text-muted-foreground">
-                                                    {formatDate(row.po_date)}
-                                                </div>
-                                            )}
-                                            {row.amendment_number && (
-                                                <div className="mt-1 text-muted-foreground">
-                                                    Amd: {row.amendment_number}
-                                                </div>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="tabular text-xs">
-                                            {row.scored}/{row.total} aspek
-                                        </TableCell>
-                                        <TableCell className="tabular font-semibold">
-                                            {row.overall_average === null
-                                                ? '—'
-                                                : row.overall_average
-                                                      .toFixed(2)
-                                                      .replace('.', ',')}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button
-                                                asChild
-                                                size="sm"
-                                                variant="outline"
-                                            >
-                                                <Link
-                                                    href={vendorAssessments.show(
-                                                        row.id,
-                                                    )}
-                                                >
-                                                    Buka
-                                                </Link>
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                    <div className="flex flex-1 flex-col gap-4">
+                        <div
+                            className={cn(
+                                'grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5',
+                                isFullPage && 'flex-1 auto-rows-fr',
+                            )}
+                        >
+                            {vendors.data.map((vendor) => {
+                                const isComplete =
+                                    vendor.complete_count ===
+                                    vendor.assessment_count;
 
-                        <DataPagination page={assessments} />
+                                return (
+                                    <Link
+                                        key={vendor.name}
+                                        href={
+                                            vendorAssessments.vendor({
+                                                query: {
+                                                    nama: vendor.name,
+                                                    ...(filters.search
+                                                        ? {
+                                                              search: filters.search,
+                                                          }
+                                                        : {}),
+                                                    ...(currentPage > 1
+                                                        ? { page: currentPage }
+                                                        : {}),
+                                                },
+                                            }).url
+                                        }
+                                        title={vendor.name}
+                                        className="group flex h-full items-start gap-2 rounded-md border border-border bg-card p-2.5 text-left transition-colors hover:border-primary/50 hover:bg-accent/40"
+                                    >
+                                        <Folder className="mt-0.5 size-5 shrink-0 text-amber-500 group-hover:hidden dark:text-amber-400" />
+                                        <FolderOpen className="mt-0.5 hidden size-5 shrink-0 text-primary group-hover:block" />
+                                        <span className="min-w-0 space-y-0.5">
+                                            <span className="line-clamp-2 text-xs font-semibold text-foreground">
+                                                {vendor.name}
+                                            </span>
+                                            <span className="tabular block text-[11px] text-muted-foreground">
+                                                {vendor.assessment_count}{' '}
+                                                penilaian
+                                            </span>
+                                            <span
+                                                className={cn(
+                                                    'tabular inline-block rounded-full px-1.5 py-0.5 text-[10px] font-medium',
+                                                    isComplete
+                                                        ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                                                        : 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+                                                )}
+                                            >
+                                                {isComplete
+                                                    ? 'Semua lengkap'
+                                                    : `${vendor.complete_count}/${vendor.assessment_count} lengkap`}
+                                            </span>
+                                        </span>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+
+                        <div className="mt-auto overflow-hidden rounded-md border border-border bg-card">
+                            <DataPagination page={vendors} />
+                        </div>
                     </div>
                 )}
             </div>

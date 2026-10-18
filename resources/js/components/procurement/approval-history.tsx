@@ -66,7 +66,8 @@ const OUTCOMES: Record<
 
 /**
  * Every decision and hand-over of the job, from the proposal to the
- * payment, as one table read top to bottom.
+ * payment, the latest on top: where the job stands now first, then each
+ * step back to the proposal. The numbers keep the order things happened.
  */
 export function ApprovalHistoryTable({
     history,
@@ -84,6 +85,8 @@ export function ApprovalHistoryTable({
             </div>
         );
     }
+
+    const newestFirst = [...history.rows].reverse();
 
     return (
         <section className="overflow-hidden rounded-md border border-border bg-card">
@@ -112,13 +115,30 @@ export function ApprovalHistoryTable({
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {history.rows.map((row, index) => {
+                    {history.waiting !== null && (
+                        <TableRow className="bg-muted/30 hover:bg-muted/30">
+                            <TableCell className="text-center">
+                                <Hourglass className="mx-auto size-3.5 text-muted-foreground" />
+                            </TableCell>
+                            <TableCell
+                                colSpan={6}
+                                className="text-sm text-muted-foreground"
+                            >
+                                <span className="font-medium text-foreground">
+                                    Posisi saat ini:
+                                </span>{' '}
+                                {history.waiting}
+                            </TableCell>
+                        </TableRow>
+                    )}
+
+                    {newestFirst.map((row, index) => {
                         const outcome = OUTCOMES[row.outcome];
 
                         return (
                             <TableRow key={row.id} className="align-top">
                                 <TableCell className="tabular text-center text-xs text-muted-foreground">
-                                    {index + 1}
+                                    {newestFirst.length - index}
                                 </TableCell>
                                 <TableCell className="text-sm font-medium whitespace-nowrap">
                                     {row.stage}
@@ -153,23 +173,6 @@ export function ApprovalHistoryTable({
                             </TableRow>
                         );
                     })}
-
-                    {history.waiting !== null && (
-                        <TableRow className="bg-muted/30 hover:bg-muted/30">
-                            <TableCell className="text-center">
-                                <Hourglass className="mx-auto size-3.5 text-muted-foreground" />
-                            </TableCell>
-                            <TableCell
-                                colSpan={6}
-                                className="text-sm text-muted-foreground"
-                            >
-                                <span className="font-medium text-foreground">
-                                    Posisi saat ini:
-                                </span>{' '}
-                                {history.waiting}
-                            </TableCell>
-                        </TableRow>
-                    )}
                 </TableBody>
             </Table>
         </section>

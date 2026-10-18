@@ -35,6 +35,8 @@ class ExecutionController extends Controller
             'procurements' => ProcurementResource::collection($procurements),
             'filters' => ProcurementFilters::current($request),
             'options' => MasterDataOptions::forFilters(),
+            'contractFormats' => MasterDataOptions::contractFormats(),
+            'contractTypes' => MasterDataOptions::contractTypes(),
         ]);
     }
 }

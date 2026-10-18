@@ -1,6 +1,7 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/page-header';
+import { PartnerNameInput } from '@/components/partner-name-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,11 +39,9 @@ type Defaults = {
 export default function CreateVendorAssessment({
     defaults,
     procurements,
-    vendors,
 }: {
     defaults: Defaults;
     procurements: Option[];
-    vendors: string[];
 }) {
     const form = useForm({
         procurement_id: defaults.procurement_id,
@@ -172,25 +171,15 @@ export default function CreateVendorAssessment({
                             <Label htmlFor="vendor_name">
                                 Penyedia Barang/Jasa
                             </Label>
-                            <Input
+                            <PartnerNameInput
                                 id="vendor_name"
                                 value={form.data.vendor_name}
-                                onChange={(event) =>
-                                    form.setData(
-                                        'vendor_name',
-                                        event.target.value,
-                                    )
+                                onChange={(name) =>
+                                    form.setData('vendor_name', name)
                                 }
                                 placeholder="Contoh: PT. Surveyor Indonesia"
                                 required
-                                autoComplete="off"
-                                list="vendors-list"
                             />
-                            <datalist id="vendors-list">
-                                {vendors.map((vendor) => (
-                                    <option key={vendor} value={vendor} />
-                                ))}
-                            </datalist>
                             <InputError message={form.errors.vendor_name} />
                         </div>
 

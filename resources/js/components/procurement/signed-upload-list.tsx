@@ -203,8 +203,6 @@ export function SignedUploadList({
           ).url
         : '';
 
-    const isImage = Boolean(previewFile?.file_name.match(/\.(jpg|jpeg|png)$/i));
-
     const upload = (files: FileList) => {
         form.setData('files', Array.from(files));
         form.submit(
@@ -234,38 +232,7 @@ export function SignedUploadList({
 
     return (
         <div className="space-y-1.5">
-            {uploads.length > 0 && (
-                <ul className="space-y-1">
-                    {uploads.map((file) => (
-                        <li
-                            key={file.id}
-                            className="flex items-center justify-between gap-2 rounded px-2 py-1.5 transition-colors hover:bg-muted/40"
-                        >
-                            <div className="flex min-w-0 flex-1 items-start gap-1.5">
-                                <FileCheck2 className="mt-0.5 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                                <div className="min-w-0">
-                                    <button
-                                        type="button"
-                                        onClick={() => setPreviewFile(file)}
-                                        className="block cursor-pointer truncate text-left text-xs font-medium text-foreground underline-offset-2 hover:text-primary hover:underline"
-                                        title="Klik untuk melihat pratinjau dokumen"
-                                    >
-                                        {file.file_name}
-                                    </button>
-                                    <p className="tabular text-[11px] text-muted-foreground">
-                                        {formatSize(file.size)}
-                                        {file.size !== null ? ' · ' : ''}
-                                        {formatDateTime(file.uploaded_at)}
-                                        {file.uploaded_by
-                                            ? ` · ${file.uploaded_by}`
-                                            : ''}
-                                    </p>
-                                </div>
-                            </div>
-                        </li>
-                    ))}
-                </ul>
-            )}
+            <UploadedFileRows files={uploads} onPreview={setPreviewFile} />
 
             {canManage && (
                 <>
@@ -320,84 +287,160 @@ export function SignedUploadList({
                 <InputError key={message} message={message} />
             ))}
 
-            <Dialog
-                open={previewFile !== null}
-                onOpenChange={(isOpen) => {
-                    if (!isOpen) {
-                        setPreviewFile(null);
-                    }
-                }}
-            >
-                <DialogContent className="flex h-[92vh] max-w-5xl flex-col p-4 sm:p-6">
-                    <DialogHeader className="shrink-0">
-                        <DialogTitle className="truncate text-base font-semibold">
-                            Pratinjau: {previewFile?.file_name}
-                        </DialogTitle>
-                        <DialogDescription className="text-xs text-muted-foreground">
-                            {previewFile ? formatSize(previewFile.size) : ''}
-                            {previewFile?.size !== null ? ' · ' : ''}
-                            Diunggah{' '}
-                            {previewFile
-                                ? formatDateTime(previewFile.uploaded_at)
-                                : ''}
-                            {previewFile?.uploaded_by
-                                ? ` · ${previewFile.uploaded_by}`
-                                : ''}
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="my-2 min-h-0 w-full flex-1 overflow-hidden rounded-md border border-border bg-muted/20">
-                        {previewFile !== null &&
-                            (isImage ? (
-                                <div className="flex h-full w-full items-center justify-center overflow-auto bg-muted/10 p-4">
-                                    <img
-                                        src={previewUrl}
-                                        alt={previewFile.file_name}
-                                        className="max-h-full max-w-full rounded object-contain shadow-sm"
-                                    />
-                                </div>
-                            ) : (
-                                <iframe
-                                    src={`${previewUrl}#view=FitH`}
-                                    title={previewFile.file_name}
-                                    className="h-full w-full border-0 bg-white"
-                                />
-                            ))}
-                    </div>
-
-                    <DialogFooter className="flex shrink-0 flex-row items-center justify-between gap-2 sm:justify-between">
-                        <div className="flex items-center gap-2">
-                            <Button asChild size="sm" variant="outline">
-                                <a
-                                    href={previewUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                >
-                                    <ExternalLink className="size-3.5" />
-                                    Tab Baru
-                                </a>
-                            </Button>
-                            <Button asChild size="sm" variant="outline">
-                                <a
-                                    href={downloadUrl}
-                                    download={previewFile?.file_name}
-                                >
-                                    <Download className="size-3.5" />
-                                    Unduh
-                                </a>
-                            </Button>
-                        </div>
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => setPreviewFile(null)}
-                        >
-                            Tutup
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <UploadPreviewDialog
+                file={previewFile}
+                previewUrl={previewUrl}
+                downloadUrl={downloadUrl}
+                onClose={() => setPreviewFile(null)}
+            />
         </div>
+    );
+}
+
+/** What a listed upload shows: its name, size and who filed it when. */
+type UploadedFile = {
+    id: number;
+    file_name: string;
+    size: number | null;
+    uploaded_by: string | null;
+    uploaded_at: string | null;
+};
+
+/**
+ * The uploaded files of a step or document, each opening its preview from
+ * its name. Shared by every tab so the files read the same everywhere.
+ */
+export function UploadedFileRows<File extends UploadedFile>({
+    files,
+    onPreview,
+}: {
+    files: File[];
+    onPreview: (file: File) => void;
+}) {
+    if (files.length === 0) {
+        return null;
+    }
+
+    return (
+        <ul className="space-y-1">
+            {files.map((file) => (
+                <li
+                    key={file.id}
+                    className="flex items-center justify-between gap-2 rounded px-2 py-1.5 transition-colors hover:bg-muted/40"
+                >
+                    <div className="flex min-w-0 flex-1 items-start gap-1.5">
+                        <FileCheck2 className="mt-0.5 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        <div className="min-w-0">
+                            <button
+                                type="button"
+                                onClick={() => onPreview(file)}
+                                className="block cursor-pointer truncate text-left text-xs font-medium text-foreground underline-offset-2 hover:text-primary hover:underline"
+                                title="Klik untuk melihat pratinjau dokumen"
+                            >
+                                {file.file_name}
+                            </button>
+                            <p className="tabular text-[11px] text-muted-foreground">
+                                {formatSize(file.size)}
+                                {file.size !== null ? ' · ' : ''}
+                                {formatDateTime(file.uploaded_at)}
+                                {file.uploaded_by
+                                    ? ` · ${file.uploaded_by}`
+                                    : ''}
+                            </p>
+                        </div>
+                    </div>
+                </li>
+            ))}
+        </ul>
+    );
+}
+
+/**
+ * The preview of one uploaded file, with a new-tab link and a download.
+ */
+export function UploadPreviewDialog({
+    file,
+    previewUrl,
+    downloadUrl,
+    onClose,
+}: {
+    file: UploadedFile | null;
+    previewUrl: string;
+    downloadUrl: string;
+    onClose: () => void;
+}) {
+    const isImage = Boolean(file?.file_name.match(/\.(jpg|jpeg|png)$/i));
+
+    return (
+        <Dialog
+            open={file !== null}
+            onOpenChange={(isOpen) => {
+                if (!isOpen) {
+                    onClose();
+                }
+            }}
+        >
+            <DialogContent className="flex h-[92vh] max-w-5xl flex-col p-4 sm:p-6">
+                <DialogHeader className="shrink-0">
+                    <DialogTitle className="truncate text-base font-semibold">
+                        Pratinjau: {file?.file_name}
+                    </DialogTitle>
+                    <DialogDescription className="text-xs text-muted-foreground">
+                        {file ? formatSize(file.size) : ''}
+                        {file?.size !== null ? ' · ' : ''}
+                        Diunggah {file ? formatDateTime(file.uploaded_at) : ''}
+                        {file?.uploaded_by ? ` · ${file.uploaded_by}` : ''}
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="my-2 min-h-0 w-full flex-1 overflow-hidden rounded-md border border-border bg-muted/20">
+                    {file !== null &&
+                        (isImage ? (
+                            <div className="flex h-full w-full items-center justify-center overflow-auto bg-muted/10 p-4">
+                                <img
+                                    src={previewUrl}
+                                    alt={file.file_name}
+                                    className="max-h-full max-w-full rounded object-contain shadow-sm"
+                                />
+                            </div>
+                        ) : (
+                            <iframe
+                                src={`${previewUrl}#view=FitH`}
+                                title={file.file_name}
+                                className="h-full w-full border-0 bg-white"
+                            />
+                        ))}
+                </div>
+
+                <DialogFooter className="flex shrink-0 flex-row items-center justify-between gap-2 sm:justify-between">
+                    <div className="flex items-center gap-2">
+                        <Button asChild size="sm" variant="outline">
+                            <a
+                                href={previewUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                <ExternalLink className="size-3.5" />
+                                Tab Baru
+                            </a>
+                        </Button>
+                        <Button asChild size="sm" variant="outline">
+                            <a href={downloadUrl} download={file?.file_name}>
+                                <Download className="size-3.5" />
+                                Unduh
+                            </a>
+                        </Button>
+                    </div>
+                    <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={onClose}
+                    >
+                        Tutup
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }

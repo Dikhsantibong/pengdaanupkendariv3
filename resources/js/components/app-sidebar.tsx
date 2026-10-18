@@ -11,6 +11,7 @@ import {
     FileStack,
     FileText,
     Gauge,
+    Handshake,
     Hash,
     Inbox,
     Landmark,
@@ -244,6 +245,11 @@ export function AppSidebar() {
                               title: 'Direksi Pekerjaan',
                               href: masterData.workDirectors.index(),
                               icon: ShieldCheck,
+                          },
+                          {
+                              title: 'Mitra',
+                              href: masterData.partners.index(),
+                              icon: Handshake,
                           },
                           {
                               title: 'Unit Tujuan',

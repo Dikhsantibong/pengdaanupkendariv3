@@ -215,6 +215,31 @@ Daftar unit yang dapat dipilih sebagai unit tujuan pengadaan:
 
 ---
 
+# Master Data: Mitra
+
+Menu **Data Master → Mitra** (`master-data.partners`, hak `manage-master-data`) berisi daftar mitra (penyedia barang/jasa).
+- **Kolom:** nama, kode rekanan, nama direktur, alamat, urutan, aktif. Bisa ditambah, diubah, dan dinonaktifkan (soft delete).
+- **Isi awal:** migrasi `create_partners_table` mengumpulkan semua mitra yang pernah diinput:
+  - calon mitra di perencanaan;
+  - mitra yang tercatat di pengadaan;
+  - nama penyedia di Penilaian Penyedia.
+
+  Nama yang sama (beda huruf besar/kecil atau spasi) digabung jadi satu mitra. Detailnya diambil dari isian terbaru, dan yang kosong dilengkapi dari isian lama.
+- **Bertambah otomatis:** setiap calon mitra yang disimpan dan setiap penilaian penyedia yang dibuat atau diubah nama penyedianya mencatat mitranya (`Partner::remember`).
+  - Nama baru langsung ditambahkan ke master.
+  - Mitra yang sudah ada hanya dilengkapi detail yang masih kosong. Data yang sudah dikoreksi di master tidak ditimpa.
+- **Saran saat mengetik:**
+  - Lokasinya di kolom **Nama Calon Mitra** (Perencanaan → Penawaran) dan **Penyedia Barang/Jasa** (Buat Formulir Penilaian), memakai komponen `PartnerNameInput`.
+  - Sejak huruf pertama diketik, muncul daftar mitra aktif yang cocok (maksimal 8). Nama yang diawali teks ketikan tampil lebih dulu.
+  - Pilih dengan klik atau panah + Enter.
+  - Di calon mitra, memilih saran langsung mengisi kode rekanan, nama direktur, dan alamat; semuanya tetap bisa diubah.
+  - Mitra baru tetap bisa diketik penuh.
+- **Endpoint saran:** `GET /mitra/saran?search=` (`partners.suggest`), wajib login, dibatasi 120 permintaan/menit.
+- Daftar nama penyedia lama di form penilaian (cache `unique_vendor_names`) digantikan oleh master Mitra.
+- **Test:** `PartnerTest`.
+
+---
+
 # Form Input Awal Pembuatan Pengadaan
 
 Form ini (menu **Buat Perencanaan Pengadaan**) diisi oleh **Team Leader Pengadaan** — atau peran lain yang diberi hak lewat menu Hak Akses — saat pertama kali membuat sebuah pengadaan baru, sebelum proses perencanaan dimulai. Data pada form ini menjadi identitas utama pengadaan dan akan tampil pada dashboard, monitoring, serta laporan.
@@ -416,7 +441,10 @@ Agar template standar ini nantinya dapat diganti dengan template resmi **tanpa m
 
 - **Tab halaman detail pengadaan:** tab nama pengusul (dokumen usulan), **Perencanaan**, **Pelaksanaan**, **Penyerahan**, **Pembayaran**, dan **Riwayat Approval**.
   - Tab Dokumen dihapus: generate, preview, unduh, edit, dan unggah hasil TTD dilakukan langsung di baris checklist masing-masing.
-- **Riwayat Approval** (dulu tab *Aktivitas*): tabel berurutan dari yang terlama, berisi proses persetujuan dari usulan pengguna sampai pembayaran Keuangan.
+- **Riwayat Approval** (dulu tab *Aktivitas*): tabel proses persetujuan dari usulan pengguna sampai pembayaran Keuangan, **yang terbaru di paling atas**.
+  - Baris "Posisi saat ini" tampil paling atas, disusul approval terakhir, lalu mundur sampai "Pengadaan Dibuat" di paling bawah.
+  - Nomor tetap mengikuti urutan kejadian, jadi approval terbaru bernomor paling besar.
+  - Pembalikan urutan hanya di tampilan (`approval-history.tsx`); data dari server tidak berubah.
   - **Kolom:** No, Tahap (Usulan / Perencanaan / Pelaksanaan / Keuangan), Proses, Hasil (Dibuat / Diajukan / Disetujui / Dikembalikan / Ditunjuk / Selesai), Oleh (nama dan peran), Waktu, dan Keterangan (termasuk catatan pengembalian).
   - **Proses yang dicatat:** pengadaan dibuat, usulan diajukan, disetujui TL, disetujui Asman, atau dikembalikan, penunjukan PIC Perencana (tahap Perencanaan) dan PIC Pelaksana (tahap Pelaksanaan), perencanaan diajukan, disetujui, atau dikembalikan, diserahkan ke Keuangan, pembayaran selesai, dan pengadaan selesai.
   - **Posisi saat ini:** baris terakhir menunjukkan langkah yang sedang ditunggu, sampai pengadaan ditutup.
@@ -443,6 +471,19 @@ Agar template standar ini nantinya dapat diganti dengan template resmi **tanpa m
 >   - Setiap folder menampilkan jumlah dokumen yang boleh dilihat akun itu, mengikuti filter pencarian dan jenis dokumen.
 >   - Format nonaktif tetap punya folder selama masih berisi dokumen.
 > - **Arsip hanya untuk melihat:** tombol **Edit** (edit teks dokumen) dihapus dari Arsip Dokumen; yang tersisa Pratinjau dan Unduh PDF. Edit dokumen tetap dari checklist di halaman detail pengadaan.
+> - **Dikelompokkan per pekerjaan:**
+>   - Di dalam folder jenis kontrak, setiap pekerjaan (pengadaan) tampil sebagai **folder kecil** dalam grid berisi nama, nomor, dan jumlah dokumen, sehingga tidak perlu banyak scroll.
+>   - Klik folder pekerjaan membuka **halaman tersendiri** `documents/pekerjaan/{pengadaan}` (`documents.procurement`, `DocumentArchiveController::procurement`, hak `menu.documents` + boleh melihat pengadaan itu).
+>     - Kiri: daftar dokumen pekerjaan itu, terbaru di atas.
+>     - Kanan: **pratinjau PDF berukuran besar** untuk dokumen yang dipilih (default dokumen terbaru), dengan tombol Tab Baru dan Unduh PDF.
+>     - Tautan "Buka detail pengadaan" dan tombol **Kembali ke Arsip** membawa kembali folder/pencarian/filter/halaman sebelumnya. Filter jenis dokumen ikut menyaring isi folder.
+>   - Halaman arsip hanya memuat jumlah dokumen per pekerjaan (`document_count`), sehingga lebih ringan.
+>   - Paginasi 30 pekerjaan per halaman. Bila halaman penuh, baris folder meregang sampai bawah layar dan paginasi menempel di bawah, jadi tidak ada ruang kosong. Pekerjaan dengan dokumen yang paling baru digenerate tampil paling depan.
+>   - Pencarian juga mencocokkan nama pekerjaan.
+>   - Filter jenis dokumen menyaring dokumen di dalam tiap kelompok.
+>   - Prop halaman `groups` menggantikan `documents`.
+> - **Pratinjau PDF:** tombol **Pratinjau PDF** membuka PDF di tab baru (`?preview=1`, inline), bukan lagi pratinjau HTML.
+> - **Test:** `DocumentArchiveFolderTest`.
 > - **Berkas TTD di checklist:**
 >   - Tombol **Preview** di samping tombol hapus dihapus; pratinjau tetap dibuka dengan mengklik nama berkas.
 >   - Tombol **Hapus** pindah ke kelompok tombol Preview PDF / Unduh PDF / Edit. Untuk satu berkas, langsung menghapus berkas itu dengan konfirmasi. Untuk beberapa berkas, membuka menu pilihan berkas atau "Hapus semua berkas".
@@ -737,6 +778,12 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 > - Item baru bisa dicentang setelah ada berkas.
 > - Menghapus semua berkas otomatis membatalkan centangnya.
 > - Item yang terlanjur dicentang tanpa berkas tetap dihitung belum selesai, sehingga pembayaran belum bisa diselesaikan.
+> - **Tampilan seragam dengan tab Perencanaan/Pelaksanaan:** berkas Penyerahan/Pembayaran (`ChecklistFileList`) kini tampil seperti dokumen di checklist perencanaan.
+>   - Kotak berlabel "Dokumen {nama item}" dengan status **Terunggah · n berkas** / **Wajib diunggah**.
+>   - Klik nama berkas membuka **pratinjau dalam jendela** (Tab Baru / Unduh / Tutup), sama dengan berkas TTD.
+>   - Tombol **Unggah Dokumen / Tambah Berkas** dan **Hapus** berada dalam satu grup. Untuk beberapa berkas, Hapus membuka menu pilihan berkas.
+>   - Daftar berkas dan jendela pratinjau memakai komponen bersama `UploadedFileRows` dan `UploadPreviewDialog` (di `signed-upload-list.tsx`).
+>   - Tab user (dokumen usulan) dan dokumen generate di Penyerahan/Pembayaran sudah memakai `ChecklistDocumentActions` yang sama dengan perencanaan (Generate, Preview PDF, Unduh PDF, Edit, Hapus).
 > - Item opsional ("apabila ada") tetap opsional.
 > - Berkas disimpan per item (tabel `procurement_checklist_files`, migrasi `create_procurement_checklist_files_table`) dan ikut di ZIP "Unduh Semua Dokumen" pada folder `4. Keuangan/<nama item>`.
 > - **Test:** `FinanceUploadTest`.
@@ -924,6 +971,25 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 - Batas halaman tidak ditebak di browser karena font dan margin di layar berbeda dengan PDF. Editor menomori setiap elemen, lalu mengirim draf ke `POST procurements/{p}/documents/{d}/pages` (`documents.pages`). Mesin PDF (dompdf, `DocumentPdfRenderer::sheetStarts`) menata draf itu dan melaporkan elemen pertama di setiap halaman. Hasilnya di-cache 1 hari per isi dokumen. Permintaan ini dikirim ulang ±0,8 detik setelah penulis berhenti mengetik.
 - Elemen awal lembar diberi atribut `data-sheet-start` sehingga editor membuka jeda di atasnya; aturan CSS ada di `app.css`. Atribut ini dibuang sebelum disimpan atau dipratinjau, jadi tidak pernah masuk ke dokumen maupun PDF. Baris tabel yang pindah halaman ikut dipisah. Teks yang terpotong di tengah sel atau paragraf hanya diberi garis putus-putus. Penanda manual **Batas Halaman** tetap memakai tampilannya sendiri.
 
+### 9. Perbaikan Error "Attempt to read property "name" on null" (production)
+- **Gejala:** halaman edit dokumen error bila akun PIC Perencana atau PIC Pelaksana pengadaan itu sudah dihapus. Akun pengguna memakai soft delete, sedangkan relasi `planner` / `executor` tidak membaca akun yang terhapus.
+- **Perbaikan:**
+  - Placeholder `pic_perencana` / `pic_pelaksana` di `DocumentGenerator::placeholderValues` menampilkan "-" bila akunnya tidak ada lagi.
+  - Hal yang sama berlaku untuk kolom PIC di ekspor laporan (`ReportController`).
+- **Cakupan:** tidak ada fungsi atau fitur baru.
+- **Test:** `DocumentEditingTest::test_the_editor_opens_when_the_pic_accounts_were_deleted`.
+
+### 10. Filter Format Kontrak di Halaman Perencanaan & Pelaksanaan
+- **Filter:** halaman **Perencanaan** dan **Pelaksanaan** punya filter **Format Kontrak** (Semua / SPK / PJ / SPPL) di samping filter Sumber Anggaran.
+- **Sumber pilihan:** master data Format Nomor Kontrak (`MasterDataOptions::contractFormats`, scope `forContracts`), jadi format Amandemen dan Delivery Order tidak ikut tampil. Format baru yang ditambahkan di master data otomatis muncul.
+- **Penerapan:**
+  - Parameter `contract_number_format_id` ditambahkan ke filter bersama `ProcurementFilters`.
+  - Dropdown memakai `extraSelects` yang sudah ada di `ProcurementFilterBar`, sehingga filter lain dan tombol Reset tetap bekerja seperti sebelumnya.
+- **Filter Jenis Kontrak:** di kedua halaman yang sama ada juga filter **Jenis Kontrak**.
+  - Pilihannya dari master data **Jenis Kontrak** (saat ini KHS, Lumsum, Barang, Jasa) lewat `MasterDataOptions::contractTypes()` yang sudah ada, dengan parameter `contract_type_id` di `ProcurementFilters`.
+  - Jenis baru seperti "Barang dan Jasa" cukup ditambahkan di Data Master → Jenis Kontrak, lalu otomatis muncul di filter.
+- **Test:** `ContractFormatFilterTest`.
+
 ---
 
 # Fitur Utama
@@ -1089,6 +1155,20 @@ Ketentuan tampilan sertifikat:
 - **Tanggal** diambil dari **tanggal BASTP** (fallback tanggal formulir).
 - Ditandatangani oleh **Tim Pengadaan** (menggantikan "Kepala Divisi Supply Chain Management").
 - **Tipografi ringkas** setara ukuran Word (± 9pt body, judul 15pt) dengan gaya korporat bersih, diusahakan muat dalam satu halaman A4. Margin diatur pada `@page` sehingga bila isi melebar ke halaman kedua, teksnya tetap berada di dalam margin kertas; ornamen sudut & watermark tetap full-bleed di setiap halaman.
+
+## Folder per Mitra & Penanda Kelengkapan
+
+- **Daftar = folder per mitra:** daftar Penilaian Penyedia tampil sebagai grid folder kecil, satu folder per mitra/penyedia, sama seperti Arsip Dokumen.
+  - Nama yang sama dengan beda huruf besar/kecil atau spasi digabung (`LOWER(TRIM(vendor_name))`).
+  - Tiap folder menampilkan jumlah penilaian dan penanda **Semua lengkap** (hijau) atau **x/y lengkap** (kuning).
+  - Paginasi 30 folder. Bila halaman penuh, baris meregang sampai bawah layar. Mitra yang terakhir dinilai tampil paling depan.
+  - Pencarian (pekerjaan/penyedia/nomor PO), Ekspor Excel, tombol Buat Formulir, dan panel Request Penilaian Vendor tetap ada.
+- **Halaman folder mitra** `penilaian-penyedia/mitra?nama=` (`vendor-assessments.vendor`):
+  - Kiri: daftar penilaian mitra itu (terbaru di atas) berisi pekerjaan, nomor kontrak/PO, tanggal, penanda **Lengkap** / **x/y aspek**, dan nilai akhir.
+  - Kanan: **pratinjau PDF besar** dengan pilihan **Sertifikat (Akumulasi)** atau **Semua Lembar** (memakai rute cetak yang sudah ada), tombol Tab Baru, dan **Buka & Isi Nilai** ke halaman penilaian.
+  - Judul memakai ejaan nama dari Data Master Mitra beserta kode rekanan dan direktur.
+  - Tombol **Kembali ke Penilaian** membawa pencarian dan halaman sebelumnya.
+- **Test:** `VendorAssessmentTest` (`test_the_list_tells_a_fully_scored_assessment_apart`, `test_assessments_are_filed_in_one_folder_per_vendor`, `test_an_unknown_vendor_folder_is_not_found`).
 
 ## Request Penilaian Vendor (tautan rincian tagihan)
 

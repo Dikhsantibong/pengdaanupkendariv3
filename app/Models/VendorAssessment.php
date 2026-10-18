@@ -55,6 +55,18 @@ class VendorAssessment extends Model
     use HasFactory, SoftDeletes;
 
     /**
+     * The vendor assessed is remembered in the Mitra master data.
+     */
+    protected static function booted(): void
+    {
+        static::saved(function (VendorAssessment $assessment): void {
+            if ($assessment->wasChanged('vendor_name') || $assessment->wasRecentlyCreated) {
+                Partner::remember($assessment->vendor_name);
+            }
+        });
+    }
+
+    /**
      * The procurement being assessed, when it came from one.
      *
      * @return BelongsTo<Procurement, $this>

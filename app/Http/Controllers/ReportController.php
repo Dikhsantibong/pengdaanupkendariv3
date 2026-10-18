@@ -91,8 +91,8 @@ class ReportController extends Controller
                     ? '-'
                     : number_format((float) $procurement->value_after_negotiation, 2, ',', '.'),
                 $procurement->progressStatus->name,
-                $procurement->planner_id === null ? '-' : $procurement->planner->name,
-                $procurement->executor_id === null ? '-' : $procurement->executor->name,
+                $procurement->planner_id === null ? '-' : $procurement->planner->name ?? '-',
+                $procurement->executor_id === null ? '-' : $procurement->executor->name ?? '-',
                 $procurement->planning_approval_state->label(),
                 $procurement->created_at?->format('Y-m-d H:i'),
             ]);

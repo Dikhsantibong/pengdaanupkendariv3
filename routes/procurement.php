@@ -126,6 +126,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('can:menu.monitoring')->name('monitoring.delivery-orders');
     Route::get('documents', [DocumentArchiveController::class, 'index'])
         ->middleware('can:menu.documents')->name('documents.index');
+    Route::get('documents/pekerjaan/{procurement}', [DocumentArchiveController::class, 'procurement'])
+        ->middleware('can:menu.documents')->name('documents.procurement');
 
     Route::middleware('can:menu.reports')->group(function () {
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');

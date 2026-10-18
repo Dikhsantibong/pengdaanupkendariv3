@@ -20,38 +20,35 @@ class DocumentArchiveController extends Controller
 
     /**
      * Show every generated document the current user may access, filed in
-     * one folder per contract format (SPK, PJ, SPPL).
+     * one folder per contract format (SPK, PJ, SPPL) and grouped per
+     * procurement, the most recently drawn work first.
      */
     public function index(Request $request): Response
     {
         $this->authorize('viewAny', Procurement::class);
 
         $folder = $request->string('folder')->trim()->value() ?: null;
+        $matching = fn (Builder $query) => $this->matching($query, $request);
 
-        $documents = $this->filtered($request)
+        $groups = Procurement::query()
+            ->visibleTo($request->user())
+            ->whereHas('documents', $matching)
             ->when($folder !== null, fn (Builder $query) => $this->inFolder($query, $folder))
-            ->with(['procurement', 'documentType', 'generatedBy', 'editedBy', 'signedUploads'])
-            ->latest('generated_at')
-            ->paginate(20)
+            ->withMax(['documents' => $matching], 'generated_at')
+            ->withCount(['documents' => $matching])
+            ->orderByDesc('documents_max_generated_at')
+            ->orderByDesc('id')
+            ->paginate(30)
             ->withQueryString()
-            ->through(fn (ProcurementDocument $document): array => [
-                'id' => $document->id,
-                'title' => $document->title,
-                'type' => $document->documentType->name,
-                'template_version' => $document->template_version,
-                'revision' => $document->revision,
-                'procurement_id' => $document->procurement_id,
-                'procurement_number' => $document->procurement->number,
-                'procurement_name' => $document->procurement->name,
-                'generated_by' => $document->generatedBy?->name,
-                'generated_at' => $document->generated_at->toDateTimeString(),
-                'edited_by' => $document->editedBy?->name,
-                'edited_at' => $document->edited_at?->toDateTimeString(),
-                'signed_count' => $document->signedUploads->count(),
+            ->through(fn (Procurement $procurement): array => [
+                'id' => $procurement->id,
+                'number' => $procurement->number,
+                'name' => $procurement->name,
+                'document_count' => (int) $procurement->getAttribute('documents_count'),
             ]);
 
         return Inertia::render('documents/index', [
-            'documents' => $documents,
+            'groups' => $groups,
             'folders' => $this->folders($request),
             'filters' => [
                 'search' => $request->string('search')->trim()->value() ?: null,
@@ -65,43 +62,103 @@ class DocumentArchiveController extends Controller
     }
 
     /**
+     * Open one work's folder on a page of its own: its documents listed, the
+     * chosen one shown large as a PDF. The archive's filters ride along so
+     * the way back lands where the folder was opened.
+     */
+    public function procurement(Request $request, Procurement $procurement): Response
+    {
+        $this->authorize('view', $procurement);
+
+        $documents = $procurement->documents()
+            ->when($request->integer('document_type_id'), fn (Builder $query, int $id) => $query->where('document_type_id', $id))
+            ->with(['documentType', 'generatedBy', 'editedBy', 'signedUploads'])
+            ->latest('generated_at')
+            ->latest('id')
+            ->get()
+            ->map(fn (ProcurementDocument $document): array => [
+                'id' => $document->id,
+                'title' => $document->title,
+                'type' => $document->documentType->name,
+                'template_version' => $document->template_version,
+                'revision' => $document->revision,
+                'generated_by' => $document->generatedBy?->name,
+                'generated_at' => $document->generated_at->toDateTimeString(),
+                'edited_by' => $document->editedBy?->name,
+                'edited_at' => $document->edited_at?->toDateTimeString(),
+                'signed_count' => $document->signedUploads->count(),
+            ])
+            ->all();
+
+        return Inertia::render('documents/procurement', [
+            'procurement' => [
+                'id' => $procurement->id,
+                'number' => $procurement->number,
+                'name' => $procurement->name,
+            ],
+            'documents' => $documents,
+            'back' => array_filter([
+                'folder' => $request->string('folder')->trim()->value() ?: null,
+                'search' => $request->string('search')->trim()->value() ?: null,
+                'document_type_id' => $request->integer('document_type_id') ?: null,
+                'page' => $request->integer('page') > 1 ? $request->integer('page') : null,
+            ]),
+        ]);
+    }
+
+    /**
      * The documents the user may see, narrowed by the search and type filters.
      *
      * @return Builder<ProcurementDocument>
      */
     protected function filtered(Request $request): Builder
     {
-        return ProcurementDocument::query()
-            ->whereIn(
+        return $this->matching(
+            ProcurementDocument::query()->whereIn(
                 'procurement_documents.procurement_id',
                 Procurement::query()->visibleTo($request->user())->select('id'),
-            )
+            ),
+            $request,
+        );
+    }
+
+    /**
+     * Narrow documents to the type and search filters.
+     *
+     * @param  Builder<ProcurementDocument>  $query
+     * @return Builder<ProcurementDocument>
+     */
+    protected function matching(Builder $query, Request $request): Builder
+    {
+        return $query
             ->when($request->integer('document_type_id'), fn (Builder $query, int $id) => $query->where('procurement_documents.document_type_id', $id))
             ->when($request->string('search')->trim()->value(), function (Builder $query, string $search): void {
                 $query->where(function (Builder $inner) use ($search): void {
                     $inner->where('procurement_documents.title', 'like', "%{$search}%")
-                        ->orWhereHas('procurement', fn (Builder $procurement) => $procurement->where('number', 'like', "%{$search}%"));
+                        ->orWhereHas('procurement', fn (Builder $procurement) => $procurement
+                            ->where('number', 'like', "%{$search}%")
+                            ->orWhere('name', 'like', "%{$search}%"));
                 });
             });
     }
 
     /**
-     * Keep the documents of one folder: a contract format's code, or the
+     * Keep the procurements of one folder: a contract format's code, or the
      * folder of procurements without a format.
      *
-     * @param  Builder<ProcurementDocument>  $query
-     * @return Builder<ProcurementDocument>
+     * @param  Builder<Procurement>  $query
+     * @return Builder<Procurement>
      */
     protected function inFolder(Builder $query, string $folder): Builder
     {
         if ($folder === self::UNSORTED) {
-            return $query->whereHas('procurement', fn (Builder $procurement) => $procurement->whereNull('contract_number_format_id'));
+            return $query->whereNull('contract_number_format_id');
         }
 
-        return $query->whereHas('procurement', fn (Builder $procurement) => $procurement->whereIn(
+        return $query->whereIn(
             'contract_number_format_id',
             ContractNumberFormat::query()->forContracts()->where('code', $folder)->select('id'),
-        ));
+        );
     }
 
     /**

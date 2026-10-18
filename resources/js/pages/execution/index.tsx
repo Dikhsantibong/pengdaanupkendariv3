@@ -6,6 +6,7 @@ import { dashboard } from '@/routes';
 import execution from '@/routes/execution';
 import type {
     FilterOptions,
+    Option,
     Paginated,
     ProcurementFilters,
     ProcurementRow,
@@ -15,10 +16,14 @@ export default function ExecutionIndex({
     procurements: page,
     filters,
     options,
+    contractFormats,
+    contractTypes,
 }: {
     procurements: Paginated<ProcurementRow>;
     filters: ProcurementFilters;
     options: FilterOptions;
+    contractFormats: Option[];
+    contractTypes: Option[];
 }) {
     return (
         <>
@@ -35,6 +40,20 @@ export default function ExecutionIndex({
                     url={execution.index().url}
                     filters={filters}
                     options={options}
+                    extraSelects={[
+                        {
+                            name: 'contract_number_format_id',
+                            label: 'Format Kontrak',
+                            options: contractFormats,
+                            value: filters.contract_number_format_id,
+                        },
+                        {
+                            name: 'contract_type_id',
+                            label: 'Jenis Kontrak',
+                            options: contractTypes,
+                            value: filters.contract_type_id,
+                        },
+                    ]}
                 />
 
                 <ProcurementTable

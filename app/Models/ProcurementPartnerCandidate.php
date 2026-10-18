@@ -46,6 +46,15 @@ class ProcurementPartnerCandidate extends Model
 
         static::saved($sync);
         static::deleted($sync);
+
+        // Every partner entered is remembered in the Mitra master data.
+        static::saved(function (ProcurementPartnerCandidate $candidate): void {
+            Partner::remember($candidate->name, [
+                'vendor_code' => $candidate->vendor_code,
+                'director_name' => $candidate->director_name,
+                'address' => $candidate->address,
+            ]);
+        });
     }
 
     /**
