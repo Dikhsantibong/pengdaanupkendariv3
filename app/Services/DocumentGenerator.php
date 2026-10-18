@@ -284,8 +284,8 @@ class DocumentGenerator
             'nama_bank' => $procurement->bank_name ?? '-',
             'nama_pemilik_rekening' => $procurement->bank_account_holder ?? '-',
             'status_progres' => $procurement->progressStatus->name,
-            'pic_perencana' => $procurement->planner_id === null ? '-' : $procurement->planner->name,
-            'pic_pelaksana' => $procurement->executor_id === null ? '-' : $procurement->executor->name,
+            'pic_perencana' => $procurement->planner_id === null ? '-' : $procurement->planner->name ?? '-',
+            'pic_pelaksana' => $procurement->executor_id === null ? '-' : $procurement->executor->name ?? '-',
             'nomor_ba_nego' => $procurement->number,
             'target_penyelesaian' => $procurement->target_completion_date === null
                 ? '-'
