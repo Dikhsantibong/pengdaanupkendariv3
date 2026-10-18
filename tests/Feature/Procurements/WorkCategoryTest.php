@@ -141,7 +141,7 @@ class WorkCategoryTest extends TestCase
         $this->assertStringNotContainsString('JENIS DAN JUMLAH BARANG', $servicesSpk->rendered_body);
     }
 
-    public function test_a_pj_for_goods_prints_its_own_hpe_while_others_keep_the_standard_one(): void
+    public function test_every_format_prints_the_same_latest_hpe(): void
     {
         $this->seed(MasterDataSeeder::class);
         $this->seed(DocumentTemplateSeeder::class);
@@ -169,7 +169,7 @@ class WorkCategoryTest extends TestCase
         $this->assertStringContainsString('Harga Perkiraan Enjiniring', $pjText);
         $this->assertStringContainsString('0001/UPKD/ENJ/COMMON/P/AI-2026/2/2026-HPE(A)', $pjText);
         $this->assertStringContainsString('Nama Barang dan Spesifikasi', $pjText);
-        $this->assertStringNotContainsString('Harga Perkiraan Enjiniring', strip_tags($spkDocument->rendered_body));
+        $this->assertStringContainsString('Harga Perkiraan Enjiniring', strip_tags($spkDocument->rendered_body));
     }
 
     public function test_activating_a_category_template_keeps_the_other_category_active(): void

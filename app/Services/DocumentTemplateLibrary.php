@@ -106,12 +106,13 @@ class DocumentTemplateLibrary
      *
      * - Not installed yet: installed as the active template of its scope,
      *   unless an administrator already keeps their own template there.
-     * - Installed and unchanged since: a changed file becomes a new version.
+     * - Installed and unchanged since: a changed file updates that template
+     *   in place, so there is never a second version of it.
      * - Changed by an administrator, or replaced by their own template:
      *   left alone unless $force is given.
      *
-     * Old versions are never overwritten, so documents keep pointing at the
-     * template they were generated from.
+     * A generated document keeps its own stored text, so updating the
+     * template never changes a document someone has edited.
      *
      * @param  array<int, string>  $groups
      * @param  array<int, string>  $keys
@@ -179,14 +180,39 @@ class DocumentTemplateLibrary
         }
 
         if (! $dryRun) {
-            $this->install($key, $entry, $scope, $body, $checksum);
+            $this->refresh($current, $entry, $scope, $body, $checksum);
         }
 
         return self::UPDATED;
     }
 
     /**
-     * Create the next version of an entry and make it the active one.
+     * Put the new wording in the installed template itself, so a document
+     * keeps a single template of one version, and make it the active one.
+     *
+     * @param  array{group: string, file: string, document_type: string, procurement_method: string|null, contract_format: string|null, work_category: string|null, name: string}  $entry
+     * @param  array{document_type_id: int, procurement_method_id: int|null, contract_number_format_id: int|null, work_category: string|null}  $scope
+     */
+    protected function refresh(DocumentTemplate $template, array $entry, array $scope, string $body, string $checksum): DocumentTemplate
+    {
+        $template->fill([
+            ...$scope,
+            'name' => $entry['name'],
+            'body' => $body,
+            'placeholders' => self::placeholdersIn($body),
+            'is_active' => true,
+            'library_checksum' => $checksum,
+        ])->save();
+
+        $this->inScope(DocumentTemplate::query(), $scope)
+            ->whereKeyNot($template->getKey())
+            ->update(['is_active' => false]);
+
+        return $template;
+    }
+
+    /**
+     * Install an entry for the first time and make it the active one.
      *
      * @param  array{group: string, file: string, document_type: string, procurement_method: string|null, contract_format: string|null, work_category: string|null, name: string}  $entry
      * @param  array{document_type_id: int, procurement_method_id: int|null, contract_number_format_id: int|null, work_category: string|null}  $scope

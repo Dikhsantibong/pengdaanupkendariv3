@@ -39,7 +39,7 @@ class DocumentGenerator
      */
     public const ITEM_TABLE_TYPES = [
         'ba-negosiasi-sppl', 'ba-negosiasi', 'purchase-order', 'surat-pesanan',
-        'spk', 'hpe', 'penyusunan-hps', 'penawaran', 'lampiran-spk',
+        'spk', 'hpe', 'upb', 'penyusunan-hps', 'penawaran', 'lampiran-spk',
     ];
 
     /**

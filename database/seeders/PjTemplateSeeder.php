@@ -3,7 +3,8 @@
 namespace Database\Seeders;
 
 /**
- * The templates used only by PJ contracts: HPE, RKS for services and UPB.
+ * The templates used only by PJ contracts: the RKS for services and the
+ * Surat Perjanjian.
  *
  * The wording lives in resources/document-templates; see LibraryTemplateSeeder.
  */

@@ -224,11 +224,14 @@ class ProcurementItemsTest extends TestCase
         ]);
 
         // HPE: a row per item at its amount before negotiation, then Jumlah.
-        $hpe = $renderer->apply((string) file_get_contents(resource_path('document-templates/pj/hpe.html')), 'hpe', $items);
+        $hpe = $renderer->apply((string) file_get_contents(resource_path('document-templates/umum/hpe.html')), 'hpe', $items);
         $this->assertStringContainsString('<td>SC-01</td>', $hpe);
         $this->assertStringContainsString('<td class="right">1.000.000,00</td>', $hpe);
         $this->assertStringContainsString('<td class="right">1.200.000,00</td><td></td></tr>', $hpe);
         $this->assertSame(1, substr_count($hpe, 'class="total"'));
+        // The template's empty rows still sit above the Jumlah row.
+        $this->assertSame(3, substr_count($hpe, 'class="blank"'));
+        $this->assertLessThan(strpos($hpe, 'class="total"'), strrpos($hpe, 'class="blank"'));
 
         // SPK: "A. group" and "- item" rows under the work's own row, its
         // deadline spanning them all; the JUMLAH/PPN/TOTAL rows stay.
@@ -249,8 +252,39 @@ class ProcurementItemsTest extends TestCase
 
         // Nothing to draw yet: the template's table stays as it is.
         $empty = new Collection([new ProcurementContractItem(['sort_order' => 1, 'description' => 'X', 'volume' => 1, 'unit' => 'Lot'])]);
-        $template = (string) file_get_contents(resource_path('document-templates/pj/hpe.html'));
+        $template = (string) file_get_contents(resource_path('document-templates/umum/hpe.html'));
         $this->assertSame($template, $renderer->apply($template, 'hpe', $empty));
+    }
+
+    public function test_the_upb_table_lists_the_items_without_prices(): void
+    {
+        $renderer = app(ItemTableRenderer::class);
+        $template = (string) file_get_contents(resource_path('document-templates/umum/upb.html'));
+        $filled = str_replace(['{{nomor_pr_po}}', '{{nomor_wo}}', '{{target_penyelesaian}}'], ['RQ-77', 'WO-12', '30 Jun 2026'], $template);
+        $items = new Collection([
+            new ProcurementContractItem(['sort_order' => 1, 'description' => "Actuator Type StG 30\nRotation Angle : 42", 'part_number' => 'SC-9', 'volume' => 1, 'unit' => 'Set']),
+            new ProcurementContractItem(['sort_order' => 2, 'description' => 'Jasa Instalasi & Commisioning', 'volume' => 1, 'unit' => 'Ls']),
+        ]);
+
+        $this->assertTrue($renderer->hasTable($template, 'upb'));
+
+        $upb = $renderer->apply($filled, 'upb', $items);
+
+        // A row per item, its specification line by line, the unit in
+        // capitals and the work's requisition, work order and date on each.
+        $this->assertStringContainsString("<td>Actuator Type StG 30<br>\nRotation Angle : 42</td>", $upb);
+        $this->assertStringContainsString('<td>Jasa Instalasi &amp; Commisioning</td>', $upb);
+        $this->assertStringContainsString('<td class="center">SET</td>', $upb);
+        $this->assertStringContainsString('<td class="center">LS</td>', $upb);
+        $this->assertSame(2, substr_count($upb, '<td>RQ-77</td>'));
+        $this->assertSame(2, substr_count($upb, '<td class="center">30 Jun 2026</td>'));
+        $this->assertSame(3, substr_count($upb, 'class="blank"'));
+        // The work's own placeholder row is gone; the signatures stay.
+        $this->assertStringNotContainsString('<td class="center">LOT</td>', $upb);
+        $this->assertStringContainsString('OFFICER INVENTORI KONTROL', $upb);
+
+        // Drawn again (on every save), the carried values stay in place.
+        $this->assertSame($upb, $renderer->apply($upb, 'upb', $items));
     }
 
     /**

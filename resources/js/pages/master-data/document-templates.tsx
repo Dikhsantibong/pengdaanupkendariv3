@@ -80,7 +80,7 @@ export default function DocumentTemplates({
                 <PageHeader
                     eyebrow="Data Master"
                     title="Template Dokumen"
-                    description="Template standar sementara. Saat template resmi UP Kendari tersedia, cukup unggah versi baru di sini tanpa mengubah logika aplikasi."
+                    description="Template standar sementara. Saat template resmi UP Kendari tersedia, cukup ubah templatenya di sini tanpa mengubah logika aplikasi. Setiap dokumen hanya memakai satu template."
                     actions={
                         <Button asChild>
                             <Link
@@ -161,7 +161,7 @@ export default function DocumentTemplates({
                                                             : template.origin ===
                                                                 'modified'
                                                               ? 'Template bawaan yang sudah diubah; tidak ditimpa saat pembaruan'
-                                                              : 'Template bawaan sistem; ikut diperbarui saat ada versi baru'
+                                                              : 'Template bawaan sistem; ikut diperbarui saat template bawaan diperbarui'
                                                     }
                                                 >
                                                     {template.origin ===

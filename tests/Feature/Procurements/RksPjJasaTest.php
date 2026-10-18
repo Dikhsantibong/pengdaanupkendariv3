@@ -92,7 +92,7 @@ class RksPjJasaTest extends TestCase
         $this->assertSame('RKS khusus metode', DocumentTemplate::resolveFor($rks->id, $method->id, 'jasa', null)?->name);
     }
 
-    public function test_a_pj_gets_its_own_upb_for_goods_and_services(): void
+    public function test_every_format_gets_the_same_latest_upb(): void
     {
         $this->seed(MasterDataSeeder::class);
         $this->seed(DocumentTemplateSeeder::class);
@@ -119,8 +119,9 @@ class RksPjJasaTest extends TestCase
             $this->assertStringContainsString('OFFICER INVENTORI KONTROL', $text);
         }
 
+        // One UPB for every format: the SPK gets the very same layout.
         $spkProcurement = Procurement::factory()->create(['contract_number_format_id' => $spk->id, 'work_category' => 'barang']);
-        $this->assertStringNotContainsString(
+        $this->assertStringContainsString(
             'USULAN PENGADAAN BARANG / JASA',
             strip_tags(app(DocumentGenerator::class)->generate($spkProcurement, $upb, $author)->rendered_body),
         );
@@ -131,27 +132,27 @@ class RksPjJasaTest extends TestCase
         $this->seed(MasterDataSeeder::class);
         $this->seed(DocumentTemplateSeeder::class);
 
-        $hpe = DocumentType::query()->where('code', 'hpe')->firstOrFail();
+        $rks = DocumentType::query()->where('code', 'rks')->firstOrFail();
         $pj = ContractNumberFormat::query()->where('code', 'PJ')->firstOrFail();
         $procurement = Procurement::factory()->create(['contract_number_format_id' => $pj->id, 'work_category' => 'jasa']);
         $author = User::factory()->administrator()->create();
         $generator = app(DocumentGenerator::class);
 
-        // Generated before the PJ templates existed: the standard HPE.
-        $unedited = $generator->generate($procurement, $hpe, $author);
-        $edited = $generator->generate($procurement, $hpe, $author);
+        // Generated before the PJ templates existed: the standard RKS.
+        $unedited = $generator->generate($procurement, $rks, $author);
+        $edited = $generator->generate($procurement, $rks, $author);
         $generator->saveEdit($edited, $author, $edited->title, $edited->rendered_body.'<p>Catatan.</p>');
-        $this->assertStringNotContainsString('Harga Perkiraan Enjiniring', $unedited->rendered_body);
+        $this->assertStringNotContainsString('INSTRUKSI KEPADA PESERTA', $unedited->rendered_body);
 
         $this->seed(PjTemplateSeeder::class);
 
         $this->assertTrue($generator->refreshDocument($unedited->refresh()));
-        $this->assertStringContainsString('Harga Perkiraan Enjiniring', $unedited->refresh()->rendered_body);
-        $this->assertSame('HPE PJ (Barang / Jasa) - Template Standar UP Kendari', $unedited->documentTemplate->name);
+        $this->assertStringContainsString('INSTRUKSI KEPADA PESERTA', $unedited->refresh()->rendered_body);
+        $this->assertSame('RKS PJ Jasa (Penunjukan Langsung) - Template Standar UP Kendari', $unedited->documentTemplate->name);
 
         // A hand-edited document keeps the template it was written on.
         $generator->refreshDocument($edited->refresh());
-        $this->assertStringNotContainsString('Harga Perkiraan Enjiniring', $edited->refresh()->rendered_body);
+        $this->assertStringNotContainsString('INSTRUKSI KEPADA PESERTA', $edited->refresh()->rendered_body);
     }
 
     public function test_the_rks_number_is_derived_from_the_contract_number(): void

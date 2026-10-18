@@ -20,8 +20,8 @@ class SignatoryNamesTest extends TestCase
             'kontrak/spk.html' => ['nama_direktur', 'nama_manager'],
             'kontrak/delivery-order.html' => ['nama_direktur', 'nama_manager'],
             'umum/tor.html' => ['nama_manager'],
-            'umum/hpe.html' => ['direksi_pekerjaan', 'pic_perencana'],
-            'pj/hpe.html' => ['direksi_pekerjaan', 'nama_manager'],
+            'umum/hpe.html' => ['direksi_pekerjaan', 'nama_manager'],
+            'umum/upb.html' => ['direksi_pekerjaan', 'pic_perencana'],
         ];
 
         foreach ($signatures as $file => $placeholders) {

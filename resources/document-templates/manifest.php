@@ -6,8 +6,9 @@
  * Each entry points at an HTML file in this folder. The files are the source
  * of the *default* wording only: once installed, a template lives in the
  * database and is edited from Data Master -> Template Dokumen. Changing a
- * file here and running `php artisan templates:sync` installs the new wording
- * as a new version, unless an administrator has already customised it.
+ * file here and running `php artisan templates:sync` puts the new wording in
+ * the installed template, unless an administrator has already customised it.
+ * Every document has a single template of one version.
  *
  * key => [group, file, document_type code, procurement_method code|null,
  *         contract_format code|null, work_category barang|jasa|null, name]
@@ -48,7 +49,7 @@ return [
         'procurement_method' => null,
         'contract_format' => null,
         'work_category' => null,
-        'name' => 'Template Standar HPE (Harga Perkiraan Engineer)',
+        'name' => 'HPE (Harga Perkiraan Enjiniring) - Template Standar UP Kendari',
     ],
     'umum.upb' => [
         'group' => 'umum',
@@ -57,7 +58,7 @@ return [
         'procurement_method' => null,
         'contract_format' => null,
         'work_category' => null,
-        'name' => 'Template Standar UPB',
+        'name' => 'UPB (Usulan Pengadaan Barang / Jasa) - Template Standar UP Kendari',
     ],
     'umum.rks' => [
         'group' => 'umum',
@@ -343,15 +344,6 @@ return [
         'work_category' => null,
         'name' => 'Lampiran SP Barang dan Jasa - Template Standar UP Kendari',
     ],
-    'pj.hpe' => [
-        'group' => 'pj',
-        'file' => 'pj/hpe.html',
-        'document_type' => 'hpe',
-        'procurement_method' => null,
-        'contract_format' => 'PJ',
-        'work_category' => null,
-        'name' => 'HPE PJ (Barang / Jasa) - Template Standar UP Kendari',
-    ],
     'pj.rks-jasa' => [
         'group' => 'pj',
         'file' => 'pj/rks-jasa.html',
@@ -372,14 +364,5 @@ return [
         'contract_format' => 'PJ',
         'work_category' => null,
         'name' => 'Surat Perjanjian (PJ) - Template Standar UP Kendari',
-    ],
-    'pj.upb' => [
-        'group' => 'pj',
-        'file' => 'pj/upb.html',
-        'document_type' => 'upb',
-        'procurement_method' => null,
-        'contract_format' => 'PJ',
-        'work_category' => null,
-        'name' => 'UPB PJ (Usulan Pengadaan Barang / Jasa) - Template Standar UP Kendari',
     ],
 ];

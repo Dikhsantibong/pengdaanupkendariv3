@@ -70,17 +70,20 @@ class DocumentTemplateLibraryTest extends TestCase
         $this->assertSame(['nama_pengadaan'], $template->placeholders);
     }
 
-    public function test_a_changed_file_becomes_a_new_version_of_an_untouched_default(): void
+    public function test_a_changed_file_updates_an_untouched_default_without_a_second_version(): void
     {
         $this->library()->sync();
+        $installed = DocumentTemplate::query()->where('library_key', 'demo.memo')->sole();
         File::put($this->root.'/demo/memo.html', "<p>Versi dua</p>\n");
 
         $this->assertSame(['demo.memo' => DocumentTemplateLibrary::UPDATED], $this->library()->sync());
 
-        $versions = DocumentTemplate::query()->where('library_key', 'demo.memo')->orderBy('version')->get();
-        $this->assertSame([1, 2], $versions->pluck('version')->all());
-        $this->assertSame([false, true], $versions->pluck('is_active')->all());
-        $this->assertStringContainsString('Versi satu', $versions[0]->body);
+        $template = DocumentTemplate::query()->where('library_key', 'demo.memo')->sole();
+        $this->assertTrue($template->is($installed));
+        $this->assertSame(1, $template->version);
+        $this->assertTrue($template->is_active);
+        $this->assertStringContainsString('Versi dua', $template->body);
+        $this->assertSame(['demo.memo' => DocumentTemplateLibrary::UP_TO_DATE], $this->library()->sync());
     }
 
     public function test_a_template_edited_by_an_administrator_is_never_overwritten(): void
@@ -92,9 +95,11 @@ class DocumentTemplateLibraryTest extends TestCase
         $this->assertSame(['demo.memo' => DocumentTemplateLibrary::CUSTOMISED], $this->library()->sync());
         $this->assertSame('<p>Redaksi resmi unit</p>', DocumentTemplate::query()->where('is_active', true)->sole()->body);
 
-        // Forcing installs the default beside it, as a new version.
+        // Forcing puts the default back in that same template.
         $this->assertSame(['demo.memo' => DocumentTemplateLibrary::UPDATED], $this->library()->sync(force: true));
-        $this->assertSame(2, DocumentTemplate::query()->where('library_key', 'demo.memo')->count());
+        $template = DocumentTemplate::query()->where('library_key', 'demo.memo')->sole();
+        $this->assertSame('<p>Versi dua</p>'."\n", $template->body);
+        $this->assertSame(1, $template->version);
     }
 
     public function test_an_administrators_own_template_keeps_its_scope(): void

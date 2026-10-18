@@ -10,7 +10,7 @@ use Illuminate\Console\Command;
 #[Signature('templates:sync
     {key?* : Only these library keys, e.g. pj.rks-jasa}
     {--group=* : Only these groups, e.g. pj or sppl}
-    {--force : Also replace templates an administrator has customised (as a new version)}
+    {--force : Also replace templates an administrator has customised with the shipped default}
     {--dry-run : Report what would change without writing}')]
 #[Description('Install or refresh the default document templates from resources/document-templates')]
 class SyncDocumentTemplates extends Command
@@ -29,7 +29,7 @@ class SyncDocumentTemplates extends Command
 
         $labels = [
             DocumentTemplateLibrary::INSTALLED => 'dipasang',
-            DocumentTemplateLibrary::UPDATED => 'diperbarui (versi baru)',
+            DocumentTemplateLibrary::UPDATED => 'diperbarui',
             DocumentTemplateLibrary::UP_TO_DATE => 'sudah terbaru',
             DocumentTemplateLibrary::CUSTOMISED => 'dilewati: sudah disesuaikan admin',
             DocumentTemplateLibrary::MISSING_TYPE => 'dilewati: jenis dokumen/format belum ada',
@@ -52,7 +52,7 @@ class SyncDocumentTemplates extends Command
         ));
 
         if (($counts[DocumentTemplateLibrary::CUSTOMISED] ?? 0) > 0 && ! $this->option('force')) {
-            $this->line('Template yang sudah disesuaikan tidak ditimpa. Pakai --force untuk memasang versi bawaan sebagai versi baru.');
+            $this->line('Template yang sudah disesuaikan tidak ditimpa. Pakai --force untuk menimpanya dengan template bawaan.');
         }
 
         return self::SUCCESS;

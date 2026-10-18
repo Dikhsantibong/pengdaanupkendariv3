@@ -1001,7 +1001,7 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 - **Test:** `PaginationContractTest::test_numbered_lists_learn_where_their_page_starts`.
 
 ### 13. Rincian Item di Editor Dokumen (tabel item tidak lagi diketik per sel)
-- **Lokasi:** editor dokumen yang berisi tabel item punya tab **Rincian Item** paling kiri dan langsung terbuka. Dokumennya: BA Negosiasi (SPPL), Surat Pesanan/PO, SPK (tabel), HPE, Penyusunan HPS, Penawaran, dan Lampiran SPK.
+- **Lokasi:** editor dokumen yang berisi tabel item punya tab **Rincian Item** paling kiri dan langsung terbuka. Dokumennya: BA Negosiasi (SPPL), Surat Pesanan/PO, SPK (tabel), HPE, UPB, Penyusunan HPS, Penawaran, dan Lampiran SPK.
   - Tab hanya muncul bila tabel itemnya benar-benar ada (`ItemTableRenderer::hasTable`).
   - Dokumen pasal (SPK Pasal, Surat Perjanjian PJ, Lampiran SP) tetap memakai editor biasa tanpa perubahan.
 - **Isian berbentuk grid**, dengan kolom Uraian, Part No., Volume, Satuan, Harga Satuan Sebelum Nego, Harga Satuan Setelah Nego, dan Jumlah (otomatis), serta total.
@@ -1037,6 +1037,23 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 - Data tetap tersimpan apa adanya, dan nama yang sama di teks isi (mis. "arahan dari Direksi Pekerjaan" di TOR, uraian para pihak) tidak berubah.
 - Sebanyak 26 template diperbarui dan disinkron lewat migrasi `uppercase_signatory_names_in_templates`. Template yang sudah diubah admin tidak ditimpa, dan dokumen lama tetap seperti saat digenerate.
 - **Test:** `SignatoryNamesTest`.
+
+### 16. Satu Template per Dokumen & HPE/UPB Format Terbaru
+- **HPE dan UPB** sekarang hanya punya satu template, yaitu format terbaru UP Kendari (sebelumnya khusus PJ), dan berlaku untuk semua format kontrak (SPK, PJ, SPPL).
+  - HPE berjudul "Harga Perkiraan Enjiniring" dengan kolom No., Stock Code, Nama Barang dan Spesifikasi, Qty, Stn, Harga HPE (Rp.), dan Keterangan, lalu baris Jumlah.
+  - UPB berjudul "USULAN PENGADAAN BARANG / JASA" dengan kolom No., Stock Code, Nama Barang dan Spesifikasi, No. Requisisi, No. WO, WO Description, Qty, Satuan, Tgl Dibutuhkan, dan Keterangan.
+  - File template lama `umum/hpe.html` dan `umum/upb.html` diganti dengan format terbaru, dan entri `pj.hpe`/`pj.upb` dihapus dari manifest.
+- **Rincian Item di UPB:** UPB kini ikut memakai tab Rincian Item, seperti HPE.
+  - Setiap item menjadi satu baris berisi nomor, Stock Code (part number), uraian (baris baru tetap menjadi baris baru, mis. spesifikasi), Qty, dan Satuan huruf besar.
+  - No. Requisisi, No. WO, dan Tgl Dibutuhkan dari baris pekerjaan template diisikan ke setiap item.
+  - UPB tidak memiliki harga, jadi tabel langsung tersusun begitu item diisi.
+- **Baris kosong** pengisi tabel di template (HPE dan UPB) tetap dipertahankan setelah tabel disusun dari Rincian Item.
+- **Satu versi per template:**
+  - Sinkron template bawaan (`templates:sync`) kini memperbarui template yang sudah terpasang langsung, tanpa membuat versi 2, 3, dan seterusnya.
+  - Migrasi `keep_a_single_template_per_document` menghapus versi lama di setiap cakupan template, menghapus HPE/UPB PJ dan template bawaan yang sudah digabung (Lampiran SP/Surat Pesanan Barang & Jasa) yang tidak terpakai, lalu menjadikan template yang tersisa versi 1.
+  - Dokumen yang menunjuk template yang dihapus dialihkan ke template yang dipertahankan. Isi dokumennya tidak berubah, dan dokumen yang belum diedit otomatis tersusun ulang dari template terbaru saat dibuka.
+  - Hasil di database lokal: 38 template, semuanya aktif dan versi 1.
+- **Test:** `SingleTemplateVersionTest`, `ProcurementItemsTest` (tabel UPB), `DocumentTemplateLibraryTest`, `RksPjJasaTest`, `WorkCategoryTest`, `SignatoryNamesTest`.
 
 ---
 

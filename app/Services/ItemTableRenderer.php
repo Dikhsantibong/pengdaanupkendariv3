@@ -26,6 +26,7 @@ class ItemTableRenderer
         'ba-negosiasi' => 'nego',
         'spk' => 'spk',
         'hpe' => 'hpe',
+        'upb' => 'upb',
         'penyusunan-hps' => 'standard',
         'penawaran' => 'standard',
         'lampiran-spk' => 'standard',
@@ -38,6 +39,7 @@ class ItemTableRenderer
         'nego' => 'HARGA SEBELUM NEGO',
         'spk' => 'BATAS WAKTU/ PENYERAHAN',
         'hpe' => 'Harga HPE',
+        'upb' => 'Tgl Dibutuhkan',
         'standard' => 'Harga Satuan (Rp)',
         'surat-pesanan' => 'PERHATIAN',
     ];
@@ -83,6 +85,7 @@ class ItemTableRenderer
             'nego' => $this->replaceTable($html, self::SIGNATURES['nego'], fn (string $table): string => $this->nego($table, $items)),
             'spk' => $this->replaceTable($html, self::SIGNATURES['spk'], fn (string $table): string => $this->spk($table, $items)),
             'hpe' => $this->replaceTable($html, self::SIGNATURES['hpe'], fn (string $table): string => $this->hpe($table, $items)),
+            'upb' => $this->replaceTable($html, self::SIGNATURES['upb'], fn (string $table): string => $this->upb($table, $items)),
             'standard' => $this->replaceTable($html, self::SIGNATURES['standard'], fn (string $table): string => $this->standard($table, $items, $typeCode === 'lampiran-spk')),
         };
     }
@@ -232,7 +235,7 @@ class ItemTableRenderer
 
         foreach ($this->rows($items) as $row) {
             if ($row['item'] === null) {
-                $drawn[] = '<tr><td class="center"><b>'.$row['label'].'</b></td><td></td>'
+                $drawn[] = '<tr class="group"><td class="center"><b>'.$row['label'].'</b></td><td></td>'
                     .'<td><b>'.e($row['name']).'</b></td><td></td><td></td><td></td><td></td></tr>';
 
                 continue;
@@ -241,7 +244,7 @@ class ItemTableRenderer
             $item = $row['item'];
             $drawn[] = '<tr><td class="center">'.$row['label'].'</td>'
                 .'<td>'.e($item->part_number ?? '').'</td>'
-                .'<td>'.e($item->description).'</td>'
+                .'<td>'.$this->description($item).'</td>'
                 .'<td class="center">'.$this->quantity($item).'</td>'
                 .'<td class="center">'.e(Str::upper($item->unit)).'</td>'
                 .'<td class="right">'.$this->money($item->totalBefore()).',00</td>'
@@ -252,7 +255,53 @@ class ItemTableRenderer
         $drawn[] = '<tr class="total"><td colspan="5" class="right">Jumlah</td>'
             .'<td class="right">'.$this->money($total).',00</td><td></td></tr>';
 
-        return $this->rebuild($table, [$rows[0], ...$drawn, ...array_slice($rows, $totalAt + 1)]);
+        return $this->rebuild($table, [$rows[0], ...$this->blankRows($rows, 0, $totalAt), ...$drawn, ...array_slice($rows, $totalAt + 1)]);
+    }
+
+    /**
+     * The UPB's table: a row per item, its quantity and unit, with the
+     * requisition, work order and date the template gives the work carried
+     * over to every item, then the template's empty rows. A request has no
+     * prices, so the items alone draw it.
+     *
+     * @param  Collection<int, ProcurementContractItem>  $items
+     */
+    protected function upb(string $table, Collection $items): string
+    {
+        $rows = $this->tableRows($table);
+
+        if ($rows === []) {
+            return $table;
+        }
+
+        $source = collect(array_slice($rows, 1))
+            ->first(fn (string $row): bool => ! str_contains($row, 'class="blank"') && ! str_contains($row, 'class="group"'));
+        $cells = $source === null ? [] : $this->cells($source);
+        $carried = fn (int $index): string => $cells[$index] ?? '';
+        $drawn = [];
+
+        foreach ($this->rows($items) as $row) {
+            if ($row['item'] === null) {
+                $drawn[] = '<tr class="group"><td class="center"><b>'.$row['label'].'</b></td><td></td>'
+                    .'<td><b>'.e($row['name']).'</b></td>'.str_repeat('<td></td>', 7).'</tr>';
+
+                continue;
+            }
+
+            $item = $row['item'];
+            $drawn[] = '<tr><td class="center">'.$row['label'].'</td>'
+                .'<td>'.e($item->part_number ?? '').'</td>'
+                .'<td>'.$this->description($item).'</td>'
+                .'<td>'.$carried(3).'</td>'
+                .'<td>'.$carried(4).'</td>'
+                .'<td>'.$carried(5).'</td>'
+                .'<td class="center">'.$this->quantity($item).'</td>'
+                .'<td class="center">'.e(Str::upper($item->unit)).'</td>'
+                .'<td class="center">'.$carried(8).'</td>'
+                .'<td></td></tr>';
+        }
+
+        return $this->rebuild($table, [$rows[0], ...$drawn, ...$this->blankRows($rows, 0, count($rows))]);
     }
 
     /**
@@ -348,6 +397,40 @@ class ItemTableRenderer
         preg_match_all('/<tr\b[^>]*>.*?<\/tr>/is', $table, $matches);
 
         return $matches[0];
+    }
+
+    /**
+     * The template's empty filler rows between two row positions.
+     *
+     * @param  list<string>  $rows
+     * @return list<string>
+     */
+    protected function blankRows(array $rows, int $after, int $before): array
+    {
+        return array_values(array_filter(
+            array_slice($rows, $after + 1, max(0, $before - $after - 1)),
+            fn (string $row): bool => str_contains($row, 'class="blank"'),
+        ));
+    }
+
+    /**
+     * The contents of a row's cells, as written.
+     *
+     * @return list<string>
+     */
+    protected function cells(string $row): array
+    {
+        preg_match_all('/<td\b[^>]*>(.*?)<\/td>/is', $row, $matches);
+
+        return $matches[1];
+    }
+
+    /**
+     * An item's name and specification, a line per line typed.
+     */
+    protected function description(ProcurementContractItem $item): string
+    {
+        return nl2br(e($item->description), false);
     }
 
     /**
