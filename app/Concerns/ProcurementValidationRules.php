@@ -2,6 +2,7 @@
 
 namespace App\Concerns;
 
+use App\Enums\CsmsRiskLevel;
 use App\Enums\Permission;
 use App\Enums\WorkCategory;
 use App\Models\ContractNumberFormat;
@@ -50,6 +51,10 @@ trait ProcurementValidationRules
                 'nullable',
                 Rule::exists('contract_types', 'id')->whereNull('deleted_at'),
             ],
+            // Stated by the user who proposes or registers the job.
+            'csms_risk_level' => ['nullable', Rule::enum(CsmsRiskLevel::class)],
+            // The TOR's Tanggal Terbit; empty, the TOR takes its generating day.
+            'tor_issue_date' => ['nullable', 'date'],
             // Derived from the jenis kontrak: it picks the barang or jasa
             // template, and is never typed in.
             'work_category' => ['nullable', Rule::enum(WorkCategory::class)],
@@ -217,6 +222,8 @@ trait ProcurementValidationRules
             'contract_number_format_id' => 'jenis no kontrak',
             'number' => 'no kontrak',
             'contract_type_id' => 'kategori kontrak',
+            'csms_risk_level' => 'level risiko CSMS',
+            'tor_issue_date' => 'tanggal terbit TOR',
             'work_category' => 'kategori barang/jasa',
             'name' => 'nama pengadaan',
             'partner_name' => 'nama calon mitra',

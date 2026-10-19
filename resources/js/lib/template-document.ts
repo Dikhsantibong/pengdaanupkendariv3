@@ -25,14 +25,21 @@ export function isLandscape(body: string): boolean {
     return body.toLowerCase().includes('landscape');
 }
 
+/** The page margin of the TOR's @page, shown on screen as the sheet's padding. */
+const SHEET_MARGIN = '15mm';
+
 /** Editor-only styling: the grey desk, the sheet of paper and the chips. */
 function editorStylesheet(landscape: boolean, fullDocument: boolean): string {
     const paper = landscape
         ? 'width: 297mm; min-height: 210mm;'
         : 'width: 210mm; min-height: 297mm;';
 
+    // A full document (the TOR) sets its margins with @page, which only the
+    // PDF honours: on screen its sheet gets the same 15mm itself.
     const page = fullDocument
-        ? `html { background: #e8ebf0; } body { background: #fff; margin: 24px auto; box-shadow: 0 1px 3px rgba(15,23,42,.15), 0 8px 24px rgba(15,23,42,.08); }`
+        ? `html { background: #e8ebf0; }
+           body { ${paper} box-sizing: border-box; margin: 24px auto !important; padding: ${SHEET_MARGIN} !important; background: #fff;
+                  box-shadow: 0 1px 3px rgba(15,23,42,.15), 0 8px 24px rgba(15,23,42,.08); }`
         : `html { background: #e8ebf0; }
            body { ${paper} box-sizing: border-box; margin: 28px auto; padding: 20mm 15mm; background: #fff;
                   box-shadow: 0 1px 3px rgba(15,23,42,.15), 0 8px 24px rgba(15,23,42,.08); }`;
@@ -271,6 +278,14 @@ export const SAMPLE_VALUES: Record<string, string> = {
     checklist_perencanaan:
         '<ul><li>[✓] TOR</li><li>[✓] RAB</li><li>[✓] HPE</li></ul>',
     checklist_pelaksanaan: '<ul><li>[-] Penawaran</li></ul>',
+    nama_penyusun: 'Galih Prima Yoga',
+    nama_asman_pengguna: 'Asman Pemeliharaan',
+    nama_asman_engineering: 'Asman Engineering',
+    // The SPK/PJ layout; an SPPL signs with three.
+    pengesahan_tor:
+        '<table class="approval-table"><tr><td><b>Disusun oleh:</b></td></tr><tr><td>User</td></tr><tr><td><div class="gap"></div><span class="name">( GALIH PRIMA YOGA )</span></td></tr></table>' +
+        '<table class="approval-table two" style="margin-top:20px;"><tr><td colspan="2"><b>Diperiksa/Diketahui oleh:</b></td></tr><tr><td>Asman Pemeliharaan</td><td>Asman Engineering</td></tr><tr><td><div class="gap"></div><span class="name">( ASMAN PEMELIHARAAN )</span></td><td><div class="gap"></div><span class="name">( ASMAN ENGINEERING )</span></td></tr></table>' +
+        '<table class="approval-table" style="margin-top:20px;"><tr><td><b>Disetujui oleh:</b></td></tr><tr><td>Manager</td></tr><tr><td><div class="gap"></div><span class="name">( MUHAMMAD RUSLI )</span></td></tr></table>',
 };
 
 /** Render a template body with sample values as a standalone page. */
@@ -283,7 +298,13 @@ export function renderPreviewHtml(
     });
 
     if (isFullDocument(rendered)) {
-        return rendered;
+        // Its @page margins only apply in the PDF; on screen the sheet gets
+        // the same margin, for screens only.
+        const sheet = `<style>@media screen { html { background: #e8ebf0; } body { max-width: ${isLandscape(body) ? '297mm' : '210mm'}; box-sizing: border-box; margin: 16px auto !important; padding: ${SHEET_MARGIN} !important; background: #fff; } }</style>`;
+
+        return /<\/head>/i.test(rendered)
+            ? rendered.replace(/<\/head>/i, `${sheet}</head>`)
+            : sheet + rendered;
     }
 
     const landscape = isLandscape(body);

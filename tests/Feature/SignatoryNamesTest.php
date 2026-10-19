@@ -20,7 +20,6 @@ class SignatoryNamesTest extends TestCase
             'sppl/surat-pesanan.html' => ['nama_direktur', 'nama_manager'],
             'kontrak/spk.html' => ['nama_direktur', 'nama_manager'],
             'kontrak/delivery-order.html' => ['nama_direktur', 'nama_manager'],
-            'umum/tor.html' => ['nama_manager'],
             'umum/hpe.html' => ['direksi_pekerjaan', 'nama_manager'],
             'umum/upb.html' => ['direksi_pekerjaan', 'pic_perencana'],
         ];
@@ -33,9 +32,9 @@ class SignatoryNamesTest extends TestCase
             }
         }
 
-        // In the body the Direksi Pekerjaan stays as written.
+        // The TOR body is an outline typed in by hand; no name is forced
+        // into capitals there.
         $tor = (string) file_get_contents(resource_path('document-templates/umum/tor.html'));
-        $this->assertStringContainsString('arahan dari <b>{{direksi_pekerjaan}}</b>', $tor);
         $this->assertStringNotContainsString($upper('direksi_pekerjaan'), $tor);
     }
 

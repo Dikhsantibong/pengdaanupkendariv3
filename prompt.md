@@ -1282,9 +1282,49 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
   3. **Diperiksa/Diketahui oleh**, kanan: **Asman Engineering** (`{{nama_asman_engineering}}`). Diambil dari Direksi Pekerjaan bernama "...Engineering" dan akun yang berhak menyetujui usulan bidang itu.
   4. **Disetujui oleh: Manager** (`{{nama_manager}}`), seperti sebelumnya.
 - Bila akun Asman belum ada, nama diganti garis titik untuk diisi manual. Semua nama dicetak huruf besar.
-- TOR dipakai bersama oleh SPK, PJ, dan SPPL (satu template), jadi susunan ini berlaku untuk ketiganya.
+- **SPPL hanya tiga penanda tangan:** Asman bidang user di kiri, user di kanan, dan Manager di bawahnya. Asman Engineering tidak ikut.
+- Template TOR tetap satu. Blok tanda tangan disusun sistem sesuai format lewat placeholder `{{pengesahan_tor}}` (migrasi `sign_the_sppl_tor_by_three`).
 - Migrasi `sign_the_tor_by_the_user_and_both_asman` memperbarui template terpasang. TOR yang belum diedit ikut menyesuaikan saat dibuka; TOR yang sudah diedit tetap seperti isinya.
 - **Test:** `TorHeaderTest`.
+
+### 33. Margin Halaman TOR di Editor Template
+- Di Data Master → Template Dokumen, halaman TOR sebelumnya menempel ke tepi tanpa margin. TOR adalah satu-satunya template berbentuk dokumen HTML lengkap, dan marginnya hanya diatur `@page` (15 mm) yang berlaku di PDF.
+- Editor (`resources/js/lib/template-document.ts`) kini menampilkan TOR di lembar A4 dengan margin 15 mm, sama dengan PDF. Pratinjau HTML-nya juga diberi margin yang sama (khusus layar).
+- Pratinjau template punya contoh nilai untuk `{{pengesahan_tor}}` dan nama-nama penanda tangan.
+
+### 34. Level Risiko CSMS oleh User
+- Form Buat Pengadaan / Usulan Pekerjaan punya isian **Level Risiko CSMS**: Low, Moderat, High, Extreme (enum `CsmsRiskLevel`, kolom `procurements.csms_risk_level`).
+- Ditampilkan di panel Identitas Pengadaan dan dicetak lewat placeholder `{{level_risiko_csms}}`.
+- **Test:** `CsmsRiskLevelTest`.
+
+### 35. TOR: Kerangka Poin, Kop Formulir, dan Tanggal Terbit dari User
+- **Isi TOR hanya poin dan sub-poin.** Narasi diketik manual di editor dokumen, di bawah setiap poin ada baris kosong untuk mulai mengetik. Penomoran juga dirapikan: sebelumnya ada dua poin 9 dan sub-poin 10.x di bawah poin 9.
+  - Poin: 1 Pendahuluan (1.1 Latar Belakang, 1.2 Maksud dan Tujuan dengan 1.2.1 Maksud dan 1.2.2 Tujuan, 1.3 Lokasi, 1.4 Nama Pengguna Barang/Jasa); 2 Pedoman Acuan Teknis (2.1 Standart Nasional & Internasional Terkait); 3 Lingkup Pekerjaan; 4 Performance Design; 5 Kualifikasi Calon Pelaksana; 6 Detail Uraian Pekerjaan; 7 Kelengkapan Pelaksanaan; 8 Aspek K3 dan Keamanan (8.1 Identifikasi Bahaya dan Risiko Kerja); 9 Laporan Hasil Pekerjaan (9.1 Laporan Hasil Pekerjaan, 9.2 Dokumen Penagihan); 10 Barang Sisa & Limbah; 11 Quality Acceptance; 12 Waktu Penyelesaian; 13 Garansi; 14 Lain-lain.
+  - Sampul, identitas program, dan Lembar Pengesahan tidak berubah.
+- **Kop mengikuti formulir resmi:** logo | PT PLN NUSANTARA POWER / INTEGRATED MANAGEMENT SYSTEM / TERM OF REFERENCE (TOR) | Nomor Dokumen, Revisi (00), Tanggal Terbit, Halaman.
+  - **Nomor Dokumen** tetap sama di setiap TOR: `FMKP – 167 – 9.1.1.2.e.a.c - 001` (nomor formulir, statis). Migrasi `put_the_form_number_on_the_tor_kop` mengisinya di template dan TOR lama yang belum bertanda tangan.
+  - **Halaman** dikosongkan untuk diisi manual.
+- **Tanggal Terbit TOR** diisi user di form Buat Pengadaan / Usulan Pekerjaan (kolom `procurements.tor_issue_date`).
+  - Dicetak di kop lewat `{{tanggal_terbit}}` dengan format `06 - 02 - 2023`.
+  - Bila kosong, yang dicetak tanggal TOR digenerate.
+- **TOR yang sudah ada** (migrasi `outline_the_tor_and_use_the_form_kop`):
+  - TOR yang belum diedit dibangun ulang dari template baru.
+  - TOR yang sudah diedit tetap berisi teks yang diketik, hanya kop-nya yang diganti.
+  - TOR yang sudah punya scan bertanda tangan tidak diubah.
+- **Test:** `TorHeaderTest` (kerangka poin, kop, tanggal terbit dari user, perbaikan TOR lama). `SignatoryNamesTest` disesuaikan karena narasi TOR dihapus.
+
+### 36. Template TOR Dipaksa Kerangka Poin & Command Perbaikan TOR
+- **Template TOR bawaan selalu dipasang**, meskipun sebelumnya diubah admin. Ini berlaku untuk seeder (`DocumentTemplateLibrarySeeder`, properti `$forced = ['umum.tor']` di `LibraryTemplateSeeder`) dan migrasi TOR (`sync(..., force: true)`).
+  - Sebelumnya, template yang pernah disesuaikan admin dilewati, sehingga narasi lama bisa tetap tampil di production.
+- **Command `php artisan tor:perbaiki`** memasang template TOR bawaan lalu memperbaiki TOR yang sudah dibuat:
+  - TOR yang belum diedit dibangun ulang menjadi kerangka poin. Tanggal generate-nya tetap.
+  - TOR yang sudah diketik hanya diganti kop-nya; teks yang diketik tetap ada.
+  - TOR bertanda tangan dilewati.
+  - `--termasuk-ttd`: TOR bertanda tangan ikut dibangun ulang. Scan-nya tidak berubah.
+  - `--timpa-isian`: TOR yang sudah diketik juga dibangun ulang menjadi kerangka poin, dan isiannya hilang.
+  - `--dry-run`: hanya menampilkan jumlah, tanpa mengubah apa pun.
+- Pendukung: `DocumentGenerator::rebuild()` membangun ulang satu dokumen dari template yang berlaku sambil menjaga tanggal generate. `App\Support\TorKop` berisi kop formulir TOR.
+- **Test:** `RepairTorDocumentsTest`.
 
 ---
 

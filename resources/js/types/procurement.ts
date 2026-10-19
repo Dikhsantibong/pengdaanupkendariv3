@@ -59,6 +59,8 @@ export type ProcurementRow = {
     budget_source: string | null;
     contract_type: string | null;
     contract_type_id: number | null;
+    /** The CSMS risk level stated by the user (Low, Moderat, High, Extreme). */
+    csms_risk_level?: string | null;
     /** The metode pengadaan picked by the planning PIC. */
     selection_method?: string | null;
     selection_method_id?: number | null;

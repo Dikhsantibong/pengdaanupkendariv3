@@ -115,12 +115,15 @@ class DocumentGenerator
             'status_progres' => 'Status progres saat ini',
             'pic_perencana' => 'Nama PIC perencana',
             'pic_pelaksana' => 'Nama PIC pelaksana',
+            'level_risiko_csms' => 'Level risiko CSMS (Low, Moderat, High, Extreme)',
             'nama_penyusun' => 'TOR: nama user yang menyusun (pembuat usulan/pengadaan)',
             'nama_asman_pengguna' => 'TOR: nama Asman bidang user (Direksi Pekerjaan)',
             'nama_asman_engineering' => 'TOR: nama Asman Engineering',
+            'pengesahan_tor' => 'TOR: blok tanda tangan Lembar Pengesahan sesuai format (SPK/PJ empat penanda tangan, SPPL tiga)',
             'nomor_ba_nego' => 'Nomor Berita Acara Negosiasi',
             'target_penyelesaian' => 'Target penyelesaian pengadaan',
             'tanggal_dokumen' => 'Tanggal dokumen digenerate',
+            'tanggal_terbit' => 'Tanggal terbit TOR (dd - mm - yyyy): diisi user, atau tanggal digenerate',
             'tahun' => 'Tahun berjalan',
             'tautan_penilaian_vendor' => 'Tautan tetap untuk vendor mengisi rincian tagihan (request penilaian vendor)',
             // Filled only on the amendment document (tab Amandemen).
@@ -204,6 +207,13 @@ class DocumentGenerator
             ->ordered()
             ->first();
         $managerName = $activeManager?->name ?? 'MANAGER UP KENDARI';
+
+        // Who signs the TOR, with a line to write on while not set up.
+        $signatories = [
+            'user' => $procurement->creator->name ?? self::UNSIGNED,
+            'asman' => $this->asmanOf($procurement->work_director_id)->name ?? self::UNSIGNED,
+            'engineering' => $this->asmanOf($this->engineeringDirectorId())->name ?? self::UNSIGNED,
+        ];
 
         $partnerAddress = ! empty(trim((string) $procurement->partner_address))
             ? trim((string) $procurement->partner_address)
@@ -314,19 +324,73 @@ class DocumentGenerator
             'pic_pelaksana' => $procurement->executor_id === null ? '-' : $procurement->executor->name ?? '-',
             // The TOR's signatories: the user who drew it up, the Asman of
             // their division and the Asman Engineering.
-            'nama_penyusun' => $procurement->creator->name ?? self::UNSIGNED,
-            'nama_asman_pengguna' => $this->asmanOf($procurement->work_director_id)->name ?? self::UNSIGNED,
-            'nama_asman_engineering' => $this->asmanOf($this->engineeringDirectorId())->name ?? self::UNSIGNED,
+            'level_risiko_csms' => $procurement->csms_risk_level?->label() ?? '-',
+            'nama_penyusun' => $signatories['user'],
+            'nama_asman_pengguna' => $signatories['asman'],
+            'nama_asman_engineering' => $signatories['engineering'],
             'nomor_ba_nego' => $procurement->number,
             'target_penyelesaian' => $procurement->target_completion_date === null
                 ? '-'
                 : $procurement->target_completion_date->translatedFormat('d F Y'),
             'tanggal_dokumen' => $issuedAt->translatedFormat('d F Y'),
+            // As the TOR's kop writes it (06 - 02 - 2023): the date the user
+            // gave, else the day the document was generated.
+            'tanggal_terbit' => ($procurement->tor_issue_date ?? $issuedAt)->format('d - m - Y'),
             'tahun' => $issuedAt->format('Y'),
             'tautan_penilaian_vendor' => VendorAssessmentRequest::formUrl(),
             'checklist_perencanaan' => $this->checklistMarkup($procurement, ProcurementStage::Perencanaan),
             'checklist_pelaksanaan' => $this->checklistMarkup($procurement, ProcurementStage::Pelaksanaan),
+            'pengesahan_tor' => $this->torSignatures($procurement, $signatories, $managerName),
         ];
+    }
+
+    /**
+     * The signatures of the TOR's Lembar Pengesahan, which follow the format.
+     *
+     * SPK and PJ are signed by four: drawn up by the user, checked by the
+     * Asman of the user's division (left) and the Asman Engineering (right),
+     * approved by the Manager. An SPPL by three: the Asman (left) and the
+     * user (right), the Manager below them.
+     *
+     * @param  array{user: string, asman: string, engineering: string}  $signatories
+     */
+    protected function torSignatures(Procurement $procurement, array $signatories, string $manager): string
+    {
+        ['user' => $user, 'asman' => $asman, 'engineering' => $engineering] = $signatories;
+        $division = e($procurement->workDirector->name);
+
+        $sign = fn (string $name): string => '<div class="gap"></div><span class="name">( <span style="text-transform: uppercase;">'.e($name).'</span> )</span>';
+
+        $approval = '<table class="approval-table" style="margin-top:20px;">'
+            .'<tr><td><b>Disetujui oleh:</b></td></tr>'
+            .'<tr><td class="small-gap"></td></tr>'
+            .'<tr><td>Manager</td></tr>'
+            .'<tr><td>'.$sign($manager).'</td></tr>'
+            .'</table>';
+
+        if ($procurement->contractNumberFormat?->code === 'SPPL') {
+            return '<table class="approval-table two">'
+                .'<tr><td><b>Diperiksa/Diketahui oleh:</b></td><td><b>Disusun oleh:</b></td></tr>'
+                .'<tr><td><div class="small-gap"></div></td><td><div class="small-gap"></div></td></tr>'
+                .'<tr><td>'.$division.'</td><td>User</td></tr>'
+                .'<tr><td>'.$sign($asman).'</td><td>'.$sign($user).'</td></tr>'
+                .'</table>'
+                .$approval;
+        }
+
+        return '<table class="approval-table">'
+            .'<tr><td><b>Disusun oleh:</b></td></tr>'
+            .'<tr><td class="small-gap"></td></tr>'
+            .'<tr><td>User</td></tr>'
+            .'<tr><td>'.$sign($user).'</td></tr>'
+            .'</table>'
+            .'<table class="approval-table two" style="margin-top:20px;">'
+            .'<tr><td colspan="2"><b>Diperiksa/Diketahui oleh:</b></td></tr>'
+            .'<tr><td colspan="2"><div class="small-gap"></div></td></tr>'
+            .'<tr><td>'.$division.'</td><td>Asman Engineering</td></tr>'
+            .'<tr><td>'.$sign($asman).'</td><td>'.$sign($engineering).'</td></tr>'
+            .'</table>'
+            .$approval;
     }
 
     /**
@@ -416,7 +480,7 @@ class DocumentGenerator
      * Placeholders frozen at generation: the issue date and year of a document
      * must not move on every day it is reopened.
      */
-    protected const FROZEN_FIELDS = ['tanggal_dokumen', 'tahun'];
+    protected const FROZEN_FIELDS = ['tanggal_dokumen', 'tanggal_terbit', 'tahun'];
 
     /**
      * Fill the placeholders of a template body.
@@ -630,6 +694,37 @@ class DocumentGenerator
             $procurement->work_category,
             $procurement->contract_number_format_id,
         ) ?? $document->documentTemplate;
+    }
+
+    /**
+     * Draw a document again from the template that fits it now, as if
+     * nobody had edited it, keeping the day it was generated. For repairing
+     * documents in bulk (php artisan tor:perbaiki).
+     *
+     * Returns false when no template fits the document.
+     */
+    public function rebuild(ProcurementDocument $document): bool
+    {
+        $document->loadMissing('procurement');
+
+        $template = DocumentTemplate::resolveFor(
+            $document->document_type_id,
+            $document->procurement->procurement_method_id,
+            $document->procurement->work_category,
+            $document->procurement->contract_number_format_id,
+        );
+
+        if ($template === null) {
+            return false;
+        }
+
+        $body = $this->renderFor($document, $template, $document->generated_at);
+
+        $document->forceFill(['revision' => 0, 'edited_by' => null, 'edited_at' => null]);
+        $this->storeRebuilt($document, $body, $template);
+        Cache::forget('document-live:'.$document->getKey());
+
+        return true;
     }
 
     /**

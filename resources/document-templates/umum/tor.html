@@ -135,32 +135,13 @@
         font-family: Arial, Helvetica, sans-serif;
         font-size: 9pt;
     }
-    .header td { border: 1px solid #000; vertical-align: middle; }
-    .header-left {
-        width: 22%;
-        text-align: center;
-        padding: 6px;
-        font-weight: bold;
-    }
-    .header-left img {
-        max-height: 48px;
-        max-width: 140px;
-        display: block;
-        margin: 0 auto;
-    }
-    .header-middle {
-        width: 37%;
-        text-align: center;
-        font-weight: bold;
-        padding: 7px;
-    }
-    .header-middle .tor { font-size: 12pt; margin-top: 5px; }
-    .header-right { width: 41%; padding: 0; }
-    .header-right table { width: 100%; border-collapse: collapse; }
-    .header-right td { border: 0; border-bottom: 1px solid #000; padding: 4px 6px; }
-    .header-right tr:last-child td { border-bottom: 0; }
-    .header-right .label { width: 45%; }
-    .header-right .colon { width: 5%; text-align: center; }
+    .header td { border: 1px solid #000; vertical-align: middle; padding: 4px 6px; }
+    .header .logo { width: 22%; text-align: center; padding: 6px; }
+    .header .logo img { max-height: 48px; max-width: 140px; display: block; margin: 0 auto; }
+    .header .company { width: 37%; text-align: center; font-weight: bold; }
+    .header .company.tor { font-size: 11pt; }
+    .header .label { width: 16%; border-right: 0; }
+    .header .value { width: 25%; border-left: 0; }
 
     .program {
         width: 100%;
@@ -274,24 +255,27 @@
 <!-- Document Content -->
 <div class="document">
 
-    <!-- Kop dan metadata, mengikuti pola PDF -->
+    <!-- Kop formulir TOR -->
     <table class="header">
         <tr>
-            <td class="header-left">
-                <img src="/logo/sidebar-logo.png" alt="PT PLN NUSANTARA POWER">
-            </td>
-            <td class="header-middle">
-                INTEGRATED MANAGEMENT SYSTEM
-                <div class="tor">TERM OF REFERENCE (TOR)</div>
-            </td>
-            <td class="header-right">
-                <table>
-                    <tr><td class="label">Nomor Dokumen / Pengadaan</td><td class="colon">:</td><td></td></tr>
-                    <tr><td class="label">Revisi</td><td class="colon">:</td><td>00</td></tr>
-                    <tr><td class="label">Tanggal Terbit</td><td class="colon">:</td><td>{{tanggal_dokumen}}</td></tr>
-                    <tr><td class="label">Halaman</td><td class="colon">:</td><td></td></tr>
-                </table>
-            </td>
+            <td class="logo" rowspan="4"><img src="/logo/sidebar-logo.png" alt="PT PLN NUSANTARA POWER"></td>
+            <td class="company">PT PLN NUSANTARA POWER</td>
+            <td class="label">Nomor Dokumen</td>
+            <td class="value">: FMKP – 167 – 9.1.1.2.e.a.c - 001</td>
+        </tr>
+        <tr>
+            <td class="company">INTEGRATED MANAGEMENT SYSTEM</td>
+            <td class="label">Revisi</td>
+            <td class="value">: 00</td>
+        </tr>
+        <tr>
+            <td class="company tor" rowspan="2">TERM OF REFERENCE (TOR)</td>
+            <td class="label">Tanggal Terbit</td>
+            <td class="value">: {{tanggal_terbit}}</td>
+        </tr>
+        <tr>
+            <td class="label">Halaman</td>
+            <td class="value">: </td>
         </tr>
     </table>
 
@@ -304,175 +288,91 @@
         <tr><td class="label">Jenis / Sumber Anggaran</td><td class="colon">:</td><td class="value">{{sumber_anggaran}}</td></tr>
     </table>
 
+    <!-- Hanya poin dan sub poin; narasi diisi manual di editor dokumen. -->
     <section class="section">
         <div class="title">1. PENDAHULUAN</div>
         <div class="sub">1.1. Latar Belakang</div>
-        <p class="para">Pekerjaan <b>{{nama_pengadaan}}</b> dilaksanakan sebagai bagian dari kebutuhan pekerjaan pada <b>{{unit_tujuan}}</b>. Pelaksanaan pekerjaan disusun untuk mendukung kebutuhan operasional, peningkatan keandalan, efektivitas proses, dan pencapaian sasaran pekerjaan sesuai ketentuan yang berlaku.</p>
-        <p class="para">Ruang lingkup, metode, serta target hasil pekerjaan disesuaikan dengan kebutuhan pengguna barang/jasa dan arahan dari <b>{{direksi_pekerjaan}}</b>.</p>
-
-        <div class="sub">1.2. Maksud dan tujuan</div>
+        <p class="para"><br></p>
+        <div class="sub">1.2. Maksud dan Tujuan</div>
+        <p class="para"><br></p>
         <div class="sub" style="font-weight:normal;">1.2.1. Maksud</div>
-        <div class="list">
-            <div>a. Menjadi acuan dalam pelaksanaan pengadaan pekerjaan <b>{{nama_pengadaan}}</b>.</div>
-            <div>b. Menjadi dasar bagi penyedia jasa dalam menyiapkan dan melaksanakan pekerjaan sesuai kebutuhan pengguna.</div>
-        </div>
+        <p class="para"><br></p>
         <div class="sub" style="font-weight:normal;">1.2.2. Tujuan</div>
-        <div class="list">
-            <div>a. Memenuhi kebutuhan pekerjaan pada <b>{{unit_tujuan}}</b>.</div>
-            <div>b. Menjamin pelaksanaan pekerjaan sesuai ruang lingkup dan ketentuan yang ditetapkan.</div>
-            <div>c. Mendukung pencapaian target pekerjaan secara efektif dan terdokumentasi.</div>
-            <div>d. Menjamin koordinasi pelaksanaan oleh penyedia dengan <b>{{direksi_pekerjaan}}</b>.</div>
-        </div>
-
+        <p class="para"><br></p>
         <div class="sub">1.3. Lokasi</div>
-        <p class="para">Pelaksanaan pekerjaan dilakukan pada <b>{{unit_tujuan}}</b> dan/atau lokasi lain yang ditetapkan dalam dokumen pengadaan.</p>
-
-        <div class="sub">1.4. Nama pengguna barang/jasa</div>
-        <p class="para"><b>{{unit_tujuan}}</b>.</p>
+        <p class="para"><br></p>
+        <div class="sub">1.4. Nama Pengguna Barang/Jasa</div>
+        <p class="para"><br></p>
     </section>
 
     <section class="section">
         <div class="title">2. PEDOMAN ACUAN TEKNIS/DATA REFERENSI TEKNIS</div>
         <div class="sub">2.1. Standart Nasional &amp; Internasional Terkait</div>
-        <p class="para">Pelaksanaan pekerjaan mengacu pada standar, prosedur, ketentuan teknis, spesifikasi, gambar, dokumen pengadaan, serta peraturan internal yang relevan dengan <b>{{nama_pengadaan}}</b>.</p>
-        <div class="list">
-            <div>• Standar dan ketentuan teknis yang berlaku untuk jenis pekerjaan.</div>
-            <div>• Spesifikasi teknis dan dokumen pengadaan yang disetujui.</div>
-            <div>• Ketentuan keselamatan, keamanan, mutu, dan lingkungan yang berlaku.</div>
-        </div>
+        <p class="para"><br></p>
     </section>
 
     <section class="section">
         <div class="title">3. LINGKUP PEKERJAAN/SCOPE OF WORK</div>
-        <p class="para">Adapun lingkup pekerjaan <b>{{nama_pengadaan}}</b> meliputi pekerjaan, jasa, material, aktivitas pendukung, pengujian, dokumentasi, dan kegiatan lain yang diperlukan untuk mencapai hasil pekerjaan yang dipersyaratkan.</p>
-        <p class="para">Metode pelaksanaan pengadaan menggunakan <b>{{metode_pengadaan}}</b> dengan memperhatikan ketentuan dokumen pengadaan dan arahan dari <b>{{direksi_pekerjaan}}</b>.</p>
-
-        <table class="data">
-            <tr><th style="width:9%">NO</th><th style="width:51%">JASA / PEKERJAAN</th><th style="width:18%">SATUAN</th><th style="width:22%">JUMLAH</th></tr>
-            <tr><td class="center">1</td><td>{{nama_pengadaan}}</td><td class="center">Sesuai kebutuhan</td><td class="center">Sesuai dokumen pengadaan</td></tr>
-        </table>
+        <p class="para"><br></p>
     </section>
 
     <section class="section">
         <div class="title">4. PERFORMANCE DESIGN</div>
-        <div class="list">
-            <div>4.1. Pekerjaan harus dapat memenuhi kebutuhan dan sasaran <b>{{nama_pengadaan}}</b>.</div>
-            <div>4.2. Hasil pekerjaan harus dapat digunakan/dioperasikan sesuai fungsi yang dipersyaratkan.</div>
-            <div>4.3. Dokumentasi hasil pekerjaan harus tersedia dan dapat ditelusuri.</div>
-            <div>4.4. Pelaksanaan pekerjaan harus mendukung kebutuhan operasional <b>{{unit_tujuan}}</b>.</div>
-        </div>
+        <p class="para"><br></p>
     </section>
 
     <section class="section">
         <div class="title">5. KUALIFIKASI CALON PELAKSANA PEKERJAAN</div>
-        <div class="list">
-            <div>5.1. Penyedia merupakan badan usaha/perorangan yang memiliki legalitas dan bidang usaha yang sesuai dengan <b>{{nama_pengadaan}}</b>.</div>
-            <div>5.2. Memiliki pengalaman yang relevan dengan jenis pekerjaan yang akan dilaksanakan.</div>
-            <div>5.3. Memiliki sumber daya manusia yang kompeten sesuai kebutuhan pekerjaan.</div>
-            <div>5.4. Memiliki kemampuan menyediakan peralatan, material, dan sumber daya pendukung sesuai kebutuhan.</div>
-            <div>5.5. Mampu melaksanakan pekerjaan sesuai instruksi dan koordinasi <b>{{direksi_pekerjaan}}</b>.</div>
-        </div>
+        <p class="para"><br></p>
     </section>
 
     <section class="section">
         <div class="title">6. DETAIL URAIAN PEKERJAAN</div>
-        <p class="para">Detail uraian pekerjaan untuk <b>{{nama_pengadaan}}</b> ditetapkan berdasarkan kebutuhan teknis dan dokumen pengadaan.</p>
-        <table class="data">
-            <tr><th style="width:8%">NO.</th><th style="width:31%">PEKERJAAN</th><th style="width:13%">STN</th><th style="width:12%">VOL.</th><th style="width:36%">KETERANGAN</th></tr>
-            <tr><td class="center">1</td><td>{{nama_pengadaan}}</td><td class="center">Sesuai kebutuhan</td><td class="center">Sesuai dokumen</td><td>Pelaksanaan sesuai spesifikasi teknis dan arahan <b>{{direksi_pekerjaan}}</b>.</td></tr>
-            <tr><td class="center">2</td><td>Pekerjaan pendukung</td><td class="center">Sesuai kebutuhan</td><td class="center">Sesuai dokumen</td><td>Termasuk pekerjaan penunjang yang diperlukan sampai pekerjaan dinyatakan selesai.</td></tr>
-            <tr><td class="center">3</td><td>Dokumentasi / pelaporan</td><td class="center">Lot</td><td class="center">1</td><td>Dokumen hasil pekerjaan disampaikan sesuai ketentuan.</td></tr>
-        </table>
+        <p class="para"><br></p>
     </section>
 
     <section class="section">
         <div class="title">7. KELENGKAPAN PELAKSANAAN PEKERJAAN</div>
-        <p class="para">Penyedia wajib menyiapkan seluruh tenaga kerja, peralatan, material, dokumen, metode kerja, serta kebutuhan lain yang diperlukan untuk melaksanakan <b>{{nama_pengadaan}}</b> secara lengkap, aman, dan sesuai ketentuan.</p>
+        <p class="para"><br></p>
     </section>
-
-    <div class="page-break" contenteditable="false"></div>
 
     <section class="section">
         <div class="title">8. ASPEK K3 DAN KEAMANAN</div>
         <div class="sub">8.1. Identifikasi Bahaya dan Risiko Kerja</div>
-        <div class="sub" style="font-weight:normal;">8.1.1. Potensi bahaya yang termasuk dalam pekerjaan ini adalah :</div>
-        <table class="data">
-            <tr><th style="width:8%">No.</th><th style="width:28%">Identifikasi Risiko</th><th style="width:23%">Risiko / Penyebab</th><th style="width:20%">Dampak</th><th style="width:21%">Pengendalian</th></tr>
-            <tr><td class="center">1</td><td>Risiko pelaksanaan pekerjaan</td><td>Potensi bahaya sesuai aktivitas pekerjaan</td><td>Gangguan terhadap pekerja/operasional</td><td>Mengikuti prosedur K3 dan pengendalian risiko yang berlaku.</td></tr>
-        </table>
-        <div class="sub" style="font-weight:normal;">8.1.2. Dalam pekerjaan ini penyedia wajib :</div>
-        <div class="list">
-            <div>• Melakukan identifikasi, evaluasi, dan pengendalian risiko.</div>
-            <div>• Mematuhi ketentuan K3 dan keamanan di lokasi pekerjaan.</div>
-            <div>• Menjaga keamanan data, dokumen, material, dan fasilitas pengguna.</div>
-        </div>
-        <table class="data">
-            <tr><th style="width:8%">No</th><th style="width:42%">Item Barang/Peralatan</th><th style="width:25%">Pelaksana Pekerjaan</th><th style="width:25%">Pengguna Barang/Jasa</th></tr>
-            <tr><td class="center">1</td><td>Peralatan kerja sesuai kebutuhan</td><td class="center">Sesuai kebutuhan</td><td class="center">Sesuai ketentuan pengadaan</td></tr>
-            <tr><td class="center">2</td><td>Perlengkapan keselamatan kerja</td><td class="center">Sesuai kebutuhan</td><td class="center">Sesuai ketentuan pengadaan</td></tr>
-        </table>
-        <div class="sub" style="font-weight:normal;">8.1.3. Semua potensi bahaya yang telah diidentifikasi harus dievaluasi dan dikendalikan oleh pelaksana pekerjaan.</div>
+        <p class="para"><br></p>
     </section>
 
     <section class="section">
         <div class="title">9. LAPORAN HASIL PEKERJAAN/DOKUMEN KELENGKAPAN PEKERJAAN</div>
-        <div class="sub">9.1. Laporan hasil pekerjaan dengan ketentuan sebagaimana berikut:</div>
-        <div class="list">
-            <div>- Laporan pelaksanaan pekerjaan <b>{{nama_pengadaan}}</b>.</div>
-            <div>- Dokumen hasil pekerjaan dan hasil pengujian/pengecekan sesuai kebutuhan.</div>
-            <div>- Dokumentasi pelaksanaan pekerjaan.</div>
-            <div>- Manual, SOP, atau dokumen pendukung lainnya apabila dipersyaratkan.</div>
-            <div>- Dokumen administrasi dan berita acara sesuai tahapan pekerjaan.</div>
-        </div>
+        <div class="sub">9.1. Laporan Hasil Pekerjaan</div>
+        <p class="para"><br></p>
         <div class="sub">9.2. Dokumen Penagihan</div>
-        <div class="list">
-            <div>- Penagihan dilakukan sesuai tahapan penyelesaian pekerjaan dan ketentuan kontrak.</div>
-            <div>- Dokumen penagihan harus telah diperiksa/diketahui oleh <b>{{direksi_pekerjaan}}</b>.</div>
-        </div>
+        <p class="para"><br></p>
     </section>
 
     <section class="section">
-        <div class="title">9. BARANG SISA &amp; LIMBAH</div>
-        <div class="list">
-            <div>10.1. Material/barang sisa dan limbah akibat pelaksanaan pekerjaan ditangani dan dibuang sesuai ketentuan yang berlaku.</div>
-            <div>10.2. Penyedia bertanggung jawab menjaga kebersihan dan ketertiban lingkungan selama pelaksanaan pekerjaan.</div>
-        </div>
+        <div class="title">10. BARANG SISA &amp; LIMBAH</div>
+        <p class="para"><br></p>
     </section>
 
     <section class="section">
-        <div class="title">10. QUALITY ACCEPTANCE</div>
-        <p class="para">Parameter Quality Acceptance dalam lingkup pekerjaan <b>{{nama_pengadaan}}</b>, antara lain sebagai berikut:</p>
-        <div class="list">
-            <div>11.1. Hasil pekerjaan memenuhi fungsi dan spesifikasi yang dipersyaratkan.</div>
-            <div>11.2. Hasil pekerjaan telah diperiksa dan dinyatakan sesuai oleh <b>{{direksi_pekerjaan}}</b>.</div>
-            <div>11.3. Dokumen hasil pekerjaan tersedia dan lengkap.</div>
-            <div>11.4. Tidak terdapat cacat/ketidaksesuaian yang menghambat fungsi pekerjaan.</div>
-            <div>11.5. Hasil pekerjaan dapat diterima oleh pengguna barang/jasa.</div>
-        </div>
+        <div class="title">11. QUALITY ACCEPTANCE</div>
+        <p class="para"><br></p>
     </section>
 
     <section class="section">
-        <div class="title">11. WAKTU PENYELESAIAN PEKERJAAN</div>
-        <div class="sub" style="font-weight:normal;">11.1. Jangka waktu pelaksanaan pekerjaan <b>{{nama_pengadaan}}</b> ditetapkan sesuai kontrak/dokumen pengadaan dan berlaku terhitung sejak tanggal mulai pelaksanaan yang disepakati.</div>
+        <div class="title">12. WAKTU PENYELESAIAN PEKERJAAN</div>
+        <p class="para"><br></p>
     </section>
 
     <section class="section">
-        <div class="title">12. GARANSI</div>
-        <div class="list">
-            <div>12.1. Masa garansi pekerjaan mengikuti ketentuan kontrak dan dokumen pengadaan.</div>
-            <div>12.2. Penyedia wajib memberikan respon atas gangguan/ketidaksesuaian yang disampaikan oleh pengguna.</div>
-            <div>12.3. Penyedia wajib melakukan perbaikan/penyempurnaan terhadap ketidaksesuaian yang menjadi tanggung jawab penyedia.</div>
-            <div>12.4. Pelaksanaan garansi tetap dikoordinasikan dengan <b>{{direksi_pekerjaan}}</b>.</div>
-        </div>
+        <div class="title">13. GARANSI</div>
+        <p class="para"><br></p>
     </section>
 
     <section class="section">
-        <div class="title">13. LAIN-LAIN</div>
-        <div class="list">
-            <div>13.1. Setiap perubahan atau tambahan ruang lingkup pekerjaan harus dikomunikasikan dan disepakati oleh para pihak.</div>
-            <div>13.2. Biaya yang menjadi tanggung jawab penyedia sesuai kontrak telah diperhitungkan dalam nilai pekerjaan <b>{{nilai_hpe}}</b>.</div>
-            <div>13.3. Ketentuan lain yang belum tercantum tetap mengikuti dokumen pengadaan, kontrak, dan ketentuan perusahaan yang berlaku.</div>
-        </div>
+        <div class="title">14. LAIN-LAIN</div>
+        <p class="para"><br></p>
     </section>
 
     <!-- Lembar Pengesahan mengikuti halaman akhir PDF -->
@@ -485,35 +385,11 @@
         </div>
         <div class="approval-date">{{unit_tujuan}}, {{tanggal_dokumen}}</div>
 
-        <!-- Empat penanda tangan: disusun oleh user (pembuat usulan),
-             diperiksa Asman bidang user (kiri) dan Asman Engineering (kanan),
-             disetujui Manager (Data Master). -->
-        <table class="approval-table">
-            <tr><td><b>Disusun oleh:</b></td></tr>
-            <tr><td class="small-gap"></td></tr>
-            <tr><td>User</td></tr>
-            <tr><td><div class="gap"></div><span class="name">( <span style="text-transform: uppercase;">{{nama_penyusun}}</span> )</span></td></tr>
-        </table>
-
-        <table class="approval-table two" style="margin-top:20px;">
-            <tr><td colspan="2"><b>Diperiksa/Diketahui oleh:</b></td></tr>
-            <tr><td colspan="2"><div class="small-gap"></div></td></tr>
-            <tr>
-                <td>{{direksi_pekerjaan}}</td>
-                <td>Asman Engineering</td>
-            </tr>
-            <tr>
-                <td><div class="gap"></div><span class="name">( <span style="text-transform: uppercase;">{{nama_asman_pengguna}}</span> )</span></td>
-                <td><div class="gap"></div><span class="name">( <span style="text-transform: uppercase;">{{nama_asman_engineering}}</span> )</span></td>
-            </tr>
-        </table>
-
-        <table class="approval-table" style="margin-top:20px;">
-            <tr><td><b>Disetujui oleh:</b></td></tr>
-            <tr><td class="small-gap"></td></tr>
-            <tr><td>Manager</td></tr>
-            <tr><td><div class="gap"></div><span class="name">( <span style="text-transform: uppercase;">{{nama_manager}}</span> )</span></td></tr>
-        </table>
+        <!-- Penanda tangan disusun sistem sesuai format:
+             SPK/PJ: disusun user; diperiksa Asman bidang user (kiri) dan
+             Asman Engineering (kanan); disetujui Manager.
+             SPPL: Asman bidang user (kiri), user (kanan), Manager di bawah. -->
+        {{pengesahan_tor}}
     </section>
 
 </div>

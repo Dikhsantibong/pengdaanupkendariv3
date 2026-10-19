@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\CsmsRiskLevel;
 use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
@@ -41,6 +42,8 @@ use Illuminate\Support\Collection;
  * @property int|null $budget_source_id
  * @property int|null $contract_type_id
  * @property int|null $selection_method_id
+ * @property CsmsRiskLevel|null $csms_risk_level
+ * @property CarbonImmutable|null $tor_issue_date
  * @property WorkCategory|null $work_category
  * @property ProposalState $proposal_state
  * @property CarbonImmutable|null $proposal_submitted_at
@@ -113,6 +116,8 @@ use Illuminate\Support\Collection;
     'procurement_method_id',
     'budget_source_id',
     'contract_type_id',
+    'csms_risk_level',
+    'tor_issue_date',
     'contract_number_format_id',
     'work_category',
     'manager_memo_number',
@@ -900,6 +905,8 @@ class Procurement extends Model
             'execution_duration_days' => 'integer',
             'warranty_months' => 'integer',
             'work_category' => WorkCategory::class,
+            'csms_risk_level' => CsmsRiskLevel::class,
+            'tor_issue_date' => 'date',
             'proposal_state' => ProposalState::class,
             'proposal_submitted_at' => 'datetime',
             'proposal_completed_at' => 'datetime',

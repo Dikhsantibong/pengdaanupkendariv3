@@ -594,6 +594,8 @@ class ProcurementController extends Controller
                 'number' => $procurement->number,
                 'contract_number_format_id' => $procurement->contract_number_format_id,
                 'contract_type_id' => $procurement->contract_type_id,
+                'csms_risk_level' => $procurement->csms_risk_level?->value,
+                'tor_issue_date' => $procurement->tor_issue_date?->toDateString() ?? '',
                 'name' => $procurement->name,
                 'work_director_id' => $procurement->work_director_id,
                 'target_unit_ids' => $procurement->servedUnits()->pluck('id')->all(),

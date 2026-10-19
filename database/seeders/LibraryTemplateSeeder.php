@@ -25,12 +25,26 @@ abstract class LibraryTemplateSeeder extends Seeder
     protected array $groups = [];
 
     /**
+     * Templates always put back to the shipped default, even when an
+     * administrator changed them.
+     *
+     * @var array<int, string>
+     */
+    protected array $forced = [];
+
+    /**
      * Seed the templates.
      */
     public function run(): void
     {
+        $library = app(DocumentTemplateLibrary::class);
+
         // Templates whose document type is not set up yet are skipped; run
         // `php artisan templates:sync` for a per-template report.
-        app(DocumentTemplateLibrary::class)->sync(groups: $this->groups);
+        $library->sync(groups: $this->groups);
+
+        if ($this->forced !== []) {
+            $library->sync(keys: $this->forced, force: true);
+        }
     }
 }

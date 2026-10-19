@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\CsmsRiskLevel;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Enums\UserRole;
@@ -39,6 +40,7 @@ class MasterDataOptions
                 ])->all(),
             // The category of an SPK or PJ: the Jenis Kontrak master data.
             'contractTypes' => self::contractTypes(),
+            'csmsRiskLevels' => CsmsRiskLevel::options(),
             'workDirectors' => self::workDirectors(true),
             'targetUnits' => self::targetUnits(true),
             'budgetSources' => self::budgetSources(true),

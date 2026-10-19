@@ -85,6 +85,10 @@ export function IdentityPanel({
             ),
         },
         {
+            label: 'Level Risiko CSMS',
+            value: procurement.csms_risk_level ?? '—',
+        },
+        {
             label: 'Metode Pengadaan',
             value: editsInline ? (
                 <SelectionMethodPicker

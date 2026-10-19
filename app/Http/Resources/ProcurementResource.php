@@ -43,6 +43,7 @@ class ProcurementResource extends JsonResource
                 ? null
                 : $this->selectionMethod?->name,
             'selection_method_id' => $this->selection_method_id,
+            'csms_risk_level' => $this->csms_risk_level?->label(),
             'work_category' => $this->work_category?->label(),
             'manager_memo_number' => $this->manager_memo_number,
             'pr_po_number' => $this->pr_po_number,

@@ -27,6 +27,8 @@ export type ProcurementFormOptions = {
     contractNumberFormats: ContractFormatOption[];
     /** The categories of an SPK or PJ, from the Jenis Kontrak master data. */
     contractTypes: Option[];
+    /** Low, Moderat, High, Extreme. */
+    csmsRiskLevels: Array<{ value: string; label: string }>;
     workDirectors: Option[];
     targetUnits: Option[];
     budgetSources: Option[];
@@ -35,6 +37,10 @@ export type ProcurementFormOptions = {
 
 export type ProcurementFormValues = {
     contract_number_format_id: number | null;
+    /** The CSMS risk level the user states (low, moderate, high, extreme). */
+    csms_risk_level: string;
+    /** The TOR's Tanggal Terbit; empty, the TOR takes its generating day. */
+    tor_issue_date: string;
     name: string;
     work_director_id: number | null;
     target_unit_ids: number[];
@@ -115,6 +121,8 @@ export function ProcurementForm({
               }
             : {}),
         contract_number_format_id: startingFormatId,
+        csms_risk_level: initialValues?.csms_risk_level ?? '',
+        tor_issue_date: initialValues?.tor_issue_date ?? '',
         name: initialValues?.name ?? '',
         work_director_id:
             initialValues?.work_director_id ??
@@ -181,39 +189,93 @@ export function ProcurementForm({
                 <p className="section-label">Identitas Pengadaan</p>
 
                 {/* Asked of whoever registers or proposes the job. */}
-                <div className="grid gap-2 sm:max-w-xs">
-                    <Label htmlFor="contract_number_format_id">
-                        Jenis Kontrak
-                    </Label>
-                    <Select
-                        value={
-                            data.contract_number_format_id === null
-                                ? undefined
-                                : String(data.contract_number_format_id)
-                        }
-                        onValueChange={(value) => chooseFormat(Number(value))}
-                    >
-                        <SelectTrigger id="contract_number_format_id">
-                            <SelectValue placeholder="Pilih SPK / PJ / SPPL" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {options.contractNumberFormats.map((option) => (
-                                <SelectItem
-                                    key={option.value}
-                                    value={String(option.value)}
-                                >
-                                    {option.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <InputError message={errors.contract_number_format_id} />
-                    <p className="text-xs text-muted-foreground">
-                        Metode pengadaan dan kategori (Barang, Jasa, KHS, Barang
-                        dan Jasa) dipilih PIC Perencana di detail pengadaan.
-                        Nomor kontrak diisi PIC Pelaksana pada tahapan Kontrak
-                        (SPK/PJ) atau Lampiran Surat Pesanan (SPPL).
-                    </p>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid content-start gap-2">
+                        <Label htmlFor="contract_number_format_id">
+                            Jenis Kontrak
+                        </Label>
+                        <Select
+                            value={
+                                data.contract_number_format_id === null
+                                    ? undefined
+                                    : String(data.contract_number_format_id)
+                            }
+                            onValueChange={(value) =>
+                                chooseFormat(Number(value))
+                            }
+                        >
+                            <SelectTrigger id="contract_number_format_id">
+                                <SelectValue placeholder="Pilih SPK / PJ / SPPL" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {options.contractNumberFormats.map((option) => (
+                                    <SelectItem
+                                        key={option.value}
+                                        value={String(option.value)}
+                                    >
+                                        {option.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <InputError
+                            message={errors.contract_number_format_id}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Metode pengadaan dan kategori (Barang, Jasa, KHS,
+                            Barang dan Jasa) dipilih PIC Perencana di detail
+                            pengadaan. Nomor kontrak diisi PIC Pelaksana pada
+                            tahapan Kontrak (SPK/PJ) atau Lampiran Surat Pesanan
+                            (SPPL).
+                        </p>
+                    </div>
+
+                    <div className="grid content-start gap-2">
+                        <Label htmlFor="csms_risk_level">
+                            Level Risiko CSMS
+                        </Label>
+                        <Select
+                            value={data.csms_risk_level || undefined}
+                            onValueChange={(value) =>
+                                setData('csms_risk_level', value)
+                            }
+                        >
+                            <SelectTrigger id="csms_risk_level">
+                                <SelectValue placeholder="Pilih level risiko" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {options.csmsRiskLevels.map((level) => (
+                                    <SelectItem
+                                        key={level.value}
+                                        value={level.value}
+                                    >
+                                        {level.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <InputError message={errors.csms_risk_level} />
+                        <p className="text-xs text-muted-foreground">
+                            Tingkat risiko K3 pekerjaan untuk penilaian CSMS
+                            calon mitra.
+                        </p>
+                    </div>
+
+                    <div className="grid content-start gap-2">
+                        <DateField
+                            id="tor_issue_date"
+                            label="Tanggal Terbit TOR"
+                            value={data.tor_issue_date}
+                            onChange={(value) =>
+                                setData('tor_issue_date', value)
+                            }
+                            error={errors.tor_issue_date}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Tercetak pada kop TOR. Bila dikosongkan, memakai
+                            tanggal TOR digenerate.
+                        </p>
+                    </div>
                 </div>
 
                 <div className="grid gap-2">
