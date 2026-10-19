@@ -1381,6 +1381,18 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 - **Test:** `TenderBeritaAcaraTest`; `BeritaAcaraDocumentTest` disesuaikan dengan judul baru.
 - **Test:** `TorHeaderTest`, `RepairTorDocumentsTest`.
 
+### 43. Data Master Manager Unit: Pejabat Unit Layanan
+- 27 pejabat Unit Layanan ditambahkan ke Data Master → Manager Unit lewat seeder `UnitLayananManagerSeeder` (juga dipanggil `MasterDataSeeder`). Nama di kolom Nama, jabatan di kolom Jabatan, dan unit di kolom Keterangan:
+  - **ULPLTD WUA WUA** (5): Manager UL, TL Pemeliharaan, TL Operasi, TL OPHAR PLTD Langara, TL K3L.
+  - **ULPLTD POASIA** (4): Manager UL, TL Pemeliharaan, TL Operasi, TL K3L.
+  - **ULPLTDG KOLAKA** (8): Manager UL, TL Pemeliharaan, TL Operasi, TL K3L, TL OPHAR PLTM Sabilambo, PLTD Lanipa Nipa, PLTM Mikuasi, PLTG Kolaka.
+  - **ULPLTD BAU BAU** (10): Manager UL, TL Operasi, TL Pemeliharaan, TL K3L, TL OPHAR PLTD Raha, PLTD Ereke, PLTD Wangi Wangi, PLTM Winning, PLTM Rongi, PLTD Pasarwajo.
+- Urutannya ditaruh setelah data yang sudah ada (`max(sort_order) + 1` dst.), sehingga Manager UP Kendari yang menandatangani dokumen (`{{nama_manager}}`, yaitu manager aktif dengan urutan terkecil) tidak berubah.
+- Hanya baris yang belum ada yang ditambahkan (dicocokkan dengan nama, termasuk yang sudah dihapus). Perubahan atau penghapusan oleh administrator tetap dipertahankan saat seeder dijalankan ulang.
+- Ejaan yang dirapikan dari daftar: PPOASIA → POASIA, WIINNING → WINNING, PLM RONGI → PLTM RONGI.
+- **Menjalankan:** `php artisan db:seed --class=UnitLayananManagerSeeder --force`.
+- **Test:** `UnitLayananManagerSeederTest`.
+
 ---
 
 # Fitur Utama

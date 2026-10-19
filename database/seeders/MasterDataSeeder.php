@@ -32,6 +32,8 @@ class MasterDataSeeder extends Seeder
     public function run(): void
     {
         $this->seedUnitManagers();
+        // The Unit Layanan officials, listed after the Manager UP Kendari.
+        $this->call(UnitLayananManagerSeeder::class);
         $this->seedWorkDirectors();
         $this->seedTargetUnits();
         $this->seedProcurementMethods();
