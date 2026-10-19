@@ -13,6 +13,7 @@ use App\Models\ContractType;
 use App\Models\DocumentType;
 use App\Models\ProcurementMethod;
 use App\Models\ProgressStatus;
+use App\Models\SelectionMethod;
 use App\Models\TargetUnit;
 use App\Models\UnitManager;
 use App\Models\WorkDirector;
@@ -36,6 +37,7 @@ class MasterDataSeeder extends Seeder
         $this->seedProcurementMethods();
         $this->seedBudgetSources();
         $this->seedContractTypes();
+        $this->seedSelectionMethods();
         $this->seedContractNumberFormats();
         $this->seedAmendmentFormat();
         $this->seedDeliveryOrderFormat();
@@ -176,6 +178,8 @@ class MasterDataSeeder extends Seeder
             ['lumsum', 'Lumsum', 'Kontrak lumsum (harga borongan tetap).', null],
             ['barang', 'Barang', 'Format dokumen Barang.', WorkCategory::Barang],
             ['jasa', 'Jasa', 'Format dokumen Jasa.', WorkCategory::Jasa],
+            // Both at once: the general SPK/PJ format.
+            ['barang-jasa', 'Barang dan Jasa', 'Pengadaan barang sekaligus jasa.', null],
         ];
 
         foreach ($types as $index => [$code, $name, $description, $category]) {
@@ -188,6 +192,26 @@ class MasterDataSeeder extends Seeder
                     'sort_order' => $index + 1,
                     'is_active' => true,
                 ],
+            );
+        }
+    }
+
+    /**
+     * Seed the metode pengadaan the planning PIC picks from.
+     */
+    protected function seedSelectionMethods(): void
+    {
+        $methods = [
+            ['penunjukan-langsung', 'Penunjukan Langsung'],
+            ['pengadaan-langsung', 'Pengadaan Langsung'],
+            ['lelang-terbuka-1-tahap-1-sampul', 'Lelang Terbuka 1 Tahap 1 Sampul'],
+            ['lelang-terbuka-1-tahap-2-sampul', 'Lelang Terbuka 1 Tahap 2 Sampul'],
+        ];
+
+        foreach ($methods as $index => [$code, $name]) {
+            SelectionMethod::withTrashed()->updateOrCreate(
+                ['code' => $code],
+                ['name' => $name, 'sort_order' => $index + 1],
             );
         }
     }

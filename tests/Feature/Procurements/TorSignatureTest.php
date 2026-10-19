@@ -14,7 +14,8 @@ use Tests\TestCase;
 
 /**
  * The TOR's signature page: the Manager from Data Master approves it at the
- * bottom; who drafted and checked it is typed in by hand.
+ * bottom; the user, their Asman and the Asman Engineering above it are read
+ * from the data, with a line to write on while one is not set up.
  */
 class TorSignatureTest extends TestCase
 {
@@ -41,9 +42,11 @@ class TorSignatureTest extends TestCase
         $approval = substr($document->rendered_body, (int) strpos($document->rendered_body, 'LEMBAR PENGESAHAN'));
 
         $this->assertStringContainsString('Ir. Budi Santoso', $approval);
-        // The other signatories are left blank for typing.
+        // The planner does not sign it; the user's Asman checks it under the
+        // division's name, and a signatory not set up leaves a line.
         $this->assertStringNotContainsString('Perencana Uji', $approval);
-        $this->assertStringNotContainsString($procurement->workDirector->name, $approval);
-        $this->assertStringContainsString('( ......................................... )', $approval);
+        $this->assertStringContainsString($procurement->workDirector->name, $approval);
+        $this->assertStringContainsString('Asman Engineering', $approval);
+        $this->assertStringContainsString('.........................................', $approval);
     }
 }

@@ -29,6 +29,13 @@ class UpdatePlanningIdentityRequest extends FormRequest
                     ->where('is_active', true)
                     ->whereNull('deleted_at'),
             ],
+            'selection_method_id' => [
+                'sometimes',
+                'nullable',
+                Rule::exists('selection_methods', 'id')
+                    ->where('is_active', true)
+                    ->whereNull('deleted_at'),
+            ],
             'manager_memo_number' => ['sometimes', 'nullable', 'string', 'max:255'],
             'target_completion_date' => ['sometimes', 'nullable', 'date'],
         ];
@@ -42,7 +49,8 @@ class UpdatePlanningIdentityRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'contract_type_id' => 'jenis kontrak',
+            'contract_type_id' => 'kategori kontrak',
+            'selection_method_id' => 'metode pengadaan',
             'manager_memo_number' => 'nomor nota dinas manager',
             'target_completion_date' => 'target selesai',
         ];

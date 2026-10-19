@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/select';
 import { formatDate } from '@/lib/format';
 import procurements from '@/routes/procurements';
-import type { ChecklistInput, Option, PartnerCandidate } from '@/types';
+import type { ChecklistInput, PartnerCandidate } from '@/types';
 
 /**
  * The last day of an execution period, counting the start date as day one,
@@ -46,7 +46,6 @@ export function ChecklistInputForm({
     partnerCandidates = [],
     candidatesEditable = false,
     directAppointment = false,
-    contractTypes = [],
 }: {
     procurementId: number;
     checklistId: number;
@@ -58,8 +57,6 @@ export function ChecklistInputForm({
     candidatesEditable?: boolean;
     /** SPPL: one partner, appointed directly. */
     directAppointment?: boolean;
-    /** The barang/jasa categories, from Data Master → Jenis Kontrak. */
-    contractTypes?: Option[];
 }) {
     const { values } = input;
 
@@ -83,10 +80,6 @@ export function ChecklistInputForm({
         icc_memo_number: values.icc_memo_number ?? '',
         icc_memo_date: values.icc_memo_date ?? '',
         number: values.number ?? '',
-        contract_type_id:
-            values.contract_type_id === null
-                ? ''
-                : String(values.contract_type_id),
     });
 
     const save = () =>
@@ -284,39 +277,6 @@ export function ChecklistInputForm({
                         </Field>
                     </div>
                 )}
-
-                {input.kind === 'contract_number' &&
-                    values.uses_work_category && (
-                        <Field
-                            id={`contract-type-${checklistId}`}
-                            label="Kategori (Barang/Jasa)"
-                            error={form.errors.contract_type_id}
-                        >
-                            <Select
-                                value={form.data.contract_type_id}
-                                onValueChange={(value) =>
-                                    form.setData('contract_type_id', value)
-                                }
-                            >
-                                <SelectTrigger
-                                    id={`contract-type-${checklistId}`}
-                                    className="h-8 w-full"
-                                >
-                                    <SelectValue placeholder="Pilih kategori" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {contractTypes.map((type) => (
-                                        <SelectItem
-                                            key={type.value}
-                                            value={String(type.value)}
-                                        >
-                                            {type.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </Field>
-                    )}
 
                 {input.kind === 'bank_account' && (
                     <>

@@ -485,25 +485,26 @@
         </div>
         <div class="approval-date">{{unit_tujuan}}, {{tanggal_dokumen}}</div>
 
-        <!-- Disusun dan Diperiksa diketik manual di editor dokumen; yang
-             menyetujui di bagian paling bawah adalah Manager (Data Master). -->
+        <!-- Empat penanda tangan: disusun oleh user (pembuat usulan),
+             diperiksa Asman bidang user (kiri) dan Asman Engineering (kanan),
+             disetujui Manager (Data Master). -->
         <table class="approval-table">
             <tr><td><b>Disusun oleh:</b></td></tr>
             <tr><td class="small-gap"></td></tr>
-            <tr><td>.........................................</td></tr>
-            <tr><td><div class="gap"></div><span class="name"><span style="text-transform: uppercase;">( ......................................... )</span></span></td></tr>
+            <tr><td>User</td></tr>
+            <tr><td><div class="gap"></div><span class="name">( <span style="text-transform: uppercase;">{{nama_penyusun}}</span> )</span></td></tr>
         </table>
 
         <table class="approval-table two" style="margin-top:20px;">
             <tr><td colspan="2"><b>Diperiksa/Diketahui oleh:</b></td></tr>
             <tr><td colspan="2"><div class="small-gap"></div></td></tr>
             <tr>
-                <td>Direksi Pekerjaan</td>
-                <td>Pengguna Barang/Jasa</td>
+                <td>{{direksi_pekerjaan}}</td>
+                <td>Asman Engineering</td>
             </tr>
             <tr>
-                <td><div class="gap"></div><span class="name"><span style="text-transform: uppercase;">( ......................................... )</span></span></td>
-                <td><div class="gap"></div><span class="name"><span style="text-transform: uppercase;">( ......................................... )</span></span></td>
+                <td><div class="gap"></div><span class="name">( <span style="text-transform: uppercase;">{{nama_asman_pengguna}}</span> )</span></td>
+                <td><div class="gap"></div><span class="name">( <span style="text-transform: uppercase;">{{nama_asman_engineering}}</span> )</span></td>
             </tr>
         </table>
 

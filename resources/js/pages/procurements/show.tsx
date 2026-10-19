@@ -83,6 +83,7 @@ type ShowProps = {
         planners: Option[];
         executors: Option[];
         contractTypes: Option[];
+        selectionMethods: Option[];
         documentTypes: DocumentTypeOption[];
     };
     can: {
@@ -262,6 +263,8 @@ export default function ShowProcurement({
                             procurement={procurement}
                             notes={detail.notes}
                             editsInline={editsInline}
+                            contractTypes={options.contractTypes}
+                            selectionMethods={options.selectionMethods}
                             candidateCount={partnerCandidates.length}
                         />
 
@@ -382,7 +385,6 @@ export default function ShowProcurement({
                                     rows={checklists.pelaksanaan}
                                     editable={can.updateExecutionChecklist}
                                     partnerCandidates={partnerCandidates}
-                                    contractTypes={options.contractTypes}
                                     canManageDocuments={
                                         can.manageExecutionDocuments
                                     }

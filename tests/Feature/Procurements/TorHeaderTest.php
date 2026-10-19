@@ -6,6 +6,7 @@ use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementDocument;
 use App\Models\User;
+use App\Models\WorkDirector;
 use App\Services\DocumentGenerator;
 use Database\Seeders\DocumentTemplateLibrarySeeder;
 use Database\Seeders\MasterDataSeeder;
@@ -55,6 +56,43 @@ class TorHeaderTest extends TestCase
         $this->travel(40)->days();
         app(DocumentGenerator::class)->refreshDocument($document->refresh());
         $this->assertSame('07 September 2026', $this->headerValue($document->refresh()->rendered_body, 'Tanggal Terbit'));
+    }
+
+    public function test_the_tor_is_signed_by_the_user_both_asman_and_the_manager(): void
+    {
+        $maintenance = WorkDirector::factory()->create(['name' => 'Asman Pemeliharaan']);
+        // The Engineering division of the seeded Direksi Pekerjaan.
+        $engineering = WorkDirector::query()->where('name', 'Asman Engineering')->firstOrFail();
+        $proposer = User::factory()->proposer($maintenance)->create(['name' => 'Galih Prima']);
+        User::factory()->workDirector($maintenance)->create(['name' => 'Budi Pemeliharaan']);
+        User::factory()->workDirector($engineering)->create(['name' => 'Eka Engineering']);
+        $procurement = Procurement::factory()->create(['work_director_id' => $maintenance->id, 'created_by' => $proposer->id]);
+        $tor = DocumentType::query()->where('code', 'tor')->firstOrFail();
+
+        $text = preg_replace('/\s+/', ' ', strip_tags(app(DocumentGenerator::class)->generate($procurement, $tor, $proposer)->rendered_body));
+
+        // Drawn up by the user; checked by their Asman (left) and the Asman
+        // Engineering (right); approved by the Manager.
+        $this->assertStringContainsString('Disusun oleh: User ( Galih Prima )', $text);
+        $this->assertStringContainsString('Diperiksa/Diketahui oleh: Asman Pemeliharaan Asman Engineering ( Budi Pemeliharaan ) ( Eka Engineering )', $text);
+        $this->assertStringContainsString('Disetujui oleh: Manager', $text);
+    }
+
+    public function test_a_signatory_not_set_up_leaves_a_line_to_write_on(): void
+    {
+        $division = WorkDirector::factory()->create(['name' => 'Asman Operasi']);
+        $procurement = Procurement::factory()->create(['work_director_id' => $division->id, 'created_by' => null]);
+
+        $values = app(DocumentGenerator::class)->placeholderValues($procurement);
+
+        $this->assertSame('.........................................', $values['nama_penyusun']);
+        $this->assertSame('.........................................', $values['nama_asman_pengguna']);
+        // No Asman Engineering user yet on the seeded division.
+        $this->assertSame('.........................................', $values['nama_asman_engineering']);
+
+        $tor = DocumentType::query()->where('code', 'tor')->firstOrFail();
+        $body = app(DocumentGenerator::class)->generate($procurement, $tor, User::factory()->administrator()->create())->rendered_body;
+        $this->assertStringContainsString('( <span style="text-transform: uppercase;"><span data-field="nama_asman_engineering" data-value=".........................................">.........................................</span></span> )', $body);
     }
 
     public function test_tors_drawn_before_get_the_same_header(): void

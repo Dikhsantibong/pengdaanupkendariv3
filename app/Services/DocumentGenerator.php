@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\ActivityType;
 use App\Enums\AmendmentFileKind;
+use App\Enums\Permission;
 use App\Enums\ProcurementStage;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
@@ -18,6 +19,7 @@ use App\Models\ProcurementItemQuotation;
 use App\Models\UnitManager;
 use App\Models\User;
 use App\Models\VendorAssessmentRequest;
+use App\Models\WorkDirector;
 use App\Support\IndonesianNumber;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -113,6 +115,9 @@ class DocumentGenerator
             'status_progres' => 'Status progres saat ini',
             'pic_perencana' => 'Nama PIC perencana',
             'pic_pelaksana' => 'Nama PIC pelaksana',
+            'nama_penyusun' => 'TOR: nama user yang menyusun (pembuat usulan/pengadaan)',
+            'nama_asman_pengguna' => 'TOR: nama Asman bidang user (Direksi Pekerjaan)',
+            'nama_asman_engineering' => 'TOR: nama Asman Engineering',
             'nomor_ba_nego' => 'Nomor Berita Acara Negosiasi',
             'target_penyelesaian' => 'Target penyelesaian pengadaan',
             'tanggal_dokumen' => 'Tanggal dokumen digenerate',
@@ -173,12 +178,14 @@ class DocumentGenerator
             'workDirector',
             'targetUnit',
             'procurementMethod',
+            'selectionMethod',
             'budgetSource',
             'contractType',
             'targetUnits',
             'progressStatus',
             'planner',
             'executor',
+            'creator',
             'checklists.checklistItem',
         ]);
 
@@ -213,9 +220,12 @@ class DocumentGenerator
             'direksi_pekerjaan' => $procurement->workDirector?->name ?? '-',
             'nama_manager' => $managerName,
             'unit_tujuan' => $procurement->targetUnitNames(),
-            'metode_pengadaan' => $procurement->procurement_method_id === null
-                ? '-'
-                : ($procurement->procurementMethod?->name ?? '-'),
+            // The method the planning PIC picked; the internal one until then.
+            'metode_pengadaan' => match (true) {
+                $procurement->selection_method_id !== null => $procurement->selectionMethod->name,
+                $procurement->procurement_method_id !== null => $procurement->procurementMethod->name,
+                default => '-',
+            },
             'sumber_anggaran' => $procurement->budget_source_id === null
                 ? '-'
                 : ($procurement->budgetSource?->name ?? '-'),
@@ -302,6 +312,11 @@ class DocumentGenerator
             'status_progres' => $procurement->progressStatus->name,
             'pic_perencana' => $procurement->planner_id === null ? '-' : $procurement->planner->name ?? '-',
             'pic_pelaksana' => $procurement->executor_id === null ? '-' : $procurement->executor->name ?? '-',
+            // The TOR's signatories: the user who drew it up, the Asman of
+            // their division and the Asman Engineering.
+            'nama_penyusun' => $procurement->creator->name ?? self::UNSIGNED,
+            'nama_asman_pengguna' => $this->asmanOf($procurement->work_director_id)->name ?? self::UNSIGNED,
+            'nama_asman_engineering' => $this->asmanOf($this->engineeringDirectorId())->name ?? self::UNSIGNED,
             'nomor_ba_nego' => $procurement->number,
             'target_penyelesaian' => $procurement->target_completion_date === null
                 ? '-'
@@ -312,6 +327,40 @@ class DocumentGenerator
             'checklist_perencanaan' => $this->checklistMarkup($procurement, ProcurementStage::Perencanaan),
             'checklist_pelaksanaan' => $this->checklistMarkup($procurement, ProcurementStage::Pelaksanaan),
         ];
+    }
+
+    /**
+     * What a signature shows while its signatory is not known: a line to
+     * write the name on.
+     */
+    protected const UNSIGNED = '.........................................';
+
+    /**
+     * The Asman (the Direksi Pekerjaan who approves its proposals) leading a
+     * division, if one is set up.
+     */
+    protected function asmanOf(?int $workDirectorId): ?User
+    {
+        if ($workDirectorId === null) {
+            return null;
+        }
+
+        return User::query()->active()
+            ->where('work_director_id', $workDirectorId)
+            ->orderBy('name')
+            ->get()
+            ->first(fn (User $user): bool => $user->hasPermission(Permission::ApproveProposal));
+    }
+
+    /**
+     * The Engineering division on the Direksi Pekerjaan master data, found by
+     * its name ("Asman Engineering").
+     */
+    protected function engineeringDirectorId(): ?int
+    {
+        $id = WorkDirector::query()->where('name', 'like', '%engineering%')->orderBy('id')->value('id');
+
+        return $id === null ? null : (int) $id;
     }
 
     /**

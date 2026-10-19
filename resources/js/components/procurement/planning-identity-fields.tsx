@@ -1,6 +1,17 @@
 import { router } from '@inertiajs/react';
 import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import procurements from '@/routes/procurements';
+import type { Option } from '@/types';
+
+/** Sentinel for "not yet decided": a Select cannot carry an empty value. */
+const UNSET = 'none';
 
 /**
  * Save one identity field on its own.
@@ -16,6 +27,95 @@ function save(
         procurements.planningIdentity.update(procurementId).url,
         payload,
         { preserveScroll: true },
+    );
+}
+
+/**
+ * Pick the category of the contract (Barang, Jasa, KHS, ...) from the
+ * identity panel.
+ */
+export function ContractTypePicker({
+    procurementId,
+    value,
+    options,
+}: {
+    procurementId: number;
+    value: number | null;
+    options: Option[];
+}) {
+    return (
+        <OptionPicker
+            procurementId={procurementId}
+            field="contract_type_id"
+            label="Kategori kontrak"
+            value={value}
+            options={options}
+        />
+    );
+}
+
+/**
+ * Pick the metode pengadaan (Penunjukan Langsung, Lelang Terbuka, ...) from
+ * the identity panel.
+ */
+export function SelectionMethodPicker({
+    procurementId,
+    value,
+    options,
+}: {
+    procurementId: number;
+    value: number | null;
+    options: Option[];
+}) {
+    return (
+        <OptionPicker
+            procurementId={procurementId}
+            field="selection_method_id"
+            label="Metode pengadaan"
+            value={value}
+            options={options}
+        />
+    );
+}
+
+/** A master data choice saved on its own as soon as it is picked. */
+function OptionPicker({
+    procurementId,
+    field,
+    label,
+    value,
+    options,
+}: {
+    procurementId: number;
+    field: string;
+    label: string;
+    value: number | null;
+    options: Option[];
+}) {
+    return (
+        <Select
+            value={value === null ? UNSET : String(value)}
+            onValueChange={(next) =>
+                save(procurementId, {
+                    [field]: next === UNSET ? null : Number(next),
+                })
+            }
+        >
+            <SelectTrigger
+                className="ml-auto h-8 w-44 text-sm"
+                aria-label={label}
+            >
+                <SelectValue placeholder="Belum ditentukan" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value={UNSET}>Belum ditentukan</SelectItem>
+                {options.map((option) => (
+                    <SelectItem key={option.value} value={String(option.value)}>
+                        {option.label}
+                    </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
     );
 }
 

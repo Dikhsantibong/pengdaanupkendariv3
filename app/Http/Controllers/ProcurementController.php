@@ -190,6 +190,7 @@ class ProcurementController extends Controller
             'procurementMethod',
             'budgetSource',
             'contractType',
+            'selectionMethod',
             'targetUnits',
             'progressStatus',
             'planner',
@@ -782,7 +783,7 @@ class ProcurementController extends Controller
     /**
      * The current values of every step input, end date included.
      *
-     * @return array<string, string|int|bool|null>
+     * @return array<string, string|int|null>
      */
     protected function inputValues(Procurement $procurement): array
     {
@@ -799,8 +800,6 @@ class ProcurementController extends Controller
             'icc_memo_date' => $procurement->icc_memo_date?->toDateString(),
             // The contract number once given, and the running one to offer.
             'number' => $procurement->hasContractNumber() ? $procurement->number : null,
-            'contract_type_id' => $procurement->contract_type_id,
-            'uses_work_category' => $procurement->contractNumberFormat?->uses_work_category === true,
             'suggested_number' => $procurement->contractNumberFormat === null
                 ? null
                 : $this->procurements->nextNumber($procurement->contractNumberFormat),

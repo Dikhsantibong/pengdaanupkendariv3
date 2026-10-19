@@ -59,6 +59,9 @@ export type ProcurementRow = {
     budget_source: string | null;
     contract_type: string | null;
     contract_type_id: number | null;
+    /** The metode pengadaan picked by the planning PIC. */
+    selection_method?: string | null;
+    selection_method_id?: number | null;
     /** Barang or Jasa, for the formats that ask for it. */
     work_category?: string | null;
     manager_memo_number: string | null;
@@ -199,10 +202,6 @@ export type ChecklistInput = {
         icc_memo_date: string | null;
         /** The contract number, once the executor has given it. */
         number: string | null;
-        /** Barang or jasa, given with the number (SPK, PJ). */
-        contract_type_id: number | null;
-        /** Whether the job's format asks for the category. */
-        uses_work_category: boolean;
         /** The running number of the job's contract format, to offer. */
         suggested_number: string | null;
     };

@@ -35,9 +35,9 @@ trait ProcurementValidationRules
         $proposalRequired = $proposal ? 'required' : 'nullable';
 
         return [
-            // Both stay optional so a procurement can still be registered from
-            // a caller that does not number it; the service then falls back to
-            // the internal number it always used.
+            // SPK, PJ or SPPL is said by whoever registers or proposes the job
+            // (the user). Optional, so a caller that does not name one still
+            // registers the job; planning then waits for it.
             'contract_number_format_id' => [
                 'nullable',
                 // The amendment numbering is not a contract format.

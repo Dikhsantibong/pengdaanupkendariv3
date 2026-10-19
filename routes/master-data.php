@@ -12,6 +12,7 @@ use App\Http\Controllers\MasterData\DocumentTypeController;
 use App\Http\Controllers\MasterData\PartnerController;
 use App\Http\Controllers\MasterData\ProcurementMethodController;
 use App\Http\Controllers\MasterData\ProgressStatusController;
+use App\Http\Controllers\MasterData\SelectionMethodController;
 use App\Http\Controllers\MasterData\TargetUnitController;
 use App\Http\Controllers\MasterData\UnitManagerController;
 use App\Http\Controllers\MasterData\WorkDirectorController;
@@ -27,6 +28,8 @@ Route::middleware(['auth', 'verified', 'can:manage-master-data'])
         Route::resource('work-directors', WorkDirectorController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('target-units', TargetUnitController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('procurement-methods', ProcurementMethodController::class)->only(['index', 'store', 'update', 'destroy']);
+        // The metode pengadaan the planning PIC picks (Penunjukan Langsung, ...).
+        Route::resource('selection-methods', SelectionMethodController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('budget-sources', BudgetSourceController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('contract-types', ContractTypeController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('contract-number-formats', ContractNumberFormatController::class)->only(['index', 'store', 'update', 'destroy']);

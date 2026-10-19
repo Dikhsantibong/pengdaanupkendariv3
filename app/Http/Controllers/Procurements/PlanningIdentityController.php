@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Procurements\UpdatePlanningIdentityRequest;
 use App\Models\ContractType;
 use App\Models\Procurement;
+use App\Models\SelectionMethod;
 use App\Services\DocumentGenerator;
 use App\Services\ProcurementService;
 use Carbon\CarbonImmutable;
@@ -39,6 +40,10 @@ class PlanningIdentityController extends Controller
             $changes[] = $this->applyContractType($procurement, $request->integer('contract_type_id') ?: null);
         }
 
+        if ($request->has('selection_method_id')) {
+            $changes[] = $this->applySelectionMethod($procurement, $request->integer('selection_method_id') ?: null);
+        }
+
         if ($request->has('manager_memo_number')) {
             $changes[] = $this->applyManagerMemoNumber(
                 $procurement,
@@ -67,6 +72,7 @@ class PlanningIdentityController extends Controller
             implode(' ', $changes),
             [
                 'contract_type_id' => $procurement->contract_type_id,
+                'selection_method_id' => $procurement->selection_method_id,
                 'manager_memo_number' => $procurement->manager_memo_number,
                 'target_completion_date' => $procurement->target_completion_date?->toDateString(),
             ],
@@ -105,6 +111,30 @@ class PlanningIdentityController extends Controller
         return $previous === null
             ? "Jenis kontrak ditetapkan: {$current}."
             : "Jenis kontrak diubah dari {$previous} menjadi {$current}.";
+    }
+
+    /**
+     * Set the metode pengadaan, returning what changed for the audit trail.
+     */
+    protected function applySelectionMethod(Procurement $procurement, ?int $methodId): ?string
+    {
+        if ($procurement->selection_method_id === $methodId) {
+            return null;
+        }
+
+        $previous = $procurement->selection_method_id === null
+            ? null
+            : $procurement->selectionMethod?->name;
+
+        $method = $methodId === null ? null : SelectionMethod::query()->findOrFail($methodId);
+
+        $procurement->selection_method_id = $methodId;
+
+        $current = $method === null ? 'kosong' : $method->name;
+
+        return $previous === null
+            ? "Metode pengadaan ditetapkan: {$current}."
+            : "Metode pengadaan diubah dari {$previous} menjadi {$current}.";
     }
 
     /**

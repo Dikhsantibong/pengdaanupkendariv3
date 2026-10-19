@@ -22,7 +22,6 @@ import procurements from '@/routes/procurements';
 import type {
     ChecklistDocument,
     ChecklistRow,
-    Option,
     PartnerCandidate,
 } from '@/types';
 
@@ -37,7 +36,6 @@ export function ChecklistPanel({
     partnerCandidates = [],
     candidatesEditable = false,
     directAppointment = false,
-    contractTypes = [],
 }: {
     procurementId: number;
     /** Left out where the surrounding tab already names the stage. */
@@ -54,8 +52,6 @@ export function ChecklistPanel({
     candidatesEditable?: boolean;
     /** SPPL: one partner, appointed directly. */
     directAppointment?: boolean;
-    /** The barang/jasa categories the contract number step picks from. */
-    contractTypes?: Option[];
 }) {
     const completed = rows.filter((row) => row.is_completed).length;
     const percentage =
@@ -158,7 +154,6 @@ export function ChecklistPanel({
                                         partnerCandidates={partnerCandidates}
                                         candidatesEditable={candidatesEditable}
                                         directAppointment={directAppointment}
-                                        contractTypes={contractTypes}
                                     />
                                 </div>
                             )}

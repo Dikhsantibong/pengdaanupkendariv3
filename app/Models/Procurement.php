@@ -40,6 +40,7 @@ use Illuminate\Support\Collection;
  * @property int|null $procurement_method_id
  * @property int|null $budget_source_id
  * @property int|null $contract_type_id
+ * @property int|null $selection_method_id
  * @property WorkCategory|null $work_category
  * @property ProposalState $proposal_state
  * @property CarbonImmutable|null $proposal_submitted_at
@@ -312,6 +313,16 @@ class Procurement extends Model
     }
 
     /**
+     * The metode pengadaan picked by the planning PIC.
+     *
+     * @return BelongsTo<SelectionMethod, $this>
+     */
+    public function selectionMethod(): BelongsTo
+    {
+        return $this->belongsTo(SelectionMethod::class)->withTrashed();
+    }
+
+    /**
      * The current progress status.
      *
      * @return BelongsTo<ProgressStatus, $this>
@@ -476,11 +487,10 @@ class Procurement extends Model
     /**
      * The procurement data still missing before planning documents are drawn.
      *
-     * A job that came in as a work proposal has no contract format yet; its
-     * documents would otherwise pick the wrong template, so generating and
-     * submitting wait until procurement has filled it. The method follows the
-     * format, so it is not asked separately. A procurement registered directly
-     * already had it asked on its form.
+     * A job that came in as a work proposal has no contract format or
+     * category yet; its documents would otherwise pick the wrong template,
+     * so generating and submitting wait until procurement has filled them.
+     * The method follows the format, so it is not asked separately.
      *
      * @return array<int, string>
      */
@@ -492,10 +502,12 @@ class Procurement extends Model
 
         $missing = [];
 
-        // The barang/jasa category is given later by the executor, with the
-        // contract number.
+        // The category (Barang, Jasa, KHS, ...) is picked by the planning PIC
+        // on the identity panel.
         if ($this->contract_number_format_id === null) {
             $missing[] = 'Jenis Kontrak';
+        } elseif ($this->contractNumberFormat?->uses_work_category === true && $this->contract_type_id === null) {
+            $missing[] = 'Kategori Kontrak';
         }
 
         return $missing;

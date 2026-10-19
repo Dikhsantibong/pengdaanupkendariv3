@@ -26,7 +26,7 @@ class PlanningIdentityTest extends TestCase
         $this->seed(MasterDataSeeder::class);
 
         $this->assertSame(
-            ['KHS', 'Lumsum', 'Barang', 'Jasa'],
+            ['KHS', 'Lumsum', 'Barang', 'Jasa', 'Barang dan Jasa'],
             ContractType::query()->active()->ordered()->pluck('name')->all(),
         );
     }
@@ -68,7 +68,7 @@ class PlanningIdentityTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->where('can.updatePlanningIdentity', true)
-                ->has('options.contractTypes', 4)
+                ->has('options.contractTypes', 5)
                 ->where('procurement.contract_type', null)
                 ->where('procurement.contract_type_id', null)
             );

@@ -258,6 +258,12 @@ export function AppSidebar() {
                           },
                           {
                               title: 'Metode Pengadaan',
+                              href: masterData.selectionMethods.index(),
+                              icon: Workflow,
+                          },
+                          {
+                              // Follows the format; picks the templates.
+                              title: 'Metode Internal (Template)',
                               href: masterData.procurementMethods.index(),
                               icon: Workflow,
                           },

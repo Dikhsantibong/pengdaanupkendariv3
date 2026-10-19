@@ -12,6 +12,7 @@ use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProgressStatus;
+use App\Models\SelectionMethod;
 use App\Models\TargetUnit;
 use App\Models\User;
 use App\Models\WorkDirector;
@@ -81,6 +82,7 @@ class MasterDataOptions
             'planners' => self::planners(),
             'executors' => self::executors(),
             'contractTypes' => self::contractTypes(),
+            'selectionMethods' => self::selectionMethods(),
             // Upload-only documents are filed on their checklist step, never
             // generated, so they are not offered here.
             'documentTypes' => DocumentType::query()->active()->where('upload_only', false)
@@ -242,6 +244,21 @@ class MasterDataOptions
     {
         return ContractType::query()->active()->ordered()->get()
             ->map(fn (ContractType $record): array => [
+                'value' => $record->id,
+                'label' => $record->name,
+                'description' => $record->description,
+            ])->all();
+    }
+
+    /**
+     * Get the selectable metode pengadaan.
+     *
+     * @return array<int, array{value: int, label: string, description: string|null}>
+     */
+    public static function selectionMethods(): array
+    {
+        return SelectionMethod::query()->active()->ordered()->get()
+            ->map(fn (SelectionMethod $record): array => [
                 'value' => $record->id,
                 'label' => $record->name,
                 'description' => $record->description,

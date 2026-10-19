@@ -20,8 +20,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { Option, PicOption } from '@/types';
 
-const NONE = 'none';
-
 /** A contract number format, and whether it asks for a category. */
 export type ContractFormatOption = Option & { usesWorkCategory?: boolean };
 
@@ -165,11 +163,11 @@ export function ProcurementForm({
     const { data, setData, errors, processing } = form;
 
     /**
-     * Switch the kind of contract. Its number and barang/jasa category are
-     * given later by the executor, on the Kontrak / Lampiran Surat Pesanan
-     * step.
+     * Switch the kind of contract. Its category is picked by the planning
+     * PIC, and its number given by the executor on the Kontrak / Lampiran
+     * Surat Pesanan step.
      */
-    const chooseFormat = (formatId: number | null) =>
+    const chooseFormat = (formatId: number) =>
         setData('contract_number_format_id', formatId);
 
     const submit = (event: FormEvent) => {
@@ -182,52 +180,41 @@ export function ProcurementForm({
             <section className="space-y-4 rounded-md border border-border bg-card p-5">
                 <p className="section-label">Identitas Pengadaan</p>
 
-                {!isProposal && (
-                    <>
-                        <div className="grid gap-2 sm:max-w-xs">
-                            <Label htmlFor="contract_number_format_id">
-                                Jenis Kontrak
-                            </Label>
-                            <Select
-                                value={
-                                    data.contract_number_format_id === null
-                                        ? NONE
-                                        : String(data.contract_number_format_id)
-                                }
-                                onValueChange={(value) =>
-                                    chooseFormat(
-                                        value === NONE ? null : Number(value),
-                                    )
-                                }
-                            >
-                                <SelectTrigger id="contract_number_format_id">
-                                    <SelectValue placeholder="Pilih" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {options.contractNumberFormats.map(
-                                        (option) => (
-                                            <SelectItem
-                                                key={option.value}
-                                                value={String(option.value)}
-                                            >
-                                                {option.label}
-                                            </SelectItem>
-                                        ),
-                                    )}
-                                </SelectContent>
-                            </Select>
-                            <InputError
-                                message={errors.contract_number_format_id}
-                            />
-                            <p className="text-xs text-muted-foreground">
-                                Nomor kontrak dan kategori (barang/jasa) diisi
-                                nanti oleh PIC Pelaksana di checklist
-                                Pelaksanaan: tahapan Kontrak (SPK/PJ) atau
-                                Lampiran Surat Pesanan (SPPL).
-                            </p>
-                        </div>
-                    </>
-                )}
+                {/* Asked of whoever registers or proposes the job. */}
+                <div className="grid gap-2 sm:max-w-xs">
+                    <Label htmlFor="contract_number_format_id">
+                        Jenis Kontrak
+                    </Label>
+                    <Select
+                        value={
+                            data.contract_number_format_id === null
+                                ? undefined
+                                : String(data.contract_number_format_id)
+                        }
+                        onValueChange={(value) => chooseFormat(Number(value))}
+                    >
+                        <SelectTrigger id="contract_number_format_id">
+                            <SelectValue placeholder="Pilih SPK / PJ / SPPL" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {options.contractNumberFormats.map((option) => (
+                                <SelectItem
+                                    key={option.value}
+                                    value={String(option.value)}
+                                >
+                                    {option.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <InputError message={errors.contract_number_format_id} />
+                    <p className="text-xs text-muted-foreground">
+                        Metode pengadaan dan kategori (Barang, Jasa, KHS, Barang
+                        dan Jasa) dipilih PIC Perencana di detail pengadaan.
+                        Nomor kontrak diisi PIC Pelaksana pada tahapan Kontrak
+                        (SPK/PJ) atau Lampiran Surat Pesanan (SPPL).
+                    </p>
+                </div>
 
                 <div className="grid gap-2">
                     <Label htmlFor="name">Nama Pengadaan</Label>

@@ -4,7 +4,6 @@ namespace Tests\Feature\Procurements;
 
 use App\Enums\ChecklistInput;
 use App\Enums\PlanningApprovalState;
-use App\Enums\WorkCategory;
 use App\Models\ContractNumberFormat;
 use App\Models\ContractType;
 use App\Models\Procurement;
@@ -18,8 +17,8 @@ use Tests\TestCase;
 
 /**
  * A job is registered under an internal number; the executor gives the
- * contract number, and the barang/jasa category of an SPK or PJ, on the
- * Kontrak step (SPK/PJ) or the Lampiran Surat Pesanan step (SPPL).
+ * contract number on the Kontrak step (SPK/PJ) or the Lampiran Surat Pesanan
+ * step (SPPL). The category is the planning PIC's, not the executor's.
  */
 class ContractNumberInputTest extends TestCase
 {
@@ -76,10 +75,9 @@ class ContractNumberInputTest extends TestCase
         }
     }
 
-    public function test_the_executor_gives_the_number_and_category_before_ticking_the_step(): void
+    public function test_the_executor_gives_the_number_before_ticking_the_step(): void
     {
         [$procurement, $executor, $kontrak] = $this->step('SPK', 'Kontrak');
-        $jasa = ContractType::query()->where('code', 'jasa')->firstOrFail();
 
         // The internal number is not a contract number.
         $this->assertFalse($procurement->hasContractNumber());
@@ -87,11 +85,8 @@ class ContractNumberInputTest extends TestCase
             ->put(route('procurements.checklists.update', [$procurement, $kontrak]), ['is_completed' => true])
             ->assertSessionHasErrors('is_completed');
 
-        // An SPK needs its category too.
-        $this->actingAs($executor)
-            ->put(route('procurements.checklists.input', [$procurement, $kontrak]), ['number' => 'KDD075.SPK/612/UPKD/2026'])
-            ->assertSessionHasErrors('contract_type_id');
-
+        // A category sent along is not the executor's to set.
+        $jasa = ContractType::query()->where('code', 'jasa')->firstOrFail();
         $this->actingAs($executor)
             ->put(route('procurements.checklists.input', [$procurement, $kontrak]), [
                 'number' => ' KDD075.SPK/612/UPKD/2026 ',
@@ -101,41 +96,52 @@ class ContractNumberInputTest extends TestCase
 
         $procurement->refresh();
         $this->assertSame('KDD075.SPK/612/UPKD/2026', $procurement->number);
-        $this->assertSame($jasa->id, $procurement->contract_type_id);
-        $this->assertSame(WorkCategory::Jasa, $procurement->work_category);
+        $this->assertNull($procurement->contract_type_id);
+        // The step still waits for its signed SPK, as before.
         $this->assertTrue(ChecklistInput::ContractNumber->isFilledOn($procurement));
     }
 
-    public function test_an_sppl_gives_only_the_number(): void
+    public function test_an_sppl_gives_its_number_on_the_lampiran(): void
     {
         [$procurement, $executor, $lampiran] = $this->step('SPPL', 'Lampiran Surat Pesanan');
 
         $this->actingAs($executor)
-            ->put(route('procurements.checklists.input', [$procurement, $lampiran]), [
-                'number' => 'KDD010.SPPL/612/UPKD/2026',
-                'contract_type_id' => ContractType::query()->value('id'),
-            ])
+            ->put(route('procurements.checklists.input', [$procurement, $lampiran]), ['number' => 'KDD010.SPPL/612/UPKD/2026'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('KDD010.SPPL/612/UPKD/2026', $procurement->refresh()->number);
+    }
+
+    public function test_the_planner_picks_the_category_including_barang_dan_jasa(): void
+    {
+        $planner = User::factory()->planner()->create();
+        $procurement = Procurement::factory()->plannedBy($planner)->create([
+            'contract_number_format_id' => ContractNumberFormat::query()->where('code', 'SPK')->value('id'),
+        ]);
+        $both = ContractType::query()->where('code', 'barang-jasa')->firstOrFail();
+        $this->assertSame('Barang dan Jasa', $both->name);
+
+        $this->actingAs($planner)
+            ->put(route('procurements.planning-identity.update', $procurement), ['contract_type_id' => $both->id])
             ->assertSessionHasNoErrors();
 
         $procurement->refresh();
-        $this->assertSame('KDD010.SPPL/612/UPKD/2026', $procurement->number);
-        // SPPL has no barang/jasa category.
-        $this->assertNull($procurement->contract_type_id);
+        $this->assertSame($both->id, $procurement->contract_type_id);
+        // Both at once prints the general SPK format.
         $this->assertNull($procurement->work_category);
     }
 
     public function test_the_number_must_be_a_free_contract_number(): void
     {
         [$procurement, $executor, $kontrak] = $this->step('PJ', 'Kontrak');
-        $type = ContractType::query()->value('id');
         Procurement::factory()->create(['number' => 'KDD020.PJ/612/UPKD/2026']);
 
         $this->actingAs($executor)
-            ->put(route('procurements.checklists.input', [$procurement, $kontrak]), ['number' => 'PGD/2026/08/0009', 'contract_type_id' => $type])
+            ->put(route('procurements.checklists.input', [$procurement, $kontrak]), ['number' => 'PGD/2026/08/0009'])
             ->assertSessionHasErrors('number');
 
         $this->actingAs($executor)
-            ->put(route('procurements.checklists.input', [$procurement, $kontrak]), ['number' => 'KDD020.PJ/612/UPKD/2026', 'contract_type_id' => $type])
+            ->put(route('procurements.checklists.input', [$procurement, $kontrak]), ['number' => 'KDD020.PJ/612/UPKD/2026'])
             ->assertSessionHasErrors('number');
 
         $this->assertSame('PGD/2026/08/0001', $procurement->refresh()->number);
@@ -156,11 +162,10 @@ class ContractNumberInputTest extends TestCase
                         'is_filled' => false,
                     ]
                     && collect($rows)->firstWhere('name', 'Kontrak')['input']['values']['number'] === null
-                    && collect($rows)->firstWhere('name', 'Kontrak')['input']['values']['suggested_number'] === 'KDD075.SPK/612/UPKD/2026'
-                    && collect($rows)->firstWhere('name', 'Kontrak')['input']['values']['uses_work_category'] === true));
+                    && collect($rows)->firstWhere('name', 'Kontrak')['input']['values']['suggested_number'] === 'KDD075.SPK/612/UPKD/2026'));
     }
 
-    public function test_the_create_form_registers_the_job_without_a_contract_number_or_category(): void
+    public function test_the_create_form_registers_the_job_without_a_contract_number(): void
     {
         $administrator = User::factory()->administrator()->create();
         $spk = ContractNumberFormat::query()->where('code', 'SPK')->firstOrFail();
@@ -180,6 +185,5 @@ class ContractNumberInputTest extends TestCase
         $created = Procurement::query()->where('name', 'Pengadaan Pompa')->firstOrFail();
         $this->assertStringStartsWith('PGD/2026/08/', $created->number);
         $this->assertNull($created->contract_type_id);
-        $this->assertSame([], $created->missingPlanningData());
     }
 }

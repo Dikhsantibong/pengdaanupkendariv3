@@ -17,8 +17,8 @@ export default function ProcurementMethods({
 }) {
     return (
         <MasterDataPage<ProcurementMethod>
-            title="Metode Pengadaan"
-            description="Cara pengadaan dilaksanakan, dipilih pada form pembuatan pengadaan dan tercetak pada dokumen."
+            title="Metode Internal (Template)"
+            description="Metode internal yang mengikuti format kontrak (diatur di Format No Kontrak) untuk memilih template dokumen dan tahapan. Metode pengadaan yang dipilih PIC Perencana ada di Data Master → Metode Pengadaan."
             addLabel="Tambah Metode"
             records={records}
             nameKey="name"
@@ -80,7 +80,7 @@ ProcurementMethods.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
         {
-            title: 'Metode Pengadaan',
+            title: 'Metode Internal (Template)',
             href: masterData.procurementMethods.index(),
         },
     ],

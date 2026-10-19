@@ -32,7 +32,7 @@ enum ChecklistInput: string
             self::BankAccount => 'Pelaksana (pilih dari calon mitra + rekening)',
             self::PartnerCandidates => 'Calon mitra & penawaran harga',
             self::ProcurementMemo => 'Nomor & tanggal nota dinas ke pengadaan',
-            self::ContractNumber => 'Nomor kontrak & kategori (barang/jasa)',
+            self::ContractNumber => 'Nomor kontrak',
         };
     }
 
@@ -53,8 +53,7 @@ enum ChecklistInput: string
             // The memo once known as the Nota Dinas ke Manager / ICC.
             self::ProcurementMemo => ['icc_memo_number', 'icc_memo_date'],
             // Given by the executor; until then the job has its internal number.
-            // The category only for the formats that ask for one (SPK, PJ).
-            self::ContractNumber => ['number', 'contract_type_id'],
+            self::ContractNumber => ['number'],
         };
     }
 
@@ -72,8 +71,7 @@ enum ChecklistInput: string
         }
 
         if ($this === self::ContractNumber) {
-            return $procurement->hasContractNumber()
-                && ($procurement->contractNumberFormat?->uses_work_category !== true || $procurement->contract_type_id !== null);
+            return $procurement->hasContractNumber();
         }
 
         foreach ($this->fields() as $field) {

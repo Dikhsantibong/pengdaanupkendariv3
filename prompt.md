@@ -248,7 +248,7 @@ Form ini (menu **Buat Perencanaan Pengadaan**) diisi oleh **Team Leader Pengadaa
 
 | No | Field | Tipe Input | Keterangan |
 |----|-------|-----------|------------|
-| 1 | Jenis Kontrak | Dropdown | Format dari master Format No Kontrak (SPK, PJ, SPPL). No Kontrak dan kategori barang/jasa diisi PIC Pelaksana di checklist Pelaksanaan (lihat poin 30) |
+| 1 | Jenis Kontrak | Dropdown | Format dari master Format No Kontrak (SPK, PJ, SPPL). Kategori dipilih PIC Perencana; No Kontrak diisi PIC Pelaksana di checklist Pelaksanaan (lihat poin 30) |
 | 2 | Nama Pengadaan | Text | Nama/judul pekerjaan pengadaan |
 | 3 | Direksi Pekerjaan | Dropdown (single select) | Diambil dari Master Data Direksi Pekerjaan |
 | 4 | Unit Tujuan | Checklist (multi select) | **Dapat lebih dari 1 unit**, minimal 1; diambil dari Master Data Unit Tujuan |
@@ -549,7 +549,7 @@ Akun bidang dibuat oleh `DivisionUserSeeder` (`php artisan db:seed --class=Divis
 
 Nomor usulan: usulan mendapat nomor sementara berawalan **USL/** (mis. `USL/2026/10/0001`) sampai pengadaan memberi nomor kontrak.
 
-Setelah usulan disetujui, **TL Pengadaan** melengkapi data yang tidak diketahui bidang (Jenis Kontrak, nilai, calon mitra; metode pengadaan mengikuti format) lewat **Ubah Data**. No Kontrak dan Kategori diisi PIC Pelaksana di checklist Pelaksanaan (poin 30). Selama Jenis Kontrak belum terisi, dokumen perencanaan belum bisa digenerate dan perencanaan belum bisa diajukan — tab Perencanaan menampilkan peringatan data apa yang kurang. *(Inputan lanjutan untuk perencana menunggu daftar dari pengguna.)*
+Setelah usulan disetujui, **TL Pengadaan** melengkapi data yang tidak diketahui bidang (Jenis Kontrak, nilai, calon mitra; metode pengadaan mengikuti format) lewat **Ubah Data**. Kategori dipilih PIC Perencana dan No Kontrak diisi PIC Pelaksana (poin 30). Selama Jenis Kontrak dan Kategori (untuk SPK/PJ) belum terisi, dokumen perencanaan belum bisa digenerate dan perencanaan belum bisa diajukan — tab Perencanaan menampilkan peringatan data apa yang kurang. *(Inputan lanjutan untuk perencana menunggu daftar dari pengguna.)*
 
 Di setiap detail pengadaan ada tab bernama **pengusul / pembuat pengadaan** (di kiri tab Perencanaan) berisi kedua dokumen tersebut: pratinjau/edit draf TOR, berkas TOR bertanda tangan, dan scan Nota Dinas Usulan.
 
@@ -661,9 +661,9 @@ Setelah dokumen perencanaan disetujui, **Team Leader Pengadaan** menunjuk **1 or
 
 ### Kategori Kontrak (SPK & PJ) dari Data Master Jenis Kontrak
 
-- Untuk SPK/PJ, **Kategori** diambil dari **Data Master → Jenis Kontrak** (bawaan: KHS, Lumsum, Barang, Jasa; dapat ditambah/diubah). Kategori dipilih PIC Pelaksana bersama No Kontrak pada tahapan Kontrak di checklist Pelaksanaan (poin 30), bukan lagi di form Buat/Ubah Pengadaan. Format lain (mis. SPPL) tidak meminta kategori.
+- Untuk SPK/PJ, **Kategori** diambil dari **Data Master → Jenis Kontrak** (bawaan: KHS, Lumsum, Barang, Jasa; dapat ditambah/diubah). Kategori (Barang, Jasa, KHS, Barang dan Jasa) dipilih PIC Perencana pada panel identitas di detail pengadaan (poin 30), bukan lagi di form Buat/Ubah Pengadaan. Format lain (mis. SPPL) tidak meminta kategori.
 - Setiap Jenis Kontrak memiliki **Format Dokumen** (Umum / Barang / Jasa) yang menentukan template SPK/PJ yang digenerate. Kategori Barang/Jasa pengadaan (`work_category`) tidak lagi dipilih manual, melainkan otomatis mengikuti Jenis Kontrak yang dipilih.
-- Kategori yang sama tampil (hanya tampilan) sebagai **Kategori Kontrak** pada panel identitas di detail pengadaan.
+- Kategori tampil sebagai **Kategori Kontrak** pada panel identitas dan dapat diubah PIC Perencana sebelum perencanaan disetujui; mengubahnya ikut memperbarui format dokumen.
 - Format mana yang meminta kategori diatur di **Data Master → Format No Kontrak** (sakelar "Pilih Barang / Jasa").
 - Jenis kontrak tersedia sebagai placeholder `{{jenis_kontrak}}`, format dokumennya sebagai `{{kategori_pekerjaan}}`.
 - **Template Dokumen** dapat dibatasi per **Metode**, per **Format No Kontrak** (SPK/PJ/SPPL), dan per **Kategori** (Barang/Jasa). Saat generate, template paling spesifik yang cocok dipakai (metode → format → kategori → versi terbaru); template tanpa batasan menjadi cadangan. Mengaktifkan template satu kategori/format tidak menonaktifkan template kategori/format lain.
@@ -1247,20 +1247,44 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 - Migrasi `clear_the_document_number_of_the_tor_header` memperbarui template terpasang, juga TOR yang sudah ada (kecuali yang sudah punya scan bertanda tangan): nomor dan halaman dikosongkan, Tanggal Terbit diset ke tanggal generate-nya. Sebelumnya ada TOR yang menampilkan tanggal render ulang, bukan tanggal generate.
 - **Test:** `TorHeaderTest`.
 
-### 30. Jenis Kontrak di Form, Nomor Kontrak & Kategori Diisi PIC Pelaksana
+### 30. Jenis Kontrak di Form, Kategori oleh PIC Perencana, Nomor Kontrak oleh PIC Pelaksana
 - **Form Buat/Ubah Pengadaan:**
   - Label "Jenis No Kontrak" menjadi **Jenis Kontrak** (pilihan SPK / PJ / SPPL tetap di sini, karena menentukan tahapan Perencanaan).
-  - Kolom **No Kontrak** dan pilihan **Kategori (Barang/Jasa)** dihapus dari form.
+  - Kolom **No Kontrak** dan pilihan **Kategori** dihapus dari form.
+- **Kategori Kontrak** (Barang, Jasa, KHS, Barang dan Jasa) dipilih **PIC Perencana** pada panel Identitas Pengadaan di detail pengadaan, selama perencanaan belum disetujui.
+  - "Barang dan Jasa" ditambahkan ke Data Master → Jenis Kontrak (migrasi `add_barang_dan_jasa_contract_type`) dan mencetak format SPK/PJ umum.
+  - Lumsum tetap ada di data master dan dapat dinonaktifkan bila tidak dipakai.
+  - Untuk usulan dengan format SPK/PJ, dokumen perencanaan menunggu Jenis Kontrak dan Kategori terisi.
 - **Pengadaan baru** terdaftar dengan nomor registrasi internal: `PGD/tahun/bulan/urut`, atau `USL/...` untuk usulan.
-- **Checklist Pelaksanaan:** isian baru **Nomor kontrak & kategori (barang/jasa)** (`ChecklistInput::ContractNumber`).
+- **Checklist Pelaksanaan:** isian baru **Nomor kontrak** (`ChecklistInput::ContractNumber`), diisi PIC Pelaksana.
   - Dipasang pada tahapan **Kontrak** untuk SPK/PJ dan **Lampiran Surat Pesanan** untuk SPPL, sehingga tiap format cukup sekali (migrasi `ask_for_the_contract_number_in_execution` dan `MasterDataSeeder`).
   - Isian menawarkan nomor otomatis berikutnya sesuai format (tombol "Pakai nomor otomatis").
   - Nomor wajib unik dan tidak boleh berupa nomor registrasi PGD/USL.
-  - Untuk SPK/PJ, kategori wajib dipilih dan menentukan template SPK/PJ Barang atau Jasa. SPPL tanpa kategori.
-  - Tahapan belum bisa dicentang sebelum isian ini lengkap. Dokumen yang sudah digenerate ikut memakai nomor baru secara otomatis.
-- **Panel Identitas:** "Jenis Kontrak" diganti **Kategori Kontrak** dan hanya ditampilkan; PIC Perencana tidak lagi memilihnya.
-- Data yang kurang di Perencanaan hanya **Jenis Kontrak**. Akibatnya, RKS PJ memakai template umum selama kategori belum diisi.
-- **Test:** `ContractNumberInputTest`; `ContractNumberTest`, `WorkCategoryTest`, `MethodFollowsFormatTest`, dan `EndToEndFlowTest` disesuaikan.
+  - Tahapan belum bisa dicentang sebelum nomor terisi. Dokumen yang sudah digenerate ikut memakai nomor baru secara otomatis.
+- **Test:** `ContractNumberInputTest`; `ContractNumberTest`, `WorkCategoryTest`, `PlanningIdentityTest`, `MethodFollowsFormatTest`, dan `EndToEndFlowTest` disesuaikan.
+
+### 31. Pembagian Isian: User, Rendan, Laksdan
+- **User** (pembuat pengadaan atau pengusul) memilih **Jenis Kontrak** (SPK / PJ / SPPL) di form Buat Pengadaan, kini juga di form Usulan Pekerjaan.
+  - Di server tetap opsional, sehingga alur lama tidak rusak. Perencanaan menunggu isian ini lewat peringatan data kurang.
+- **Rendan** (PIC Perencana) memilih **Metode Pengadaan** dan **Kategori Kontrak** di panel Identitas Pengadaan, sebelum perencanaan disetujui.
+  - Pilihan metode: Penunjukan Langsung, Pengadaan Langsung, Lelang Terbuka 1 Tahap 1 Sampul, Lelang Terbuka 1 Tahap 2 Sampul.
+  - Setiap perubahan tercatat di riwayat aktivitas.
+- **Laksdan** (PIC Pelaksana) mengisi **No Kontrak** di checklist Pelaksanaan (poin 30).
+- **Data Master → Metode Pengadaan** baru: tabel `selection_methods`, kolom `procurements.selection_method_id` (migrasi `create_selection_methods_table`), dapat ditambah/diubah/dinonaktifkan.
+  - Placeholder `{{metode_pengadaan}}` mencetak metode ini. Bila belum dipilih, yang dicetak metode internal.
+- Metode lama (Surat Pesanan / SPK / Tender) tetap dipakai sistem untuk memilih template dan tahapan sesuai format. Menunya diganti nama menjadi **Data Master → Metode Internal (Template)**.
+- **Test:** `SelectionMethodTest`; batas jumlah query di `MethodSpecificTemplateTest` dinaikkan satu karena ada daftar metode pada opsi detail pengadaan.
+
+### 32. Empat Penanda Tangan Lembar Pengesahan TOR
+- Lembar Pengesahan TOR (`umum/tor.html`) kini ditandatangani empat pihak, dan namanya terisi otomatis dari data:
+  1. **Disusun oleh: User**, yaitu pembuat usulan/pengadaan (`{{nama_penyusun}}`).
+  2. **Diperiksa/Diketahui oleh**, kiri: **Asman bidang user** sesuai Direksi Pekerjaan pengadaan (jabatan `{{direksi_pekerjaan}}`, nama `{{nama_asman_pengguna}}`).
+  3. **Diperiksa/Diketahui oleh**, kanan: **Asman Engineering** (`{{nama_asman_engineering}}`). Diambil dari Direksi Pekerjaan bernama "...Engineering" dan akun yang berhak menyetujui usulan bidang itu.
+  4. **Disetujui oleh: Manager** (`{{nama_manager}}`), seperti sebelumnya.
+- Bila akun Asman belum ada, nama diganti garis titik untuk diisi manual. Semua nama dicetak huruf besar.
+- TOR dipakai bersama oleh SPK, PJ, dan SPPL (satu template), jadi susunan ini berlaku untuk ketiganya.
+- Migrasi `sign_the_tor_by_the_user_and_both_asman` memperbarui template terpasang. TOR yang belum diedit ikut menyesuaikan saat dibuka; TOR yang sudah diedit tetap seperti isinya.
+- **Test:** `TorHeaderTest`.
 
 ---
 
