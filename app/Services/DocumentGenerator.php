@@ -12,6 +12,7 @@ use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementAmendment;
 use App\Models\ProcurementAmendmentChange;
+use App\Models\ProcurementChecklist;
 use App\Models\ProcurementContractItem;
 use App\Models\ProcurementDeliveryOrder;
 use App\Models\ProcurementDeliveryOrderItem;
@@ -21,6 +22,7 @@ use App\Models\UnitManager;
 use App\Models\User;
 use App\Models\VendorAssessmentRequest;
 use App\Models\WorkDirector;
+use App\Support\FinanceLetters;
 use App\Support\IndonesianNumber;
 use App\Support\TenderDocuments;
 use Carbon\CarbonImmutable;
@@ -134,9 +136,9 @@ class DocumentGenerator
             'amandemen_ke' => 'Amandemen: urutan dalam angka romawi (I, II, ...)',
             'nomor_amandemen' => 'Amandemen: nomor amandemen (format Amd)',
             'jenis_dokumen_kontrak' => 'Amandemen: jenis kontrak yang diubah (SURAT PERJANJIAN / SURAT PERINTAH KERJA / SURAT PESANAN)',
-            'jenis_dokumen_kontrak_judul' => 'Amandemen: jenis kontrak yang diubah, huruf judul',
-            'nomor_kontrak' => 'Amandemen: nomor kontrak yang diubah',
-            'tanggal_kontrak' => 'Amandemen: tanggal kontrak yang diubah',
+            'jenis_dokumen_kontrak_judul' => 'Amandemen / DO / Surat Mitra: jenis kontrak, huruf judul',
+            'nomor_kontrak' => 'Amandemen / Surat Mitra: nomor kontrak',
+            'tanggal_kontrak' => 'Amandemen / DO / Surat Mitra: tanggal kontrak',
             'tanggal_amandemen' => 'Amandemen: tanggal amandemen',
             'tanggal_amandemen_angka' => 'Amandemen: tanggal amandemen (dd-mm-yyyy)',
             'hari_amandemen' => 'Amandemen: nama hari tanggal amandemen',
@@ -165,6 +167,14 @@ class DocumentGenerator
             'tanggal_nota_dinas_usulan_do' => 'DO: tanggal nota dinas usulan dari pengusul',
             'nomor_nota_dinas_do' => 'DO: nomor nota dinas DO dari Rendan',
             'tanggal_nota_dinas_do' => 'DO: tanggal nota dinas DO dari Rendan',
+            // Filled only on the partner's letters downloaded from Keuangan.
+            'unit_penerima' => 'Surat Mitra: unit tujuan yang menerima barang',
+            'up_penerima' => 'Surat Mitra: Manager UL yang memegang unit tujuan (Up)',
+            'nama_penerima' => 'Surat Mitra: penerima barang (TL OPHAR unit, atau TL Pemeliharaan Unit Layanannya)',
+            'tabel_surat_jalan' => 'Surat Mitra: tabel barang yang dikirim, dari Rincian Item',
+            'nama_manager_penerima' => 'Surat Mitra: nama Manager UL yang memegang unit tujuan (Mengetahui)',
+            'judul_berita_acara' => 'Surat Mitra: judul BA Pemeriksaan Barang / Pemeriksaan Pekerjaan / Penyelesaian Pekerjaan, sesuai langkahnya',
+            'nama_berita_acara' => 'Surat Mitra: nama BA yang dimohonkan, huruf judul (mis. Berita Acara Pemeriksaan Barang)',
             'checklist_perencanaan' => 'Daftar checklist tahap perencanaan',
             'checklist_pelaksanaan' => 'Daftar checklist tahap pelaksanaan',
             ...TenderDocuments::catalog(),
@@ -1039,6 +1049,19 @@ class DocumentGenerator
         return $this->fillPlaceholders($template->body, [
             ...$this->placeholderValues($order->procurement, $issuedAt),
             ...$this->deliveryOrderValues($order),
+        ]);
+    }
+
+    /**
+     * Render a letter the partner writes for Keuangan (Surat Permohonan
+     * Pembayaran, Surat Pernyataan Garansi Material): the procurement's
+     * values and the contract the letter refers to.
+     */
+    public function renderFinanceLetter(DocumentTemplate $template, Procurement $procurement, ?ProcurementChecklist $checklist = null): string
+    {
+        return $this->fillPlaceholders($template->body, [
+            ...$this->placeholderValues($procurement),
+            ...FinanceLetters::values($procurement, $checklist),
         ]);
     }
 

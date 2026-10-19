@@ -16,6 +16,7 @@ use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementAmendment;
+use App\Models\ProcurementChecklist;
 use App\Models\ProcurementDeliveryOrder;
 use App\Models\ProcurementDocument;
 use App\Models\ProcurementStatusHistory;
@@ -26,6 +27,7 @@ use App\Services\DeliveryOrderService;
 use App\Services\DocumentGenerator;
 use App\Services\ProcurementService;
 use App\Services\ProgressStatusResolver;
+use App\Support\FinanceLetters;
 use App\Support\MasterDataOptions;
 use App\Support\ProcurementFilters;
 use App\Support\ProposalDocuments;
@@ -696,11 +698,16 @@ class ProcurementController extends Controller
             $procurement->contract_number_format_id,
         );
 
+        // The partner's letters belong to Keuangan steps only.
+        $letterTypes = $stage === ProcurementStage::Keuangan
+            ? DocumentType::query()->whereIn('code', FinanceLetters::codes())->pluck('id', 'code')->all()
+            : [];
+
         return $procurement->checklists
             ->where('stage', $stage)
             ->sortBy(fn ($checklist): int => $checklist->checklistItem->sort_order)
             ->values()
-            ->map(function ($checklist) use ($procurement, $resolvable): array {
+            ->map(function ($checklist) use ($procurement, $resolvable, $letterTypes): array {
                 $item = $checklist->checklistItem;
 
                 // Empty for steps that are plain ticks, which is what tells the
@@ -728,6 +735,9 @@ class ProcurementController extends Controller
                     // A Penyerahan / Pembayaran requirement is finished by
                     // uploading its paper on the step itself.
                     'needs_upload' => $checklist->needsOwnUpload(),
+                    // The partner's letter it is evidenced by, to download
+                    // filled in, sign and upload back.
+                    'template_url' => $this->letterUrl($procurement, $checklist, $letterTypes, $resolvable),
                     'files' => $checklist->needsOwnUpload()
                         ? $checklist->files->map(fn ($file): array => [
                             'id' => $file->id,
@@ -747,6 +757,24 @@ class ProcurementController extends Controller
                 ];
             })
             ->all();
+    }
+
+    /**
+     * Where to download the partner's letter a step is evidenced by, when
+     * it is one of them and its template is in place.
+     *
+     * @param  array<string, int>  $letterTypes  Document type ids by code.
+     * @param  array<int, int>  $resolvable  Document type ids with a template.
+     */
+    protected function letterUrl(Procurement $procurement, ProcurementChecklist $checklist, array $letterTypes, array $resolvable): ?string
+    {
+        $code = FinanceLetters::codeFor($checklist);
+
+        if ($code === null || ! in_array($letterTypes[$code] ?? null, $resolvable, true)) {
+            return null;
+        }
+
+        return route('procurements.checklists.template', [$procurement, $checklist]);
     }
 
     /**

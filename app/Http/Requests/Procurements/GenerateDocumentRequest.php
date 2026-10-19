@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Procurements;
 
+use App\Support\FinanceLetters;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -24,6 +25,8 @@ class GenerateDocumentRequest extends FormRequest
                 Rule::exists('document_types', 'id')
                     ->where('is_active', true)
                     ->where('upload_only', 0)
+                    // The partner's letters are downloaded from their step.
+                    ->whereNotIn('code', FinanceLetters::codes())
                     ->whereNull('deleted_at'),
             ],
         ];

@@ -1,0 +1,41 @@
+<style>
+    .surat-kop { border: 1.5pt dashed #888888; color: #666666; text-align: center; font-style: italic; padding: 12pt 8pt; margin: 0 0 10pt; }
+    .surat-title { text-align: center; font-size: 14pt; font-weight: bold; text-decoration: underline; margin: 6pt 0 0; }
+    .surat-number { text-align: center; font-weight: bold; margin: 0 0 12pt; }
+    table.surat-plain { width: 100%; border: none; margin: 0; }
+    table.surat-plain td { border: none; padding: 1pt 4pt 1pt 0; vertical-align: top; }
+    .surat-body { text-align: justify; }
+</style>
+
+<div class="surat-kop">[ KOP SURAT PERUSAHAAN ]<br>Tempatkan kop surat perusahaan di sini</div>
+
+<p class="surat-title">SURAT JALAN</p>
+<p class="surat-number">............../ST/........../{{tahun}}</p>
+
+<table class="surat-plain">
+    <tr><td style="width: 13%;">Kepada</td><td style="width: 3%;">:</td><td>PT PLN NUSANTARA POWER UP KENDARI</td></tr>
+    <tr><td>Up</td><td>:</td><td>{{up_penerima}}</td></tr>
+    <tr><td>Tanggal</td><td>:</td><td>........................................ {{tahun}}</td></tr>
+</table>
+
+<p style="margin-top: 10pt;">Dengan Hormat,</p>
+<p class="surat-body">Sehubungan dengan {{jenis_dokumen_kontrak_judul}} No. {{nomor_kontrak}} tanggal {{tanggal_kontrak}} tentang <span style="text-transform: uppercase;">{{nama_pengadaan}}</span> dengan ini kami mengirimkan material ke PT. PLN Nusantara Power UP Kendari {{unit_penerima}} yaitu :</p>
+
+{{tabel_surat_jalan}}
+
+<p class="surat-body">Demikian Surat Jalan ini kami buat dengan sebenarnya, atas perhatian dan kerjasamanya diucapkan terima kasih.</p>
+
+<table class="surat-plain" style="margin-top: 12pt; page-break-inside: avoid;">
+    <tr>
+        <td style="width: 50%; text-align: center;">Hormat Kami,<br>&nbsp;</td>
+        <td style="text-align: center;">Penerima,<br>{{unit_penerima}}</td>
+    </tr>
+    <tr>
+        <td style="height: 56pt;"></td>
+        <td></td>
+    </tr>
+    <tr>
+        <td style="text-align: center;"><b><u>( NAMA DIREKTUR )</u></b><br>DIREKTUR</td>
+        <td style="text-align: center;"><b><u><span style="text-transform: uppercase;">{{nama_penerima}}</span></u></b></td>
+    </tr>
+</table>

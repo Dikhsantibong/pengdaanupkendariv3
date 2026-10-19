@@ -1,6 +1,7 @@
 import { router, useForm } from '@inertiajs/react';
 import {
     ChevronDown,
+    Download,
     FileCheck2,
     FileWarning,
     Trash2,
@@ -36,6 +37,7 @@ export function ChecklistFileList({
     checklistId,
     name,
     files,
+    templateUrl = null,
     canManage,
 }: {
     procurementId: number;
@@ -43,6 +45,8 @@ export function ChecklistFileList({
     /** The requirement the files evidence. */
     name: string;
     files: ChecklistFile[];
+    /** The partner's letter to download as Word, filled in, before it is signed. */
+    templateUrl?: string | null;
     canManage: boolean;
 }) {
     const [previewFile, setPreviewFile] = useState<ChecklistFile | null>(null);
@@ -119,6 +123,21 @@ export function ChecklistFileList({
             </div>
 
             <UploadedFileRows files={files} onPreview={setPreviewFile} />
+
+            {templateUrl && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                    <Button asChild size="sm" variant="outline">
+                        <a href={templateUrl}>
+                            <Download className="size-3.5" />
+                            Unduh Template (Word)
+                        </a>
+                    </Button>
+                    <span className="text-[11px] text-muted-foreground">
+                        Sudah terisi data kontrak. Pasang kop perusahaan,
+                        lengkapi dan tanda tangani, lalu unggah kembali di sini.
+                    </span>
+                </div>
+            )}
 
             {canManage && (
                 <>

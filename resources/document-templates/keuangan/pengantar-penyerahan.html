@@ -1,0 +1,61 @@
+<style>
+    .surat-kop { border: 1.5pt dashed #888888; color: #666666; text-align: center; font-style: italic; padding: 12pt 8pt; margin: 0 0 10pt; }
+    table.surat-plain { width: 100%; border: none; margin: 0; }
+    table.surat-plain td { border: none; padding: 1pt 4pt 1pt 0; vertical-align: top; }
+    .surat-body { text-align: justify; }
+    ol.surat-list { margin: 2pt 0 8pt 36pt; padding: 0; }
+</style>
+
+<div class="surat-kop">[ KOP SURAT PERUSAHAAN ]<br>Tempatkan kop surat perusahaan di sini</div>
+
+<p style="text-align: right;">.................................., ........................................ {{tahun}}</p>
+
+<table class="surat-plain">
+    <tr><td style="width: 18%;">Nomor</td><td style="width: 3%;">:</td><td>................................/{{tahun}}</td></tr>
+    <tr><td>Lampiran</td><td>:</td><td>1 Rangkap</td></tr>
+    <tr><td>Perihal</td><td>:</td><td>Surat Pengantar Penyerahan Pekerjaan</td></tr>
+</table>
+
+<table class="surat-plain" style="margin: 12pt 0;">
+    <tr>
+        <td style="width: 58%;"></td>
+        <td>Kepada Yth :<br>DIREKSI PEKERJAAN<br>PT PLN NUSANTARA POWER<br>UP KENDARI</td>
+    </tr>
+</table>
+
+<p>Dengan Hormat,<br>Menunjuk {{jenis_dokumen_kontrak_judul}} :</p>
+<table class="surat-plain" style="margin-left: 24pt;">
+    <tr><td style="width: 16%;">Nomor</td><td style="width: 3%;">:</td><td>{{nomor_kontrak}}</td></tr>
+    <tr><td>Pekerjaan</td><td>:</td><td><span style="text-transform: uppercase;">{{nama_pengadaan}}</span></td></tr>
+    <tr><td>Tanggal</td><td>:</td><td>{{tanggal_kontrak}}</td></tr>
+</table>
+
+<p class="surat-body" style="margin-top: 10pt;">Sehubungan pelaksanaan pekerjaan tersebut telah selesai 100% dilaksanakan dengan baik sesuai kontraktual, maka kami mengajukan permohonan untuk dapat dilakukan pemeriksaan terhadap pekerjaan tersebut dan segera diterbitkan {{nama_berita_acara}}.</p>
+<p class="surat-body">Guna informasi lebih lanjut dapat menghubungi PIC Nama : ........................................ No. Hp : ........................................</p>
+
+<p class="surat-body" style="margin-top: 10pt;">Untuk memudahkan pemeriksaan dokumen, bersama ini kami lampirkan versi soft copy yang sama dengan hard copy pada link yang telah disiapkan sebagai berikut :</p>
+<ol class="surat-list">
+    <li>Surat Pengantar Penyerahan Pekerjaan (TTE)</li>
+    <li>Surat Pernyataan Garansi Material (TTE)</li>
+    <li>Berita Acara Serah Terima Pekerjaan (BASTP)</li>
+    <li>Copy {{jenis_dokumen_kontrak_judul}}</li>
+</ol>
+
+<p><i>Link Drive :</i> ................................................................................................</p>
+
+<p class="surat-body" style="margin-top: 10pt;">Demikian surat ini kami buat dengan sebenarnya, atas perhatian dan kerjasamanya diucapkan terima kasih.</p>
+
+<table class="surat-plain" style="margin-top: 12pt; page-break-inside: avoid;">
+    <tr>
+        <td style="width: 55%;"></td>
+        <td style="text-align: center;">{{nama_mitra}}<br>DIREKTUR</td>
+    </tr>
+    <tr>
+        <td></td>
+        <td style="height: 56pt;"></td>
+    </tr>
+    <tr>
+        <td></td>
+        <td style="text-align: center;"><b><u>( NAMA DIREKTUR )</u></b></td>
+    </tr>
+</table>

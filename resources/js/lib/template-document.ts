@@ -289,6 +289,28 @@ export const SAMPLE_VALUES: Record<string, string> = {
         '<table class="approval-table"><tr><td><b>DISUSUN OLEH:</b></td></tr><tr><td>PENYUSUN</td></tr><tr><td><div class="gap"></div><span class="name">( GALIH PRIMA YOGA )</span></td></tr></table>' +
         '<table class="approval-table two" style="margin-top:20px;"><tr><td colspan="2"><b>DIPERIKSA/DIKETAHUI OLEH:</b></td></tr><tr><td>ASMAN PEMELIHARAAN</td><td>ASMAN ENGINEERING</td></tr><tr><td><div class="gap"></div><span class="name">( ASMAN PEMELIHARAAN )</span></td><td><div class="gap"></div><span class="name">( ASMAN ENGINEERING )</span></td></tr></table>' +
         '<table class="approval-table" style="margin-top:20px;"><tr><td><b>DISETUJUI OLEH:</b></td></tr><tr><td>MANAGER</td></tr><tr><td><div class="gap"></div><span class="name">( MUHAMMAD RUSLI )</span></td></tr></table>',
+    // The partner's letters for Keuangan.
+    jenis_dokumen_kontrak_judul: 'Surat Perintah Kerja (SPK)',
+    nomor_kontrak: 'KDD066.SPK/612/UPKD/2026',
+    tanggal_kontrak: '30 Juli 2026',
+    nilai_setelah_nego_total_angka: '289.266.000',
+    nilai_setelah_nego_total_terbilang:
+        'Dua Ratus Delapan Puluh Sembilan Juta Dua Ratus Enam Puluh Enam Ribu Rupiah',
+    nama_bank: 'BANK BRI',
+    nomor_rekening: '0587.01.000012.30.6',
+    nama_pemilik_rekening: 'CV. BINTANG MAS',
+    masa_garansi_bulan: '6',
+    masa_garansi_bulan_terbilang: 'enam',
+    unit_penerima: 'PLTD WUA WUA',
+    up_penerima: 'MANAGER ULPLTD WUA WUA',
+    nama_penerima: 'SURYADI PRATAMA',
+    nama_manager_penerima: 'ABDUL RAHMAN KADIR',
+    judul_berita_acara: 'BERITA ACARA PENYELESAIAN PEKERJAAN',
+    nama_berita_acara: 'Berita Acara Pemeriksaan Barang',
+    tabel_surat_jalan:
+        '<table class="surat-items"><tr><th>No.</th><th>Nama Barang</th><th>Part Number</th><th>Vol.</th><th>Sat.</th><th>Keterangan</th></tr>' +
+        '<tr><td class="c">1.</td><td>Packing Oil Cooler</td><td class="c">37739-10200</td><td class="c">1</td><td class="c">Bh</td><td></td></tr>' +
+        '<tr><td class="c">2.</td><td>O Ring</td><td class="c">05507-10140</td><td class="c">16</td><td class="c">Bh</td><td></td></tr></table>',
 };
 
 /** Render a template body with sample values as a standalone page. */

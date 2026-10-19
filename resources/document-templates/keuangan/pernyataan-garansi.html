@@ -1,0 +1,45 @@
+<style>
+    .surat-kop { border: 1.5pt dashed #888888; color: #666666; text-align: center; font-style: italic; padding: 12pt 8pt; margin: 0 0 10pt; }
+    .surat-title { text-align: center; font-weight: bold; text-decoration: underline; margin: 6pt 0 12pt; }
+    table.surat-plain { width: 100%; border: none; margin: 0; }
+    table.surat-plain td { border: none; padding: 1pt 4pt 1pt 0; vertical-align: top; }
+    .surat-body { text-align: justify; }
+</style>
+
+<div class="surat-kop">[ KOP SURAT PERUSAHAAN ]<br>Tempatkan kop surat perusahaan di sini</div>
+
+<p class="surat-title">SURAT PERNYATAAN GARANSI MATERIAL</p>
+
+<p>Yang bertanda tangan di bawah ini :</p>
+<table class="surat-plain" style="margin-left: 24pt;">
+    <tr><td style="width: 18%;">Nama</td><td style="width: 3%;">:</td><td>( NAMA DIREKTUR )</td></tr>
+    <tr><td>Jabatan</td><td>:</td><td>DIREKTUR</td></tr>
+    <tr><td>Perusahaan</td><td>:</td><td>{{nama_mitra}}</td></tr>
+    <tr><td>Alamat</td><td>:</td><td>{{alamat_perusahaan}}</td></tr>
+</table>
+
+<p class="surat-body" style="margin-top: 10pt;">Dengan ini menyatakan, kami memberikan Jaminan Garansi bagi material yang diserahkan kepada PT PLN NUSANTARA POWER UP KENDARI, sesuai dengan {{jenis_dokumen_kontrak_judul}}:</p>
+<table class="surat-plain" style="margin-left: 24pt;">
+    <tr><td style="width: 18%;">Nomor</td><td style="width: 3%;">:</td><td>{{nomor_kontrak}}</td></tr>
+    <tr><td>Pekerjaan</td><td>:</td><td><span style="text-transform: uppercase;">{{nama_pengadaan}}</span></td></tr>
+    <tr><td>Tanggal</td><td>:</td><td>{{tanggal_kontrak}}</td></tr>
+</table>
+
+<p class="surat-body" style="margin-top: 10pt;">Masa Garansi tersebut di atas adalah {{masa_garansi_bulan}} ({{masa_garansi_bulan_terbilang}}) Bulan atau ................ (................................) jam operasi, terhitung sejak tanggal Berita Acara Serah Terima diterbitkan. Semua biaya yang timbul akibat perbaikan / penggantian barang karena tidak sesuai spesifikasi atau tidak sesuai perjanjian selama Masa Garansi menjadi tanggung jawab kami.</p>
+
+<p class="surat-body">Demikian Surat Pernyataan Garansi Material ini dibuat dengan sesungguhnya untuk dapat dipergunakan sebagaimana mestinya.</p>
+
+<table class="surat-plain" style="margin-top: 12pt; page-break-inside: avoid;">
+    <tr>
+        <td style="width: 45%;"></td>
+        <td style="text-align: center;">......................, ............................ {{tahun}}<br>{{nama_mitra}}</td>
+    </tr>
+    <tr>
+        <td></td>
+        <td style="height: 56pt;"></td>
+    </tr>
+    <tr>
+        <td></td>
+        <td style="text-align: center;"><b><u>( NAMA DIREKTUR )</u></b><br>DIREKTUR</td>
+    </tr>
+</table>

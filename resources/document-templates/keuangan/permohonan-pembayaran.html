@@ -1,0 +1,50 @@
+<style>
+    .surat-kop { border: 1.5pt dashed #888888; color: #666666; text-align: center; font-style: italic; padding: 12pt 8pt; margin: 0 0 10pt; }
+    table.surat-plain { width: 100%; border: none; margin: 0; }
+    table.surat-plain td { border: none; padding: 1pt 4pt 1pt 0; vertical-align: top; }
+    .surat-body { text-align: justify; }
+</style>
+
+<div class="surat-kop">[ KOP SURAT PERUSAHAAN ]<br>Tempatkan kop surat perusahaan di sini</div>
+
+<p style="text-align: right;">.................................., ........................................ {{tahun}}</p>
+
+<table class="surat-plain">
+    <tr><td style="width: 18%;">Nomor</td><td style="width: 3%;">:</td><td>................................/{{tahun}}</td></tr>
+    <tr><td>Lampiran</td><td>:</td><td>1 Rangkap</td></tr>
+    <tr><td>Perihal</td><td>:</td><td>Permohonan Pembayaran</td></tr>
+</table>
+
+<table class="surat-plain" style="margin: 12pt 0;">
+    <tr>
+        <td style="width: 58%;"></td>
+        <td>Kepada Yth :<br>MANAGER<br>PT PLN NUSANTARA POWER<br>UP KENDARI</td>
+    </tr>
+</table>
+
+<p>Dengan Hormat,</p>
+<p class="surat-body">Sehubungan dengan {{jenis_dokumen_kontrak_judul}} No. {{nomor_kontrak}} tanggal {{tanggal_kontrak}} tentang <span style="text-transform: uppercase;">{{nama_pengadaan}}</span> telah kami selesaikan, maka dengan ini kami mengajukan permohonan pembayaran atas pekerjaan tersebut sebesar Rp {{nilai_setelah_nego_total_angka}} ({{nilai_setelah_nego_total_terbilang}}) sudah termasuk PPN.</p>
+
+<p>Pembayaran dapat kami terima melalui rekening berikut :</p>
+<table class="surat-plain">
+    <tr><td style="width: 18%;">Bank</td><td style="width: 3%;">:</td><td>{{nama_bank}}</td></tr>
+    <tr><td>No. Rekening</td><td>:</td><td>{{nomor_rekening}}</td></tr>
+    <tr><td>Atas Nama</td><td>:</td><td>{{nama_pemilik_rekening}}</td></tr>
+</table>
+
+<p style="margin-top: 10pt;">Demikian permohonan ini kami sampaikan. Atas perhatiannya kami ucapkan terima kasih.</p>
+
+<table class="surat-plain" style="margin-top: 12pt; page-break-inside: avoid;">
+    <tr>
+        <td style="width: 55%;"></td>
+        <td style="text-align: center;">Hormat Kami,</td>
+    </tr>
+    <tr>
+        <td></td>
+        <td style="height: 56pt;"></td>
+    </tr>
+    <tr>
+        <td></td>
+        <td style="text-align: center;"><b><u>( NAMA DIREKTUR )</u></b><br>DIREKTUR</td>
+    </tr>
+</table>

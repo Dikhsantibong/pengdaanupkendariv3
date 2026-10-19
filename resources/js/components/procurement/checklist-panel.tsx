@@ -164,6 +164,7 @@ export function ChecklistPanel({
                                     checklistId={row.id}
                                     name={row.name}
                                     files={row.files}
+                                    templateUrl={row.template_url}
                                     canManage={editable}
                                 />
                             )}

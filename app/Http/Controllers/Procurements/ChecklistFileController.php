@@ -7,8 +7,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Procurement;
 use App\Models\ProcurementChecklist;
 use App\Models\ProcurementChecklistFile;
+use App\Services\DocumentGenerator;
 use App\Services\ProcurementService;
+use App\Support\FinanceLetters;
 use App\Support\UploadedFileType;
+use App\Support\WordDocument;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -91,6 +94,35 @@ class ChecklistFileController extends Controller
             $file->file_name,
             UploadedFileType::headers($file->mime),
             UploadedFileType::disposition($file->mime, ! $request->boolean('download')),
+        );
+    }
+
+    /**
+     * Download the partner's letter the step is evidenced by (Surat
+     * Permohonan Pembayaran, Surat Pernyataan Garansi Material) as Word,
+     * filled in with the contract's data, to be put on the partner's
+     * letterhead, signed, and uploaded back on the step.
+     */
+    public function template(Procurement $procurement, ProcurementChecklist $checklist, DocumentGenerator $documents): StreamedResponse
+    {
+        abort_unless($checklist->procurement_id === $procurement->id, 404);
+        $this->authorize('view', $procurement);
+
+        $code = FinanceLetters::codeFor($checklist);
+        $template = $code === null ? null : FinanceLetters::template($procurement, $code);
+        abort_if($code === null || $template === null, 404);
+
+        $letter = WordDocument::fromHtml(
+            $documents->renderFinanceLetter($template, $procurement, $checklist),
+            FinanceLetters::LETTERS[$code]['name'],
+        );
+
+        return response()->streamDownload(
+            function () use ($letter): void {
+                echo $letter;
+            },
+            FinanceLetters::fileName($procurement, $code),
+            ['Content-Type' => 'application/msword; charset=UTF-8'],
         );
     }
 

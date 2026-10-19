@@ -704,6 +704,13 @@ class MasterDataSeeder extends Seeder
             ['amandemen-kontrak', 'Amandemen Kontrak', ProcurementStage::Pelaksanaan],
             // Drawn from the DO tab of a KHS contract, with the DO's own values.
             ['delivery-order', 'Delivery Order (DO)', ProcurementStage::Pelaksanaan],
+            // Letters the partner writes for Keuangan: downloaded from their
+            // step as Word, signed, and uploaded back.
+            ['surat-jalan', 'Surat Jalan', ProcurementStage::Keuangan],
+            ['surat-pengantar-penyerahan', 'Surat Pengantar Penyerahan Pekerjaan', ProcurementStage::Keuangan],
+            ['berita-acara-pemeriksaan', 'Berita Acara Pemeriksaan Pekerjaan', ProcurementStage::Keuangan],
+            ['surat-pernyataan-garansi', 'Surat Pernyataan Garansi Material', ProcurementStage::Keuangan],
+            ['surat-permohonan-pembayaran', 'Surat Permohonan Pembayaran', ProcurementStage::Keuangan],
         ];
 
         foreach ($types as $index => [$code, $name, $stage]) {

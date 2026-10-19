@@ -1413,6 +1413,32 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
   - Pejabat yang sudah punya unit atau tingkatnya sudah diubah administrator tidak disentuh.
 - **Test:** `UnitManagerLevelTest`, `UnitLayananManagerSeederTest`; `MasterDataManagementTest` disesuaikan.
 
+### 45. Template Surat Mitra di Keuangan: Unduh (Word), lalu Unggah
+- Langkah Keuangan yang dibuktikan dengan unggahan kini menawarkan tombol **Unduh Template (Word)** bila langkahnya adalah salah satu surat mitra. Surat tidak digenerate: mitra memasang kop perusahaannya, melengkapi, menandatangani, lalu berkasnya diunggah kembali di langkah yang sama (`App\Support\FinanceLetters`, rute `procurements.checklists.template`).
+- Langkah dikenali dari namanya, termasuk langkah yang dibaca dari kontrak:
+
+| Surat (jenis dokumen) | Langkah yang menawarkan |
+|---|---|
+| Surat Jalan (`surat-jalan`) | nama memuat "Surat Jalan" |
+| Surat Pengantar Penyerahan Pekerjaan (`surat-pengantar-penyerahan`) | "Surat (Pengantar) Penyerahan Pekerjaan" / "Serah Terima Pekerjaan" |
+| BA Pemeriksaan / Penyelesaian Pekerjaan (`berita-acara-pemeriksaan`) | "Berita Acara Pemeriksaan …" / "Berita Acara Penyelesaian …" |
+| Surat Pernyataan Garansi Material (`surat-pernyataan-garansi`) | "Surat (Pernyataan) Garansi …", kecuali "Garansi Pekerjaan" |
+| Surat Permohonan Pembayaran (`surat-permohonan-pembayaran`) | "Permohonan Pembayaran" |
+
+- **Isi otomatis:**
+  - **Kop:** kotak bertuliskan "[ KOP SURAT PERUSAHAAN ]".
+  - **Nama direktur:** tertulis "( NAMA DIREKTUR )".
+  - **Kontrak:** jenis kontrak (Surat Perintah Kerja (SPK) / Surat Perjanjian / Surat Pesanan), nomor kontrak, dan tanggal kontrak (tanggal dokumen kontrak digenerate).
+  - **Data pengadaan:** nama pekerjaan (huruf besar), nilai termasuk PPN beserta terbilangnya, rekening, dan masa garansi.
+  - **Surat Jalan:** tabel barang dari Rincian Item (5 baris kosong bila belum ada).
+  - **Penerima (Data Master Manager Unit):** unit tujuan; "Up / Mengetahui" = Manager UL yang memegang unit itu; penerima = TL OPHAR unit itu, atau TL Pemeliharaan Unit Layanannya.
+  - **Judul BA:** mengikuti langkahnya (Pemeriksaan Barang / Pemeriksaan Pekerjaan / Penyelesaian Pekerjaan).
+  - **Data yang belum ada:** tercetak garis titik-titik.
+- Placeholder baru: `{{unit_penerima}}`, `{{up_penerima}}`, `{{nama_penerima}}`, `{{nama_manager_penerima}}`, `{{tabel_surat_jalan}}`, `{{judul_berita_acara}}`, `{{nama_berita_acara}}`; `{{nomor_kontrak}}`, `{{tanggal_kontrak}}`, `{{jenis_dokumen_kontrak_judul}}` kini juga terisi pada surat mitra.
+- Template tersimpan di Data Master → Template Dokumen (grup `keuangan`, file `resources/document-templates/keuangan/*.html`) dan dapat diubah administrator. Kelima jenis dokumen tidak ditawarkan di panel Generate dan ditolak oleh permintaan generate.
+- File Word dibuat dari HTML (`App\Support\WordDocument`): tampilan cetak A4, gaya template dipindah ke head, dan live field ditulis sebagai teks biasa.
+- **Migrasi:** `add_the_partner_letters_for_keuangan` (jenis dokumen + template). **Test:** `FinanceLettersTest`.
+
 ---
 
 # Fitur Utama

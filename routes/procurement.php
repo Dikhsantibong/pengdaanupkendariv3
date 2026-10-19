@@ -42,6 +42,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('checklists/{checklist}/berkas', [ChecklistFileController::class, 'store'])->name('checklists.files.store');
         Route::get('checklists/{checklist}/berkas/{file}', [ChecklistFileController::class, 'show'])->name('checklists.files.show');
         Route::delete('checklists/{checklist}/berkas/{file}', [ChecklistFileController::class, 'destroy'])->name('checklists.files.destroy');
+        // The partner's letter a Keuangan step is evidenced by, as Word.
+        Route::get('checklists/{checklist}/template', [ChecklistFileController::class, 'template'])->name('checklists.template');
         Route::post('approval', [ApprovalController::class, 'store'])->name('approval.store');
         Route::put('approval', [ApprovalController::class, 'update'])->name('approval.update');
         Route::delete('approval', [ApprovalController::class, 'destroy'])->name('approval.destroy');
