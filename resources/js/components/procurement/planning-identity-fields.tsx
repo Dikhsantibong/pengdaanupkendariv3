@@ -1,17 +1,6 @@
 import { router } from '@inertiajs/react';
 import { Input } from '@/components/ui/input';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import procurements from '@/routes/procurements';
-import type { Option } from '@/types';
-
-/** Sentinel for "not yet decided": a Select cannot carry an empty value. */
-const UNSET = 'none';
 
 /**
  * Save one identity field on its own.
@@ -27,45 +16,6 @@ function save(
         procurements.planningIdentity.update(procurementId).url,
         payload,
         { preserveScroll: true },
-    );
-}
-
-/**
- * Pick the kind of contract from the identity panel.
- */
-export function ContractTypePicker({
-    procurementId,
-    value,
-    options,
-}: {
-    procurementId: number;
-    value: number | null;
-    options: Option[];
-}) {
-    return (
-        <Select
-            value={value === null ? UNSET : String(value)}
-            onValueChange={(next) =>
-                save(procurementId, {
-                    contract_type_id: next === UNSET ? null : Number(next),
-                })
-            }
-        >
-            <SelectTrigger
-                className="ml-auto h-8 w-44 text-sm"
-                aria-label="Jenis kontrak"
-            >
-                <SelectValue placeholder="Belum ditentukan" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value={UNSET}>Belum ditentukan</SelectItem>
-                {options.map((option) => (
-                    <SelectItem key={option.value} value={String(option.value)}>
-                        {option.label}
-                    </SelectItem>
-                ))}
-            </SelectContent>
-        </Select>
     );
 }
 

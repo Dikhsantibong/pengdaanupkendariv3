@@ -262,7 +262,6 @@ export default function ShowProcurement({
                             procurement={procurement}
                             notes={detail.notes}
                             editsInline={editsInline}
-                            contractTypes={options.contractTypes}
                             candidateCount={partnerCandidates.length}
                         />
 
@@ -383,6 +382,7 @@ export default function ShowProcurement({
                                     rows={checklists.pelaksanaan}
                                     editable={can.updateExecutionChecklist}
                                     partnerCandidates={partnerCandidates}
+                                    contractTypes={options.contractTypes}
                                     canManageDocuments={
                                         can.manageExecutionDocuments
                                     }

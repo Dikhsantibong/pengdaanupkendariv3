@@ -43,10 +43,10 @@ trait ProcurementValidationRules
                 // The amendment numbering is not a contract format.
                 Rule::exists('contract_number_formats', 'id')->whereNull('deleted_at')->where('for_amendment', 0)->where('for_delivery_order', 0),
             ],
-            // The category asked for by the formats set up to need it (SPK
-            // and PJ), picked from the Jenis Kontrak master data.
+            // The category of the formats set up to need it (SPK and PJ),
+            // from the Jenis Kontrak master data. Given by the executor with
+            // the contract number, so no longer asked when registering.
             'contract_type_id' => [
-                Rule::requiredIf(fn (): bool => $this->formatUsesWorkCategory()),
                 'nullable',
                 Rule::exists('contract_types', 'id')->whereNull('deleted_at'),
             ],
@@ -165,6 +165,12 @@ trait ProcurementValidationRules
         if (! $this->formatUsesWorkCategory()) {
             $this->merge(['work_category' => null]);
 
+            return;
+        }
+
+        // The form no longer sends the category: the one the executor gave
+        // stays as it is.
+        if (! $this->has('contract_type_id') && ! $this->filled('work_category')) {
             return;
         }
 

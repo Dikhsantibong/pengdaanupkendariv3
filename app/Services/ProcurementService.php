@@ -68,15 +68,12 @@ class ProcurementService
                 $procurement->target_unit_id = (int) reset($unitIds);
             }
 
-            // The form offers the next free number and lets it be corrected, so
-            // only fall back to generating one when nothing was submitted.
-            // A proposal gets a recognisable USL number until procurement
-            // gives it its contract number.
+            // The contract number is given later by the executor (the Kontrak
+            // or Lampiran Surat Pesanan step), so a new job is registered under an
+            // internal number: USL for a proposal, PGD otherwise.
             $procurement->number = trim((string) ($attributes['number'] ?? '')) !== ''
                 ? (string) $attributes['number']
-                : ($isProposal && $procurement->contract_number_format_id === null
-                    ? $this->nextInternalNumber('USL')
-                    : $this->nextNumber($procurement->contractNumberFormat));
+                : $this->nextInternalNumber($isProposal ? 'USL' : 'PGD');
 
             $procurement->created_by = $author->id;
 

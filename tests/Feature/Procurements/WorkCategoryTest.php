@@ -43,7 +43,7 @@ class WorkCategoryTest extends TestCase
         ];
     }
 
-    public function test_spk_and_pj_ask_for_a_jenis_kontrak(): void
+    public function test_spk_and_pj_take_their_jenis_kontrak_later(): void
     {
         $this->seed(MasterDataSeeder::class);
         $teamLeader = User::factory()->teamLeaderPengadaan()->create();
@@ -51,9 +51,12 @@ class WorkCategoryTest extends TestCase
         foreach (['SPK', 'PJ'] as $code) {
             $format = ContractNumberFormat::query()->where('code', $code)->firstOrFail();
 
+            // The category is given by the executor with the contract number.
             $this->actingAs($teamLeader)
-                ->post(route('procurements.store'), $this->payload($format, null))
-                ->assertSessionHasErrors('contract_type_id');
+                ->post(route('procurements.store'), [...$this->payload($format, null), 'name' => "Tanpa Kategori {$code}"])
+                ->assertSessionHasNoErrors();
+
+            $this->assertNull(Procurement::query()->where('name', "Tanpa Kategori {$code}")->firstOrFail()->contract_type_id);
 
             // A caller still sending a bare category gets the matching type.
 

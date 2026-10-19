@@ -7,6 +7,7 @@ use App\Enums\ChecklistInput;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Procurements\UpdateChecklistInputRequest;
 use App\Http\Requests\Procurements\UpdateChecklistRequest;
+use App\Models\ContractType;
 use App\Models\Procurement;
 use App\Models\ProcurementChecklist;
 use App\Services\ProcurementService;
@@ -57,6 +58,18 @@ class ChecklistController extends Controller
         if ($kind === ChecklistInput::BankAccount) {
             $candidate = $procurement->partnerCandidates()->whereKey((int) $values['partner_candidate_id'])->firstOrFail();
             $values = [...$values, ...$candidate->partnerFields()];
+        }
+
+        // The category picks the barang or jasa contract template, as it did
+        // on the procurement form; formats without one keep none.
+        if ($kind === ChecklistInput::ContractNumber) {
+            $values['number'] = trim((string) $values['number']);
+            $usesCategory = $procurement->contractNumberFormat?->uses_work_category === true;
+            $contractType = $usesCategory && ($values['contract_type_id'] ?? null) !== null
+                ? ContractType::query()->find((int) $values['contract_type_id'])
+                : null;
+            $values['contract_type_id'] = $contractType?->id;
+            $values['work_category'] = $contractType?->work_category;
         }
 
         $procurement->forceFill($values)->save();

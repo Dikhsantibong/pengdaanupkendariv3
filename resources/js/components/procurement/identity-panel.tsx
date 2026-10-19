@@ -1,17 +1,14 @@
 import { ChevronDown } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import {
-    ContractTypePicker,
-    TargetDateField,
-} from '@/components/procurement/planning-identity-fields';
+import { TargetDateField } from '@/components/procurement/planning-identity-fields';
 import {
     Collapsible,
     CollapsibleContent,
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { formatCurrency, formatDate } from '@/lib/format';
-import type { Option, ProcurementRow } from '@/types';
+import type { ProcurementRow } from '@/types';
 
 /** Remembered per viewer so the panel stays the way they left it. */
 const STORAGE_KEY = 'procurement-identity-details-open';
@@ -32,14 +29,12 @@ export function IdentityPanel({
     procurement,
     notes,
     editsInline,
-    contractTypes,
     candidateCount = 0,
 }: {
     procurement: ProcurementRow;
     notes: string | null;
-    /** The planning PIC edits the contract type and target date in place. */
+    /** The planning PIC edits the target date in place. */
     editsInline: boolean;
-    contractTypes: Option[];
     /** How many calon mitra are listed, shown until one is picked. */
     candidateCount?: number;
 }) {
@@ -67,18 +62,8 @@ export function IdentityPanel({
         { label: 'Direksi Pekerjaan', value: procurement.work_director },
         { label: 'Unit Tujuan', value: procurement.target_unit },
         { label: 'Sumber Anggaran', value: procurement.budget_source ?? '—' },
-        {
-            label: 'Jenis Kontrak',
-            value: editsInline ? (
-                <ContractTypePicker
-                    procurementId={procurement.id}
-                    value={procurement.contract_type_id}
-                    options={contractTypes}
-                />
-            ) : (
-                (procurement.contract_type ?? '—')
-            ),
-        },
+        // Given by the executor with the contract number.
+        { label: 'Kategori Kontrak', value: procurement.contract_type ?? '—' },
         {
             label: 'Target Selesai',
             value: editsInline ? (

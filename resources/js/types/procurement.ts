@@ -177,7 +177,8 @@ export type ChecklistInputKind =
     | 'warranty'
     | 'bank_account'
     | 'partner_candidates'
-    | 'procurement_memo';
+    | 'procurement_memo'
+    | 'contract_number';
 
 export type ChecklistInput = {
     kind: ChecklistInputKind;
@@ -196,6 +197,14 @@ export type ChecklistInput = {
         /** The Nota Dinas ke Pengadaan. */
         icc_memo_number: string | null;
         icc_memo_date: string | null;
+        /** The contract number, once the executor has given it. */
+        number: string | null;
+        /** Barang or jasa, given with the number (SPK, PJ). */
+        contract_type_id: number | null;
+        /** Whether the job's format asks for the category. */
+        uses_work_category: boolean;
+        /** The running number of the job's contract format, to offer. */
+        suggested_number: string | null;
     };
 };
 

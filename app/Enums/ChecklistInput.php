@@ -19,6 +19,7 @@ enum ChecklistInput: string
     case BankAccount = 'bank_account';
     case PartnerCandidates = 'partner_candidates';
     case ProcurementMemo = 'procurement_memo';
+    case ContractNumber = 'contract_number';
 
     /**
      * The name shown when choosing the input on the master data screen.
@@ -31,6 +32,7 @@ enum ChecklistInput: string
             self::BankAccount => 'Pelaksana (pilih dari calon mitra + rekening)',
             self::PartnerCandidates => 'Calon mitra & penawaran harga',
             self::ProcurementMemo => 'Nomor & tanggal nota dinas ke pengadaan',
+            self::ContractNumber => 'Nomor kontrak & kategori (barang/jasa)',
         };
     }
 
@@ -50,6 +52,9 @@ enum ChecklistInput: string
             self::PartnerCandidates => [],
             // The memo once known as the Nota Dinas ke Manager / ICC.
             self::ProcurementMemo => ['icc_memo_number', 'icc_memo_date'],
+            // Given by the executor; until then the job has its internal number.
+            // The category only for the formats that ask for one (SPK, PJ).
+            self::ContractNumber => ['number', 'contract_type_id'],
         };
     }
 
@@ -64,6 +69,11 @@ enum ChecklistInput: string
 
             return $candidates->isNotEmpty()
                 && $candidates->every(fn (ProcurementPartnerCandidate $candidate): bool => $candidate->missing() === []);
+        }
+
+        if ($this === self::ContractNumber) {
+            return $procurement->hasContractNumber()
+                && ($procurement->contractNumberFormat?->uses_work_category !== true || $procurement->contract_type_id !== null);
         }
 
         foreach ($this->fields() as $field) {

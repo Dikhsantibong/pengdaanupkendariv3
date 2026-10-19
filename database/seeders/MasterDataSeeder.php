@@ -373,6 +373,11 @@ class MasterDataSeeder extends Seeder
             'Pelaksana' => ChecklistInput::BankAccount,
             'Rentang Waktu Pelaksanaan' => ChecklistInput::ContractPeriod,
             'Masa Garansi' => ChecklistInput::Warranty,
+            // The executor gives the contract number with the contract itself:
+            // the SPK/PJ, or the SPPL's Lampiran Surat Pesanan (a step of the
+            // SPPL alone, so each format asks for it once).
+            'Kontrak' => ChecklistInput::ContractNumber,
+            'Lampiran Surat Pesanan' => ChecklistInput::ContractNumber,
             // Planning: the calon mitra with their offers, and the memo
             // that hands the job to procurement.
             'Penawaran' => ChecklistInput::PartnerCandidates,

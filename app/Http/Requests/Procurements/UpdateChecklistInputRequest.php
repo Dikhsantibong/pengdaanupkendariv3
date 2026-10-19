@@ -48,6 +48,20 @@ class UpdateChecklistInputRequest extends FormRequest
                 'icc_memo_number' => ['required', 'string', 'max:255'],
                 'icc_memo_date' => ['required', 'date'],
             ],
+            ChecklistInput::ContractNumber => [
+                'number' => [
+                    'required', 'string', 'max:100',
+                    // The internal registration numbers are not contract numbers.
+                    'not_regex:#^(PGD|USL)/\d{4}/\d{2}/\d+$#',
+                    Rule::unique('procurements', 'number')->ignore($checklist->procurement_id)->whereNull('deleted_at'),
+                ],
+                // Barang or jasa, for the formats that ask for it (SPK, PJ).
+                'contract_type_id' => [
+                    Rule::requiredIf(fn (): bool => $checklist->procurement->contractNumberFormat?->uses_work_category === true),
+                    'nullable', 'integer',
+                    Rule::exists('contract_types', 'id')->whereNull('deleted_at'),
+                ],
+            ],
             // Filled through the calon mitra themselves.
             ChecklistInput::PartnerCandidates, null => [],
         };
@@ -70,6 +84,8 @@ class UpdateChecklistInputRequest extends FormRequest
             'bank_account_holder' => 'nama pemilik rekening',
             'icc_memo_number' => 'nomor nota dinas ke pengadaan',
             'icc_memo_date' => 'tanggal nota dinas ke pengadaan',
+            'number' => 'nomor kontrak',
+            'contract_type_id' => 'kategori kontrak',
         ];
     }
 
@@ -82,6 +98,7 @@ class UpdateChecklistInputRequest extends FormRequest
     {
         return [
             'bank_account_number.regex' => 'Nomor rekening hanya boleh berisi angka.',
+            'number.not_regex' => 'Isi dengan nomor kontrak, bukan nomor registrasi pengadaan.',
         ];
     }
 }

@@ -97,7 +97,7 @@ class MethodFollowsFormatTest extends TestCase
             'contract_number_format_id' => null,
         ]);
 
-        $this->assertSame(['Jenis No Kontrak'], $procurement->missingPlanningData());
+        $this->assertSame(['Jenis Kontrak'], $procurement->missingPlanningData());
     }
 
     public function test_the_administrator_sets_the_method_of_a_format(): void

@@ -12,12 +12,10 @@ import proposals from '@/routes/proposals';
 
 export default function CreateProcurement({
     options,
-    nextNumbers,
     proposal,
     withPlanner,
 }: {
     options: ProcurementFormOptions;
-    nextNumbers: Record<number, string>;
     proposal?: ProposalMode;
     /** Only TL ICC appoints the planning PIC, here or on the PIC board. */
     withPlanner: boolean;
@@ -66,7 +64,6 @@ export default function CreateProcurement({
                     options={options}
                     withPlanner={withPlanner}
                     proposal={proposal}
-                    nextNumbers={nextNumbers}
                     submitLabel={
                         isProposal ? 'Kirim Usulan' : 'Simpan Pengadaan'
                     }

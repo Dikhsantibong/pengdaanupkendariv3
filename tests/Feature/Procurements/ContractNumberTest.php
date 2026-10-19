@@ -193,7 +193,7 @@ class ContractNumberTest extends TestCase
         $this->assertSame($format->id, $procurement->contract_number_format_id);
     }
 
-    public function test_a_blank_number_falls_back_to_the_running_one(): void
+    public function test_a_blank_number_registers_the_job_under_its_internal_number(): void
     {
         $this->seed(MasterDataSeeder::class);
         $this->travelTo('2026-08-07');
@@ -210,10 +210,10 @@ class ContractNumberTest extends TestCase
             ->assertSessionHasNoErrors()
             ->assertRedirect();
 
-        $this->assertSame(
-            'KDD075.SPK/612/UPKD/2026',
-            Procurement::query()->firstOrFail()->number,
-        );
+        // The contract number is given later by the executor.
+        $procurement = Procurement::query()->firstOrFail();
+        $this->assertSame('PGD/2026/08/0001', $procurement->number);
+        $this->assertFalse($procurement->hasContractNumber());
     }
 
     public function test_a_procurement_registered_without_a_format_keeps_the_internal_number(): void

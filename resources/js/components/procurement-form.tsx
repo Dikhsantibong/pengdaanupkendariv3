@@ -37,8 +37,6 @@ export type ProcurementFormOptions = {
 
 export type ProcurementFormValues = {
     contract_number_format_id: number | null;
-    contract_type_id: number | null;
-    number: string;
     name: string;
     work_director_id: number | null;
     target_unit_ids: number[];
@@ -78,7 +76,6 @@ export function ProcurementForm({
     onSubmit,
     onCancel,
     withPlanner = false,
-    nextNumbers = {},
     proposal,
 }: {
     options: ProcurementFormOptions;
@@ -91,8 +88,6 @@ export function ProcurementForm({
      * changes belong on the appointment screen, which notifies the handover.
      */
     withPlanner?: boolean;
-    /** The next free number of each format, keyed by format id. */
-    nextNumbers?: Record<number, string>;
     /**
      * Proposal mode: a staff member or TL proposes work for their division.
      * Contract numbering, partner, PIC and progress are left to procurement;
@@ -122,12 +117,6 @@ export function ProcurementForm({
               }
             : {}),
         contract_number_format_id: startingFormatId,
-        contract_type_id: initialValues?.contract_type_id ?? null,
-        number:
-            initialValues?.number ??
-            (startingFormatId === null
-                ? ''
-                : (nextNumbers[startingFormatId] ?? '')),
         name: initialValues?.name ?? '',
         work_director_id:
             initialValues?.work_director_id ??
@@ -175,42 +164,13 @@ export function ProcurementForm({
 
     const { data, setData, errors, processing } = form;
 
-    const suggestion =
-        data.contract_number_format_id === null
-            ? null
-            : (nextNumbers[data.contract_number_format_id] ?? null);
-
     /**
-     * Switch the kind of contract number.
-     *
-     * The number follows along only while it is still an untouched suggestion.
-     * Once it has been corrected by hand — or belongs to a procurement that is
-     * already numbered — it is left alone, and the author can pull the running
-     * number in deliberately with the link beside the field.
+     * Switch the kind of contract. Its number and barang/jasa category are
+     * given later by the executor, on the Kontrak / Lampiran Surat Pesanan
+     * step.
      */
-    const usesWorkCategory = (formatId: number | null): boolean =>
-        options.contractNumberFormats.find(
-            (option) => option.value === formatId,
-        )?.usesWorkCategory === true;
-
-    const chooseFormat = (formatId: number | null) => {
-        const untouched = Object.values(nextNumbers).includes(data.number);
-
-        setData((current) => ({
-            ...current,
-            contract_number_format_id: formatId,
-            // The category only belongs to the formats that ask for it.
-            contract_type_id: usesWorkCategory(formatId)
-                ? current.contract_type_id
-                : null,
-            number:
-                untouched || current.number === ''
-                    ? formatId === null
-                        ? ''
-                        : (nextNumbers[formatId] ?? '')
-                    : current.number,
-        }));
-    };
+    const chooseFormat = (formatId: number | null) =>
+        setData('contract_number_format_id', formatId);
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
@@ -224,164 +184,48 @@ export function ProcurementForm({
 
                 {!isProposal && (
                     <>
-                        <div className="grid gap-4 sm:grid-cols-[9rem_1fr]">
-                            <div className="grid gap-2">
-                                <Label htmlFor="contract_number_format_id">
-                                    Jenis No Kontrak
-                                </Label>
-                                <Select
-                                    value={
-                                        data.contract_number_format_id === null
-                                            ? NONE
-                                            : String(
-                                                  data.contract_number_format_id,
-                                              )
-                                    }
-                                    onValueChange={(value) =>
-                                        chooseFormat(
-                                            value === NONE
-                                                ? null
-                                                : Number(value),
-                                        )
-                                    }
-                                >
-                                    <SelectTrigger id="contract_number_format_id">
-                                        <SelectValue placeholder="Pilih" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {options.contractNumberFormats.map(
-                                            (option) => (
-                                                <SelectItem
-                                                    key={option.value}
-                                                    value={String(option.value)}
-                                                >
-                                                    {option.label}
-                                                </SelectItem>
-                                            ),
-                                        )}
-                                    </SelectContent>
-                                </Select>
-                                <InputError
-                                    message={errors.contract_number_format_id}
-                                />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <div className="flex items-center justify-between gap-2">
-                                    <Label htmlFor="number">No Kontrak</Label>
-                                    {suggestion !== null &&
-                                        suggestion !== data.number && (
-                                            <button
-                                                type="button"
-                                                className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-                                                onClick={() =>
-                                                    setData(
-                                                        'number',
-                                                        suggestion,
-                                                    )
-                                                }
+                        <div className="grid gap-2 sm:max-w-xs">
+                            <Label htmlFor="contract_number_format_id">
+                                Jenis Kontrak
+                            </Label>
+                            <Select
+                                value={
+                                    data.contract_number_format_id === null
+                                        ? NONE
+                                        : String(data.contract_number_format_id)
+                                }
+                                onValueChange={(value) =>
+                                    chooseFormat(
+                                        value === NONE ? null : Number(value),
+                                    )
+                                }
+                            >
+                                <SelectTrigger id="contract_number_format_id">
+                                    <SelectValue placeholder="Pilih" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {options.contractNumberFormats.map(
+                                        (option) => (
+                                            <SelectItem
+                                                key={option.value}
+                                                value={String(option.value)}
                                             >
-                                                Pakai nomor otomatis
-                                            </button>
-                                        )}
-                                </div>
-                                <Input
-                                    id="number"
-                                    className="tabular"
-                                    value={data.number}
-                                    onChange={(event) =>
-                                        setData('number', event.target.value)
-                                    }
-                                    placeholder="KDD001.SPK/612/UPKD/2026"
-                                    autoComplete="off"
-                                    required
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    Terisi otomatis mengikuti urutan berjalan
-                                    jenis yang dipilih, dan masih bisa diubah
-                                    bila perlu.
-                                </p>
-                                <InputError message={errors.number} />
-                            </div>
+                                                {option.label}
+                                            </SelectItem>
+                                        ),
+                                    )}
+                                </SelectContent>
+                            </Select>
+                            <InputError
+                                message={errors.contract_number_format_id}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Nomor kontrak dan kategori (barang/jasa) diisi
+                                nanti oleh PIC Pelaksana di checklist
+                                Pelaksanaan: tahapan Kontrak (SPK/PJ) atau
+                                Lampiran Surat Pesanan (SPPL).
+                            </p>
                         </div>
-
-                        {usesWorkCategory(data.contract_number_format_id) && (
-                            <div className="grid gap-2">
-                                <Label id="contract_type_label">
-                                    Kategori{' '}
-                                    {options.contractNumberFormats.find(
-                                        (option) =>
-                                            option.value ===
-                                            data.contract_number_format_id,
-                                    )?.label ?? ''}
-                                    <span className="text-destructive">*</span>
-                                </Label>
-                                {options.contractTypes.length === 0 ? (
-                                    <p className="rounded-md border border-dashed border-border px-3 py-2.5 text-sm text-muted-foreground">
-                                        Belum ada Jenis Kontrak aktif. Tambahkan
-                                        di Data Master → Jenis Kontrak.
-                                    </p>
-                                ) : (
-                                    <div
-                                        role="radiogroup"
-                                        aria-labelledby="contract_type_label"
-                                        className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"
-                                    >
-                                        {options.contractTypes.map((type) => {
-                                            const selected =
-                                                data.contract_type_id ===
-                                                type.value;
-
-                                            return (
-                                                <button
-                                                    key={type.value}
-                                                    type="button"
-                                                    role="radio"
-                                                    aria-checked={selected}
-                                                    onClick={() =>
-                                                        setData(
-                                                            'contract_type_id',
-                                                            type.value,
-                                                        )
-                                                    }
-                                                    className={
-                                                        selected
-                                                            ? 'flex items-start gap-2.5 rounded-md border border-primary bg-primary/5 px-3 py-2.5 text-left text-sm font-medium text-primary ring-1 ring-primary'
-                                                            : 'flex items-start gap-2.5 rounded-md border border-border bg-card px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-muted'
-                                                    }
-                                                >
-                                                    <span
-                                                        className={
-                                                            selected
-                                                                ? 'mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border-4 border-primary'
-                                                                : 'mt-0.5 size-4 shrink-0 rounded-full border border-muted-foreground/50'
-                                                        }
-                                                    />
-                                                    <span className="min-w-0">
-                                                        <span className="block">
-                                                            {type.label}
-                                                        </span>
-                                                        {type.description && (
-                                                            <span className="block text-xs font-normal text-muted-foreground">
-                                                                {
-                                                                    type.description
-                                                                }
-                                                            </span>
-                                                        )}
-                                                    </span>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                                <p className="text-xs text-muted-foreground">
-                                    Pilihan diambil dari Data Master → Jenis
-                                    Kontrak, yang juga menentukan format dokumen
-                                    SPK/PJ yang digenerate.
-                                </p>
-                                <InputError message={errors.contract_type_id} />
-                            </div>
-                        )}
                     </>
                 )}
 

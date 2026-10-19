@@ -115,7 +115,7 @@ class EndToEndFlowTest extends TestCase
         $this->assertSame($planner->id, $procurement->refresh()->planner_id);
 
         // Only the contract format is awaited: the method follows it.
-        $this->assertSame(['Jenis No Kontrak'], $procurement->refresh()->missingPlanningData());
+        $this->assertSame(['Jenis Kontrak'], $procurement->refresh()->missingPlanningData());
 
         $hpe = DocumentType::query()->where('code', 'hpe')->firstOrFail();
 
