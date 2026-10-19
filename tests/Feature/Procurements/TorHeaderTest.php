@@ -190,9 +190,39 @@ class TorHeaderTest extends TestCase
 
         // Drawn up by the user; checked by their Asman (left) and the Asman
         // Engineering (right); approved by the Manager.
-        $this->assertStringContainsString('Disusun oleh: User ( Galih Prima )', $text);
+        // A staff member without a position on their account signs as Staf.
+        $this->assertStringContainsString('Disusun oleh: Staf ( Galih Prima )', $text);
         $this->assertStringContainsString('Diperiksa/Diketahui oleh: Asman Pemeliharaan Asman Engineering ( Budi Pemeliharaan ) ( Eka Engineering )', $text);
         $this->assertStringContainsString('Disetujui oleh: Manager', $text);
+    }
+
+    public function test_the_author_signs_under_their_title(): void
+    {
+        $division = WorkDirector::factory()->create(['name' => 'Asman Operasi']);
+        $tor = DocumentType::query()->where('code', 'tor')->firstOrFail();
+        $generator = app(DocumentGenerator::class);
+        $title = fn (User $author): string => $generator->placeholderValues(
+            Procurement::factory()->create(['work_director_id' => $division->id, 'created_by' => $author->id]),
+        )['jabatan_penyusun'];
+
+        // The position on the account, as it is written there.
+        $this->assertSame('TL Operasi', $title(User::factory()->proposer($division)->create(['position' => 'TL Operasi'])));
+        $this->assertSame('Staf Operasi', $title(User::factory()->proposer($division)->create(['position' => 'Staf Operasi'])));
+
+        // Without one: TL when someone reports to them, else Staf.
+        $leader = User::factory()->proposer($division)->create(['position' => null]);
+        User::factory()->proposer($division)->create(['team_leader_id' => $leader->id]);
+        $this->assertSame('TL', $title($leader));
+        $this->assertSame('Staf', $title(User::factory()->proposer($division)->create(['position' => null])));
+
+        // On the TOR it replaces the old "User".
+        $author = User::factory()->proposer($division)->create(['name' => 'Akmal Hidayat', 'position' => 'TL Operasi']);
+        $text = $this->words($generator->generate(
+            Procurement::factory()->create(['work_director_id' => $division->id, 'created_by' => $author->id]),
+            $tor,
+            $author,
+        )->rendered_body);
+        $this->assertStringContainsString('Disusun oleh: TL Operasi ( Akmal Hidayat )', $text);
     }
 
     public function test_an_sppl_tor_is_signed_by_three(): void
@@ -213,7 +243,7 @@ class TorHeaderTest extends TestCase
         $text = $this->words($body);
 
         // The Asman on the left, the user on the right, the Manager below.
-        $this->assertStringContainsString('Diperiksa/Diketahui oleh: Disusun oleh: Asman Pemeliharaan User ( Budi Pemeliharaan ) ( Galih Prima )', $text);
+        $this->assertStringContainsString('Diperiksa/Diketahui oleh: Disusun oleh: Asman Pemeliharaan Staf ( Budi Pemeliharaan ) ( Galih Prima )', $text);
         $this->assertStringContainsString('Disetujui oleh: Manager', $text);
         $this->assertStringNotContainsString('Eka Engineering', $text);
         // Names print in capitals.

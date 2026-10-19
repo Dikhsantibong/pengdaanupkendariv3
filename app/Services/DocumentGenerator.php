@@ -117,6 +117,7 @@ class DocumentGenerator
             'pic_pelaksana' => 'Nama PIC pelaksana',
             'level_risiko_csms' => 'Level risiko CSMS (Low, Moderat, High, Extreme)',
             'nama_penyusun' => 'TOR: nama user yang menyusun (pembuat usulan/pengadaan)',
+            'jabatan_penyusun' => 'TOR: jabatan penyusun (jabatan akun, atau TL / Staf)',
             'nama_asman_pengguna' => 'TOR: nama Asman bidang user (Direksi Pekerjaan)',
             'nama_asman_engineering' => 'TOR: nama Asman Engineering',
             'pengesahan_tor' => 'TOR: blok tanda tangan Lembar Pengesahan sesuai format (SPK/PJ empat penanda tangan, SPPL tiga)',
@@ -211,6 +212,7 @@ class DocumentGenerator
         // Who signs the TOR, with a line to write on while not set up.
         $signatories = [
             'user' => $procurement->creator->name ?? self::UNSIGNED,
+            'user_title' => $this->titleOf($procurement->creator),
             'asman' => $this->asmanOf($procurement->work_director_id)->name ?? self::UNSIGNED,
             'engineering' => $this->asmanOf($this->engineeringDirectorId())->name ?? self::UNSIGNED,
         ];
@@ -326,6 +328,7 @@ class DocumentGenerator
             // their division and the Asman Engineering.
             'level_risiko_csms' => $procurement->csms_risk_level?->label() ?? '-',
             'nama_penyusun' => $signatories['user'],
+            'jabatan_penyusun' => $signatories['user_title'],
             'nama_asman_pengguna' => $signatories['asman'],
             'nama_asman_engineering' => $signatories['engineering'],
             'nomor_ba_nego' => $procurement->number,
@@ -352,12 +355,13 @@ class DocumentGenerator
      * approved by the Manager. An SPPL by three: the Asman (left) and the
      * user (right), the Manager below them.
      *
-     * @param  array{user: string, asman: string, engineering: string}  $signatories
+     * @param  array{user: string, user_title: string, asman: string, engineering: string}  $signatories
      */
     protected function torSignatures(Procurement $procurement, array $signatories, string $manager): string
     {
         ['user' => $user, 'asman' => $asman, 'engineering' => $engineering] = $signatories;
         $division = e($procurement->workDirector->name);
+        $userTitle = e($signatories['user_title']);
 
         $sign = fn (string $name): string => '<div class="gap"></div><span class="name">( <span style="text-transform: uppercase;">'.e($name).'</span> )</span>';
 
@@ -372,7 +376,7 @@ class DocumentGenerator
             return '<table class="approval-table two">'
                 .'<tr><td><b>Diperiksa/Diketahui oleh:</b></td><td><b>Disusun oleh:</b></td></tr>'
                 .'<tr><td><div class="small-gap"></div></td><td><div class="small-gap"></div></td></tr>'
-                .'<tr><td>'.$division.'</td><td>User</td></tr>'
+                .'<tr><td>'.$division.'</td><td>'.$userTitle.'</td></tr>'
                 .'<tr><td>'.$sign($asman).'</td><td>'.$sign($user).'</td></tr>'
                 .'</table>'
                 .$approval;
@@ -381,7 +385,7 @@ class DocumentGenerator
         return '<table class="approval-table">'
             .'<tr><td><b>Disusun oleh:</b></td></tr>'
             .'<tr><td class="small-gap"></td></tr>'
-            .'<tr><td>User</td></tr>'
+            .'<tr><td>'.$userTitle.'</td></tr>'
             .'<tr><td>'.$sign($user).'</td></tr>'
             .'</table>'
             .'<table class="approval-table two" style="margin-top:20px;">'
@@ -414,6 +418,26 @@ class DocumentGenerator
             ->orderBy('name')
             ->get()
             ->first(fn (User $user): bool => $user->hasPermission(Permission::ApproveProposal));
+    }
+
+    /**
+     * The title a user signs the TOR under: the position on their account
+     * ("TL Operasi", "Staf Operasi"), else TL when someone reports to them,
+     * else Staf.
+     */
+    protected function titleOf(?User $user): string
+    {
+        if ($user === null) {
+            return 'User';
+        }
+
+        $position = trim((string) $user->position);
+
+        if ($position !== '') {
+            return $position;
+        }
+
+        return $user->leadsTeam() ? 'TL' : 'Staf';
     }
 
     /**
