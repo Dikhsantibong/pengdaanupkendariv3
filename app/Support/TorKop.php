@@ -63,6 +63,29 @@ class TorKop
     }
 
     /**
+     * The body dated by the TOR's issue date and placed in Kendari: the
+     * TANGGAL on the cover, the Tanggal of the program identity and the
+     * "Kendari, <date>" above the signatures.
+     */
+    public static function dateIn(string $body, CarbonInterface $issueDate): string
+    {
+        $date = $issueDate->translatedFormat('d F Y');
+
+        $rules = [
+            // Cover and program identity: the value cell after the label.
+            '#(<td class="label">\s*TANGGAL\s*</td>\s*<td class="colon">:</td>\s*<td[^>]*>).*?(</td>)#si' => '${1}'.$date.'${2}',
+            // Signature page: "<place>, <date>".
+            '#(<div class="approval-date">).*?(</div>)#s' => '${1}Kendari, '.$date.'${2}',
+        ];
+
+        foreach ($rules as $pattern => $replacement) {
+            $body = preg_replace($pattern, $replacement, $body) ?? $body;
+        }
+
+        return $body;
+    }
+
+    /**
      * Whether the Lembar Pengesahan still has the author as "User".
      */
     public static function stillSignsAsUser(string $body): bool

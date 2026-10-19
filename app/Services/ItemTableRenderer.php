@@ -26,7 +26,7 @@ class ItemTableRenderer
      * Bumped whenever the drawing changes, so documents drawn before are
      * drawn again.
      */
-    public const VERSION = 2;
+    public const VERSION = 4;
 
     public const LAYOUTS = [
         'ba-negosiasi-sppl' => 'nego',
@@ -54,6 +54,11 @@ class ItemTableRenderer
     ];
 
     /**
+     * The heading of the SPK/PJ BA Negosiasi's appendix table.
+     */
+    protected const NEGO_BREAKDOWN = 'Harga Negosiasi (Rp)';
+
+    /**
      * Whether a document body holds the item table of its type: only then
      * does the editor offer the Rincian Item (a contract made only of
      * articles, a Surat Perjanjian say, keeps its editor as it is).
@@ -69,7 +74,8 @@ class ItemTableRenderer
         }
 
         foreach ($matches[0] as $table) {
-            if (stripos($table, self::SIGNATURES[$layout]) !== false) {
+            if (stripos($table, self::SIGNATURES[$layout]) !== false
+                || ($layout === 'nego' && stripos($table, self::NEGO_BREAKDOWN) !== false)) {
                 return true;
             }
         }
@@ -93,7 +99,13 @@ class ItemTableRenderer
         }
 
         return match ($layout) {
-            'nego' => $this->replaceTable($html, self::SIGNATURES['nego'], fn (string $table): string => $this->nego($table, $items)),
+            // The SPPL's table of prices before and after; the SPK/PJ's
+            // appendix of negotiated prices.
+            'nego' => $this->replaceTable(
+                $this->replaceTable($html, self::SIGNATURES['nego'], fn (string $table): string => $this->nego($table, $items)),
+                self::NEGO_BREAKDOWN,
+                fn (string $table): string => $this->negoBreakdown($table, $items),
+            ),
             'spk' => $this->replaceTable($html, self::SIGNATURES['spk'], fn (string $table): string => $this->spk($table, $items)),
             'hpe' => $this->replaceTable($html, self::SIGNATURES['hpe'], fn (string $table): string => $this->hpe($table, $items)),
             'upb' => $this->replaceTable($html, self::SIGNATURES['upb'], fn (string $table): string => $this->upb($table, $items)),
@@ -143,11 +155,11 @@ class ItemTableRenderer
         $rows = '';
 
         foreach ($this->rows($items) as $row) {
+            // A group heading: its letter under NO, its name merged across
+            // the rest of the row.
             if ($row['item'] === null) {
                 $rows .= '<tr><td style="'.$cell.' font-weight: bold;">'.$row['label'].'</td>'
-                    .'<td style="'.$text.' font-weight: bold;">'.e($row['name']).'</td>'
-                    .str_repeat('<td style="'.$cell.'"></td>', 2)
-                    .str_repeat('<td style="'.$money.'"></td>', 4).'</tr>';
+                    .'<td colspan="7" style="'.$text.' font-weight: bold;">'.e($row['name']).'</td></tr>';
 
                 continue;
             }
@@ -381,6 +393,59 @@ class ItemTableRenderer
         $blanks = array_fill(0, count($this->blankRows($rows, 1, count($rows))), $blank);
 
         return $this->rebuild($table, [$head, $rows[1], ...$drawn, ...$blanks]);
+    }
+
+    /**
+     * The SPK/PJ BA Negosiasi's appendix (Rincian Hasil Negosiasi Harga):
+     * each item with its offer and negotiated unit price and its amount
+     * (negotiated price times quantity), then Sub Total, PPN 12%, Total
+     * Harga Akhir and the total in words.
+     *
+     * @param  Collection<int, ProcurementContractItem>  $items
+     */
+    protected function negoBreakdown(string $table, Collection $items): string
+    {
+        if (! $this->hasPrice($items, 'unit_price') && ! $this->hasPrice($items, 'price_before')) {
+            return $table;
+        }
+
+        $rows = $this->tableRows($table);
+
+        if ($rows === []) {
+            return $table;
+        }
+
+        $label = preg_match('/<b>\s*(Total[^<]*)<\/b>/i', $table, $match) ? trim($match[1]) : 'Total Harga Akhir';
+        $drawn = [];
+
+        foreach ($this->rows($items) as $row) {
+            if ($row['item'] === null) {
+                $drawn[] = '<tr><td><b>'.$row['label'].'</b></td><td colspan="6"><b>'.e($row['name']).'</b></td></tr>';
+
+                continue;
+            }
+
+            $item = $row['item'];
+            $drawn[] = '<tr><td>'.$row['label'].'</td>'
+                .'<td>'.e($item->description).'</td>'
+                .'<td>'.$this->quantity($item).'</td>'
+                .'<td>'.e($item->unit).'</td>'
+                .'<td>'.$this->money($item->price_before).'</td>'
+                .'<td>'.$this->money($item->unit_price).'</td>'
+                .'<td>'.$this->money($item->unit_price === null ? null : $item->totalAfter()).'</td></tr>';
+        }
+
+        $subtotal = $items->sum(fn (ProcurementContractItem $item): float => $item->totalAfter());
+        // As the documents' own PPN figures: 12% of the amount.
+        $ppn = round($subtotal * 0.12);
+        $total = $subtotal + $ppn;
+
+        $drawn[] = '<tr><td colspan="6"><b>Sub Total</b></td><td>'.$this->money($subtotal).'</td></tr>';
+        $drawn[] = '<tr><td colspan="6"><b>PPN</b></td><td>'.$this->money($ppn).'</td></tr>';
+        $drawn[] = '<tr><td colspan="6"><b>'.e($label).'</b></td><td>'.$this->money($total).'</td></tr>';
+        $drawn[] = '<tr><td colspan="7"><b>Terbilang:</b> '.e(Str::ucfirst(IndonesianNumber::spellRupiah($total))).'</td></tr>';
+
+        return $this->rebuild($table, [$rows[0], ...$drawn]);
     }
 
     /**

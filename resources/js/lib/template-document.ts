@@ -278,14 +278,17 @@ export const SAMPLE_VALUES: Record<string, string> = {
     checklist_perencanaan:
         '<ul><li>[✓] TOR</li><li>[✓] RAB</li><li>[✓] HPE</li></ul>',
     checklist_pelaksanaan: '<ul><li>[-] Penawaran</li></ul>',
+    tanggal_terbit: '06 - 02 - 2023',
+    tanggal_terbit_tor: '06 Februari 2023',
+    tahun_terbit_tor: '2023',
     nama_penyusun: 'Galih Prima Yoga',
     nama_asman_pengguna: 'Asman Pemeliharaan',
     nama_asman_engineering: 'Asman Engineering',
     // The SPK/PJ layout; an SPPL signs with three.
     pengesahan_tor:
-        '<table class="approval-table"><tr><td><b>Disusun oleh:</b></td></tr><tr><td>Penyusun</td></tr><tr><td><div class="gap"></div><span class="name">( GALIH PRIMA YOGA )</span></td></tr></table>' +
-        '<table class="approval-table two" style="margin-top:20px;"><tr><td colspan="2"><b>Diperiksa/Diketahui oleh:</b></td></tr><tr><td>Asman Pemeliharaan</td><td>Asman Engineering</td></tr><tr><td><div class="gap"></div><span class="name">( ASMAN PEMELIHARAAN )</span></td><td><div class="gap"></div><span class="name">( ASMAN ENGINEERING )</span></td></tr></table>' +
-        '<table class="approval-table" style="margin-top:20px;"><tr><td><b>Disetujui oleh:</b></td></tr><tr><td>Manager</td></tr><tr><td><div class="gap"></div><span class="name">( MUHAMMAD RUSLI )</span></td></tr></table>',
+        '<table class="approval-table"><tr><td><b>DISUSUN OLEH:</b></td></tr><tr><td>PENYUSUN</td></tr><tr><td><div class="gap"></div><span class="name">( GALIH PRIMA YOGA )</span></td></tr></table>' +
+        '<table class="approval-table two" style="margin-top:20px;"><tr><td colspan="2"><b>DIPERIKSA/DIKETAHUI OLEH:</b></td></tr><tr><td>ASMAN PEMELIHARAAN</td><td>ASMAN ENGINEERING</td></tr><tr><td><div class="gap"></div><span class="name">( ASMAN PEMELIHARAAN )</span></td><td><div class="gap"></div><span class="name">( ASMAN ENGINEERING )</span></td></tr></table>' +
+        '<table class="approval-table" style="margin-top:20px;"><tr><td><b>DISETUJUI OLEH:</b></td></tr><tr><td>MANAGER</td></tr><tr><td><div class="gap"></div><span class="name">( MUHAMMAD RUSLI )</span></td></tr></table>',
 };
 
 /** Render a template body with sample values as a standalone page. */

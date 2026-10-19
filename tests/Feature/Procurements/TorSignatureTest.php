@@ -41,12 +41,12 @@ class TorSignatureTest extends TestCase
 
         $approval = substr($document->rendered_body, (int) strpos($document->rendered_body, 'LEMBAR PENGESAHAN'));
 
-        $this->assertStringContainsString('Ir. Budi Santoso', $approval);
+        $this->assertStringContainsString('IR. BUDI SANTOSO', $approval);
         // The planner does not sign it; the user's Asman checks it under the
         // division's name, and a signatory not set up leaves a line.
-        $this->assertStringNotContainsString('Perencana Uji', $approval);
-        $this->assertStringContainsString($procurement->workDirector->name, $approval);
-        $this->assertStringContainsString('Asman Engineering', $approval);
+        $this->assertStringNotContainsString('PERENCANA UJI', mb_strtoupper($approval));
+        $this->assertStringContainsString(mb_strtoupper($procurement->workDirector->name), $approval);
+        $this->assertStringContainsString('ASMAN ENGINEERING', $approval);
         $this->assertStringContainsString('.........................................', $approval);
     }
 }

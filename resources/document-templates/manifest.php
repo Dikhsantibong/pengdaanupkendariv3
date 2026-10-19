@@ -220,7 +220,7 @@ return [
         'procurement_method' => null,
         'contract_format' => null,
         'work_category' => null,
-        'name' => 'Berita Acara Klarifikasi dan Negosiasi - UP Kendari',
+        'name' => 'Berita Acara Klarifikasi Teknik - UP Kendari',
     ],
     // The SPK itself, a table of what is ordered (format SPK). Its articles
     // are a document of their own, the Syarat & Ketentuan (Pasal) below.

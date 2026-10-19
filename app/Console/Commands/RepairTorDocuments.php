@@ -89,10 +89,19 @@ class RepairTorDocuments extends Command
 
                 // Typed into: what was typed stays; the kop changes, and the
                 // author signs as "Penyusun" instead of "User".
-                $body = TorKop::apply(
-                    (string) $document->rendered_body,
-                    $document->procurement->tor_issue_date ?? $document->generated_at,
-                );
+                $issueDate = $document->procurement->tor_issue_date ?? $document->generated_at;
+                $body = TorKop::apply((string) $document->rendered_body, $issueDate);
+                $body = TorKop::dateIn($body, $issueDate);
+
+                // The signature page is the data's, not the typist's: drawn
+                // again whole (title, Kendari and date, signatures in capitals).
+                $page = $generator->torApprovalPage($document->procurement, $document->generated_at);
+                $body = preg_replace_callback(
+                    '#(<section class="approval"[^>]*>).*?(</section>)#s',
+                    fn (array $match): string => $match[1].$page.$match[2],
+                    $body,
+                    1,
+                ) ?? $body;
 
                 $this->save($document, TorKop::signAsPenyusun($body), $dryRun);
                 $counts['kop & label diganti (isian tetap)']++;

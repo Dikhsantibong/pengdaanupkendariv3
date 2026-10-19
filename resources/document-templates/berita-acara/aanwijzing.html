@@ -1,74 +1,79 @@
+<style>
+    .ba-head { width: 100%; border: none; margin: 0 0 6pt; }
+    .ba-head td { border: none; padding: 0 6pt 0 0; vertical-align: middle; }
+    .ba-title { text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; margin: 8pt 0 4pt; }
+    table.ba-meta { width: auto; margin: 0 auto 6pt; }
+    table.ba-meta td { border: none; padding: 1pt 4pt; }
+    .ba-subject { text-align: center; font-weight: bold; text-transform: uppercase; border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; padding: 5pt 0; margin: 8pt 0 10pt; }
+    .ba-point { font-weight: bold; margin: 10pt 0 4pt; }
+    .ba-point u { text-decoration: underline; }
+    table.ba-grid th, table.ba-grid td { border: 1px solid #000; }
+    table.ba-grid th { background: none; text-align: center; }
+    table.ba-plain td, table.ba-sign td { border: none; padding: 1pt 4pt; }
+    table.ba-sign > tbody > tr > td, table.ba-sign > tr > td { width: 50%; vertical-align: top; }
+    .c { text-align: center; }
+    .r { text-align: right; }
+</style>
+
 <section>
-    <table class="lampiran-head" style="width: 100%; margin-bottom: 14px; border: none; border-collapse: collapse;">
-    <tr>
-        <td style="vertical-align: middle; border: none; padding: 0;">
-            <img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 38px; width: auto; margin-bottom: 4px;"><br>
-            <b>PT PLN NUSANTARA POWER<br>UP KENDARI</b>
-        </td>
-        <td style="text-align:right; vertical-align: middle; border: none; padding: 0;">Nomor : <span class="fill">............ /BA/612/UPKD/{{tahun}}</span><br>Tanggal : {{tanggal_dokumen}}</td>
-    </tr>
-</table>
-
-<h1>BERITA ACARA PENJELASAN PELELANGAN</h1>
-<h1 style="margin-top:0">( AANWIJZING )</h1>
-
-<table>
-    <tr><td style="width:32%">Nomor Pengadaan</td><td>{{nomor_pengadaan}}</td></tr>
-    <tr><td>Nama Pekerjaan</td><td><b>{{nama_pengadaan}}</b></td></tr>
-    <tr><td>Unit Tujuan</td><td>{{unit_tujuan}}</td></tr>
-    <tr><td>Metode Pengadaan</td><td>{{metode_pengadaan}}</td></tr>
-    <tr><td>Sumber Anggaran</td><td>{{sumber_anggaran_keterangan}} ({{sumber_anggaran}})</td></tr>
-    <tr><td>Nilai HPE</td><td>{{nilai_hpe}}<br><i>Terbilang: {{nilai_hpe_terbilang}}</i></td></tr>
-    <tr><td>Direksi Pekerjaan</td><td>{{direksi_pekerjaan}}</td></tr>
-</table>
-
-    <p>Pada hari ini <span class="fill">..................</span> tanggal <span class="fill">..................</span> bulan <span class="fill">..................</span> tahun {{tahun}}, bertempat di PT PLN Nusantara Power UP Kendari, telah dilaksanakan Rapat Penjelasan Pelelangan (Aanwijzing) untuk pekerjaan <b>{{nama_pengadaan}}</b>.</p>
-
-    <h3>A. Peserta yang Hadir</h3>
-    <table>
-        <tr><th style="width:6%">No</th><th>Nama Perusahaan</th><th style="width:24%">Nama Wakil</th><th style="width:20%">Jabatan</th><th style="width:16%">Tanda Tangan</th></tr>
-        <tr><td>1</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>2</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>3</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>4</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td></tr>
+    <table class="ba-head">
+        <tr>
+            <td style="width: 74px;"><img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 34px; width: auto;"></td>
+            <td style="white-space: nowrap;">PT PLN Nusantara Power<br><b>UP KENDARI</b></td>
+        </tr>
     </table>
 
-    <h3>B. Pokok-Pokok Penjelasan</h3>
-    <ol>
-        <li>Penjelasan mengenai lingkup pekerjaan sebagaimana diatur dalam RKS dan Term of Reference (TOR).</li>
-        <li>Penjelasan mengenai syarat administrasi, keuangan, dan teknis yang harus dipenuhi peserta.</li>
-        <li>Penjelasan mengenai tata cara penyampaian dan pembukaan Dokumen Penawaran.</li>
-        <li>Penjelasan mengenai jaminan penawaran, jaminan pelaksanaan, serta sanksi yang berlaku.</li>
-        <li><span class="fill">..............................................................................</span></li>
-    </ol>
-
-    <h3>C. Pertanyaan dan Jawaban</h3>
-    <table>
-        <tr><th style="width:6%">No</th><th style="width:22%">Penanya</th><th>Pertanyaan</th><th>Jawaban</th></tr>
-        <tr><td>1</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>2</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>3</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td></tr>
+    <div class="ba-title">BERITA ACARA PEMBERIAN PENJELASAN (AANWIJZING)</div>
+    <table class="ba-meta">
+        <tr><td>Nomor</td><td>:</td><td><span class="fill">..........</span>/BAP/612/UPKD/{{tahun}}</td></tr>
+        <tr><td>Tanggal</td><td>:</td><td>{{tanggal_dokumen}}</td></tr>
+        <tr><td>Perihal</td><td>:</td><td></td></tr>
     </table>
 
-    <h3>D. Perubahan Dokumen Pelelangan</h3>
-    <p><span class="fill">..............................................................................</span></p>
-    <p class="note">Perubahan atas isi RKS yang disepakati pada rapat ini dituangkan dalam Addendum RKS dan merupakan bagian yang tidak terpisahkan dari Dokumen Pelelangan.</p>
+    <div class="ba-subject">{{nama_pengadaan}} UP KENDARI</div>
 
-    <p>Demikian Berita Acara ini dibuat dengan sebenarnya untuk dipergunakan sebagaimana mestinya.</p>
+    <p>Pada hari ini {{hari_dokumen}}, tanggal {{tanggal_dokumen_terbilang}} bulan {{bulan_dokumen}} tahun {{tahun_dokumen_terbilang}}, Pukul <span class="fill">.....</span> WIB, kami Pejabat dan Pelaksana Pengadaan UP KENDARI, telah mengadakan Rapat Penjelasan (Aanwijzing) {{nama_pengadaan}} UP KENDARI dengan Peserta {{metode_pemilihan}} sesuai daftar hadir Peserta sebagaimana terlampir dan dirangkum sebagai berikut :</p>
 
-<p>Kendari, {{tanggal_dokumen}}</p>
+    <div class="ba-point">I. <u>PENJELASAN DAN PENEGASAN PELAKSANA PENGADAAN</u></div>
+    <table class="ba-plain">
+        <tr><td style="width: 8%;">Isi</td><td style="width: 3%;">:</td><td>- Penjelasan secara umum tentang Rencana Kerja dan Syarat-Syarat (RKS)</td></tr>
+        <tr><td></td><td></td><td>- Tata Cara Evaluasi</td></tr>
+        <tr><td></td><td></td><td>- Ketentuan Lain-lain</td></tr>
+    </table>
 
-<table class="signature">
-    <tr>
-        <td class="role">Pejabat Pelaksana Pengadaan</td>
-        <td class="role">Wakil Peserta Pelelangan</td>
-    </tr>
-    <tr><td class="space"></td><td class="space"></td></tr>
-    <tr>
-        <td class="name fill"><span style="text-transform: uppercase;">( Nama Jelas )</span></td>
-        <td class="name fill"><span style="text-transform: uppercase;">( Nama Jelas )</span></td>
-    </tr>
-</table>
+    <div class="ba-point">II. <u>PERTANYAAN PESERTA DAN JAWABAN PELAKSANA PENGADAAN UP KENDARI</u></div>
+    <table class="ba-grid">
+        <tr><th style="width: 30%;">PERUSAHAAN</th><th style="width: 30%;">PERTANYAAN</th><th>JAWABAN</th></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+    </table>
 
-<p class="note">Dokumen ini dicetak untuk ditandatangani. Setelah ditandatangani, unggah kembali hasil pindaiannya pada arsip dokumen pengadaan ini.</p>
+    <div class="ba-point">III. <u>PERUBAHAN (KOREKSI) DAN TAMBAHAN DARI PELAKSANA PENGADAAN UP KENDARI</u></div>
+    <table class="ba-grid">
+        <tr><th style="width: 8%;">NO</th><th style="width: 30%;">DOKUMEN</th><th>PERUBAHAN / TAMBAHAN</th></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+    </table>
+    <p>Perubahan atau Penambahan atas isi dan lampiran Rencana Kerja dan Syarat-syarat (RKS) No. {{nomor_rks}} tanggal {{tanggal_rks}} dituangkan dalam Addendum Rencana Kerja dan Syarat-syarat (RKS).</p>
+
+    <div class="ba-point">IV. <u>KESIMPULAN</u></div>
+    <p>Setelah mengikuti Penjelasan ini seluruh Peserta sudah dianggap memahami dan menyetujui segala ketentuan yang tertuang dalam Rencana Kerja &amp; Syarat-syarat (RKS) beserta perubahan-perubahannya.</p>
+
+    <div class="ba-point">V. <u>PENUTUP</u></div>
+    <p>Demikian Berita Acara Penjelasan ini dibuat sebagai kelengkapan dan menjadi kesatuan dari Rencana Kerja dan Syarat-syarat (RKS) No. {{nomor_rks}} tanggal {{tanggal_rks}}.</p>
+
+    <table class="ba-sign" style="margin-top: 12pt;">
+        <tr>
+            <td><b><u>PESERTA PEMBELIAN LANGSUNG</u></b>{{daftar_peserta_ttd}}</td>
+            <td>
+                <b><u>UP KENDARI</u></b>
+                <table class="ba-plain">
+                    <tr><td><span style="text-transform: uppercase;">{{nama_pejabat_pelaksana}}</span></td><td></td></tr>
+                    <tr><td>TEAM LEADER PENGADAAN</td><td class="r">..........</td></tr>
+                    <tr><td>&nbsp;</td><td></td></tr>
+                    <tr><td><span style="text-transform: uppercase;">{{pic_pelaksana}}</span></td><td></td></tr>
+                    <tr><td>JUNIOR OFFICER PENGADAAN</td><td class="r">..........</td></tr>
+                </table>
+            </td>
+        </tr>
+        <tr><td></td><td><br><b>TIM TEKNIS PT PLN Nusantara Power</b></td></tr>
+    </table>
 </section>

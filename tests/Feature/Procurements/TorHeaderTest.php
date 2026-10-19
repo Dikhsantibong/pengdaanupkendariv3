@@ -100,6 +100,14 @@ class TorHeaderTest extends TestCase
 
         $this->assertSame('06 - 02 - 2023', $this->headerValue($body, 'Tanggal Terbit'));
 
+        // Every date on the TOR is that day, and it is placed in Kendari.
+        $text = $this->words($body);
+        $this->assertStringContainsString('TANGGAL : 06 Februari 2023', $text);
+        $this->assertStringContainsString('Tanggal : 06 Februari 2023', $text);
+        $this->assertStringContainsString('Kendari, 06 Februari 2023', $text);
+        $this->assertStringNotContainsString($created->targetUnitNames().', ', $text);
+        $this->assertStringContainsString('<span contenteditable="true">2023</span>', $body);
+
         $this->actingAs($administrator)
             ->get(route('procurements.edit', $created))
             ->assertInertia(fn ($page) => $page->where('procurement.tor_issue_date', '2023-02-06'));
@@ -191,9 +199,10 @@ class TorHeaderTest extends TestCase
         // Drawn up by the user; checked by their Asman (left) and the Asman
         // Engineering (right); approved by the Manager.
         // The author signs as Penyusun.
-        $this->assertStringContainsString('Disusun oleh: Penyusun ( Galih Prima )', $text);
-        $this->assertStringContainsString('Diperiksa/Diketahui oleh: Asman Pemeliharaan Asman Engineering ( Budi Pemeliharaan ) ( Eka Engineering )', $text);
-        $this->assertStringContainsString('Disetujui oleh: Manager', $text);
+        // Every word in capitals, each title right under its heading.
+        $this->assertStringContainsString('DISUSUN OLEH: PENYUSUN ( GALIH PRIMA )', $text);
+        $this->assertStringContainsString('DIPERIKSA/DIKETAHUI OLEH: ASMAN PEMELIHARAAN ASMAN ENGINEERING ( BUDI PEMELIHARAAN ) ( EKA ENGINEERING )', $text);
+        $this->assertStringContainsString('DISETUJUI OLEH: MANAGER', $text);
     }
 
     public function test_an_sppl_tor_is_signed_by_three(): void
@@ -214,11 +223,13 @@ class TorHeaderTest extends TestCase
         $text = $this->words($body);
 
         // The Asman on the left, the user on the right, the Manager below.
-        $this->assertStringContainsString('Diperiksa/Diketahui oleh: Disusun oleh: Asman Pemeliharaan Penyusun ( Budi Pemeliharaan ) ( Galih Prima )', $text);
-        $this->assertStringContainsString('Disetujui oleh: Manager', $text);
+        $this->assertStringContainsString('DIPERIKSA/DIKETAHUI OLEH: DISUSUN OLEH: ASMAN PEMELIHARAAN PENYUSUN ( BUDI PEMELIHARAAN ) ( GALIH PRIMA )', $text);
+        $this->assertStringContainsString('DISETUJUI OLEH: MANAGER', $text);
+        // No empty row between a heading and its title.
+        $this->assertStringNotContainsString('small-gap', substr($body, (int) strpos($body, 'LEMBAR PENGESAHAN')));
         $this->assertStringNotContainsString('Eka Engineering', $text);
         // Names print in capitals.
-        $this->assertStringContainsString('<span style="text-transform: uppercase;">Galih Prima</span>', $body);
+        $this->assertStringContainsString('<span style="text-transform: uppercase;">GALIH PRIMA</span>', $body);
     }
 
     public function test_a_signatory_not_set_up_leaves_a_line_to_write_on(): void

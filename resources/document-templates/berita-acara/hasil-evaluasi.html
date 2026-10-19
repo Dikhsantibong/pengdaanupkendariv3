@@ -1,83 +1,83 @@
+<style>
+    .ba-head { width: 100%; border: none; margin: 0 0 6pt; }
+    .ba-head td { border: none; padding: 0 6pt 0 0; vertical-align: middle; }
+    .ba-title { text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; margin: 8pt 0 4pt; }
+    table.ba-meta { width: auto; margin: 0 auto 6pt; }
+    table.ba-meta td { border: none; padding: 1pt 4pt; }
+    .ba-subject { text-align: center; font-weight: bold; text-transform: uppercase; border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; padding: 5pt 0; margin: 8pt 0 10pt; }
+    .ba-point { font-weight: bold; margin: 10pt 0 4pt; }
+    .ba-sub { font-weight: bold; margin: 8pt 0 3pt 14pt; }
+    .ba-in { margin-left: 14pt; }
+    .ba-in2 { margin-left: 30pt; }
+    table.ba-grid { width: 94%; margin-left: 6%; }
+    table.ba-grid th, table.ba-grid td { border: 1px solid #000; }
+    table.ba-grid th { background: none; text-align: center; }
+    table.ba-plain td { border: none; padding: 1pt 4pt; }
+    .c { text-align: center; }
+    .r { text-align: right; }
+</style>
+
 <section>
-    <table class="lampiran-head" style="width: 100%; margin-bottom: 14px; border: none; border-collapse: collapse;">
-    <tr>
-        <td style="vertical-align: middle; border: none; padding: 0;">
-            <img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 38px; width: auto; margin-bottom: 4px;"><br>
-            <b>PT PLN NUSANTARA POWER<br>UP KENDARI</b>
-        </td>
-        <td style="text-align:right; vertical-align: middle; border: none; padding: 0;">Nomor : <span class="fill">............ /BA/612/UPKD/{{tahun}}</span><br>Tanggal : {{tanggal_dokumen}}</td>
-    </tr>
-</table>
-
-<h1>BERITA ACARA HASIL EVALUASI</h1>
-<h1 style="margin-top:0">( BAHE )</h1>
-
-<table>
-    <tr><td style="width:32%">Nomor Pengadaan</td><td>{{nomor_pengadaan}}</td></tr>
-    <tr><td>Nama Pekerjaan</td><td><b>{{nama_pengadaan}}</b></td></tr>
-    <tr><td>Unit Tujuan</td><td>{{unit_tujuan}}</td></tr>
-    <tr><td>Metode Pengadaan</td><td>{{metode_pengadaan}}</td></tr>
-    <tr><td>Sumber Anggaran</td><td>{{sumber_anggaran_keterangan}} ({{sumber_anggaran}})</td></tr>
-    <tr><td>Nilai HPE</td><td>{{nilai_hpe}}<br><i>Terbilang: {{nilai_hpe_terbilang}}</i></td></tr>
-    <tr><td>Direksi Pekerjaan</td><td>{{direksi_pekerjaan}}</td></tr>
-</table>
-
-    <p>Pada hari ini <span class="fill">..................</span> tanggal <span class="fill">..................</span> bulan <span class="fill">..................</span> tahun {{tahun}}, Pejabat Pelaksana Pengadaan telah menyelesaikan seluruh tahapan evaluasi atas pekerjaan <b>{{nama_pengadaan}}</b>.</p>
-
-    <h3>A. Rekapitulasi Hasil Evaluasi</h3>
-    <table>
+    <table class="ba-head">
         <tr>
-            <th style="width:5%">No</th>
-            <th>Nama Penyedia Barang/Jasa</th>
-            <th style="width:12%">Administrasi</th>
-            <th style="width:12%">Keuangan</th>
-            <th style="width:12%">Teknis</th>
-            <th style="width:12%">Harga</th>
-            <th style="width:14%">Kesimpulan</th>
+            <td style="width: 74px;"><img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 34px; width: auto;"></td>
+            <td style="white-space: nowrap;">PT PLN Nusantara Power<br><b>UP KENDARI</b></td>
         </tr>
-        <tr><td>1</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>2</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>3</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td></tr>
-    </table>
-    <p class="note">Setiap kolom diisi MEMENUHI atau TIDAK MEMENUHI sesuai hasil evaluasi pada tahapan yang bersangkutan.</p>
-
-    <h3>B. Urutan Peserta yang Memenuhi Persyaratan</h3>
-    <table>
-        <tr><th style="width:12%">Peringkat</th><th>Nama Penyedia Barang/Jasa</th><th style="width:22%">Harga Akhir (Rp)</th></tr>
-        <tr><td>Pertama</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>Kedua</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>Ketiga</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td></tr>
     </table>
 
-    <h3>C. Usulan Calon Pemenang</h3>
-    <table>
-        <tr><td style="width:32%">Nama Penyedia Barang/Jasa</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>Alamat</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>NPWP</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>Harga Akhir</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>Terbilang</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>Jangka Waktu Pelaksanaan</td><td class="fill">&nbsp;</td></tr>
+    <div class="ba-title">BERITA ACARA EVALUASI ADMINISTRASI, TEKNIK DAN HARGA</div>
+    <table class="ba-meta">
+        <tr><td>Nomor</td><td>:</td><td><span class="fill">..........</span>/BAP/612/UPKD/{{tahun}}</td></tr>
+        <tr><td>Tanggal</td><td>:</td><td>{{tanggal_dokumen}}</td></tr>
+        <tr><td>Perihal</td><td>:</td><td></td></tr>
     </table>
 
-    <h3>D. Catatan</h3>
-    <p>Berita Acara Hasil Evaluasi ini bersifat rahasia sampai dengan saat pengumuman pemenang, dan menjadi dasar penerbitan Surat Penunjukan Penyedia Barang/Jasa (SPPBJ) setelah masa sanggah berakhir.</p>
-    <p><span class="fill">..............................................................................</span></p>
+    <div class="ba-subject">{{nama_pengadaan}} UP KENDARI</div>
 
-    <p>Demikian Berita Acara ini dibuat dengan sebenarnya untuk dipergunakan sebagaimana mestinya.</p>
+    <p>Pada hari ini {{hari_dokumen}}, tanggal {{tanggal_dokumen_terbilang}} bulan {{bulan_dokumen}} tahun {{tahun_dokumen_terbilang}}, yang bertandatangan di bawah ini kami Pejabat Pelaksana Pengadaan UP KENDARI, telah melaksanakan Evaluasi Dokumen Penawaran (data Administrasi, Keuangan, Teknis dan Harga) Pengadaan sesuai Rencana Kerja dan Syarat-syarat (RKS) No. {{nomor_rks}} tanggal {{tanggal_rks}}, dengan hasil sebagai berikut :</p>
 
-<p>Kendari, {{tanggal_dokumen}}</p>
+    <div class="ba-point">1. Pemasukan dan Pembukaan Dokumen Penawaran</div>
+    <p class="ba-in">Peserta {{metode_pemilihan}} yang memasukkan penawaran ada {{jumlah_peserta}} Perusahaan sebagai berikut:</p>
+    {{tabel_pemasukan_penawaran}}
+    <p class="ba-in">1.1. Penawaran yang dinyatakan Lengkap dan Dapat Dievaluasi Lebih Lanjut adalah sebagai berikut :</p>
+    <div class="ba-in2">{{daftar_peserta}}</div>
+    <p class="ba-in">1.2. Penawaran yang dinyatakan Tidak Lengkap dan Tidak Dapat Dievaluasi Lebih Lanjut adalah sebagai berikut : -</p>
 
-<table class="signature">
-    <tr>
-        <td class="role">Pejabat Pelaksana Pengadaan</td>
-        <td class="role">Menyetujui,<br>Pejabat yang Berwenang</td>
-    </tr>
-    <tr><td class="space"></td><td class="space"></td></tr>
-    <tr>
-        <td class="name fill"><span style="text-transform: uppercase;">( Nama Jelas )</span></td>
-        <td class="name fill"><span style="text-transform: uppercase;">( Nama Jelas )</span></td>
-    </tr>
-</table>
+    <div class="ba-point">2. Evaluasi Dokumen Penawaran</div>
+    <div class="ba-sub">2.1. Hasil Evaluasi Administrasi</div>
+    <p class="ba-in2">Hasil evaluasi / penilaian tentang keabsahan dan kesesuaian Penawaran Administrasi, yang dilaksanakan terhadap Dokumen Penawaran yang dinyatakan Lengkap dan Dapat Dievaluasi Lebih Lanjut sesuai butir 1.1 diatas.</p>
+    {{tabel_hasil_administrasi}}
+    <p class="ba-in2">Perusahaan yang memenuhi persyaratan dan Lulus Evaluasi Administrasi ada {{jumlah_peserta}} Perusahaan, kemudian dilanjutkan ke tahap Evaluasi Keuangan.</p>
 
-<p class="note">Dokumen ini dicetak untuk ditandatangani. Setelah ditandatangani, unggah kembali hasil pindaiannya pada arsip dokumen pengadaan ini.</p>
+    <div class="ba-sub">2.2. Hasil Evaluasi Keuangan</div>
+    {{tabel_hasil_keuangan}}
+    <p class="ba-in2">Perusahaan yang memenuhi persyaratan dan Lulus Evaluasi Keuangan ada {{jumlah_peserta}} Perusahaan, kemudian dilanjutkan ke tahap Evaluasi Teknis.</p>
+
+    <div class="ba-sub">2.3. Hasil Evaluasi Teknis</div>
+    {{tabel_hasil_teknis}}
+    <p class="ba-in2">Perusahaan yang memenuhi persyaratan dan Lulus Evaluasi Teknis ada {{jumlah_peserta}} Perusahaan, kemudian dilanjutkan ke tahap Evaluasi Penawaran.</p>
+
+    <div class="ba-sub">2.4. Hasil Evaluasi Penawaran</div>
+    {{tabel_hasil_penawaran}}
+
+    <div class="ba-sub">2.5. Urutan Harga Penawaran</div>
+    {{tabel_urutan_harga}}
+    <p class="ba-in2"><b>HPS adalah sbb</b></p>
+    <table class="ba-plain" style="width: auto; margin-left: 30pt;">
+        <tr><td><b>- Perhitungan HPS :</b></td><td><b>{{nilai_hpe}}</b></td><td><b>( + PPN 12% )</b></td></tr>
+    </table>
+    <p class="ba-in2">Perusahaan yang memenuhi persyaratan dan Lulus Evaluasi Penawaran ada {{jumlah_peserta}} Perusahaan, kemudian dilanjutkan ke tahap Klarifikasi dan Negosiasi Penawaran.</p>
+
+    <div class="ba-point">3. Keputusan Pelaksana Pengadaan</div>
+    <p class="ba-in">Atas dasar hasil Evaluasi tersebut diatas, maka Pejabat Pelaksana Pengadaan UP KENDARI memutuskan bahwa Pengadaan dapat dilanjutkan.</p>
+
+    <p>Demikian Berita Acara Evaluasi Administrasi, Teknik dan Harga ini dibuat untuk dapat dipergunakan sebagaimana mestinya.</p>
+
+    <p class="c" style="margin-top: 14pt;"><b>UP KENDARI</b></p>
+    <table class="ba-plain" style="width: 100%;">
+        <tr><td style="width: 5%;">1.</td><td style="width: 38%;"><span style="text-transform: uppercase;">{{nama_pejabat_pelaksana}}</span></td><td style="width: 45%;">PEJABAT PELAKSANA PENGADAAN</td><td class="r">..........</td></tr>
+        <tr><td>2.</td><td><span style="text-transform: uppercase;">{{nama_pejabat_perencana}}</span></td><td>PEJABAT PERENCANA PENGADAAN</td><td class="r">..........</td></tr>
+        <tr><td>3.</td><td><span style="text-transform: uppercase;">{{pic_perencana}}</span></td><td>PIC PERENCANA PENGADAAN</td><td class="r">..........</td></tr>
+        <tr><td>4.</td><td><span style="text-transform: uppercase;">{{pic_pelaksana}}</span></td><td>PIC PELAKSANA PENGADAAN</td><td class="r">..........</td></tr>
+    </table>
 </section>

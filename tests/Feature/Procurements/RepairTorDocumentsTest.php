@@ -48,7 +48,9 @@ class RepairTorDocumentsTest extends TestCase
         ProcurementDocument::query()->whereKey($document->id)->update([
             'rendered_body' => '<style>.x{}</style><table class="header"><tr><td class="header-left">logo</td><td class="header-right"><table>'
                 .'<tr><td class="label">Nomor Dokumen / Pengadaan</td><td class="colon">:</td><td>PGD/1</td></tr></table></td></tr></table>'
+                .'<table class="cover-meta"><tr><td class="label">TANGGAL</td><td class="colon">:</td><td>18 Oktober 2026</td></tr></table>'
                 .'<p class="para">Pekerjaan ini dilaksanakan sebagai bagian dari kebutuhan.</p>'
+                .'<div class="approval-date">PLTD Wua Wua, 18 Oktober 2026</div>'
                 .'<table class="approval-table"><tr><td>User</td></tr></table>',
             'generated_at' => '2026-09-07 09:00:00',
             ...$attributes,
@@ -106,6 +108,10 @@ class RepairTorDocumentsTest extends TestCase
 
         // Signed: left as signed.
         $this->assertStringContainsString('<td>Penyusun</td>', $typed->rendered_body);
+        // Dated by its issue date (here the day it was generated), in Kendari.
+        $this->assertStringContainsString('<div class="approval-date">Kendari, 07 September 2026</div>', $typed->rendered_body);
+        $this->assertStringContainsString('<td class="colon">:</td><td>07 September 2026</td>', $typed->rendered_body);
+        $this->assertStringNotContainsString('PLTD Wua Wua', $typed->rendered_body);
         $this->assertStringContainsString('PGD/1', $signed->refresh()->rendered_body);
     }
 
@@ -146,6 +152,33 @@ class RepairTorDocumentsTest extends TestCase
         // Only the label: the typed text and the names stay.
         $this->assertStringContainsString('dilaksanakan sebagai bagian', $body);
         $this->assertStringContainsString('Asman Operasi', $body);
+    }
+
+    public function test_a_typed_tor_gets_its_signature_page_drawn_again(): void
+    {
+        $typed = $this->oldTor(['revision' => 5]);
+        ProcurementDocument::query()->whereKey($typed->id)->update([
+            'rendered_body' => $typed->rendered_body
+                .'<section class="approval"><div class="approval-title">LEMBAR PENGESAHAN</div>'
+                .'<div class="approval-date">PLTD Wangi Wangi, 17 Oktober 2026</div>'
+                .'<table class="approval-table two"><tr><td><b>Diperiksa/Diketahui oleh:</b></td><td><b>Disusun oleh:</b></td></tr>'
+                .'<tr><td><div class="small-gap"></div></td><td><div class="small-gap"></div></td></tr>'
+                .'<tr><td>Asman Operasi</td><td>User</td></tr></table></section>',
+        ]);
+
+        $this->artisan('tor:perbaiki')->assertSuccessful();
+
+        $body = $typed->refresh()->rendered_body;
+        $page = substr($body, (int) strpos($body, '<section class="approval">'));
+
+        // The typed text stays; the signature page follows the data.
+        $this->assertStringContainsString('dilaksanakan sebagai bagian', $body);
+        $this->assertStringContainsString('Kendari, 07 September 2026', $page);
+        $this->assertStringContainsString('DISETUJUI OLEH:', $page);
+        $this->assertStringContainsString('PENYUSUN', $page);
+        $this->assertStringNotContainsString('small-gap', $page);
+        $this->assertStringNotContainsString('PLTD Wangi Wangi', $page);
+        $this->assertStringNotContainsString('>User<', $page);
     }
 
     public function test_another_active_tor_template_can_be_switched_off(): void

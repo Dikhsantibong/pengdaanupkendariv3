@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Models\VendorAssessmentRequest;
 use App\Models\WorkDirector;
 use App\Support\IndonesianNumber;
+use App\Support\TenderDocuments;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Collection;
@@ -124,6 +125,8 @@ class DocumentGenerator
             'target_penyelesaian' => 'Target penyelesaian pengadaan',
             'tanggal_dokumen' => 'Tanggal dokumen digenerate',
             'tanggal_terbit' => 'Tanggal terbit TOR (dd - mm - yyyy): diisi user, atau tanggal digenerate',
+            'tanggal_terbit_tor' => 'Tanggal terbit TOR (mis. 06 Februari 2023): diisi user, atau tanggal digenerate',
+            'tahun_terbit_tor' => 'Tahun terbit TOR',
             'tahun' => 'Tahun berjalan',
             'tautan_penilaian_vendor' => 'Tautan tetap untuk vendor mengisi rincian tagihan (request penilaian vendor)',
             // Filled only on the amendment document (tab Amandemen).
@@ -163,6 +166,7 @@ class DocumentGenerator
             'tanggal_nota_dinas_do' => 'DO: tanggal nota dinas DO dari Rendan',
             'checklist_perencanaan' => 'Daftar checklist tahap perencanaan',
             'checklist_pelaksanaan' => 'Daftar checklist tahap pelaksanaan',
+            ...TenderDocuments::catalog(),
         ];
     }
 
@@ -189,6 +193,8 @@ class DocumentGenerator
             'planner',
             'executor',
             'creator',
+            'planningReviewer',
+            'executionReviewer',
             'checklists.checklistItem',
         ]);
 
@@ -336,11 +342,17 @@ class DocumentGenerator
             // As the TOR's kop writes it (06 - 02 - 2023): the date the user
             // gave, else the day the document was generated.
             'tanggal_terbit' => ($procurement->tor_issue_date ?? $issuedAt)->format('d - m - Y'),
+            // The same day written out, for the TOR's cover, identity and
+            // signature page, and its year on the cover ribbon.
+            'tanggal_terbit_tor' => ($procurement->tor_issue_date ?? $issuedAt)->translatedFormat('d F Y'),
+            'tahun_terbit_tor' => ($procurement->tor_issue_date ?? $issuedAt)->format('Y'),
             'tahun' => $issuedAt->format('Y'),
             'tautan_penilaian_vendor' => VendorAssessmentRequest::formUrl(),
             'checklist_perencanaan' => $this->checklistMarkup($procurement, ProcurementStage::Perencanaan),
             'checklist_pelaksanaan' => $this->checklistMarkup($procurement, ProcurementStage::Pelaksanaan),
             'pengesahan_tor' => $this->torSignatures($procurement, $signatories, $managerName),
+            // The tender's Berita Acara: participants, offers, officials.
+            ...TenderDocuments::values($procurement, $issuedAt),
         ];
     }
 
@@ -352,45 +364,61 @@ class DocumentGenerator
      * approved by the Manager. An SPPL by three: the Asman (left) and the
      * user (right), the Manager below them.
      *
+     * Every word of the signature form is in capitals, written so rather
+     * than styled, and each title sits right under its heading; the space
+     * left is the one for the signature, above the name.
+     *
      * @param  array{user: string, asman: string, engineering: string}  $signatories
      */
     protected function torSignatures(Procurement $procurement, array $signatories, string $manager): string
     {
         ['user' => $user, 'asman' => $asman, 'engineering' => $engineering] = $signatories;
-        $division = e($procurement->workDirector->name);
+        $upper = fn (string $text): string => e(mb_strtoupper($text));
+        $division = $upper($procurement->workDirector->name);
 
-        $sign = fn (string $name): string => '<div class="gap"></div><span class="name">( <span style="text-transform: uppercase;">'.e($name).'</span> )</span>';
+        $heading = fn (string $text, int $span = 1): string => '<td'.($span > 1 ? ' colspan="'.$span.'"' : '').'><b>'.$upper($text).'</b></td>';
+        $sign = fn (string $name): string => '<div class="gap"></div><span class="name">( <span style="text-transform: uppercase;">'.$upper($name).'</span> )</span>';
 
         $approval = '<table class="approval-table" style="margin-top:20px;">'
-            .'<tr><td><b>Disetujui oleh:</b></td></tr>'
-            .'<tr><td class="small-gap"></td></tr>'
-            .'<tr><td>Manager</td></tr>'
+            .'<tr>'.$heading('Disetujui oleh:').'</tr>'
+            .'<tr><td>MANAGER</td></tr>'
             .'<tr><td>'.$sign($manager).'</td></tr>'
             .'</table>';
 
         if ($procurement->contractNumberFormat?->code === 'SPPL') {
             return '<table class="approval-table two">'
-                .'<tr><td><b>Diperiksa/Diketahui oleh:</b></td><td><b>Disusun oleh:</b></td></tr>'
-                .'<tr><td><div class="small-gap"></div></td><td><div class="small-gap"></div></td></tr>'
-                .'<tr><td>'.$division.'</td><td>Penyusun</td></tr>'
+                .'<tr>'.$heading('Diperiksa/Diketahui oleh:').$heading('Disusun oleh:').'</tr>'
+                .'<tr><td>'.$division.'</td><td>PENYUSUN</td></tr>'
                 .'<tr><td>'.$sign($asman).'</td><td>'.$sign($user).'</td></tr>'
                 .'</table>'
                 .$approval;
         }
 
         return '<table class="approval-table">'
-            .'<tr><td><b>Disusun oleh:</b></td></tr>'
-            .'<tr><td class="small-gap"></td></tr>'
-            .'<tr><td>Penyusun</td></tr>'
+            .'<tr>'.$heading('Disusun oleh:').'</tr>'
+            .'<tr><td>PENYUSUN</td></tr>'
             .'<tr><td>'.$sign($user).'</td></tr>'
             .'</table>'
             .'<table class="approval-table two" style="margin-top:20px;">'
-            .'<tr><td colspan="2"><b>Diperiksa/Diketahui oleh:</b></td></tr>'
-            .'<tr><td colspan="2"><div class="small-gap"></div></td></tr>'
-            .'<tr><td>'.$division.'</td><td>Asman Engineering</td></tr>'
+            .'<tr>'.$heading('Diperiksa/Diketahui oleh:', 2).'</tr>'
+            .'<tr><td>'.$division.'</td><td>ASMAN ENGINEERING</td></tr>'
             .'<tr><td>'.$sign($asman).'</td><td>'.$sign($engineering).'</td></tr>'
             .'</table>'
             .$approval;
+    }
+
+    /**
+     * The whole Lembar Pengesahan of a TOR as the data has it now: its
+     * title, "Kendari, <issue date>" and the signatures. For repairing a TOR
+     * someone has typed into, whose signature page is not theirs to write.
+     */
+    public function torApprovalPage(Procurement $procurement, ?CarbonInterface $issuedAt = null): string
+    {
+        $values = $this->placeholderValues($procurement, $issuedAt);
+
+        return '<div class="approval-title">LEMBAR PENGESAHAN<br>TERM OF REFERENCE (TOR)<br>'.e($procurement->name).'</div>'
+            .'<div class="approval-date">Kendari, '.$values['tanggal_terbit_tor'].'</div>'
+            .$values['pengesahan_tor'];
     }
 
     /**
@@ -480,7 +508,10 @@ class DocumentGenerator
      * Placeholders frozen at generation: the issue date and year of a document
      * must not move on every day it is reopened.
      */
-    protected const FROZEN_FIELDS = ['tanggal_dokumen', 'tanggal_terbit', 'tahun'];
+    protected const FROZEN_FIELDS = [
+        'tanggal_dokumen', 'tanggal_terbit', 'tanggal_terbit_tor', 'tahun_terbit_tor', 'tahun',
+        'hari_dokumen', 'tanggal_dokumen_terbilang', 'bulan_dokumen', 'tahun_dokumen_terbilang',
+    ];
 
     /**
      * Fill the placeholders of a template body.
@@ -619,7 +650,14 @@ class DocumentGenerator
         if ($unedited && $template !== null) {
             $body = $this->renderFor($document, $template, $document->generated_at);
         } else {
-            $body = $this->refreshLiveFields($document->rendered_body, $values);
+            // An edited document keeps its text; its item table is the
+            // Rincian Item's, so it follows it (and a new way of drawing it).
+            $document->loadMissing('documentType');
+            $body = $this->applyItemTables(
+                $this->refreshLiveFields($document->rendered_body, $values),
+                $document->documentType->code,
+                $document->procurement,
+            );
         }
 
         $switched = $unedited && $template !== null && $template->getKey() !== $document->document_template_id;
@@ -1407,6 +1445,20 @@ class DocumentGenerator
 
             $attrs = $tdMatches[1];
             $cells = $tdMatches[2];
+
+            // A group heading merged across the row: its letter, then its
+            // name spanning the other columns.
+            if (count($cells) === 2 && stripos($attrs[1], 'colspan') !== false) {
+                $heading = (string) preg_replace('/<br\s*\/?>|<\/(p|div)>/i', ' ', $cells[1]);
+                $heading = trim(html_entity_decode(strip_tags($heading), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                $heading = trim((string) preg_replace('/\s+/u', ' ', str_replace("\xc2\xa0", ' ', $heading)));
+
+                if ($heading !== '' && ! preg_match('/^(TOTAL|JUMLAH|DPP|PPN)\b/i', $heading)) {
+                    $group = $heading;
+                }
+
+                continue;
+            }
 
             // Item rows have exactly 8 <td> elements and no colspan
             if (count($cells) !== 8) {

@@ -221,7 +221,7 @@
 <!-- Cover Page -->
 <section class="cover-page">
     <div class="cover-container">
-        <div class="ribbon-tab" contenteditable="false"><span contenteditable="true">{{tahun}}</span></div>
+        <div class="ribbon-tab" contenteditable="false"><span contenteditable="true">{{tahun_terbit_tor}}</span></div>
 
         <div class="cover-card">
             <div class="cover-photo-box">
@@ -242,7 +242,7 @@
         <tr><td class="label">NOMOR SKK</td><td class="colon">:</td><td></td></tr>
         <tr><td class="label">NOMOR PRK</td><td class="colon">:</td><td><span class="val-box">{{nomor_prk}}</span></td></tr>
         <tr><td class="label">NO PR/IR</td><td class="colon">:</td><td>{{nomor_pr_ro}}</td></tr>
-        <tr><td class="label">TANGGAL</td><td class="colon">:</td><td>{{tanggal_dokumen}}</td></tr>
+        <tr><td class="label">TANGGAL</td><td class="colon">:</td><td>{{tanggal_terbit_tor}}</td></tr>
     </table>
 
     <div class="cover-footer">
@@ -284,7 +284,7 @@
         <tr><td class="label">Nama Program</td><td class="colon">:</td><td class="value">{{nama_pengadaan}}</td></tr>
         <tr><td class="label">No. PRK</td><td class="colon">:</td><td class="value">{{nomor_prk}}</td></tr>
         <tr><td class="label">No. PR/RO</td><td class="colon">:</td><td class="value">{{nomor_pr_ro}}</td></tr>
-        <tr><td class="label">Tanggal</td><td class="colon">:</td><td class="value">{{tanggal_dokumen}}</td></tr>
+        <tr><td class="label">Tanggal</td><td class="colon">:</td><td class="value">{{tanggal_terbit_tor}}</td></tr>
         <tr><td class="label">Jenis / Sumber Anggaran</td><td class="colon">:</td><td class="value">{{sumber_anggaran}}</td></tr>
     </table>
 
@@ -383,7 +383,7 @@
             TERM OF REFERENCE (TOR)<br>
             {{nama_pengadaan}}
         </div>
-        <div class="approval-date">{{unit_tujuan}}, {{tanggal_dokumen}}</div>
+        <div class="approval-date">Kendari, {{tanggal_terbit_tor}}</div>
 
         <!-- Penanda tangan disusun sistem sesuai format:
              SPK/PJ: disusun user; diperiksa Asman bidang user (kiri) dan

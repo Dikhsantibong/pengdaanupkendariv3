@@ -1333,6 +1333,52 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
   - menampilkan semua template TOR aktif, dengan opsi `--nonaktifkan-template-lain` untuk mematikan template TOR selain bawaan;
   - menyediakan `--detail` untuk melihat tiap TOR: bertanda tangan, diedit, tindakan, dan apakah masih "User".
 - TOR yang sudah punya scan bertanda tangan hanya diperbaiki dengan `--termasuk-ttd`.
+
+### 38. Semua Tanggal TOR = Tanggal Terbit TOR, Lokasi Kendari
+- Semua tanggal di TOR memakai **Tanggal Terbit TOR** yang diisi user, atau tanggal generate bila kosong:
+  - TANGGAL di sampul, Tanggal di identitas program, dan tanggal di Lembar Pengesahan memakai `{{tanggal_terbit_tor}}` (contoh: 06 Februari 2023);
+  - tahun di pita sampul memakai `{{tahun_terbit_tor}}`;
+  - Tanggal Terbit di kop memakai `{{tanggal_terbit}}` (06 - 02 - 2023).
+- Lokasi di Lembar Pengesahan statis **"Kendari, <tanggal>"**, tidak lagi menyebut unit tujuan.
+- Template diperbarui paksa oleh migrasi `date_the_tor_by_its_issue_date_in_kendari`. Untuk TOR yang sudah diedit, `tor:perbaiki` menyesuaikan tanggal sampul, tanggal identitas, dan baris "Kendari, tanggal"; isian lain tetap.
+- **Test:** `TorHeaderTest`, `RepairTorDocumentsTest`, `TorDocumentTemplateTest`.
+
+### 39. Total Tabel Berita Acara Negosiasi
+- **SPPL** (tabel "Harga Sebelum/Setelah Nego"): rumus sudah benar. TOTAL HARGA = Σ (Qty × Harga Satuan), sebelum dan sesudah nego, dihitung dari Rincian Item.
+- **SPK/PJ** (lampiran "Rincian Hasil Negosiasi Harga"): sebelumnya tabel ini tidak dihitung sama sekali; Qty, harga, Sub Total, PPN, dan Total hanya titik-titik. Sekarang tabelnya digambar dari Rincian Item (`ItemTableRenderer::negoBreakdown`):
+  - Jumlah per baris = Qty × Harga Negosiasi;
+  - Sub Total = Σ Jumlah;
+  - PPN = 12% × Sub Total;
+  - Total Harga Akhir = Sub Total + PPN, beserta terbilangnya.
+- `ItemTableRenderer::VERSION` naik ke 3, sehingga BA Negosiasi yang belum diedit digambar ulang saat dibuka.
+- **Test:** `BaNegosiasiTotalTest`.
+
+### 40. Lembar Pengesahan TOR: Huruf Besar, Tanpa Jarak Judul–Jabatan
+- Baris kosong (`small-gap`) antara judul ("DIPERIKSA/DIKETAHUI OLEH:", "DISUSUN OLEH:", "DISETUJUI OLEH:") dan jabatan dihapus. Jarak yang tersisa hanya ruang tanda tangan di atas nama.
+- Semua teks pada form tanda tangan ditulis huruf besar (judul, jabatan seperti ASMAN OPERASI / PENYUSUN / ASMAN ENGINEERING / MANAGER, dan nama). Huruf besar ditulis langsung, bukan lewat CSS, sehingga tetap bertahan saat diedit atau diunduh.
+- `tor:perbaiki` kini menggambar ulang seluruh Lembar Pengesahan pada TOR yang sudah diedit (`DocumentGenerator::torApprovalPage`): judul, "Kendari, tanggal terbit", dan tanda tangan. Isian poin-poin tetap.
+- **Test:** `TorHeaderTest`, `TorSignatureTest`, `RepairTorDocumentsTest`.
+
+### 41. Baris Kelompok Tabel BA Negosiasi SPPL Di-merge
+- Baris kelompok ("A | Material & Tools Tangki 50 KL") kini berisi huruf di kolom NO dan nama kelompok yang di-merge (`colspan="7"`) sampai kolom terakhir. Sebelumnya diikuti enam sel kosong.
+- Parser BA Negosiasi (`parseNegotiationItems`) mengenali baris kelompok yang di-merge, sehingga kelompok tidak hilang saat dokumen disimpan dari editor.
+- Dokumen yang sudah diedit kini ikut menggambar ulang tabel itemnya dari Rincian Item saat dibuka (teks lain tetap). `ItemTableRenderer::VERSION` naik ke 4, sehingga BA Negosiasi yang sudah ada langsung memakai tampilan baru. Dokumen bertanda tangan tidak diubah.
+- **Test:** `BaNegosiasiTotalTest`.
+
+### 42. Template Berita Acara Tahap "Proses SMART SCM & Berita Acara" Mengikuti Formulir Unit
+- Enam template diganti sesuai formulir UP Kendari. Semuanya memakai logo `/logo/sidebar-logo.png`, kop "PT PLN Nusantara Power / UP KENDARI", dan nama penanda tangan huruf besar.
+  1. **BA Pemberian Penjelasan (Aanwijzing)**: Nomor …/BAP/612/UPKD, bagian I–V (Penjelasan, Pertanyaan & Jawaban, Perubahan/Koreksi, Kesimpulan, Penutup). Tanda tangan: peserta (calon mitra) di kiri; UP Kendari di kanan (TL Pengadaan – Team Leader Pengadaan, PIC Pelaksana – Junior Officer Pengadaan).
+  2. **Lampiran BAPP – Catatan Hasil Pembukaan Penawaran**: tabel kelengkapan (Dokumen Teknis a–l, Dokumen Kewajaran Harga, Kesimpulan Akhir, Paraf Peserta) dengan **satu kolom per calon mitra** (A/L), plus keterangan A/TA dan L/TL.
+  3. **BA Evaluasi Teknis (Lampiran 3)**: Evaluasi Kualifikasi dan Pembuktian Kualifikasi (Teknis), dokumen a–l per calon mitra (M), Kesimpulan MEMENUHI, dan User Peminta.
+  4. **BA Evaluasi Harga (Lampiran 4)**: Hasil Evaluasi Penawaran (Surat Penawaran Harga M, Kesimpulan LULUS, **Urutan Harga Penawaran** dari harga penawaran termurah).
+  5. **BA Evaluasi Administrasi, Teknik dan Harga** (Hasil Evaluasi): pemasukan penawaran dan harganya, evaluasi administrasi/keuangan/teknis/penawaran, **urutan harga terkoreksi beserta % terhadap HPS**, HPS (+PPN 12%), keputusan; ditandatangani TL Pengadaan, TL ICC, PIC Perencana, dan PIC Pelaksana.
+  6. **BA Klarifikasi Teknik**: Nomor …/BAK/612/UPKD, tabel peserta dengan nomor surat penawaran, butir 1–4, dan tanda tangan peserta serta UP Kendari.
+- Data diisi otomatis dari calon mitra (nama, nomor surat penawaran, nilai penawaran), pejabat (TL Pengadaan = peninjau pelaksanaan atau TL Pengadaan aktif; TL ICC = peninjau perencanaan atau TL ICC aktif), PIC, nomor dan tanggal RKS, metode pengadaan (bawaan "Pengadaan Langsung"), serta hari/tanggal/bulan/tahun yang dieja dari tanggal dokumen (`App\Support\TenderDocuments`).
+  - Placeholder baru: `{{hari_dokumen}}`, `{{tanggal_dokumen_terbilang}}`, `{{bulan_dokumen}}`, `{{tahun_dokumen_terbilang}}`, `{{tanggal_rks}}`, `{{metode_pemilihan}}`, `{{nama_pejabat_pelaksana}}`, `{{nama_pejabat_perencana}}`, `{{jumlah_peserta}}`, `{{daftar_peserta}}`, `{{daftar_peserta_ttd}}`, `{{tabel_peserta_penawaran}}`, `{{tabel_pembukaan_penawaran}}`, `{{tabel_evaluasi_teknis}}`, `{{tabel_evaluasi_harga}}`, `{{tabel_pemasukan_penawaran}}`, `{{tabel_hasil_administrasi}}`, `{{tabel_hasil_keuangan}}`, `{{tabel_hasil_teknis}}`, `{{tabel_hasil_penawaran}}`, `{{tabel_urutan_harga}}`.
+  - Tanda evaluasi (A, L, M, LULUS, MEMENUHI) diisi sebagai hasil umum dan dapat dikoreksi di editor dokumen. Tanpa calon mitra, tabel menyediakan tiga baris kosong.
+- Migrasi `put_the_tender_berita_acara_templates_in_place` mengganti keenam template terpasang (paksa). Dokumen yang belum diedit mengikuti saat dibuka; yang sudah diedit tetap, dan dapat diganti dengan "Muat Ulang dari Template".
+- Semua template bawaan dan template aktif di database sudah memakai logo `sidebar-logo.png`.
+- **Test:** `TenderBeritaAcaraTest`; `BeritaAcaraDocumentTest` disesuaikan dengan judul baru.
 - **Test:** `TorHeaderTest`, `RepairTorDocumentsTest`.
 
 ---

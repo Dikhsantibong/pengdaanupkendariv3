@@ -37,7 +37,9 @@ class TorDocumentTemplateTest extends TestCase
         $this->assertStringContainsString('LEMBAR PENGESAHAN', $template->body);
         $this->assertContains('nama_pengadaan', $template->placeholders);
         $this->assertContains('nomor_prk', $template->placeholders);
-        $this->assertContains('tahun', $template->placeholders);
+        // The cover's year and every date follow the TOR's Tanggal Terbit.
+        $this->assertContains('tahun_terbit_tor', $template->placeholders);
+        $this->assertContains('tanggal_terbit_tor', $template->placeholders);
     }
 
     public function test_tor_document_can_be_generated_and_rendered_to_html(): void

@@ -33,11 +33,11 @@ class BeritaAcaraDocumentTest extends TestCase
     public static function beritaAcaraProvider(): array
     {
         return [
-            'aanwijzing' => ['ba-aanwijzing', 'BERITA ACARA PENJELASAN PELELANGAN'],
-            'lampiran bapp' => ['lampiran-bapp', 'LAMPIRAN BERITA ACARA PEMBUKAAN PENAWARAN'],
-            'evaluasi harga' => ['ba-evaluasi-harga', 'BERITA ACARA EVALUASI HARGA'],
-            'hasil evaluasi' => ['ba-hasil-evaluasi', 'BERITA ACARA HASIL EVALUASI'],
-            'klarifikasi' => ['ba-klarifikasi', 'BERITA ACARA KLARIFIKASI DAN NEGOSIASI'],
+            'aanwijzing' => ['ba-aanwijzing', 'BERITA ACARA PEMBERIAN PENJELASAN (AANWIJZING)'],
+            'lampiran bapp' => ['lampiran-bapp', 'CATATAN HASIL PEMBUKAAN PENAWARAN'],
+            'evaluasi harga' => ['ba-evaluasi-harga', 'HASIL EVALUASI PENAWARAN'],
+            'hasil evaluasi' => ['ba-hasil-evaluasi', 'BERITA ACARA EVALUASI ADMINISTRASI, TEKNIK DAN HARGA'],
+            'klarifikasi' => ['ba-klarifikasi', 'BERITA ACARA KLARIFIKASI TEKNIK'],
         ];
     }
 
@@ -77,8 +77,9 @@ class BeritaAcaraDocumentTest extends TestCase
 
         $this->assertStringContainsString($heading, $body);
         $this->assertStringContainsString('Pengadaan Jasa Angkut BBM', $body);
-        $this->assertStringContainsString('PT PLN NUSANTARA POWER', $body);
-        $this->assertStringContainsString('Dua ratus lima puluh juta rupiah', $body);
+        // The unit's own forms: the company and its logo heading each one.
+        $this->assertStringContainsString('PT PLN Nusantara Power', $body);
+        $this->assertStringContainsString('/logo/sidebar-logo.png', $body);
         $this->assertDoesNotMatchRegularExpression('/\{\{[a-z0-9_]+\}\}/', $body);
     }
 

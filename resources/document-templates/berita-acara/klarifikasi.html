@@ -1,83 +1,70 @@
+<style>
+    .ba-head { width: 100%; border: none; margin: 0 0 6pt; }
+    .ba-head td { border: none; padding: 0 6pt 0 0; vertical-align: middle; }
+    .ba-title { text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; margin: 8pt 0 4pt; }
+    table.ba-meta { width: auto; margin: 0 auto 6pt; }
+    table.ba-meta td { border: none; padding: 1pt 4pt; }
+    .ba-subject { text-align: center; font-weight: bold; text-transform: uppercase; border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; padding: 5pt 0; margin: 8pt 0 10pt; }
+    table.ba-points > tbody > tr > td, table.ba-points > tr > td { border: none; padding: 3pt 4pt; vertical-align: top; }
+    table.ba-grid th, table.ba-grid td { border: 1px solid #000; }
+    table.ba-grid th { background: none; text-align: left; }
+    table.ba-plain td, table.ba-sign td { border: none; padding: 1pt 4pt; }
+    table.ba-sign > tbody > tr > td, table.ba-sign > tr > td { width: 50%; vertical-align: top; }
+    .c { text-align: center; }
+    .r { text-align: right; }
+</style>
+
 <section>
-    <style>
-        @page { size: A4 portrait; margin: 20mm 15mm; }
-    </style>
-    <table class="lampiran-head" style="width: 100%; margin-bottom: 14px; border: none; border-collapse: collapse;">
-    <tr>
-        <td style="vertical-align: middle; border: none; padding: 0;">
-            <img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 38px; width: auto; margin-bottom: 4px;"><br>
-            <b>PT PLN NUSANTARA POWER<br>UP KENDARI</b>
-        </td>
-        <td style="text-align:right; vertical-align: middle; border: none; padding: 0;">Nomor : <span class="fill">............ /BA/612/UPKD/{{tahun}}</span><br>Tanggal : {{tanggal_dokumen}}</td>
-    </tr>
-</table>
-
-<h1>BERITA ACARA KLARIFIKASI DAN NEGOSIASI</h1>
-
-
-<table>
-    <tr><td style="width:32%">Nomor Pengadaan</td><td>{{nomor_pengadaan}}</td></tr>
-    <tr><td>Nama Pekerjaan</td><td><b>{{nama_pengadaan}}</b></td></tr>
-    <tr><td>Unit Tujuan</td><td>{{unit_tujuan}}</td></tr>
-    <tr><td>Metode Pengadaan</td><td>{{metode_pengadaan}}</td></tr>
-    <tr><td>Sumber Anggaran</td><td>{{sumber_anggaran_keterangan}} ({{sumber_anggaran}})</td></tr>
-    <tr><td>Nilai HPE</td><td>{{nilai_hpe}}<br><i>Terbilang: {{nilai_hpe_terbilang}}</i></td></tr>
-    <tr><td>Direksi Pekerjaan</td><td>{{direksi_pekerjaan}}</td></tr>
-</table>
-
-    <p>Pada hari ini <span class="fill">..................</span> tanggal <span class="fill">..................</span> bulan <span class="fill">..................</span> tahun {{tahun}}, telah dilaksanakan klarifikasi dan negosiasi atas pekerjaan <b>{{nama_pengadaan}}</b> antara:</p>
-
-    <table>
-        <tr><td style="width:32%">Pejabat Pelaksana Pengadaan</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>Penyedia Barang/Jasa</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>Diwakili oleh</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>Jabatan</td><td class="fill">&nbsp;</td></tr>
+    <table class="ba-head">
+        <tr>
+            <td style="width: 74px;"><img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 34px; width: auto;"></td>
+            <td style="white-space: nowrap;">PT PLN Nusantara Power<br><b>UP KENDARI</b></td>
+        </tr>
     </table>
 
-    <h3>A. Materi Klarifikasi</h3>
-    <table style="width: 100%; max-width: 100%; table-layout: fixed; word-break: break-word;">
-        <tr><th style="width:5%">No</th><th style="width:24%">Materi</th><th style="width:35%">Hal yang Diklarifikasi</th><th style="width:36%">Penjelasan Penyedia</th></tr>
-        <tr><td>1</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>2</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>3</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td><td class="fill">&nbsp;</td></tr>
+    <div class="ba-title">BERITA ACARA KLARIFIKASI TEKNIK</div>
+    <table class="ba-meta">
+        <tr><td>Nomor</td><td>:</td><td><span class="fill">..........</span>/BAK/612/UPKD/{{tahun}}</td></tr>
+        <tr><td>Tanggal</td><td>:</td><td>{{tanggal_dokumen}}</td></tr>
+        <tr><td>Perihal</td><td>:</td><td></td></tr>
     </table>
 
-    <h3>B. Hasil Negosiasi Harga</h3>
-    <table>
-        <tr><td style="width:40%">Nilai HPE</td><td>{{nilai_hpe}}</td></tr>
-        <tr><td>Harga Penawaran Awal</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>Harga Hasil Negosiasi (Harga Akhir)</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>Terbilang</td><td class="fill">&nbsp;</td></tr>
-        <tr><td>Selisih terhadap HPE</td><td class="fill">&nbsp;</td></tr>
+    <div class="ba-subject">{{nama_pengadaan}} UP KENDARI</div>
+
+    <p>Pada hari ini {{hari_dokumen}}, tanggal {{tanggal_dokumen_terbilang}} bulan {{bulan_dokumen}} tahun {{tahun_dokumen_terbilang}}, yang bertandatangan di bawah ini kami Pejabat Pelaksana UP KENDARI, telah melaksanakan rapat Klarifikasi {{nama_pengadaan}} UP KENDARI dengan <i>melalui Video Conference</i> UP KENDARI dengan hasil sebagai berikut :</p>
+
+    <table class="ba-points">
+        <tr>
+            <td style="width: 4%;">1</td>
+            <td colspan="2">
+                Sesuai dengan {{nama_pengadaan}} UP KENDARI yang dilakukan melalui Pelelangan Terbuka {{metode_pemilihan}} sesuai RKS No. {{nomor_rks}} tanggal {{tanggal_rks}} telah diterima penawaran dari melalui Surat Penawaran Administrasi, Keuangan, Teknis dan Harga Tersebut dibawah ini :
+                {{tabel_peserta_penawaran}}
+                Dengan rincian sebagai berikut :
+            </td>
+        </tr>
+        <tr><td></td><td style="width: 6%;">1.1</td><td>Rincian Persyaratan Teknis adalah sebagaimana terlampir dalam Berita Acara Klarifikasi Teknik ini.</td></tr>
+        <tr><td>2</td><td colspan="2">Setelah diadakan klarifikasi, maka disepakati hal-hal sebagai berikut :</td></tr>
+        <tr><td></td><td>2.1</td><td>Pemenuhan persyaratan teknis untuk Pengadaan yang ditawarkan dinyatakan SESUAI/MEMENUHI dengan Persyaratan Teknis RKS No. {{nomor_rks}} tanggal {{tanggal_rks}}.</td></tr>
+        <tr><td>3</td><td colspan="2">Hasil Klarifikasi telah disetujui sesuai Lampiran pada Berita Acara Klarifikasi Teknik ini.</td></tr>
+        <tr><td>4</td><td colspan="2">Disepakati syarat-syarat penawaran lainnya tetap tidak mengalami perubahan.</td></tr>
     </table>
-    <p class="note">Klarifikasi tidak boleh mengubah substansi penawaran. Harga hasil negosiasi disebut Harga Akhir dan menjadi Harga Kontrak.</p>
 
-    <h3>C. Kesepakatan Teknis dan Waktu Pelaksanaan</h3>
-    <ol>
-        <li>Lingkup pekerjaan sesuai RKS dan Term of Reference (TOR).</li>
-        <li>Jangka waktu pelaksanaan: <span class="fill">..................</span></li>
-        <li>Target penyelesaian pengadaan: {{target_penyelesaian}}</li>
-        <li><span class="fill">..............................................................................</span></li>
-    </ol>
+    <p>Demikian Berita Acara Klarifikasi Teknik ini dibuat untuk dapat dipergunakan sebagaimana mestinya.</p>
 
-    <h3>D. Kesimpulan</h3>
-    <p><span class="fill">..............................................................................</span></p>
-
-    <p>Demikian Berita Acara ini dibuat dengan sebenarnya untuk dipergunakan sebagaimana mestinya.</p>
-
-<p>Kendari, {{tanggal_dokumen}}</p>
-
-<table class="signature">
-    <tr>
-        <td class="role">Pejabat Pelaksana Pengadaan</td>
-        <td class="role">Penyedia Barang/Jasa</td>
-    </tr>
-    <tr><td class="space"></td><td class="space"></td></tr>
-    <tr>
-        <td class="name fill"><span style="text-transform: uppercase;">( Nama Jelas )</span></td>
-        <td class="name fill"><span style="text-transform: uppercase;">( Nama Jelas )</span></td>
-    </tr>
-</table>
-
-<p class="note">Dokumen ini dicetak untuk ditandatangani. Setelah ditandatangani, unggah kembali hasil pindaiannya pada arsip dokumen pengadaan ini.</p>
+    <table class="ba-sign" style="margin-top: 12pt;">
+        <tr>
+            <td><b><u>PESERTA PEMBELIAN LANGSUNG</u></b>{{daftar_peserta_ttd}}</td>
+            <td>
+                <b><u>UP KENDARI</u></b>
+                <table class="ba-plain">
+                    <tr><td><span style="text-transform: uppercase;">{{nama_pejabat_pelaksana}}</span></td><td class="r">TTD</td></tr>
+                    <tr><td>PEJABAT PELAKSANA PENGADAAN</td><td class="r">..........</td></tr>
+                    <tr><td>&nbsp;</td><td></td></tr>
+                    <tr><td><span style="text-transform: uppercase;">{{pic_pelaksana}}</span></td><td class="r">TTD</td></tr>
+                    <tr><td>PIC PELAKSANA PENGADAAN</td><td class="r">..........</td></tr>
+                </table>
+            </td>
+        </tr>
+        <tr><td></td><td><br><b>TIM TEKNIS PT PLN Nusantara Power<br>UP KENDARI</b></td></tr>
+    </table>
 </section>
