@@ -41,6 +41,45 @@ class TorKop
     }
 
     /**
+     * The body with the author signing as "Penyusun" instead of "User" on
+     * the Lembar Pengesahan, however the editor wrapped the cell (a style on
+     * the cell, a span or bold around the word).
+     */
+    public static function signAsPenyusun(string $body): string
+    {
+        $page = self::signaturePage($body);
+
+        if ($page === false) {
+            return $body;
+        }
+
+        $signatures = preg_replace(
+            '#(<td\b[^>]*>(?:\s|&nbsp;|<(?:span|b|strong|p|div|u)\b[^>]*>)*)User((?:\s|&nbsp;|</(?:span|b|strong|p|div|u)>)*</td>)#i',
+            '$1Penyusun$2',
+            substr($body, $page),
+        );
+
+        return $signatures === null ? $body : substr($body, 0, $page).$signatures;
+    }
+
+    /**
+     * Whether the Lembar Pengesahan still has the author as "User".
+     */
+    public static function stillSignsAsUser(string $body): bool
+    {
+        return self::signAsPenyusun($body) !== $body;
+    }
+
+    /**
+     * Where the Lembar Pengesahan begins: its title, else its first
+     * signature table.
+     */
+    protected static function signaturePage(string $body): int|false
+    {
+        return stripos($body, 'LEMBAR PENGESAHAN') ?: stripos($body, 'approval-table');
+    }
+
+    /**
      * The kop's stylesheet, for a TOR drawn before the kop changed.
      */
     protected const STYLE = '.header td { border: 1px solid #000; vertical-align: middle; padding: 4px 6px; }'

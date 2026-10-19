@@ -128,6 +128,46 @@ class RepairTorDocumentsTest extends TestCase
         $this->assertTrue($signed->signedUploads()->exists());
     }
 
+    public function test_the_label_is_found_however_the_editor_wrapped_it(): void
+    {
+        $typed = $this->oldTor(['revision' => 4]);
+        ProcurementDocument::query()->whereKey($typed->id)->update([
+            'rendered_body' => $typed->rendered_body
+                .'<p>LEMBAR PENGESAHAN</p><table class="approval-table two"><tr>'
+                .'<td style="text-align: center;">Asman Operasi</td>'
+                .'<td style="text-align: center;"><span>User</span></td></tr>'
+                .'<tr><td>( <span style="text-transform: uppercase;">Akmal</span> )</td></tr></table>',
+        ]);
+
+        $this->artisan('tor:perbaiki', ['--detail' => true])->assertSuccessful();
+
+        $body = $typed->refresh()->rendered_body;
+        $this->assertStringContainsString('<td style="text-align: center;"><span>Penyusun</span></td>', $body);
+        // Only the label: the typed text and the names stay.
+        $this->assertStringContainsString('dilaksanakan sebagai bagian', $body);
+        $this->assertStringContainsString('Asman Operasi', $body);
+    }
+
+    public function test_another_active_tor_template_can_be_switched_off(): void
+    {
+        $other = DocumentTemplate::factory()->create([
+            'document_type_id' => $this->tor->id,
+            'library_key' => null,
+            'name' => 'TOR buatan admin',
+            'body' => '<p>LEMBAR PENGESAHAN</p><table><tr><td>User</td></tr></table>',
+            'is_active' => true,
+        ]);
+
+        $this->artisan('tor:perbaiki')
+            ->expectsOutputToContain('Ada template TOR aktif selain bawaan')
+            ->assertSuccessful();
+        $this->assertTrue($other->refresh()->is_active);
+
+        $this->artisan('tor:perbaiki', ['--nonaktifkan-template-lain' => true])->assertSuccessful();
+        $this->assertFalse($other->refresh()->is_active);
+        $this->assertTrue(DocumentTemplate::query()->where('library_key', 'umum.tor')->value('is_active'));
+    }
+
     public function test_a_dry_run_changes_nothing(): void
     {
         $untouched = $this->oldTor();

@@ -1329,6 +1329,10 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 ### 37. Label "Penyusun" pada Lembar Pengesahan TOR
 - Di Lembar Pengesahan TOR, tulisan "User" di atas nama pembuat usulan/pengadaan diganti **"Penyusun"**. Berlaku untuk SPK/PJ (di bawah "Disusun oleh:") dan SPPL (kolom kanan).
 - TOR yang belum diedit ikut berubah saat dibuka. Untuk TOR yang sudah diedit, `php artisan tor:perbaiki` mengganti "User" menjadi "Penyusun" bersama kop-nya, tanpa menyentuh isian lain.
+- `tor:perbaiki` mengenali label "User" meskipun selnya sudah diubah editor (ada `style`, atau dibungkus `<span>`/`<b>`). Command ini juga:
+  - menampilkan semua template TOR aktif, dengan opsi `--nonaktifkan-template-lain` untuk mematikan template TOR selain bawaan;
+  - menyediakan `--detail` untuk melihat tiap TOR: bertanda tangan, diedit, tindakan, dan apakah masih "User".
+- TOR yang sudah punya scan bertanda tangan hanya diperbaiki dengan `--termasuk-ttd`.
 - **Test:** `TorHeaderTest`, `RepairTorDocumentsTest`.
 
 ---
