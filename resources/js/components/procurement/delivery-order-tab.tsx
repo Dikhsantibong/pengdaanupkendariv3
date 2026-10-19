@@ -2,8 +2,8 @@ import { router, useForm } from '@inertiajs/react';
 import {
     CheckCircle2,
     CircleAlert,
+    Eye,
     FilePlus2,
-    FileText,
     Paperclip,
     Plus,
     RotateCcw,
@@ -26,6 +26,11 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/format';
 import procurements from '@/routes/procurements';
+import {
+    DetailToggle,
+    RequestDocumentActions,
+    RequestProgress,
+} from './request-progress';
 
 export type ContractItem = {
     id: number;
@@ -98,10 +103,44 @@ const STATE_TONE: Record<string, string> = {
     terbit: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
 };
 
+/** The steps of a DO, and where each state stands among them. */
+const DO_STEPS = ['Pengusul', 'TL', 'Asman', 'Rendan', 'Laksdan', 'Terbit'];
+const DO_STEP_OF: Record<string, number> = {
+    draft: 0,
+    dikembalikan: 0,
+    menunggu_persetujuan_tl: 1,
+    menunggu_persetujuan_asman: 2,
+    di_rendan: 3,
+    di_laksdan: 4,
+    terbit: DO_STEPS.length,
+};
+
+/** Whether the user has something to do on this DO now. */
+const actionable = (order: DeliveryOrder): boolean =>
+    order.can.request ||
+    order.can.decide ||
+    order.can.forward ||
+    order.can.issue;
+
+function StateBadge({ order }: { order: DeliveryOrder }) {
+    return (
+        <span
+            className={`rounded-sm px-2 py-0.5 text-xs font-medium whitespace-nowrap ${
+                STATE_TONE[order.state] ??
+                'bg-amber-500/10 text-amber-800 dark:text-amber-300'
+            }`}
+        >
+            {order.state_label}
+            {order.revision > 0 ? ` · revisi ke-${order.revision}` : ''}
+        </span>
+    );
+}
+
 /**
- * The DO tab of a KHS contract: the contract's price list, and each Delivery
- * Order from the proposer's request (approved by their TL and Asman),
- * through Rendan's Nota Dinas DO, to Laksdan issuing it.
+ * The DO tab of a KHS contract, kept to what matters now: the DOs waiting on
+ * the user open in full, every other one is a single line with its Preview
+ * PDF and a Detail to open it, the issued ones listed apart. The contract's
+ * price list stays folded until asked for.
  */
 export function DeliveryOrderTab({
     procurementId,
@@ -115,6 +154,14 @@ export function DeliveryOrderTab({
     canManageItems: boolean;
 }) {
     const [starting, setStarting] = useState(false);
+    const newestFirst = [...data.orders].reverse();
+    const mine = newestFirst.filter(actionable);
+    const running = newestFirst.filter(
+        (order) => !actionable(order) && order.state !== 'terbit',
+    );
+    const issued = newestFirst.filter(
+        (order) => !actionable(order) && order.state === 'terbit',
+    );
 
     return (
         <div className="space-y-4">
@@ -122,11 +169,7 @@ export function DeliveryOrderTab({
                 <div className="text-sm">
                     <p className="font-semibold">Delivery Order (DO)</p>
                     <p className="text-xs text-muted-foreground">
-                        Kontrak KHS dipesan bertahap lewat DO. Alur: pengusul
-                        mengajukan (nota dinas usulan + item) → disetujui TL dan
-                        Asman → Rendan membuat Nota Dinas DO → Laksdan
-                        menerbitkan DO (nomor otomatis berurutan untuk seluruh
-                        kontrak KHS).
+                        Pemesanan bertahap dari daftar harga kontrak KHS.
                     </p>
                 </div>
                 {canStart && (
@@ -169,23 +212,143 @@ export function DeliveryOrderTab({
                 editable={canManageItems}
             />
 
-            {data.orders.length === 0 ? (
+            {data.orders.length === 0 && (
                 <p className="rounded-md border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
                     Belum ada Delivery Order.
                 </p>
-            ) : (
-                [...data.orders]
-                    .reverse()
-                    .map((order) => (
+            )}
+
+            {mine.length > 0 && (
+                <div className="space-y-3">
+                    <p className="section-label">
+                        Perlu tindakan Anda ({mine.length})
+                    </p>
+                    {mine.map((order) => (
                         <OrderCard
                             key={order.id}
                             procurementId={procurementId}
                             order={order}
                             contractItems={data.contract_items}
                         />
-                    ))
+                    ))}
+                </div>
+            )}
+
+            {running.length > 0 && (
+                <OrderList title="Sedang diproses" orders={running} />
+            )}
+
+            {issued.length > 0 && (
+                <OrderList title="DO terbit" orders={issued} />
             )}
         </div>
+    );
+}
+
+/** DOs nobody waits on the user for: a line each, opened on request. */
+function OrderList({
+    title,
+    orders,
+}: {
+    title: string;
+    orders: DeliveryOrder[];
+}) {
+    return (
+        <section className="overflow-hidden rounded-md border border-border bg-card">
+            <p className="section-label border-b border-border bg-muted/40 px-4 py-2">
+                {title} ({orders.length})
+            </p>
+            <ul className="divide-y divide-border">
+                {orders.map((order) => (
+                    <OrderRow key={order.id} order={order} />
+                ))}
+            </ul>
+        </section>
+    );
+}
+
+function OrderRow({ order }: { order: DeliveryOrder }) {
+    const [open, setOpen] = useState(false);
+    const facts = [
+        order.order_date ? formatDate(order.order_date) : null,
+        order.items.length > 0 ? `${order.items.length} item` : null,
+        order.total > 0 ? formatCurrency(order.total) : null,
+        order.state !== 'terbit' && order.created_by
+            ? `oleh ${order.created_by}`
+            : null,
+    ].filter(Boolean);
+
+    return (
+        <li className="px-4 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+                <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">
+                        DO ke-{order.sequence}
+                        <span className="tabular font-normal text-muted-foreground">
+                            {' '}
+                            · {order.number ?? 'Belum bernomor'}
+                        </span>
+                    </p>
+                    {facts.length > 0 && (
+                        <p className="tabular text-xs text-muted-foreground">
+                            {facts.join(' · ')}
+                        </p>
+                    )}
+                </div>
+                <StateBadge order={order} />
+                {order.document && (
+                    <Button asChild size="sm" variant="outline">
+                        <a
+                            href={order.document.preview_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <Eye className="size-3.5" />
+                            Preview PDF
+                        </a>
+                    </Button>
+                )}
+                <DetailToggle open={open} onToggle={() => setOpen(!open)} />
+            </div>
+
+            {open && (
+                <div className="mt-3 space-y-3 border-t border-border pt-3">
+                    <RequestProgress
+                        steps={DO_STEPS}
+                        current={DO_STEP_OF[order.state] ?? 0}
+                        returned={order.state === 'dikembalikan'}
+                    />
+                    <Summary order={order} />
+                    {order.document && (
+                        <RequestDocumentActions document={order.document} />
+                    )}
+                    <StepList steps={order.steps} />
+                </div>
+            )}
+        </li>
+    );
+}
+
+/** Who did what, and when. */
+function StepList({
+    steps,
+}: {
+    steps: Array<{ label: string; by: string | null; at: string }>;
+}) {
+    if (steps.length === 0) {
+        return null;
+    }
+
+    return (
+        <ul className="space-y-1 text-xs text-muted-foreground">
+            {steps.map((step) => (
+                <li key={step.label} className="flex items-center gap-1.5">
+                    <CheckCircle2 className="size-3.5 text-emerald-600" />
+                    {step.label}
+                    {step.by ? ` (${step.by})` : ''} · {formatDateTime(step.at)}
+                </li>
+            ))}
+        </ul>
     );
 }
 
@@ -209,6 +372,7 @@ function ContractItemsSection({
     editable: boolean;
 }) {
     const [editing, setEditing] = useState(false);
+    const [shown, setShown] = useState(false);
     const form = useForm<{ items: ContractItemRow[] }>({
         items: items.map((item) => ({
             id: item.id,
@@ -237,18 +401,29 @@ function ContractItemsSection({
                         Daftar Harga Satuan Kontrak
                     </p>
                     <p className="text-xs text-muted-foreground">
-                        Material / jasa yang tercantum di lampiran kontrak KHS.
-                        Setiap DO menarik item dari daftar ini.
+                        {items.length > 0
+                            ? `${items.length} item dari lampiran kontrak; setiap DO memilih item dari daftar ini.`
+                            : 'Belum diisi.'}
                     </p>
                 </div>
-                {editable && !editing && (
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setEditing(true)}
-                    >
-                        Ubah Daftar
-                    </Button>
+                {!editing && (
+                    <div className="flex flex-wrap gap-1.5">
+                        {items.length > 0 && (
+                            <DetailToggle
+                                open={shown}
+                                onToggle={() => setShown(!shown)}
+                            />
+                        )}
+                        {editable && (
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setEditing(true)}
+                            >
+                                Ubah Daftar
+                            </Button>
+                        )}
+                    </div>
                 )}
             </header>
 
@@ -404,11 +579,7 @@ function ContractItemsSection({
                         </Button>
                     </div>
                 </form>
-            ) : items.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                    Daftar harga kontrak belum diisi.
-                </p>
-            ) : (
+            ) : !shown || items.length === 0 ? null : (
                 <ItemTable
                     rows={items.map((item) => ({
                         group_name: item.group_name,
@@ -489,6 +660,11 @@ function ItemTable({
     );
 }
 
+/**
+ * A DO waiting on the user: where it stands, and only the part that is
+ * theirs to fill in or decide. What was asked for is shown to an approver,
+ * and folded away for Rendan and Laksdan, whose forms carry it already.
+ */
 function OrderCard({
     procurementId,
     order,
@@ -499,10 +675,11 @@ function OrderCard({
     contractItems: ContractItem[];
 }) {
     const args = { procurement: procurementId, order: order.id };
+    const [details, setDetails] = useState(false);
 
     return (
-        <section className="space-y-4 rounded-md border border-border bg-card p-4">
-            <header className="flex flex-wrap items-center justify-between gap-2">
+        <section className="space-y-4 rounded-md border border-primary/30 bg-card p-4">
+            <header className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                     <p className="text-sm font-semibold">
                         DO ke-{order.sequence}
@@ -517,16 +694,14 @@ function OrderCard({
                             : ''}
                     </p>
                 </div>
-                <span
-                    className={`rounded-sm px-2 py-0.5 text-xs font-medium ${
-                        STATE_TONE[order.state] ??
-                        'bg-amber-500/10 text-amber-800 dark:text-amber-300'
-                    }`}
-                >
-                    {order.state_label}
-                    {order.revision > 0 ? ` · revisi ke-${order.revision}` : ''}
-                </span>
+                <StateBadge order={order} />
             </header>
+
+            <RequestProgress
+                steps={DO_STEPS}
+                current={DO_STEP_OF[order.state] ?? 0}
+                returned={order.state === 'dikembalikan'}
+            />
 
             {order.state === 'dikembalikan' && order.review_note && (
                 <p className="flex items-start gap-1.5 rounded-sm border border-destructive/40 bg-destructive/5 p-2.5 text-xs">
@@ -537,18 +712,27 @@ function OrderCard({
                 </p>
             )}
 
-            {order.can.request ? (
-                <RequestForm
-                    procurementId={procurementId}
-                    order={order}
-                    contractItems={contractItems}
-                />
-            ) : (
-                <Summary order={order} />
+            {order.can.request && (
+                <>
+                    <RequestForm
+                        procurementId={procurementId}
+                        order={order}
+                        contractItems={contractItems}
+                    />
+                    <RequestFile procurementId={procurementId} order={order} />
+                </>
             )}
 
-            {order.can.request && (
-                <RequestFile procurementId={procurementId} order={order} />
+            {order.can.decide && <Summary order={order} />}
+
+            {(order.can.forward || order.can.issue) && (
+                <div className="space-y-2">
+                    <DetailToggle
+                        open={details}
+                        onToggle={() => setDetails(!details)}
+                    />
+                    {details && <Summary order={order} />}
+                </div>
             )}
 
             {order.can.forward && (
@@ -564,46 +748,7 @@ function OrderCard({
             )}
 
             {order.document && (
-                <div className="flex flex-wrap items-center gap-3 rounded-sm border border-border bg-muted/40 p-2.5 text-xs">
-                    <FileText className="size-4 text-primary" />
-                    <span className="font-medium">{order.document.title}</span>
-                    <a
-                        href={order.document.preview_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-primary hover:underline"
-                    >
-                        Pratinjau
-                    </a>
-                    <a
-                        href={order.document.download_url}
-                        className="text-primary hover:underline"
-                    >
-                        Unduh PDF
-                    </a>
-                    <a
-                        href={order.document.edit_url}
-                        className="text-primary hover:underline"
-                    >
-                        Buka di editor
-                    </a>
-                </div>
-            )}
-
-            {order.steps.length > 0 && (
-                <ul className="space-y-1 text-xs text-muted-foreground">
-                    {order.steps.map((step) => (
-                        <li
-                            key={step.label}
-                            className="flex items-center gap-1.5"
-                        >
-                            <CheckCircle2 className="size-3.5 text-emerald-600" />
-                            {step.label}
-                            {step.by ? ` (${step.by})` : ''} ·{' '}
-                            {formatDateTime(step.at)}
-                        </li>
-                    ))}
-                </ul>
+                <RequestDocumentActions document={order.document} />
             )}
 
             {order.can.request && (

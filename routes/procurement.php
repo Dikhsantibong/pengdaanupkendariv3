@@ -120,7 +120,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('keuangan', [FinanceController::class, 'index'])
         ->middleware('can:menu.finance')->name('finance.index');
     Route::get('approvals', [ApprovalQueueController::class, 'index'])
-        ->middleware('can:menu.approvals')->name('approvals.index');
+        ->middleware('can:open-approvals')->name('approvals.index');
     Route::get('monitoring', [MonitoringController::class, 'index'])
         ->middleware('can:menu.monitoring')->name('monitoring.index');
     // Amendments and Delivery Orders across every contract, on the same right.
@@ -140,4 +140,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::put('notifications', [NotificationController::class, 'update'])->name('notifications.update');
+    // Polled by the open app (bell, Dashboard, browser pop-ups).
+    Route::get('notifications/feed', [NotificationController::class, 'feed'])
+        ->middleware('throttle:120,1')->name('notifications.feed');
+    Route::put('notifications/{notification}/read', [NotificationController::class, 'read'])
+        ->middleware('throttle:120,1')->name('notifications.read');
 });

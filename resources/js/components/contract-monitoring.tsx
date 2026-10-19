@@ -58,7 +58,7 @@ export type MonitoringRow = {
 };
 
 /** Issued green, returned red, drafts muted, the rest waiting amber. */
-function stateTone(state: string): string {
+export function stateTone(state: string): string {
     if (state === 'disetujui' || state === 'terbit') {
         return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400';
     }

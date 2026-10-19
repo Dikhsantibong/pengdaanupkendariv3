@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Enums\Permission;
 use App\Models\User;
 use App\Services\ProgressStatusResolver;
+use App\Support\ContractRequestQueue;
 use App\Support\Impersonation;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Logout;
@@ -14,6 +15,9 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Inertia\ExceptionResponse;
+use Inertia\Inertia;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -34,6 +38,43 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->configureGates();
         $this->configureImpersonation();
+        $this->configureErrorPages();
+    }
+
+    /**
+     * Show the application's own error page, in its look, for a page that is
+     * forbidden (403), missing (404), expired (419) or asked for too often
+     * (429), and for a server failure (500/503) outside debug mode, where
+     * the stack trace is more useful. A request asking for JSON keeps its
+     * JSON answer.
+     */
+    protected function configureErrorPages(): void
+    {
+        Inertia::handleExceptionsUsing(function (ExceptionResponse $response): ?ExceptionResponse {
+            $status = $response->statusCode();
+            $shown = config('app.debug') ? [403, 404, 419, 429] : [403, 404, 419, 429, 500, 503];
+
+            if (! in_array($status, $shown, true) || $response->request->expectsJson()) {
+                return null;
+            }
+
+            $retryAfter = $response->response->headers->get('Retry-After');
+
+            $page = $response->render('error', [
+                'status' => $status,
+                // Our own reason for a refusal (in Indonesian), not the
+                // framework's generic English one.
+                'reason' => $status === 403 && $response->exception instanceof HttpExceptionInterface
+                    && ! in_array($response->exception->getMessage(), ['', 'This action is unauthorized.'], true)
+                    ? $response->exception->getMessage()
+                    : null,
+                'retryAfter' => $status === 429 && is_numeric($retryAfter) ? (int) $retryAfter : null,
+            ]);
+
+            // Shared data (the signed-in user among it) needs the session,
+            // which a request stopped before the web middleware lacks.
+            return $response->request->hasSession() ? $page->withSharedData() : $page;
+        });
     }
 
     /**
@@ -73,6 +114,12 @@ class AppServiceProvider extends ServiceProvider
         foreach (Permission::cases() as $permission) {
             Gate::define($permission->value, fn (User $user): bool => $user->hasPermission($permission));
         }
+
+        // The Approval menu: its own right, or a part in the amendments and
+        // Delivery Orders (TL, Asman, Rendan, Laksdan), whose decisions are
+        // queued there too.
+        Gate::define('open-approvals', fn (User $user): bool => $user->hasPermission(Permission::MenuApprovals)
+            || ContractRequestQueue::involves($user));
 
         // Users and access rights stay with the administrator alone: anyone
         // able to change them could raise their own role.

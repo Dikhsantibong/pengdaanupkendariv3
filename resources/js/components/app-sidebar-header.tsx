@@ -3,6 +3,7 @@ import { Bell } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { ImpersonationSwitcher } from '@/components/impersonation-switcher';
 import { SidebarTrigger } from '@/components/ui/sidebar';
+import { useNotificationFeed } from '@/lib/notification-feed';
 import notifications from '@/routes/notifications';
 import type { Auth, BreadcrumbItem as BreadcrumbItemType } from '@/types';
 
@@ -15,6 +16,11 @@ export function AppSidebarHeader({
         auth: Auth;
         unreadNotifications: number;
     }>().props;
+    // Kept current by the app's polling, so the badge moves without a reload.
+    const unread = useNotificationFeed({
+        total: unreadNotifications,
+        items: [],
+    }).total;
 
     return (
         <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
@@ -41,11 +47,9 @@ export function AppSidebarHeader({
                     aria-label="Notifikasi"
                 >
                     <Bell className="size-4" />
-                    {unreadNotifications > 0 && (
+                    {unread > 0 && (
                         <span className="absolute -top-0.5 -right-0.5 inline-flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[0.625rem] leading-4 font-semibold text-white">
-                            {unreadNotifications > 9
-                                ? '9+'
-                                : unreadNotifications}
+                            {unread > 9 ? '9+' : unread}
                         </span>
                     )}
                 </Link>

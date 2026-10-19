@@ -2,8 +2,8 @@ import { router, useForm } from '@inertiajs/react';
 import {
     CheckCircle2,
     CircleAlert,
+    Eye,
     FilePlus2,
-    FileText,
     Paperclip,
     Plus,
     RotateCcw,
@@ -27,6 +27,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import procurements from '@/routes/procurements';
+import {
+    DetailToggle,
+    RequestDocumentActions,
+    RequestProgress,
+} from './request-progress';
 
 type AmendmentChange = {
     article: string;
@@ -87,11 +92,39 @@ const STATE_TONE: Record<string, string> = {
     disetujui: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
 };
 
+/** The steps of an amendment, and where each state stands among them. */
+const AMD_STEPS = ['Pengusul', 'TL', 'Asman', 'Laksdan', 'Terbit'];
+const AMD_STEP_OF: Record<string, number> = {
+    draft: 0,
+    dikembalikan: 0,
+    menunggu_persetujuan_tl: 1,
+    menunggu_persetujuan_asman: 2,
+    menunggu_tl_pengadaan: 3,
+    disetujui: AMD_STEPS.length,
+};
+
+/** Whether the user has something to do on this amendment now. */
+const actionable = (amendment: Amendment): boolean =>
+    amendment.can.update || amendment.can.decide || amendment.can.issue;
+
+function StateBadge({ amendment }: { amendment: Amendment }) {
+    return (
+        <span
+            className={`rounded-sm px-2 py-0.5 text-xs font-medium whitespace-nowrap ${
+                STATE_TONE[amendment.state] ??
+                'bg-amber-500/10 text-amber-800 dark:text-amber-300'
+            }`}
+        >
+            {amendment.state_label}
+            {amendment.revision > 0 ? ` · revisi ke-${amendment.revision}` : ''}
+        </span>
+    );
+}
+
 /**
- * The Amandemen tab: every amendment of the contract. The proposer requests
- * one (Nota Dinas usulan, Notulen, optionally the partner's request letter),
- * their TL and the division's Asman agree, and Laksdan numbers and dates it,
- * picks the changed articles from the contract and issues it.
+ * The Amandemen tab, kept to what matters now: the amendments waiting on
+ * the user open in full, every other one is a single line with its Preview
+ * PDF and a Detail to open it, the issued ones listed apart.
  */
 export function AmendmentTab({
     procurementId,
@@ -106,6 +139,16 @@ export function AmendmentTab({
     articles?: ContractArticle[];
 }) {
     const [starting, setStarting] = useState(false);
+    const newestFirst = [...amendments].reverse();
+    const mine = newestFirst.filter(actionable);
+    const running = newestFirst.filter(
+        (amendment) =>
+            !actionable(amendment) && amendment.state !== 'disetujui',
+    );
+    const issued = newestFirst.filter(
+        (amendment) =>
+            !actionable(amendment) && amendment.state === 'disetujui',
+    );
 
     return (
         <div className="space-y-4">
@@ -113,11 +156,8 @@ export function AmendmentTab({
                 <div className="text-sm">
                     <p className="font-semibold">Amandemen Kontrak</p>
                     <p className="text-xs text-muted-foreground">
-                        Pengusul mengajukan (nota dinas usulan, notulen, surat
-                        permohonan mitra bila ada) → disetujui TL dan Asman →
-                        Laksdan mengisi nomor (otomatis berurutan), tanggal, dan
-                        perubahan pasal dari kontrak, lalu menerbitkan
-                        amandemen.
+                        Perubahan pasal kontrak, diajukan pengusul dan
+                        diterbitkan Laksdan.
                     </p>
                 </div>
                 {canStart && (
@@ -142,28 +182,176 @@ export function AmendmentTab({
                 )}
             </section>
 
-            {amendments.length === 0 ? (
+            {amendments.length === 0 && (
                 <p className="rounded-md border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
                     Belum ada amandemen.
                     {!canStart &&
                         ' Amandemen dapat diajukan pengusul setelah dokumen kontrak dibuat.'}
                 </p>
-            ) : (
-                [...amendments]
-                    .reverse()
-                    .map((amendment) => (
+            )}
+
+            {mine.length > 0 && (
+                <div className="space-y-3">
+                    <p className="section-label">
+                        Perlu tindakan Anda ({mine.length})
+                    </p>
+                    {mine.map((amendment) => (
                         <AmendmentCard
                             key={amendment.id}
                             procurementId={procurementId}
                             amendment={amendment}
                             articles={articles}
                         />
-                    ))
+                    ))}
+                </div>
+            )}
+
+            {running.length > 0 && (
+                <AmendmentList
+                    title="Sedang diproses"
+                    procurementId={procurementId}
+                    amendments={running}
+                />
+            )}
+
+            {issued.length > 0 && (
+                <AmendmentList
+                    title="Amandemen terbit"
+                    procurementId={procurementId}
+                    amendments={issued}
+                />
             )}
         </div>
     );
 }
 
+/** Amendments nobody waits on the user for: a line each, opened on request. */
+function AmendmentList({
+    title,
+    procurementId,
+    amendments,
+}: {
+    title: string;
+    procurementId: number;
+    amendments: Amendment[];
+}) {
+    return (
+        <section className="overflow-hidden rounded-md border border-border bg-card">
+            <p className="section-label border-b border-border bg-muted/40 px-4 py-2">
+                {title} ({amendments.length})
+            </p>
+            <ul className="divide-y divide-border">
+                {amendments.map((amendment) => (
+                    <AmendmentRow
+                        key={amendment.id}
+                        procurementId={procurementId}
+                        amendment={amendment}
+                    />
+                ))}
+            </ul>
+        </section>
+    );
+}
+
+function AmendmentRow({
+    procurementId,
+    amendment,
+}: {
+    procurementId: number;
+    amendment: Amendment;
+}) {
+    const [open, setOpen] = useState(false);
+    const facts = [
+        amendment.amendment_date ? formatDate(amendment.amendment_date) : null,
+        amendment.changes.length > 0
+            ? `${amendment.changes.length} perubahan pasal`
+            : null,
+        amendment.state !== 'disetujui' && amendment.created_by
+            ? `oleh ${amendment.created_by}`
+            : null,
+    ].filter(Boolean);
+
+    return (
+        <li className="px-4 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+                <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">
+                        Amandemen {amendment.roman}
+                        <span className="tabular font-normal text-muted-foreground">
+                            {' '}
+                            · {amendment.number ?? 'Belum bernomor'}
+                        </span>
+                    </p>
+                    {facts.length > 0 && (
+                        <p className="tabular text-xs text-muted-foreground">
+                            {facts.join(' · ')}
+                        </p>
+                    )}
+                </div>
+                <StateBadge amendment={amendment} />
+                {amendment.document && (
+                    <Button asChild size="sm" variant="outline">
+                        <a
+                            href={amendment.document.preview_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <Eye className="size-3.5" />
+                            Preview PDF
+                        </a>
+                    </Button>
+                )}
+                <DetailToggle open={open} onToggle={() => setOpen(!open)} />
+            </div>
+
+            {open && (
+                <div className="mt-3 space-y-3 border-t border-border pt-3">
+                    <RequestProgress
+                        steps={AMD_STEPS}
+                        current={AMD_STEP_OF[amendment.state] ?? 0}
+                        returned={amendment.state === 'dikembalikan'}
+                    />
+                    <AmendmentSummary amendment={amendment} />
+                    <FileList
+                        procurementId={procurementId}
+                        amendment={amendment}
+                    />
+                    {amendment.document && (
+                        <RequestDocumentActions document={amendment.document} />
+                    )}
+                    <DecisionList decisions={amendment.decisions} />
+                </div>
+            )}
+        </li>
+    );
+}
+
+/** Who agreed, and when. */
+function DecisionList({ decisions }: { decisions: Amendment['decisions'] }) {
+    if (decisions.length === 0) {
+        return null;
+    }
+
+    return (
+        <ul className="space-y-1 text-xs text-muted-foreground">
+            {decisions.map((decision) => (
+                <li key={decision.level} className="flex items-center gap-1.5">
+                    <CheckCircle2 className="size-3.5 text-emerald-600" />
+                    {decision.level}
+                    {decision.by ? ` (${decision.by})` : ''} ·{' '}
+                    {formatDateTime(decision.at)}
+                </li>
+            ))}
+        </ul>
+    );
+}
+
+/**
+ * An amendment waiting on the user: where it stands, and only the part that
+ * is theirs. The proposer fills in the request and its papers; an approver
+ * reads the request and its papers; Laksdan has them folded away beside the
+ * issue form.
+ */
 function AmendmentCard({
     procurementId,
     amendment,
@@ -174,10 +362,11 @@ function AmendmentCard({
     articles: ContractArticle[];
 }) {
     const args = { procurement: procurementId, amendment: amendment.id };
+    const [details, setDetails] = useState(false);
 
     return (
-        <section className="space-y-4 rounded-md border border-border bg-card p-4">
-            <header className="flex flex-wrap items-center justify-between gap-2">
+        <section className="space-y-4 rounded-md border border-primary/30 bg-card p-4">
+            <header className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                     <p className="text-sm font-semibold">
                         Amandemen {amendment.roman}
@@ -189,18 +378,14 @@ function AmendmentCard({
                             : ''}
                     </p>
                 </div>
-                <span
-                    className={`rounded-sm px-2 py-0.5 text-xs font-medium ${
-                        STATE_TONE[amendment.state] ??
-                        'bg-amber-500/10 text-amber-800 dark:text-amber-300'
-                    }`}
-                >
-                    {amendment.state_label}
-                    {amendment.revision > 0
-                        ? ` · revisi ke-${amendment.revision}`
-                        : ''}
-                </span>
+                <StateBadge amendment={amendment} />
             </header>
+
+            <RequestProgress
+                steps={AMD_STEPS}
+                current={AMD_STEP_OF[amendment.state] ?? 0}
+                returned={amendment.state === 'dikembalikan'}
+            />
 
             {amendment.state === 'dikembalikan' && amendment.review_note && (
                 <p className="flex items-start gap-1.5 rounded-sm border border-destructive/40 bg-destructive/5 p-2.5 text-xs">
@@ -211,62 +396,56 @@ function AmendmentCard({
                 </p>
             )}
 
-            {amendment.can.update ? (
-                <RequestForm
-                    procurementId={procurementId}
-                    amendment={amendment}
-                />
-            ) : (
-                <AmendmentSummary amendment={amendment} />
+            {amendment.can.update && (
+                <>
+                    <RequestForm
+                        procurementId={procurementId}
+                        amendment={amendment}
+                    />
+                    <FileList
+                        procurementId={procurementId}
+                        amendment={amendment}
+                    />
+                </>
+            )}
+
+            {amendment.can.decide && (
+                <>
+                    <AmendmentSummary amendment={amendment} />
+                    <FileList
+                        procurementId={procurementId}
+                        amendment={amendment}
+                    />
+                </>
             )}
 
             {amendment.can.issue && (
-                <IssueForm
-                    procurementId={procurementId}
-                    amendment={amendment}
-                    articles={articles}
-                />
+                <>
+                    <div className="space-y-2">
+                        <DetailToggle
+                            open={details}
+                            onToggle={() => setDetails(!details)}
+                        />
+                        {details && (
+                            <>
+                                <AmendmentSummary amendment={amendment} />
+                                <FileList
+                                    procurementId={procurementId}
+                                    amendment={amendment}
+                                />
+                            </>
+                        )}
+                    </div>
+                    <IssueForm
+                        procurementId={procurementId}
+                        amendment={amendment}
+                        articles={articles}
+                    />
+                </>
             )}
-
-            <FileList procurementId={procurementId} amendment={amendment} />
 
             {amendment.document && (
-                <div className="flex flex-wrap items-center gap-2 rounded-sm border border-border bg-muted/40 p-2.5 text-xs">
-                    <FileText className="size-4 text-primary" />
-                    <span className="font-medium">
-                        {amendment.document.title}
-                    </span>
-                    <a
-                        href={amendment.document.preview_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-primary hover:underline"
-                    >
-                        Pratinjau
-                    </a>
-                    <a
-                        href={amendment.document.edit_url}
-                        className="text-primary hover:underline"
-                    >
-                        Buka di editor
-                    </a>
-                </div>
-            )}
-
-            {amendment.decisions.length > 0 && (
-                <ul className="space-y-1 text-xs text-muted-foreground">
-                    {amendment.decisions.map((decision) => (
-                        <li
-                            key={decision.level}
-                            className="flex items-center gap-1.5"
-                        >
-                            <CheckCircle2 className="size-3.5 text-emerald-600" />
-                            {decision.level}
-                            {decision.by ? ` (${decision.by})` : ''} ·{' '}
-                            {formatDateTime(decision.at)}
-                        </li>
-                    ))}
-                </ul>
+                <RequestDocumentActions document={amendment.document} />
             )}
 
             {amendment.can.update && (
@@ -801,11 +980,20 @@ function FileList({
     procurementId: number;
     amendment: Amendment;
 }) {
+    // Only what was filed, unless the papers are being filled in.
+    const shown = amendment.files.filter(
+        (entry) => amendment.can.update || entry.file,
+    );
+
+    if (shown.length === 0) {
+        return null;
+    }
+
     return (
         <div className="space-y-2">
             <p className="text-sm font-semibold">Dokumen Permohonan</p>
             <ul className="divide-y divide-border rounded-sm border border-border">
-                {amendment.files.map((entry) => (
+                {shown.map((entry) => (
                     <FileRow
                         key={entry.kind}
                         procurementId={procurementId}

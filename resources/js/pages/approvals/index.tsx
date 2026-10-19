@@ -1,5 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { ShieldCheck } from 'lucide-react';
+import { ApprovalRequestTable } from '@/components/approval-request-table';
+import type { ApprovalRequestRow } from '@/components/approval-request-table';
 import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
 import { ProcurementFilterBar } from '@/components/procurement-filter-bar';
@@ -15,7 +17,42 @@ import type {
     ProcurementRow,
 } from '@/types';
 
-type QueueKey = 'planning' | 'execution';
+type ProcurementQueueKey = 'planning' | 'execution';
+
+/** Amendments and Delivery Orders: requests, not procurements. */
+type RequestQueueKey = 'amendment' | 'delivery-order';
+
+type QueueKey = ProcurementQueueKey | RequestQueueKey;
+
+const isRequestQueue = (key: QueueKey): key is RequestQueueKey =>
+    key === 'amendment' || key === 'delivery-order';
+
+/** Who acts on each request queue, and what an empty one says. */
+const requestCopy: Record<
+    RequestQueueKey,
+    Record<QueueView, [string, string]>
+> = {
+    amendment: {
+        waiting: [
+            'Tidak ada amandemen yang menunggu Anda',
+            'Amandemen yang perlu persetujuan TL / Asman atau penerbitan Laksdan akan tampil di sini.',
+        ],
+        decided: [
+            'Belum ada amandemen yang Anda putuskan',
+            'Amandemen yang Anda setujui, kembalikan, atau terbitkan akan tampil di sini.',
+        ],
+    },
+    'delivery-order': {
+        waiting: [
+            'Tidak ada Delivery Order yang menunggu Anda',
+            'DO yang perlu persetujuan TL / Asman, Nota Dinas DO (Rendan), atau penerbitan (Laksdan) akan tampil di sini.',
+        ],
+        decided: [
+            'Belum ada Delivery Order yang Anda proses',
+            'DO yang Anda setujui, kembalikan, teruskan, atau terbitkan akan tampil di sini.',
+        ],
+    },
+};
 
 type QueueView = 'waiting' | 'decided';
 
@@ -27,7 +64,7 @@ type Queue = {
 
 /** What each queue shows, and who decides it. */
 const queueCopy: Record<
-    QueueKey,
+    ProcurementQueueKey,
     {
         decider: string;
         columns: Record<QueueView, ProcurementColumn[]>;
@@ -75,6 +112,7 @@ export default function ApprovalIndex({
     queue,
     view,
     procurements: page,
+    requests = null,
     filters,
     options,
 }: {
@@ -82,6 +120,8 @@ export default function ApprovalIndex({
     queue: QueueKey | null;
     view: QueueView;
     procurements: Paginated<ProcurementRow> | null;
+    /** The amendment or DO queue's page, when that queue is open. */
+    requests?: Paginated<ApprovalRequestRow> | null;
     filters: ProcurementFilters;
     options: FilterOptions;
 }) {
@@ -112,15 +152,16 @@ export default function ApprovalIndex({
                 <PageHeader
                     eyebrow="Persetujuan"
                     title="Antrean Approval"
-                    description="Hanya antrean yang menjadi keputusan Anda yang ditampilkan: perencanaan untuk TL ICC, pelaksanaan untuk TL Pengadaan."
+                    description="Hanya antrean yang menjadi keputusan Anda yang ditampilkan: perencanaan untuk TL ICC, pelaksanaan untuk TL Pengadaan, serta amandemen dan Delivery Order untuk TL, Asman, Rendan, dan Laksdan yang terlibat."
                 />
 
-                {queue === null || page === null ? (
+                {queue === null ||
+                (isRequestQueue(queue) ? requests === null : page === null) ? (
                     <div className="rounded-md border border-border bg-card">
                         <EmptyState
                             icon={ShieldCheck}
                             title="Tidak ada antrean persetujuan untuk Anda"
-                            description="Akun ini tidak memegang hak persetujuan perencanaan maupun pelaksanaan."
+                            description="Akun ini tidak memegang hak persetujuan perencanaan, pelaksanaan, amandemen, maupun Delivery Order."
                         />
                     </div>
                 ) : (
@@ -195,19 +236,40 @@ export default function ApprovalIndex({
                             </div>
                         </div>
 
-                        <ProcurementFilterBar
-                            url={url}
-                            filters={filters}
-                            options={options}
-                            persist={persist}
-                        />
+                        {isRequestQueue(queue)
+                            ? requests && (
+                                  <ApprovalRequestTable
+                                      page={requests}
+                                      decided={view === 'decided'}
+                                      emptyTitle={requestCopy[queue][view][0]}
+                                      emptyDescription={
+                                          requestCopy[queue][view][1]
+                                      }
+                                  />
+                              )
+                            : page && (
+                                  <>
+                                      <ProcurementFilterBar
+                                          url={url}
+                                          filters={filters}
+                                          options={options}
+                                          persist={persist}
+                                      />
 
-                        <ProcurementTable
-                            page={page}
-                            columns={queueCopy[queue].columns[view]}
-                            emptyTitle={queueCopy[queue].empty[view][0]}
-                            emptyDescription={queueCopy[queue].empty[view][1]}
-                        />
+                                      <ProcurementTable
+                                          page={page}
+                                          columns={
+                                              queueCopy[queue].columns[view]
+                                          }
+                                          emptyTitle={
+                                              queueCopy[queue].empty[view][0]
+                                          }
+                                          emptyDescription={
+                                              queueCopy[queue].empty[view][1]
+                                          }
+                                      />
+                                  </>
+                              )}
                     </>
                 )}
             </div>

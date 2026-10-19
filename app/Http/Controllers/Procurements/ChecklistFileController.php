@@ -8,6 +8,7 @@ use App\Models\Procurement;
 use App\Models\ProcurementChecklist;
 use App\Models\ProcurementChecklistFile;
 use App\Services\ProcurementService;
+use App\Support\UploadedFileType;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -46,18 +47,19 @@ class ChecklistFileController extends Controller
         $files = $request->file('files', []);
 
         $stored = DB::transaction(fn () => collect($files)->map(function (UploadedFile $file) use ($request, $checklist): ProcurementChecklistFile {
-            $extension = strtolower($file->getClientOriginalExtension() ?: (string) $file->extension());
-            // The stored name never reuses what the browser reported.
+            // The stored name and type come from the content, never from what
+            // the browser reported.
+            $extension = UploadedFileType::extension($file);
             $path = $file->storeAs(
                 self::DIRECTORY.'/'.$checklist->id,
-                Str::random(20).($extension === '' ? '' : '.'.$extension),
+                Str::random(20).'.'.$extension,
                 'local',
             );
 
             return $checklist->files()->create([
                 'path' => $path,
                 'file_name' => $file->getClientOriginalName(),
-                'mime' => $file->getMimeType(),
+                'mime' => UploadedFileType::mime($file),
                 'size' => $file->getSize(),
                 'uploaded_by' => $request->user()->id,
             ]);
@@ -84,11 +86,12 @@ class ChecklistFileController extends Controller
         abort_unless($checklist->procurement_id === $procurement->id && $file->procurement_checklist_id === $checklist->id, 404);
         $this->authorize('view', $procurement);
 
-        if ($request->boolean('download')) {
-            return Storage::disk('local')->download($file->path, $file->file_name);
-        }
-
-        return Storage::disk('local')->response($file->path, $file->file_name, $file->mime === null ? [] : ['Content-Type' => $file->mime]);
+        return Storage::disk('local')->response(
+            $file->path,
+            $file->file_name,
+            UploadedFileType::headers($file->mime),
+            UploadedFileType::disposition($file->mime, ! $request->boolean('download')),
+        );
     }
 
     /**

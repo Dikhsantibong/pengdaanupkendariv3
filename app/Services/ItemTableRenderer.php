@@ -22,6 +22,12 @@ class ItemTableRenderer
     /**
      * Document types and the layout of their item table.
      */
+    /**
+     * Bumped whenever the drawing changes, so documents drawn before are
+     * drawn again.
+     */
+    public const VERSION = 2;
+
     public const LAYOUTS = [
         'ba-negosiasi-sppl' => 'nego',
         'ba-negosiasi' => 'nego',
@@ -258,10 +264,12 @@ class ItemTableRenderer
         }
 
         $total = $items->sum(fn (ProcurementContractItem $item): float => $item->totalBefore());
-        $drawn[] = '<tr class="total"><td colspan="5" class="right">Jumlah</td>'
+        $jumlah = '<tr class="total"><td colspan="5" class="right">Jumlah</td>'
             .'<td class="right">'.$this->money($total).',00</td><td></td></tr>';
 
-        return $this->rebuild($table, [$rows[0], ...$this->blankRows($rows, 0, $totalAt), ...$drawn, ...array_slice($rows, $totalAt + 1)]);
+        // The items right under the heading, then the template's empty rows,
+        // then the Jumlah row.
+        return $this->rebuild($table, [$rows[0], ...$drawn, ...$this->blankRows($rows, 0, $totalAt), $jumlah, ...array_slice($rows, $totalAt + 1)]);
     }
 
     /**

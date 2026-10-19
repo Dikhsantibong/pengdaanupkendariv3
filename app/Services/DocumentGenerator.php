@@ -537,6 +537,7 @@ class DocumentGenerator
         $quotes = ProcurementItemQuotation::query()->whereIn('procurement_contract_item_id', (clone $items)->select('id'));
 
         return implode('/', [
+            ItemTableRenderer::VERSION,
             $items->count(),
             $items->max('updated_at'),
             $quotes->count(),

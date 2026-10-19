@@ -581,8 +581,8 @@ Sebelum proses perencanaan dimulai, **Team Leader Pengadaan** wajib menunjuk **1
 
 | Tahapan | Cara penyelesaian |
 |---------|-------------------|
-| RAB (Rencana Anggaran Biaya) | **Unggah saja** — dilewati untuk format SPPL |
-| Penawaran | **Unggah saja** — untuk SPPL sekaligus mencakup RAB |
+| Evaluasi Harga (dulu RAB) | Generate dari Rincian Item (harga per calon mitra), lalu unggah hasil tanda tangan — dilewati untuk format SPPL (lihat poin 19) |
+| Penawaran | **Isian** calon mitra beserta penawarannya — untuk SPPL satu mitra tunjuk langsung, sekaligus mencakup Evaluasi Harga |
 | CSMS (Sertifikat) — opsional | **Unggah saja** |
 | Nota Dinas ke Pengadaan | **Unggah saja** |
 | HPE (Harga Perkiraan Engineer) | Generate dari template, lalu unggah hasil tanda tangan |
@@ -1101,8 +1101,144 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 - Bila pengadaan belum punya calon mitra, editor Evaluasi Harga menampilkan pesan agar calon mitra ditambahkan dulu.
 - **Isian awal:** HPE, UPB, dan Evaluasi Harga tanpa Rincian Item langsung membuka grid berisi baris pekerjaan seperti yang tercetak di template (nama pekerjaan, 1 LOT, nilai HPE). Baris ini baru tersimpan saat Simpan Perubahan.
 - Tempel dari Excel mengikuti urutan kolom yang tampil.
+- **Perbaikan urutan baris HPE:** item kini tercetak tepat di bawah kepala tabel, lalu baris kosong pengisi, lalu baris Jumlah. Sebelumnya baris kosong berada di atas item, sehingga data terdorong ke bawah tabel. Dokumen yang belum diedit tersusun ulang otomatis (`ItemTableRenderer::VERSION` ikut dalam sidik pembaruan dokumen).
 - **Perbaikan:** dokumen yang belum diedit (mis. Surat Pesanan) kini ikut tersusun ulang saat Rincian Item berubah. Sebelumnya cache pembaruan dokumen tidak memperhitungkan Rincian Item, sehingga Surat Pesanan masih mencetak judul kelompok sebagai item "Lot Rp 0". Selain itu, `syncItemDocuments` tidak lagi mengubah dokumen yang sudah diunggah versi bertanda tangannya.
 - **Test:** `ProcurementItemsTest::test_an_unedited_document_follows_items_changed_elsewhere`.
+
+### 21. Keamanan Berkas Unggahan
+- **Cara penyimpanan (sudah ada):** semua unggahan disimpan di disk privat `storage/app/private` (di luar folder publik, tanpa `public/storage`) dengan nama acak. Berkas hanya dibuka lewat rute aplikasi yang memeriksa hak `view` pengadaan dan kepemilikan berkasnya. Unggahan dibatasi PDF/JPG/PNG (lampiran usulan juga DOC/XLS), maksimal 20 MB.
+- **Celah yang ditutup:** akhiran nama berkas dan jenisnya dulu memakai nama dan jenis kiriman browser. Akibatnya, berkas berisi PDF yang diberi nama `.html` (polyglot PDF/HTML berisi script) lolos validasi, tersimpan sebagai `.html`, dan saat dipratinjau bisa tampil sebagai halaman web di domain aplikasi (XSS).
+- **Perbaikan:**
+  - Kelas baru `App\Support\UploadedFileType` menentukan akhiran dan jenis berkas dari **isinya**. Kelas ini dipakai di semua tempat unggah: dokumen bertanda tangan (`SignedDocumentStore`), berkas checklist, penawaran calon mitra, berkas amandemen, permintaan DO, dan lampiran usulan.
+  - Saat ditampilkan, berkas memakai jenis dari daftar putih (PDF, JPEG, PNG tampil di browser; selain itu hanya diunduh) ditambah header `X-Content-Type-Options: nosniff`. Berkas lama yang tercatat dengan jenis kiriman browser ikut aman, karena jenis di luar daftar putih selalu diunduh.
+  - Rute bawaan `storage/{path}` (GET dan PUT) ditutup dengan `'serve' => false` pada disk `local` di `config/filesystems.php`, karena aplikasi tidak memakainya.
+- **Belum ada (di luar aplikasi):** enkripsi berkas di disk, pemindaian virus, dan backup folder `storage/app/private` (perlu diatur di server).
+- **Test:** `UploadSecurityTest`.
+
+### 22. Halaman Error (403, 404, 419, 429, 500, 503)
+- Halaman error bawaan Laravel diganti halaman milik aplikasi (`resources/js/pages/error.tsx`) dengan gaya korporat biru-putih yang sama (sesuai Panduan Tema):
+  - header berlogo PLN "Management Pengadaan · UP Kendari";
+  - kartu putih dengan garis aksen biru, ikon dan kode status besar berwarna biru, judul, penjelasan, dan saran langkah;
+  - footer PT PLN Nusantara Power · UP Kendari.
+- Isi per status:
+
+| Status | Judul | Tombol |
+|---|---|---|
+| 403 | Anda tidak memiliki akses ke halaman ini (alasan khusus dari sistem, mis. saat Pindah Akun, ikut ditampilkan) | Ke Dashboard / Masuk, Kembali |
+| 404 | Halaman tidak ditemukan | Ke Dashboard / Masuk, Kembali |
+| 419 | Sesi halaman sudah berakhir | Muat Ulang, Ke Dashboard, Kembali |
+| 429 | Terlalu banyak permintaan dalam waktu singkat, dengan hitung mundur "Coba lagi dalam N detik" dari header `Retry-After` | Muat Ulang (aktif setelah hitung mundur), Ke Dashboard, Kembali |
+| 500 / 503 | Terjadi kesalahan pada sistem / Sistem sedang dalam pemeliharaan | Muat Ulang, Ke Dashboard, Kembali |
+
+- Tombol Ke Dashboard tampil untuk pengguna yang sudah masuk; pengunjung mendapat tombol Masuk.
+- **Teknis:**
+  - `Inertia::handleExceptionsUsing` di `AppServiceProvider::configureErrorPages`.
+  - Status 500/503 hanya memakai halaman ini saat `APP_DEBUG=false`, agar stack trace tetap terlihat saat pengembangan.
+  - Permintaan JSON tetap mendapat jawaban JSON.
+  - `Route::fallback` di `routes/web.php` membuat alamat yang tidak dikenal tetap melewati session, sehingga halaman 404 tahu siapa yang login.
+- **Test:** `ErrorPagesTest`.
+
+### 23. Persetujuan Pelaksanaan di Kolom Kanan
+- Kartu **Persetujuan Pelaksanaan** (ajukan ke TL Pengadaan, catatan, Setujui & Teruskan ke Keuangan / Kembalikan) dipindah dari bawah checklist tab Pelaksanaan ke **kolom kanan** detail pengadaan, tepat di bawah kartu Persetujuan Perencanaan. Dengan begitu kolom kanan yang tadinya kosong terpakai, dan tombol persetujuan langsung terlihat tanpa menggulir checklist yang panjang.
+- Gayanya disamakan dengan kartu Persetujuan Perencanaan: label bagian, lencana status, dan tombol selebar kartu. Kartu tetap hanya muncul setelah perencanaan disetujui. Setelah diserahkan ke Keuangan, kartu berganti menjadi keterangan "Pelaksanaan disetujui dan diserahkan ke Keuangan".
+- Di layar sempit, kolom kanan tetap turun ke bawah konten seperti sebelumnya.
+- **Lebih ringkas:** daftar "Tahapan wajib yang belum selesai" di kartu Persetujuan Pelaksanaan dan Persetujuan Perencanaan (kolom kanan) diganti satu baris, misalnya "8 tahapan wajib di checklist Pelaksanaan belum selesai", karena tahapannya sudah terlihat di checklist di sebelahnya. Daftar di tab Pembayaran tetap.
+
+### 24. Amandemen & Delivery Order di Menu Approval
+- **Sebelumnya:** menu Approval hanya berisi antrean Perencanaan (TL ICC) dan Pelaksanaan (TL Pengadaan). Persetujuan Amandemen dan DO hanya bisa ditemukan lewat notifikasi atau tab Amandemen/DO di detail pengadaan.
+- **Sekarang** ada dua antrean baru, **Amandemen** dan **Delivery Order**, masing-masing dengan jumlah yang menunggu, tab Menunggu Keputusan / Riwayat Keputusan, dan tombol **Tinjau** yang membuka tab Amandemen/DO pengadaan itu (keputusan diambil di sana, dengan isi permohonan lengkap).
+- **Siapa melihat apa** (aturan sama dengan policy, `App\Support\ContractRequestQueue`):
+
+| Langkah | Amandemen | DO |
+|---|---|---|
+| Persetujuan TL | TL atasan pengusul | TL atasan pengusul |
+| Persetujuan Asman | Direksi Pekerjaan bidang pengadaan | Direksi Pekerjaan bidang pengadaan |
+| Rendan (Nota Dinas DO) | — | PIC Perencana pengadaan itu, atau TL (TL ICC/TL Pengadaan/Admin) |
+| Laksdan (penerbitan) | PIC Pelaksana pengadaan itu, TL Pengadaan, Admin | PIC Pelaksana pengadaan itu, TL Pengadaan, Admin |
+
+  Tidak ada yang memutuskan permohonannya sendiri. Riwayat Keputusan berisi permohonan yang pernah disetujui/dikembalikan, diteruskan, atau diterbitkan pengguna itu.
+- **Akses menu:** menu Approval kini juga terbuka bagi yang terlibat (mis. Asman dan TL atasan yang tidak memegang hak Menu Approval), lewat gate `open-approvals`. Pengguna yang tidak terlibat dan tidak punya hak tetap tidak melihat menu ini.
+- **Test:** `ContractApprovalQueueTest`; `ApprovalQueueTest` disesuaikan (TL ICC kini juga mendapat antrean DO, TL Pengadaan antrean Amandemen dan DO).
+
+### 25. Notifikasi Realtime, Pop-up Browser, dan Panel Dashboard
+- **Sebelumnya:** notifikasi tersimpan di database dan hanya tampil lewat ikon lonceng dan halaman Notifikasi. Angka di lonceng baru berubah saat berpindah halaman, tidak ada notifikasi browser, dan notifikasi hanya bisa ditandai dibaca sekaligus.
+- **Realtime (tanpa library baru):**
+  - Aplikasi yang terbuka memeriksa notifikasi baru setiap 15 detik dan setiap kali tab kembali aktif, lewat `GET notifications/feed`.
+  - Angka di lonceng dan panel Dashboard langsung berubah tanpa memuat ulang halaman.
+  - Notifikasi baru muncul sebagai pemberitahuan di dalam aplikasi (dengan tombol Buka).
+- **Pop-up browser:**
+  - Tombol **Aktifkan Notifikasi Browser** ada di panel Dashboard dan halaman Notifikasi; browser meminta izin sekali.
+  - Setelah diizinkan, notifikasi baru tampil sebagai pop-up browser saat aplikasi tidak sedang di depan (tab lain, jendela lain, atau diperkecil). Mengklik pop-up membuka pengadaannya dan menandai notifikasi dibaca.
+  - Satu notifikasi hanya diumumkan sekali walau aplikasi terbuka di beberapa tab.
+  - Batasan: pop-up hanya muncul selama aplikasi terbuka di salah satu tab, dan memerlukan HTTPS di production (localhost dikecualikan). Pemberitahuan saat browser tertutup memerlukan Web Push atau WebSocket (Laravel Reverb), yang butuh paket dan proses server tambahan.
+- **Panel "Notifikasi Belum Dibaca" di Dashboard:** tampil paling atas setiap kali aplikasi dibuka selama masih ada notifikasi yang belum dibaca (hingga 5 terbaru, dengan tautan Lihat semua). Tiap notifikasi punya tombol **Buka** dan **Tandai dibaca**, ditambah **Tandai semua dibaca**. Panel hilang sendiri saat semua sudah dibaca.
+- **Tautan tepat sasaran:** notifikasi Amandemen dan DO kini membuka tab Amandemen/DO pengadaannya (`ProcurementMilestone` menyimpan `tab`).
+- **Tandai dibaca per notifikasi:** `PUT notifications/{id}/read`, juga di halaman Notifikasi.
+- **Teknis:** `App\Support\NotificationFeed`, `NotificationController::feed/read`, `resources/js/lib/notification-feed.ts`, `components/notification-watcher.tsx` (dipasang di layout aplikasi), `notification-panel.tsx`, `browser-notification-toggle.tsx`.
+- **Test:** `NotificationFeedTest`.
+
+### 26. Notifikasi Realtime dengan Laravel Reverb
+- **Terpasang:** `laravel/reverb` (Composer), `laravel-echo`, `pusher-js`, dan `@laravel/echo-react` (npm), lewat `php artisan install:broadcasting --reverb`.
+  - Berkas baru: `config/broadcasting.php`, `config/reverb.php`, dan `routes/channels.php` (kanal privat `App.Models.User.{id}`, hanya pemiliknya yang boleh mendengar). `bootstrap/app.php` kini mendaftarkan `channels`.
+  - `.env`: `BROADCAST_CONNECTION=reverb`, serta `REVERB_*` dan `VITE_REVERB_*`.
+- **Alur:**
+  1. Setiap notifikasi yang tersimpan memicu listener `App\Listeners\BroadcastUnreadNotifications`. Listener ini berjalan **setelah transaksi database selesai**, jadi notifikasi yang batal (rollback) tidak pernah disiarkan.
+  2. Listener menyiarkan event `App\Events\UnreadNotificationsChanged` (`notifications.changed`, `ShouldBroadcastNow`) ke kanal pemiliknya, berisi daftar notifikasi belum dibaca terbaru dan id notifikasi yang baru.
+  3. Tab aplikasi yang terbuka langsung memperbarui lonceng dan panel Dashboard, lalu menampilkan pemberitahuan dalam aplikasi atau pop-up browser.
+  4. Menandai dibaca (satu atau semua) juga disiarkan, sehingga tab dan perangkat lain ikut berubah.
+- **Aman bila Reverb mati:** kegagalan siaran hanya dicatat di log (`rescue`). Batas waktu koneksi ke Reverb 2–3 detik (`client_options` di `config/broadcasting.php`), dan polling tetap berjalan sebagai cadangan setiap 60 detik serta saat tab kembali aktif.
+- **Otorisasi kanal:** Echo dikonfigurasi di `resources/js/lib/echo.ts` dengan `channelAuthorization.customHandler` yang mengirim cookie `XSRF-TOKEN` setiap kali otorisasi. Halaman tidak memakai tag meta csrf-token, dan cara ini tetap berlaku setelah login atau Pindah Akun.
+  - Bila `VITE_REVERB_APP_KEY` belum terbaca oleh Vite, Echo tidak dipasang dan aplikasi tetap memakai polling.
+- **Menjalankan:**
+  - `composer run dev` kini juga menjalankan `php artisan reverb:start`.
+  - Di production, Reverb dijalankan sebagai proses tetap (mis. Supervisor), lalu `REVERB_HOST`/`REVERB_PORT`/`REVERB_SCHEME` disesuaikan dengan domain HTTPS (biasanya lewat reverse proxy `wss`).
+- **Asal koneksi:** `config/reverb.php` membaca `REVERB_ALLOWED_ORIGINS` (dipisah koma, bawaan `*`). Di production isi dengan domain aplikasi. Semua variabel Reverb kini tercantum di `.env.example`.
+- **Panduan production:**
+  1. Butuh server yang bisa menjalankan proses tetap dan reverse proxy WebSocket (VPS dengan Supervisor dan Nginx/Apache). Tanpa itu, aplikasi tetap berjalan dengan polling 60 detik.
+  2. Backup database. Lalu `composer install --no-dev --optimize-autoloader`.
+  3. Atur `.env` production:
+     - **Server ke Reverb (jalur internal):** `BROADCAST_CONNECTION=reverb`, kunci `REVERB_APP_*` baru, `REVERB_HOST=127.0.0.1`, `REVERB_PORT=8080`, `REVERB_SCHEME=http`, `REVERB_SERVER_HOST=127.0.0.1`, `REVERB_SERVER_PORT=8080`, `REVERB_ALLOWED_ORIGINS=<domain>`.
+     - **Browser ke Reverb (jalur publik):** `VITE_REVERB_HOST=<domain>`, `VITE_REVERB_PORT=443`, `VITE_REVERB_SCHEME=https`.
+  4. `npm ci && npm run build`, setelah `.env` diisi, karena nilai `VITE_REVERB_*` ikut dibangun ke aset.
+  5. `php artisan migrate --force`, lalu `php artisan optimize`.
+  6. Supervisor menjalankan `php artisan reverb:start --host=127.0.0.1 --port=8080`. Nginx meneruskan `location /app/` (dengan garis miring, agar `/approvals` tidak ikut tertangkap) ke `http://127.0.0.1:8080` dengan header `Upgrade`/`Connection "Upgrade"` (Apache: `mod_proxy_wstunnel`, `ProxyPass /app/ ws://127.0.0.1:8080/app/`). Port 8080 tidak perlu dibuka ke publik.
+  7. Setiap deploy berikutnya: `php artisan reverb:restart`.
+  8. Cek di DevTools → Network → WS: koneksi `wss://<domain>/app/...` berstatus 101.
+- **Perbaikan ikut serta:**
+  - Halaman Notifikasi sempat error `Cannot read properties of undefined (reading 'toString')` karena tab yang masih memakai kode lama menerima data format baru. Data notifikasi kini tetap menyertakan `procurement_id` untuk tab atau build lama.
+  - Tombol Aktifkan Notifikasi Browser sempat menyebabkan *hydration mismatch* di Dashboard. Status izin kini dibaca lewat `useSyncExternalStore`, dengan snapshot server yang sama dengan render server.
+- **Test:** `RealtimeNotificationTest` (siaran saat notifikasi baru dan saat dibaca, tidak ada siaran saat rollback, pekerjaan tetap jalan bila Reverb tak terjangkau, otorisasi kanal hanya untuk pemiliknya).
+
+### 27. Tab DO dan Amandemen Lebih Ringkas
+- **Masalah:** tab DO dan Amandemen menampilkan semuanya sekaligus: paragraf alur yang panjang, seluruh daftar harga kontrak, dan setiap permohonan sebagai kartu besar berisi semua rincian, termasuk DO/Amandemen yang sudah terbit. Pengguna sulit menemukan apa yang harus dikerjakan.
+- **Susunan baru** (berlaku untuk kedua tab; data dan alur di server tidak berubah):
+  - **Judul satu baris** menggantikan paragraf alur.
+  - **Perlu tindakan Anda:** hanya permohonan yang menunggu tindakan pengguna (mengisi, menyetujui, Nota Dinas DO, atau menerbitkan) yang tampil sebagai kartu lengkap berbingkai biru. Kartu hanya memuat bagian milik pengguna:
+    - pengusul mendapat isian dan unggahan;
+    - penyetuju mendapat ringkasan, berkas, dan tombol Setujui/Kembalikan;
+    - Rendan/Laksdan mendapat formnya, dengan rincian permohonan dilipat di balik tombol Detail.
+  - **Sedang diproses** dan **DO terbit / Amandemen terbit:** satu baris per permohonan (nomor, tanggal, jumlah item atau perubahan pasal, total, status) dengan tombol **Preview PDF** dan **Detail**. Detail membuka tahapan, ringkasan, berkas, tombol dokumen (Preview PDF, Unduh PDF, Edit), dan riwayat persetujuan.
+  - **Indikator tahapan** di setiap permohonan: DO = Pengusul › TL › Asman › Rendan › Laksdan › Terbit; Amandemen = Pengusul › TL › Asman › Laksdan › Terbit. Tahap selesai dicentang, tahap berjalan berwarna kuning (merah bila dikembalikan).
+  - **Daftar Harga Satuan Kontrak** (DO) dilipat secara bawaan. Yang tampil hanya jumlah item dengan tombol Detail dan Ubah Daftar.
+  - **Dokumen Permohonan** (Amandemen) hanya menampilkan berkas yang diunggah, kecuali saat pengusul mengisinya.
+  - Tombol dokumen diseragamkan dengan checklist: Preview PDF, Unduh PDF, Edit.
+- **Teknis:** komponen bersama `components/procurement/request-progress.tsx` (`RequestProgress`, `RequestDocumentActions`, `DetailToggle`), dipakai di `delivery-order-tab.tsx` dan `amendment-tab.tsx`.
+
+### 28. Riwayat Status & Sisa Tahapan Menuju Terkontrak
+- **Sebelumnya:** kartu Status Progres hanya menampilkan status saat ini. Status otomatis diubah diam-diam tanpa catatan, jadi tidak ada riwayat dan tidak terlihat berapa langkah lagi.
+- **Riwayat status:** tabel baru `procurement_status_histories` mencatat setiap status yang dimasuki pengadaan, beserta nama status saat itu, waktu, dan pengguna yang tindakannya memicu perubahan.
+  - Status otomatis dicatat di `ProgressStatusResolver::apply`. Status saat pengadaan dibuat atau diubah manual (Batal / cabut pembatalan) dicatat lewat event `saved` pada model.
+  - **Pengadaan lama** disusun ulang riwayatnya oleh migrasi `create_procurement_status_histories_table` dari jejak aktivitas: usulan diajukan/disetujui/dikembalikan, perencanaan diajukan/disetujui/ditolak, pelaksanaan diajukan/disetujui/ditolak, diserahkan ke Keuangan, pembayaran, dan pembatalan. Riwayat ditutup dengan status saat ini.
+  - Tahap yang tidak meninggalkan jejak aktivitas (mis. Penyusunan RKS) tetap tampil di urutan sebagai selesai, tetapi tanpa tanggal.
+- **Urutan tahapan sesuai format** (`ProgressStatusResolver::path` dan `journey`):
+  - **SPK/PJ:** (bila berawal dari usulan: Penyusunan TOR › Draft Nodis Usulan › Approval Usulan ›) Inisiasi Rendan › Penyusunan RKS › Menunggu Penawaran › Draft Nodis ke Pengadaan › Menunggu Approval ICC › Inisiasi Laksdan › Penyusunan HPS › Proses SMART SCM › Penyusunan Kontrak › Menunggu Approval TL Pengadaan › **Terkontrak** › Selesai.
+  - **SPPL:** (usulan ›) Inisiasi Rendan › Draft Nota Dinas ke Laksdan › Menunggu Approval ICC › Inisiasi Laksdan › Penyusunan Surat Pesanan › Menunggu Approval TL Pengadaan › **Terkontrak** › Selesai.
+  - Status Revisi Usulan/Perencanaan/Pelaksanaan menempati posisi tahap persetujuannya. Status yang dinonaktifkan di Data Master tidak dihitung.
+- **Kartu Status Progres** kini menampilkan:
+  - "Tahap X dari Y" dengan bilah kemajuan, dan **"N status lagi menuju Terkontrak"** (atau "Sudah terkontrak");
+  - daftar tahapan: tahap selesai dicentang biru dengan tanggal masuk, tahap sekarang ditandai kuning "· sekarang", sisanya abu-abu;
+  - tombol **Riwayat status (n)** yang membuka daftar perubahan status (terbaru di atas) dengan waktu dan pelakunya.
+- **Test:** `StatusJourneyTest`.
 
 ---
 

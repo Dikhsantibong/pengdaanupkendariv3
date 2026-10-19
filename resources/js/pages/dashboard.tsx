@@ -31,6 +31,7 @@ import type {
     StageCount,
 } from '@/components/dashboard/role-dashboard';
 import { EmptyState } from '@/components/empty-state';
+import { NotificationPanel } from '@/components/notification-panel';
 import { PageHeader } from '@/components/page-header';
 import { StatCard } from '@/components/stat-card';
 import { StatusBadge } from '@/components/status-badge';
@@ -49,6 +50,7 @@ import {
     formatDate,
     formatDateTime,
 } from '@/lib/format';
+import type { Feed } from '@/lib/notification-feed';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import approvals from '@/routes/approvals';
@@ -110,11 +112,13 @@ type DashboardProps = Partial<ManagementData> & {
         totalHpe: number;
     };
     tasks: DashboardTasks;
+    /** Unread notifications, shown on top until read. */
+    notifications: Feed;
 };
 
 export default function Dashboard(props: DashboardProps) {
     const { auth } = usePage<{ auth: Auth }>().props;
-    const { profile, role, tasks, summary } = props;
+    const { profile, role, tasks, summary, notifications } = props;
 
     return (
         <>
@@ -138,6 +142,8 @@ export default function Dashboard(props: DashboardProps) {
                         ) : undefined
                     }
                 />
+
+                <NotificationPanel initial={notifications} />
 
                 <TaskInbox tasks={tasks} menus={auth.permissions.menus} />
 

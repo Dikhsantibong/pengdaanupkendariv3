@@ -1,25 +1,19 @@
-import { Head, Link, router } from '@inertiajs/react';
-import { BellOff, CheckCheck } from 'lucide-react';
+import { Head, router } from '@inertiajs/react';
+import { BellOff, Check, CheckCheck } from 'lucide-react';
+import { BrowserNotificationToggle } from '@/components/browser-notification-toggle';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { formatDateTime } from '@/lib/format';
+import { markRead, openNotification } from '@/lib/notification-feed';
+import type { FeedItem } from '@/lib/notification-feed';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import notifications from '@/routes/notifications';
-import procurements from '@/routes/procurements';
 import type { Paginated } from '@/types';
 
-type NotificationRow = {
-    id: string;
-    title: string;
-    message: string;
-    procurement_id: number | null;
-    procurement_number: string | null;
-    read_at: string | null;
-    created_at: string;
-};
+type NotificationRow = FeedItem;
 
 export default function NotificationIndex({
     notifications: page,
@@ -38,21 +32,24 @@ export default function NotificationIndex({
                     title="Notifikasi"
                     description="Pemberitahuan penugasan PIC, pengajuan persetujuan, dan keputusan Team Leader."
                     actions={
-                        hasUnread && (
-                            <Button
-                                variant="outline"
-                                onClick={() =>
-                                    router.put(
-                                        notifications.update().url,
-                                        {},
-                                        { preserveScroll: true },
-                                    )
-                                }
-                            >
-                                <CheckCheck className="size-4" />
-                                Tandai semua dibaca
-                            </Button>
-                        )
+                        <>
+                            <BrowserNotificationToggle />
+                            {hasUnread && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() =>
+                                        router.put(
+                                            notifications.update().url,
+                                            {},
+                                            { preserveScroll: true },
+                                        )
+                                    }
+                                >
+                                    <CheckCheck className="size-4" />
+                                    Tandai semua dibaca
+                                </Button>
+                            )}
+                        </>
                     }
                 />
 
@@ -100,22 +97,39 @@ export default function NotificationIndex({
                                         </p>
                                     </div>
 
-                                    {row.procurement_id !== null && (
+                                    <div className="flex shrink-0 gap-1">
+                                        {row.read_at === null && (
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="ghost"
+                                                title="Tandai dibaca"
+                                                aria-label="Tandai dibaca"
+                                                onClick={() =>
+                                                    void markRead(row.id).then(
+                                                        () =>
+                                                            router.reload({
+                                                                only: [
+                                                                    'notifications',
+                                                                ],
+                                                            }),
+                                                    )
+                                                }
+                                            >
+                                                <Check className="size-4" />
+                                            </Button>
+                                        )}
                                         <Button
-                                            asChild
+                                            type="button"
                                             size="sm"
                                             variant="ghost"
-                                            className="shrink-0"
+                                            onClick={() =>
+                                                void openNotification(row)
+                                            }
                                         >
-                                            <Link
-                                                href={procurements.show(
-                                                    row.procurement_id,
-                                                )}
-                                            >
-                                                Buka
-                                            </Link>
+                                            Buka
                                         </Button>
-                                    )}
+                                    </div>
                                 </li>
                             ))}
                         </ul>

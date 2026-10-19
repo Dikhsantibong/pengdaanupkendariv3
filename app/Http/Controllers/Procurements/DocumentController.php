@@ -18,6 +18,7 @@ use App\Services\DocumentGenerator;
 use App\Services\DocumentPdfRenderer;
 use App\Services\ProcurementItemService;
 use App\Services\SignedDocumentStore;
+use App\Support\UploadedFileType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -425,13 +426,14 @@ class DocumentController extends Controller
 
         abort_unless($upload->procurement_document_id === $document->id, 404);
 
-        if ($request->boolean('preview') || $request->query('disposition') === 'inline') {
-            $headers = $upload->mime !== null ? ['Content-Type' => $upload->mime] : [];
+        $inline = $request->boolean('preview') || $request->query('disposition') === 'inline';
 
-            return $this->signed->disk()->response($upload->path, $upload->file_name, $headers);
-        }
-
-        return $this->signed->disk()->download($upload->path, $upload->file_name);
+        return $this->signed->disk()->response(
+            $upload->path,
+            $upload->file_name,
+            UploadedFileType::headers($upload->mime),
+            UploadedFileType::disposition($upload->mime, $inline),
+        );
     }
 
     /**

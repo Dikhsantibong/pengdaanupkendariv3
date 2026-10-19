@@ -7,6 +7,7 @@ use App\Http\Requests\Procurements\ReviewPlanningRequest;
 use App\Models\Procurement;
 use App\Models\ProcurementDeliveryOrder;
 use App\Services\DeliveryOrderService;
+use App\Support\UploadedFileType;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -117,10 +118,12 @@ class DeliveryOrderController extends Controller
 
         abort_if($order->request_file_path === null || ! Storage::disk('local')->exists($order->request_file_path), 404);
 
-        return Storage::disk('local')->response($order->request_file_path, $order->request_file_name, [
-            'Content-Type' => $order->request_file_mime ?? 'application/octet-stream',
-            'X-Content-Type-Options' => 'nosniff',
-        ], 'inline');
+        return Storage::disk('local')->response(
+            $order->request_file_path,
+            $order->request_file_name,
+            UploadedFileType::headers($order->request_file_mime),
+            UploadedFileType::disposition($order->request_file_mime),
+        );
     }
 
     /**

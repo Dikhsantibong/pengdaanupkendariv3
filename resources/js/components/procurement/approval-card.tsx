@@ -247,15 +247,13 @@ export function ApprovalCard({
                         <CircleAlert className="size-3.5 text-amber-600 dark:text-amber-400" />
                         Belum dapat diajukan
                     </p>
+                    {/* Only how many: the checklist beside it lists them. */}
                     <p className="text-xs text-muted-foreground">
-                        Lengkapi {pendingRequired.length} tahapan wajib berikut
-                        terlebih dahulu:
+                        <b className="font-medium text-foreground">
+                            {pendingRequired.length} tahapan wajib
+                        </b>{' '}
+                        di checklist Perencanaan belum selesai.
                     </p>
-                    <ul className="list-disc space-y-0.5 pl-4 text-xs text-muted-foreground">
-                        {pendingRequired.map((name) => (
-                            <li key={name}>{name}</li>
-                        ))}
-                    </ul>
                 </div>
             )}
 

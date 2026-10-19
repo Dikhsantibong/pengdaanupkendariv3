@@ -6,6 +6,7 @@ use App\Enums\ActivityType;
 use App\Models\ProcurementDocument;
 use App\Models\ProcurementDocumentUpload;
 use App\Models\User;
+use App\Support\UploadedFileType;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
@@ -124,14 +125,14 @@ class SignedDocumentStore
         UploadedFile $file,
         User $uploader,
     ): ProcurementDocumentUpload {
-        $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension());
-        // The stored name never reuses what the browser reported, so a crafted
-        // file name cannot steer where the file lands.
+        $extension = UploadedFileType::extension($file);
+        // The stored name and type never reuse what the browser reported, so a
+        // crafted file name cannot steer where the file lands or how it opens.
         $name = Str::slug(pathinfo($document->file_name, PATHINFO_FILENAME)).'-ttd-'.Str::random(10);
 
         $path = $file->storeAs(
             self::DIRECTORY.'/'.$document->getKey(),
-            $name.($extension === '' ? '' : '.'.$extension),
+            $name.'.'.$extension,
             'local',
         );
 
@@ -140,7 +141,7 @@ class SignedDocumentStore
         return $document->signedUploads()->create([
             'path' => $path === false ? '' : $path,
             'file_name' => $file->getClientOriginalName(),
-            'mime' => $file->getClientMimeType(),
+            'mime' => UploadedFileType::mime($file),
             'size' => $size === false ? null : $size,
             'uploaded_by' => $uploader->id,
         ]);

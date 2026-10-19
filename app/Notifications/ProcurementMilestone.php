@@ -18,6 +18,8 @@ class ProcurementMilestone extends Notification
         public Procurement $procurement,
         public string $title,
         public string $message,
+        // The tab of the procurement it is about (amandemen, do), if any.
+        public ?string $tab = null,
     ) {}
 
     /**
@@ -42,6 +44,7 @@ class ProcurementMilestone extends Notification
             'message' => $this->message,
             'procurement_id' => $this->procurement->id,
             'procurement_number' => $this->procurement->number,
+            'tab' => $this->tab,
         ];
     }
 }

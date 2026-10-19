@@ -11,6 +11,7 @@ use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementChecklist;
 use App\Models\ProcurementDocument;
+use App\Models\ProcurementStatusHistory;
 use App\Models\ProgressStatus;
 use Illuminate\Support\Collection;
 
@@ -338,6 +339,7 @@ class ProgressStatusResolver
         }
 
         Procurement::withTrashed()->whereKey($procurement->getKey())->update(['progress_status_id' => $id]);
+        ProcurementStatusHistory::record((int) $procurement->getKey(), $id);
 
         $procurement->forceFill(['progress_status_id' => $id])->syncOriginalAttribute('progress_status_id');
         $procurement->unsetRelation('progressStatus');
@@ -356,6 +358,92 @@ class ProgressStatusResolver
             ->pluck('id', 'system_key')
             ->map(fn ($id): int => (int) $id)
             ->all();
+    }
+
+    /**
+     * The statuses the job goes through on its way, in order: the proposal
+     * (when it began as one), the planning and the execution of its own
+     * format (SPPL is shorter), then Terkontrak and Selesai.
+     *
+     * @return list<SystemStatus>
+     */
+    public function path(Procurement $procurement): array
+    {
+        $proposal = $procurement->proposal_submitted_at !== null
+            ? [SystemStatus::PenyusunanTor, SystemStatus::DraftNodisUsulan, SystemStatus::ApprovalUsulan]
+            : [];
+
+        $sppl = $this->isSuratPesanan($procurement);
+
+        $planning = $sppl
+            ? [SystemStatus::InisiasiRendan, SystemStatus::DraftNodisLaksdan, SystemStatus::ApprovalIcc]
+            : [SystemStatus::InisiasiRendan, SystemStatus::PenyusunanRks, SystemStatus::MenungguPenawaran, SystemStatus::DraftNodisPengadaan, SystemStatus::ApprovalIcc];
+
+        $execution = $sppl
+            ? [SystemStatus::InisiasiLaksdan, SystemStatus::PenyusunanSuratPesanan, SystemStatus::ApprovalTlPengadaan]
+            : [SystemStatus::InisiasiLaksdan, SystemStatus::PenyusunanHps, SystemStatus::ProsesSmartScm, SystemStatus::PenyusunanKontrak, SystemStatus::ApprovalTlPengadaan];
+
+        return [...$proposal, ...$planning, ...$execution, SystemStatus::Terkontrak, SystemStatus::Selesai];
+    }
+
+    /**
+     * Where the job stands on its way, for the Status Progres card: each
+     * status of its path (done, current or still ahead, with when it was
+     * entered), its place, and how many statuses are left to Terkontrak.
+     *
+     * A status sent back for revision stands in the place of the approval
+     * it returned from. Statuses switched off on the master data are not
+     * on the way, since they are never set.
+     *
+     * @return array{steps: list<array{key: string, name: string, state: string, at: string|null}>, position: int|null, to_contract: int, remaining: int|null, revision: string|null, cancelled: bool}
+     */
+    public function journey(Procurement $procurement): array
+    {
+        $names = ProgressStatus::query()->active()->whereNotNull('system_key')->pluck('name', 'system_key');
+        $path = array_values(array_filter(
+            $this->path($procurement),
+            fn (SystemStatus $status): bool => $names->has($status->value),
+        ));
+
+        $current = $procurement->progressStatus->systemStatus();
+        $standsFor = match ($current) {
+            SystemStatus::RevisiUsulan => SystemStatus::ApprovalUsulan,
+            SystemStatus::RevisiPerencanaan => SystemStatus::ApprovalIcc,
+            SystemStatus::RevisiPelaksanaan => SystemStatus::ApprovalTlPengadaan,
+            default => $current,
+        };
+        $found = $standsFor === null ? false : array_search($standsFor, $path, true);
+        $position = $found === false ? null : $found;
+
+        // When each status was last entered.
+        $entered = $procurement->statusHistories()
+            ->whereNotNull('system_key')
+            ->get(['system_key', 'created_at'])
+            ->mapWithKeys(fn (ProcurementStatusHistory $entry): array => [(string) $entry->system_key => $entry->created_at?->toIso8601String()]);
+
+        $steps = array_map(fn (SystemStatus $status, int $index): array => [
+            'key' => $status->value,
+            'name' => (string) $names->get($status->value),
+            'state' => match (true) {
+                $position === null => 'upcoming',
+                $index < $position, $status === SystemStatus::Selesai && $index === $position => 'done',
+                $index === $position => 'current',
+                default => 'upcoming',
+            },
+            'at' => $position !== null && $index <= $position ? $entered->get($status->value) : null,
+        ], $path, array_keys($path));
+
+        $contract = array_search(SystemStatus::Terkontrak, $path, true);
+        $toContract = $contract === false ? count($path) : $contract + 1;
+
+        return [
+            'steps' => $steps,
+            'position' => $position === null ? null : $position + 1,
+            'to_contract' => $toContract,
+            'remaining' => $position === null ? null : max(0, $toContract - 1 - $position),
+            'revision' => $current !== $standsFor ? $procurement->progressStatus->name : null,
+            'cancelled' => $current === SystemStatus::Batal,
+        ];
     }
 
     /**

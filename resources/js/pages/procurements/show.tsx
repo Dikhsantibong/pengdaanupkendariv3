@@ -21,6 +21,10 @@ import { IdentityPanel } from '@/components/procurement/identity-panel';
 import { PicAssignmentCard } from '@/components/procurement/pic-assignment-card';
 import { ProposalDocuments } from '@/components/procurement/proposal-documents';
 import { StatusCard } from '@/components/procurement/status-card';
+import type {
+    StatusHistoryEntry,
+    StatusJourney,
+} from '@/components/procurement/status-card';
 import { DownloadAllButton } from '@/components/procurement-table';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -42,6 +46,8 @@ type ShowProps = {
         notes: string | null;
         /** When the current, automatic status applies. */
         status_rule: string | null;
+        status_journey: StatusJourney;
+        status_history: StatusHistoryEntry[];
         planning_review_note: string | null;
         planning_submitted_at: string | null;
         planning_reviewed_at: string | null;
@@ -390,16 +396,6 @@ export default function ShowProcurement({
                                               : 'Anda tidak memiliki akses untuk mengubah checklist ini.'
                                     }
                                 />
-                                <ExecutionApproval
-                                    procurementId={procurement.id}
-                                    finance={detail.finance}
-                                    canSubmit={can.submitExecution}
-                                    canReview={can.reviewExecution}
-                                    planningApproved={
-                                        procurement.planning_approval_state ===
-                                        'disetujui'
-                                    }
-                                />
                             </TabsContent>
 
                             <TabsContent
@@ -476,6 +472,8 @@ export default function ShowProcurement({
                             procurementId={procurement.id}
                             status={procurement.status}
                             rule={detail.status_rule}
+                            journey={detail.status_journey}
+                            history={detail.status_history}
                             editable={can.updateStatus}
                         />
 
@@ -496,6 +494,19 @@ export default function ShowProcurement({
                             canRevert={can.revertPlanningRejection}
                             canComplete={can.complete}
                             completedAt={procurement.completed_at}
+                        />
+
+                        {/* Beside the long execution checklist, in the
+                            column that is otherwise empty below the cards. */}
+                        <ExecutionApproval
+                            procurementId={procurement.id}
+                            finance={detail.finance}
+                            canSubmit={can.submitExecution}
+                            canReview={can.reviewExecution}
+                            planningApproved={
+                                procurement.planning_approval_state ===
+                                'disetujui'
+                            }
                         />
 
                         <PicAssignmentCard

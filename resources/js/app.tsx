@@ -6,6 +6,10 @@ import AppLayout from '@/layouts/app-layout';
 import AuthShowcaseLayout from '@/layouts/auth/auth-showcase-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+import { setupEcho } from '@/lib/echo';
+
+// Realtime notifications over Reverb (see lib/echo.ts).
+setupEcho();
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -14,8 +18,10 @@ createInertiaApp({
     layout: (name) => {
         switch (true) {
             // Pages seen without an account, including the assessment signing
-            // pages reached from a WhatsApp link: no signed-in shell.
+            // pages reached from a WhatsApp link and the error page: no
+            // signed-in shell.
             case name === 'welcome':
+            case name === 'error':
             case name.startsWith('public-monitoring/'):
             case name.startsWith('assessment-signing/'):
                 return null;

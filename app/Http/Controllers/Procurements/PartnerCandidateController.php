@@ -9,6 +9,7 @@ use App\Models\Procurement;
 use App\Models\ProcurementPartnerCandidate;
 use App\Services\DocumentGenerator;
 use App\Services\ProcurementService;
+use App\Support\UploadedFileType;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -129,8 +130,8 @@ class PartnerCandidateController extends Controller
         return Storage::disk('local')->response(
             $candidate->quotation_file_path,
             $candidate->quotation_file_name,
-            ['Content-Type' => $candidate->quotation_file_mime ?? 'application/octet-stream'],
-            'inline',
+            UploadedFileType::headers($candidate->quotation_file_mime),
+            UploadedFileType::disposition($candidate->quotation_file_mime),
         );
     }
 
@@ -146,10 +147,10 @@ class PartnerCandidateController extends Controller
             return;
         }
 
-        $extension = strtolower($file->getClientOriginalExtension() ?: (string) $file->extension());
+        $extension = UploadedFileType::extension($file);
         $path = $file->storeAs(
             'penawaran-calon-mitra/'.$candidate->procurement_id,
-            'penawaran-'.$candidate->id.'-'.Str::random(10).($extension === '' ? '' : '.'.$extension),
+            'penawaran-'.$candidate->id.'-'.Str::random(10).'.'.$extension,
             'local',
         );
 
@@ -158,7 +159,7 @@ class PartnerCandidateController extends Controller
         $candidate->forceFill([
             'quotation_file_path' => $path,
             'quotation_file_name' => $file->getClientOriginalName(),
-            'quotation_file_mime' => $file->getMimeType(),
+            'quotation_file_mime' => UploadedFileType::mime($file),
             'quotation_file_size' => $file->getSize(),
         ])->save();
 

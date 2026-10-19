@@ -22,6 +22,7 @@ use App\Notifications\ProcurementAssigned;
 use App\Notifications\ProcurementMilestone;
 use App\Notifications\ProposalReviewed;
 use App\Notifications\ProposalSubmitted;
+use App\Support\UploadedFileType;
 use Database\Seeders\FinanceStageSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -942,9 +943,10 @@ class ProcurementService
     {
         foreach ($files as $file) {
             $procurement->attachments()->create([
+                // A random name with the extension of the content.
                 'path' => $file->store('proposal-attachments/'.$procurement->id, 'local'),
                 'file_name' => $file->getClientOriginalName(),
-                'mime' => $file->getClientMimeType(),
+                'mime' => UploadedFileType::mime($file),
                 'size' => $file->getSize(),
                 'uploaded_by' => $uploader->id,
             ]);

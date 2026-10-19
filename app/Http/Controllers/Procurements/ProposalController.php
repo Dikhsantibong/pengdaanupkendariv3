@@ -12,6 +12,7 @@ use App\Models\ProcurementAttachment;
 use App\Models\User;
 use App\Services\ProcurementService;
 use App\Support\ProposalDocuments;
+use App\Support\UploadedFileType;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -245,9 +246,12 @@ class ProposalController extends Controller
         $this->authorize('view', $procurement);
         abort_unless($attachment->procurement_id === $procurement->id, 404);
 
-        return Storage::disk('local')->response($attachment->path, $attachment->file_name, [
-            'Content-Type' => $attachment->mime ?? 'application/octet-stream',
-        ], $attachment->isPreviewable() ? 'inline' : 'attachment');
+        return Storage::disk('local')->response(
+            $attachment->path,
+            $attachment->file_name,
+            UploadedFileType::headers($attachment->mime),
+            UploadedFileType::disposition($attachment->mime, $attachment->isPreviewable()),
+        );
     }
 
     /**

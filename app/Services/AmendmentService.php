@@ -15,6 +15,7 @@ use App\Models\ProcurementAmendmentFile;
 use App\Models\User;
 use App\Notifications\ProcurementMilestone;
 use App\Support\IndonesianNumber;
+use App\Support\UploadedFileType;
 use Carbon\CarbonImmutable;
 use DOMDocument;
 use DOMElement;
@@ -131,11 +132,12 @@ class AmendmentService
     {
         $previous = $amendment->files()->where('kind', $kind->value)->get();
 
-        $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension());
-        // The stored name never reuses what the browser sent.
+        // The stored name and type come from the content, never from what the
+        // browser sent.
+        $extension = UploadedFileType::extension($file);
         $path = $file->storeAs(
             self::DIRECTORY.'/'.$amendment->id,
-            Str::slug($kind->value).'-'.Str::random(12).($extension === '' ? '' : '.'.$extension),
+            Str::slug($kind->value).'-'.Str::random(12).'.'.$extension,
             'local',
         );
 
@@ -143,7 +145,7 @@ class AmendmentService
             'kind' => $kind,
             'path' => $path === false ? '' : $path,
             'file_name' => Str::limit($file->getClientOriginalName(), 240, ''),
-            'mime' => $file->getClientMimeType(),
+            'mime' => UploadedFileType::mime($file),
             'size' => $file->getSize() ?: null,
             'uploaded_by' => $uploader->id,
         ]);
@@ -253,6 +255,7 @@ class AmendmentService
                 $procurement,
                 'Amandemen dikembalikan',
                 "Amandemen {$amendment->roman()} {$procurement->name} dikembalikan oleh {$who}.".($note !== null ? " Catatan: {$note}" : ''),
+                'amandemen',
             ));
         }
 
@@ -287,7 +290,7 @@ class AmendmentService
         collect([$amendment->creator, $procurement->executor])
             ->filter()
             ->unique('id')
-            ->each(fn (User $user) => $user->notify(new ProcurementMilestone($procurement, 'Amandemen terbit', $message)));
+            ->each(fn (User $user) => $user->notify(new ProcurementMilestone($procurement, 'Amandemen terbit', $message, 'amandemen')));
 
         return $amendment;
     }
@@ -502,6 +505,7 @@ class AmendmentService
             $amendment->state === AmendmentState::MenungguTlPengadaan
                 ? "Amandemen {$amendment->roman()} {$procurement->number} - {$procurement->name} disetujui Asman. Isi tanggal dan perubahan pasal, lalu terbitkan."
                 : "Amandemen {$amendment->roman()} {$procurement->number} - {$procurement->name} menunggu persetujuan Anda.",
+            'amandemen',
         );
 
         $recipients = match ($amendment->state) {

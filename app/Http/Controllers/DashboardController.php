@@ -8,6 +8,7 @@ use App\Http\Resources\ProcurementResource;
 use App\Models\Procurement;
 use App\Models\ProgressStatus;
 use App\Support\DashboardTasks;
+use App\Support\NotificationFeed;
 use App\Support\RoleDashboard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -55,6 +56,8 @@ class DashboardController extends Controller
                 'totalHpe' => (float) $base()->sum('hpe_value'),
             ],
             'tasks' => DashboardTasks::for($user),
+            // Shown at the top until read, kept current by the app's polling.
+            'notifications' => NotificationFeed::unread($user, 5),
         ];
 
         if ($profile !== 'manajemen') {

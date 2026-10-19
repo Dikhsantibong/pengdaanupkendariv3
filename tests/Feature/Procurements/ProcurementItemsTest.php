@@ -229,9 +229,13 @@ class ProcurementItemsTest extends TestCase
         $this->assertStringContainsString('<td class="right">1.000.000,00</td>', $hpe);
         $this->assertStringContainsString('<td class="right">1.200.000,00</td><td></td></tr>', $hpe);
         $this->assertSame(1, substr_count($hpe, 'class="total"'));
-        // The template's empty rows still sit above the Jumlah row.
+        // The items right under the heading, then the template's empty rows,
+        // then the Jumlah row.
         $this->assertSame(3, substr_count($hpe, 'class="blank"'));
+        $this->assertLessThan(strpos($hpe, 'class="blank"'), strpos($hpe, '<td>Masker</td>'));
         $this->assertLessThan(strpos($hpe, 'class="total"'), strrpos($hpe, 'class="blank"'));
+        // Drawn again (on every save), the order holds.
+        $this->assertSame($hpe, $renderer->apply($hpe, 'hpe', $items));
 
         // SPK: "A. group" and "- item" rows under the work's own row, its
         // deadline spanning them all; the JUMLAH/PPN/TOTAL rows stay.

@@ -13,6 +13,7 @@ use App\Models\ProcurementContractItem;
 use App\Models\ProcurementDeliveryOrder;
 use App\Models\User;
 use App\Notifications\ProcurementMilestone;
+use App\Support\UploadedFileType;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
@@ -160,11 +161,12 @@ class DeliveryOrderService
      */
     public function attachRequest(ProcurementDeliveryOrder $order, UploadedFile $file): void
     {
-        $extension = strtolower($file->getClientOriginalExtension() ?: (string) $file->extension());
-        // The stored name never reuses what the browser sent.
+        // The stored name and type come from the content, never from what the
+        // browser sent.
+        $extension = UploadedFileType::extension($file);
         $path = $file->storeAs(
             self::DIRECTORY.'/'.$order->id,
-            'nota-dinas-usulan-'.Str::random(12).($extension === '' ? '' : '.'.$extension),
+            'nota-dinas-usulan-'.Str::random(12).'.'.$extension,
             'local',
         );
 
@@ -173,7 +175,7 @@ class DeliveryOrderService
         $order->forceFill([
             'request_file_path' => $path === false ? null : $path,
             'request_file_name' => Str::limit($file->getClientOriginalName(), 240, ''),
-            'request_file_mime' => $file->getClientMimeType(),
+            'request_file_mime' => UploadedFileType::mime($file),
             'request_file_size' => $file->getSize() ?: null,
         ])->save();
 
@@ -380,7 +382,7 @@ class DeliveryOrderService
         $message = "DO ke-{$order->sequence} {$procurement->number} - {$procurement->name}: {$order->state->label()}."
             .($note !== null ? " Catatan: {$note}" : '');
 
-        collect($recipients)->filter()->unique('id')->each(fn (User $user) => $user->notify(new ProcurementMilestone($procurement, $title, $message)));
+        collect($recipients)->filter()->unique('id')->each(fn (User $user) => $user->notify(new ProcurementMilestone($procurement, $title, $message, 'do')));
     }
 
     protected function log(ProcurementDeliveryOrder $order, User $actor, ActivityType $type, string $description): void

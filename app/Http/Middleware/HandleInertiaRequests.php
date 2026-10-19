@@ -66,6 +66,8 @@ class HandleInertiaRequests extends Middleware
                         ->mapWithKeys(fn (Permission $permission): array => [
                             substr($permission->value, 5) => $user !== null && $user->hasPermission($permission),
                         ])
+                        // Whoever decides amendments or DOs gets the Approval menu too.
+                        ->put('approvals', $user !== null && Gate::forUser($user)->allows('open-approvals'))
                         ->all(),
                 ],
             ],

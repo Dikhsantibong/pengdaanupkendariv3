@@ -12,6 +12,7 @@ use App\Models\Procurement;
 use App\Models\ProcurementAmendment;
 use App\Models\ProcurementAmendmentFile;
 use App\Services\AmendmentService;
+use App\Support\UploadedFileType;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -135,10 +136,12 @@ class AmendmentController extends Controller
 
         abort_unless(Storage::disk('local')->exists($file->path), 404);
 
-        return Storage::disk('local')->response($file->path, $file->file_name, [
-            'Content-Type' => $file->mime ?? 'application/octet-stream',
-            'X-Content-Type-Options' => 'nosniff',
-        ], 'inline');
+        return Storage::disk('local')->response(
+            $file->path,
+            $file->file_name,
+            UploadedFileType::headers($file->mime),
+            UploadedFileType::disposition($file->mime),
+        );
     }
 
     /**

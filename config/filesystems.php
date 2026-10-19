@@ -33,7 +33,9 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // Uploaded papers are only served by the app's own routes, which
+            // check who may see them; no /storage/{path} route is opened.
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],

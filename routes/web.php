@@ -34,3 +34,7 @@ require __DIR__.'/procurement.php';
 require __DIR__.'/master-data.php';
 require __DIR__.'/vendor-assessment.php';
 require __DIR__.'/settings.php';
+
+// Any other address: the 404 page, through the web middleware, so it knows
+// who is signed in as every other page does.
+Route::fallback(fn () => abort(404));

@@ -201,6 +201,12 @@ class Procurement extends Model
         });
 
         static::saved(function (Procurement $procurement): void {
+            // A status given on creation or set by hand enters the history;
+            // the automatic one is recorded where it is set.
+            if ($procurement->wasRecentlyCreated || $procurement->wasChanged('progress_status_id')) {
+                ProcurementStatusHistory::record($procurement->id, (int) $procurement->progress_status_id);
+            }
+
             // Whether a waiting proposal may reach its TL / Asman yet, then
             // the status that follows from it.
             app(ProcurementService::class)->syncProposalReadiness($procurement);
@@ -654,6 +660,16 @@ class Procurement extends Model
     {
         return in_array($this->contractNumberFormat?->code, ['SPK', 'PJ'], true)
             && $this->contractType?->code === 'khs';
+    }
+
+    /**
+     * Every progress status the procurement entered, in order.
+     *
+     * @return HasMany<ProcurementStatusHistory, $this>
+     */
+    public function statusHistories(): HasMany
+    {
+        return $this->hasMany(ProcurementStatusHistory::class)->orderBy('created_at')->orderBy('id');
     }
 
     /**

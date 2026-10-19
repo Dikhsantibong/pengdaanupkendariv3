@@ -33,7 +33,7 @@ class ApprovalQueueTest extends TestCase
         ]);
     }
 
-    public function test_tl_icc_sees_only_the_planning_queue(): void
+    public function test_tl_icc_sees_the_planning_queue_and_the_do_queue_as_rendan(): void
     {
         $this->actingAs(User::factory()->teamLeaderIcc()->create())
             ->get(route('approvals.index'))
@@ -41,8 +41,8 @@ class ApprovalQueueTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('approvals/index')
                 ->where('queue', 'planning')
-                ->has('queues', 1)
-                ->where('queues.0.key', 'planning')
+                // Not the execution or amendment queues: those are not theirs.
+                ->where('queues', fn ($queues): bool => collect($queues)->pluck('key')->all() === ['planning', 'delivery-order'])
                 ->where('queues.0.waiting', 1)
                 ->has('procurements.data', 1)
                 ->where('procurements.data.0.id', $this->planningWaiting->id));
@@ -56,15 +56,15 @@ class ApprovalQueueTest extends TestCase
                 ->where('procurements.data.0.id', $this->planningWaiting->id));
     }
 
-    public function test_tl_pengadaan_sees_only_the_execution_queue(): void
+    public function test_tl_pengadaan_sees_the_execution_queue_and_the_contract_requests(): void
     {
         $this->actingAs(User::factory()->teamLeaderPengadaan()->create())
             ->get(route('approvals.index', ['queue' => 'planning']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('queue', 'execution')
-                ->has('queues', 1)
-                ->where('queues.0.key', 'execution')
+                // Not the planning queue; amendments and DOs are issued by Laksdan.
+                ->where('queues', fn ($queues): bool => collect($queues)->pluck('key')->all() === ['execution', 'amendment', 'delivery-order'])
                 ->has('procurements.data', 1)
                 ->where('procurements.data.0.id', $this->executionWaiting->id));
     }
@@ -76,7 +76,7 @@ class ApprovalQueueTest extends TestCase
         $this->actingAs($admin)
             ->get(route('approvals.index', ['queue' => 'execution']))
             ->assertInertia(fn (Assert $page) => $page
-                ->has('queues', 2)
+                ->has('queues', 4)
                 ->where('queue', 'execution')
                 ->where('procurements.data.0.id', $this->executionWaiting->id));
     }

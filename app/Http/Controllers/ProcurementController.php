@@ -18,12 +18,14 @@ use App\Models\Procurement;
 use App\Models\ProcurementAmendment;
 use App\Models\ProcurementDeliveryOrder;
 use App\Models\ProcurementDocument;
+use App\Models\ProcurementStatusHistory;
 use App\Models\User;
 use App\Services\AmendmentService;
 use App\Services\ContractRequirementReader;
 use App\Services\DeliveryOrderService;
 use App\Services\DocumentGenerator;
 use App\Services\ProcurementService;
+use App\Services\ProgressStatusResolver;
 use App\Support\MasterDataOptions;
 use App\Support\ProcurementFilters;
 use App\Support\ProposalDocuments;
@@ -213,6 +215,24 @@ class ProcurementController extends Controller
                 'notes' => $procurement->notes,
                 // The status is set by the system; this says why it is the one shown.
                 'status_rule' => $procurement->progressStatus->systemStatus()?->rule(),
+                // Where the job stands on its way to Terkontrak, and every
+                // status it entered.
+                'status_journey' => app(ProgressStatusResolver::class)->journey($procurement),
+                'status_history' => $procurement->statusHistories()
+                    ->with('user:id,name')
+                    ->reorder()
+                    ->latest('created_at')
+                    ->latest('id')
+                    ->limit(30)
+                    ->get()
+                    ->map(fn (ProcurementStatusHistory $entry): array => [
+                        'id' => $entry->id,
+                        'name' => $entry->status_name,
+                        'key' => $entry->system_key,
+                        'by' => $entry->user?->name,
+                        'at' => $entry->created_at?->toIso8601String(),
+                    ])
+                    ->all(),
                 'planning_review_note' => $procurement->planning_review_note,
                 'planning_submitted_at' => $procurement->planning_submitted_at?->toDateTimeString(),
                 'planning_reviewed_at' => $procurement->planning_reviewed_at?->toDateTimeString(),

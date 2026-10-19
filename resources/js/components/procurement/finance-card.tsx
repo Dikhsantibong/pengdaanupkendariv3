@@ -1,5 +1,11 @@
 import { router, useForm } from '@inertiajs/react';
-import { BadgeCheck, Landmark, RotateCcw, Send } from 'lucide-react';
+import {
+    BadgeCheck,
+    CircleAlert,
+    Landmark,
+    RotateCcw,
+    Send,
+} from 'lucide-react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { ApprovalBadge } from '@/components/status-badge';
@@ -57,7 +63,8 @@ function PendingSteps({ title, steps }: { title: string; steps: string[] }) {
 
 /**
  * The execution PIC submits the finished execution and TL Pengadaan approves
- * it into Penyerahan and Pembayaran, shown at the end of the execution tab.
+ * it into Penyerahan and Pembayaran, shown in the side column under the
+ * planning approval, in the same card style.
  */
 export function ExecutionApproval({
     procurementId,
@@ -86,8 +93,8 @@ export function ExecutionApproval({
 
     if (finance.submitted_at !== null) {
         return (
-            <p className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-                <Landmark className="size-4 shrink-0 text-primary" />
+            <p className="flex items-start gap-2 rounded-md border border-border bg-card p-4 text-xs text-muted-foreground">
+                <Landmark className="mt-0.5 size-4 shrink-0 text-primary" />
                 <span>
                     Pelaksanaan disetujui dan diserahkan ke Keuangan{' '}
                     {formatDateTime(finance.submitted_at)}
@@ -123,15 +130,14 @@ export function ExecutionApproval({
     };
 
     return (
-        <section className="space-y-3 rounded-md border border-border bg-card p-4">
-            <div className="space-y-1.5">
+        <section className="space-y-4 rounded-md border border-border bg-card p-4">
+            <div className="space-y-2">
+                <p className="section-label">Persetujuan Pelaksanaan</p>
                 <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-semibold">
-                        Persetujuan Pelaksanaan
-                    </p>
                     <ApprovalBadge
                         state={approval.state}
                         label={approval.label}
+                        className="text-sm"
                     />
                     {approval.revision > 0 && (
                         <span className="tabular rounded-sm bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
@@ -196,15 +202,25 @@ export function ExecutionApproval({
                 </p>
             )}
 
-            {!isWaiting && (
-                <PendingSteps
-                    title="Tahapan wajib yang belum selesai:"
-                    steps={finance.pending_execution}
-                />
+            {/* Only how many: the checklist beside it already lists them. */}
+            {!isWaiting && finance.pending_execution.length > 0 && (
+                <p className="flex items-start gap-1.5 rounded-sm border border-amber-500/30 bg-amber-500/5 px-2.5 py-2 text-xs text-muted-foreground">
+                    <CircleAlert className="mt-0.5 size-3.5 shrink-0 text-amber-600" />
+                    <span>
+                        <b className="font-medium text-foreground">
+                            {finance.pending_execution.length} tahapan wajib
+                        </b>{' '}
+                        di checklist Pelaksanaan belum selesai.
+                    </span>
+                </p>
             )}
 
             {canSubmit && (
-                <Button disabled={processing} onClick={submit}>
+                <Button
+                    className="w-full"
+                    disabled={processing}
+                    onClick={submit}
+                >
                     <Send className="size-4" />
                     {isReturned
                         ? 'Ajukan Ulang ke TL Pengadaan'
@@ -230,10 +246,11 @@ export function ExecutionApproval({
                         <InputError message={reviewForm.errors.note} />
                     </div>
 
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid gap-2">
                         <Button
                             type="button"
                             size="sm"
+                            className="w-full"
                             disabled={reviewForm.processing}
                             onClick={() => decide(true)}
                         >
@@ -242,6 +259,7 @@ export function ExecutionApproval({
                         <Button
                             type="button"
                             size="sm"
+                            className="w-full"
                             variant="destructive"
                             disabled={reviewForm.processing}
                             onClick={() => decide(false)}
