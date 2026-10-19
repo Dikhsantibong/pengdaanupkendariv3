@@ -65,12 +65,14 @@ class RepairTorDocuments extends Command
                     return;
                 }
 
-                // Typed into: what was typed stays, only the kop changes.
+                // Typed into: what was typed stays; the kop changes, and the
+                // author signs as "Penyusun" instead of "User".
                 $document->loadMissing('procurement');
                 $body = TorKop::apply(
                     (string) $document->rendered_body,
                     $document->procurement->tor_issue_date ?? $document->generated_at,
                 );
+                $body = str_replace('<td>User</td>', '<td>Penyusun</td>', $body);
 
                 if (! $dryRun && $body !== $document->rendered_body) {
                     $document->forceFill(['rendered_body' => $body])->save();

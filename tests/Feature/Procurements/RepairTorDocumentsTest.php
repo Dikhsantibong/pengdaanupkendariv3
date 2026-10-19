@@ -48,7 +48,8 @@ class RepairTorDocumentsTest extends TestCase
         ProcurementDocument::query()->whereKey($document->id)->update([
             'rendered_body' => '<style>.x{}</style><table class="header"><tr><td class="header-left">logo</td><td class="header-right"><table>'
                 .'<tr><td class="label">Nomor Dokumen / Pengadaan</td><td class="colon">:</td><td>PGD/1</td></tr></table></td></tr></table>'
-                .'<p class="para">Pekerjaan ini dilaksanakan sebagai bagian dari kebutuhan.</p>',
+                .'<p class="para">Pekerjaan ini dilaksanakan sebagai bagian dari kebutuhan.</p>'
+                .'<table class="approval-table"><tr><td>User</td></tr></table>',
             'generated_at' => '2026-09-07 09:00:00',
             ...$attributes,
         ]);
@@ -104,6 +105,7 @@ class RepairTorDocumentsTest extends TestCase
         $this->assertStringNotContainsString('PGD/1', $body);
 
         // Signed: left as signed.
+        $this->assertStringContainsString('<td>Penyusun</td>', $typed->rendered_body);
         $this->assertStringContainsString('PGD/1', $signed->refresh()->rendered_body);
     }
 

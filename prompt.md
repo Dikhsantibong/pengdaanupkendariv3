@@ -1326,12 +1326,10 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 - Pendukung: `DocumentGenerator::rebuild()` membangun ulang satu dokumen dari template yang berlaku sambil menjaga tanggal generate. `App\Support\TorKop` berisi kop formulir TOR.
 - **Test:** `RepairTorDocumentsTest`.
 
-### 37. Jabatan Penyusun TOR
-- Di Lembar Pengesahan TOR, tulisan "User" di atas nama penyusun diganti jabatan pembuat usulan/pengadaan (`{{jabatan_penyusun}}`):
-  - Jabatan yang tercatat di akunnya (kolom Jabatan di Kelola Pengguna), misalnya "TL Operasi" atau "Staf Operasi".
-  - Bila jabatan kosong: **TL** jika ada anggota tim yang melapor kepadanya, selain itu **Staf**.
-- TOR yang belum diedit ikut berubah saat dibuka. TOR yang sudah diedit tetap seperti isinya.
-- **Test:** `TorHeaderTest::test_the_author_signs_under_their_title`.
+### 37. Label "Penyusun" pada Lembar Pengesahan TOR
+- Di Lembar Pengesahan TOR, tulisan "User" di atas nama pembuat usulan/pengadaan diganti **"Penyusun"**. Berlaku untuk SPK/PJ (di bawah "Disusun oleh:") dan SPPL (kolom kanan).
+- TOR yang belum diedit ikut berubah saat dibuka. Untuk TOR yang sudah diedit, `php artisan tor:perbaiki` mengganti "User" menjadi "Penyusun" bersama kop-nya, tanpa menyentuh isian lain.
+- **Test:** `TorHeaderTest`, `RepairTorDocumentsTest`.
 
 ---
 
