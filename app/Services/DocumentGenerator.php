@@ -6,6 +6,7 @@ use App\Enums\ActivityType;
 use App\Enums\AmendmentFileKind;
 use App\Enums\Permission;
 use App\Enums\ProcurementStage;
+use App\Enums\UnitManagerLevel;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
 use App\Models\Procurement;
@@ -208,8 +209,10 @@ class DocumentGenerator
         $negoPpn = $nego !== null ? (float) round($nego * 0.12) : null;
         $negoTotal = $nego !== null ? $nego + $negoPpn : null;
 
+        // The Manager of UP Kendari, not one of a Unit Layanan.
         $activeManager = UnitManager::query()
             ->where('is_active', true)
+            ->where('level', UnitManagerLevel::Manager)
             ->ordered()
             ->first();
         $managerName = $activeManager?->name ?? 'MANAGER UP KENDARI';

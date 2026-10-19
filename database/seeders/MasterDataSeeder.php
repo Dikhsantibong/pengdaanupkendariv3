@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\ChecklistInput;
 use App\Enums\ProcurementStage;
 use App\Enums\SystemStatus;
+use App\Enums\UnitManagerLevel;
 use App\Enums\WorkCategory;
 use App\Models\BudgetSource;
 use App\Models\ChecklistItem;
@@ -32,10 +33,11 @@ class MasterDataSeeder extends Seeder
     public function run(): void
     {
         $this->seedUnitManagers();
-        // The Unit Layanan officials, listed after the Manager UP Kendari.
-        $this->call(UnitLayananManagerSeeder::class);
         $this->seedWorkDirectors();
         $this->seedTargetUnits();
+        // The Unit Layanan officials, listed after the Manager UP Kendari and
+        // linked to the units they hold.
+        $this->call(UnitLayananManagerSeeder::class);
         $this->seedProcurementMethods();
         $this->seedBudgetSources();
         $this->seedContractTypes();
@@ -60,6 +62,7 @@ class MasterDataSeeder extends Seeder
             ['name' => 'MUHAMMAD RUSLI'],
             [
                 'position' => 'MANAGER',
+                'level' => UnitManagerLevel::Manager,
                 'description' => 'Manager PT PLN Nusantara Power UP Kendari',
                 'sort_order' => 1,
                 'is_active' => true,

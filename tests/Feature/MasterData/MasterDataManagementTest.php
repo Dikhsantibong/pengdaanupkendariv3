@@ -194,7 +194,7 @@ class MasterDataManagementTest extends TestCase
         $this->actingAs($administrator)
             ->post(route('master-data.unit-managers.store'), [
                 'name' => 'MUHAMMAD RUSLI',
-                'position' => 'MANAGER',
+                'level' => 'manager',
                 'description' => 'Manager PT PLN Nusantara Power UP Kendari',
                 'sort_order' => 1,
                 'is_active' => true,
@@ -207,7 +207,7 @@ class MasterDataManagementTest extends TestCase
         $this->actingAs($administrator)
             ->put(route('master-data.unit-managers.update', $manager), [
                 'name' => 'MUHAMMAD RUSLI, S.T.',
-                'position' => 'MANAGER UP KENDARI',
+                'level' => 'manager',
                 'description' => 'Pejabat Unit',
                 'sort_order' => 1,
                 'is_active' => true,

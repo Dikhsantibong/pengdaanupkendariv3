@@ -1393,6 +1393,26 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 - **Menjalankan:** `php artisan db:seed --class=UnitLayananManagerSeeder --force`.
 - **Test:** `UnitLayananManagerSeederTest`.
 
+### 44. Jabatan Manager Unit Dipilih dari Dropdown Bertingkat
+- Isian Jabatan pada Tambah/Ubah Manager kini dropdown (`App\Enums\UnitManagerLevel`), urut dari yang tertinggi:
+  1. **MANAGER**: jabatan tertinggi; tanpa unit.
+  2. **MANAGER UL**: memegang beberapa unit (pilih banyak).
+  3. **TL**: satu bidang di beberapa unit. Pilih **Bidang** (`App\Enums\TeamLeaderField`: Pemeliharaan, Operasi, K3L) dan beberapa unit.
+  4. **TL OPHAR**: memegang 1 unit (pilih satu).
+- Unit diambil dari Data Master **Unit Tujuan** (tabel pivot `target_unit_unit_manager`, berurutan sesuai pilihan). Isian Bidang/Unit hanya tampil bila jabatannya membutuhkan (`visible` pada `MasterField`).
+- Kolom `position` kini ditulis otomatis dari pilihan: "MANAGER", "MANAGER UL", "TL PEMELIHARAAN", "TL OPHAR PLTD LANGARA" (nama unit dari Unit Tujuan). Tabel menampilkan kolom **Unit**.
+- Validasi: TL wajib bidang dan minimal 1 unit; Manager UL wajib minimal 1 unit; TL OPHAR wajib tepat 1 unit. Pilihan yang tertinggal dari jabatan lain diabaikan, dan Manager tidak memegang unit.
+- `{{nama_manager}}` di dokumen hanya mengambil pejabat berjabatan **MANAGER** (aktif, urutan terkecil), sehingga Manager UL/TL tidak pernah tercetak sebagai Manager UP Kendari.
+- Migrasi `arrange_unit_managers_by_level` menambah kolom `level` dan `field`, membaca jabatan lama menjadi tingkat dan bidang, lalu menautkan unit pejabat Unit Layanan (`UnitLayananManagerSeeder::arrange()`):
+  - **WUA WUA**: PLTD Wua Wua, PLTD Langara.
+  - **POASIA**: PLTD Poasia, PLTD Poasia Containerized.
+  - **KOLAKA**: PLTD Kolaka, PLTD Lanipa, PLTM Sabilambo, PLTM Mikuasi.
+  - **BAU BAU**: PLTD Bau Bau, Raha, Ereke, Wangi Wangi, Winning, PLTM Rongi, PLTD Pasar Wajo.
+  - TL OPHAR ditautkan ke unitnya, dan jabatannya mengikuti nama di Unit Tujuan (mis. TL OPHAR PLTD WINNING, TL OPHAR PLTD LANIPA, TL OPHAR PLTD PASAR WAJO).
+  - **PLTG Kolaka** belum ada di Unit Tujuan, sehingga RIZAL JHON belum punya unit.
+  - Pejabat yang sudah punya unit atau tingkatnya sudah diubah administrator tidak disentuh.
+- **Test:** `UnitManagerLevelTest`, `UnitLayananManagerSeederTest`; `MasterDataManagementTest` disesuaikan.
+
 ---
 
 # Fitur Utama

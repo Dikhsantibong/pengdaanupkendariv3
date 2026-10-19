@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\UnitManagerLevel;
 use App\Models\UnitManager;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -20,6 +21,7 @@ class UnitManagerFactory extends Factory
         return [
             'name' => fake()->name(),
             'position' => 'MANAGER',
+            'level' => UnitManagerLevel::Manager,
             'description' => 'Manager PT PLN Nusantara Power UP Kendari',
             'sort_order' => 1,
             'is_active' => true,

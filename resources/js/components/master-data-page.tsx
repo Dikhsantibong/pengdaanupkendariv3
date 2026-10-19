@@ -73,6 +73,8 @@ export type MasterField = {
     required?: boolean;
     /** The label of the button that adds a row to a `list` field. */
     addLabel?: string;
+    /** Shows the field only while the form's values call for it. */
+    visible?: (values: MasterFormValues) => boolean;
 };
 
 export type MasterColumn<T extends MasterRecord> = {
@@ -319,31 +321,37 @@ export function MasterDataPage<T extends MasterRecord>({
                         }}
                         className="grid grid-cols-1 items-start gap-4 md:grid-cols-2"
                     >
-                        {fields.map((field) => (
-                            <div
-                                key={field.name}
-                                className={
-                                    field.type === 'list' ||
-                                    field.type === 'multiselect' ||
-                                    field.type === 'textarea'
-                                        ? 'md:col-span-2'
-                                        : ''
-                                }
-                            >
-                                <FieldControl
-                                    field={field}
-                                    value={form.data[field.name]}
-                                    error={
-                                        form.errors[
-                                            field.name as keyof typeof form.errors
-                                        ] as string | undefined
+                        {fields
+                            .filter(
+                                (field) =>
+                                    field.visible === undefined ||
+                                    field.visible(form.data),
+                            )
+                            .map((field) => (
+                                <div
+                                    key={field.name}
+                                    className={
+                                        field.type === 'list' ||
+                                        field.type === 'multiselect' ||
+                                        field.type === 'textarea'
+                                            ? 'md:col-span-2'
+                                            : ''
                                     }
-                                    onChange={(value) =>
-                                        form.setData(field.name, value)
-                                    }
-                                />
-                            </div>
-                        ))}
+                                >
+                                    <FieldControl
+                                        field={field}
+                                        value={form.data[field.name]}
+                                        error={
+                                            form.errors[
+                                                field.name as keyof typeof form.errors
+                                            ] as string | undefined
+                                        }
+                                        onChange={(value) =>
+                                            form.setData(field.name, value)
+                                        }
+                                    />
+                                </div>
+                            ))}
                     </form>
 
                     <DialogFooter>
