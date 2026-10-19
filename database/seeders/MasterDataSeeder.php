@@ -709,6 +709,7 @@ class MasterDataSeeder extends Seeder
             ['surat-jalan', 'Surat Jalan', ProcurementStage::Keuangan],
             ['surat-pengantar-penyerahan', 'Surat Pengantar Penyerahan Pekerjaan', ProcurementStage::Keuangan],
             ['berita-acara-pemeriksaan', 'Berita Acara Pemeriksaan Pekerjaan', ProcurementStage::Keuangan],
+            ['berita-acara-serah-terima', 'Berita Acara Serah Terima Pekerjaan', ProcurementStage::Keuangan],
             ['surat-pernyataan-garansi', 'Surat Pernyataan Garansi Material', ProcurementStage::Keuangan],
             ['surat-permohonan-pembayaran', 'Surat Permohonan Pembayaran', ProcurementStage::Keuangan],
         ];

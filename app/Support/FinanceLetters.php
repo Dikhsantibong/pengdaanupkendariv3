@@ -21,8 +21,9 @@ use Illuminate\Support\Str;
  * stage: the Surat Jalan and the Surat Pernyataan Garansi Material handed
  * over with the goods, the Surat Pengantar Penyerahan Pekerjaan asking for
  * the inspection, the Berita Acara Pemeriksaan / Penyelesaian
- * Pekerjaan signed with the unit that received it, and the Surat
- * Permohonan Pembayaran.
+ * Pekerjaan signed with the unit that received it, the Berita Acara Serah
+ * Terima Pekerjaan signed with the Manager, and the Surat Permohonan
+ * Pembayaran.
  *
  * They are not generated as documents of the procurement. Their step offers
  * the template, filled in with the contract's data, to download as a Word
@@ -51,7 +52,12 @@ class FinanceLetters
         // The cover letter handing the finished work over for inspection.
         'surat-pengantar-penyerahan' => [
             'name' => 'Surat Pengantar Penyerahan Pekerjaan',
-            'step' => '/(surat\s+(pengantar\s+)?penyerahan\s+pekerjaan|serah\s+terima\s+pekerjaan)/i',
+            'step' => '/surat\s+(pengantar\s+)?penyerahan\s+pekerjaan/i',
+        ],
+        // The handover of the finished work, signed with the Manager.
+        'berita-acara-serah-terima' => [
+            'name' => 'Berita Acara Serah Terima Pekerjaan',
+            'step' => '/(berita\s+acara\s+serah\s+terima|serah\s+terima\s+pekerjaan)/i',
         ],
         // Of the goods, the work or the service, as the step names it.
         'berita-acara-pemeriksaan' => [
@@ -80,12 +86,16 @@ class FinanceLetters
     }
 
     /**
-     * The letter a step is evidenced by, if any: a Keuangan step finished by
-     * its own upload, named after one of the letters.
+     * The letter a step is evidenced by, if any: a Keuangan step named after
+     * one of the letters whose paper is uploaded, on the step itself or as
+     * an upload-only document (the BAST), never one the system generates.
      */
     public static function codeFor(ProcurementChecklist $checklist): ?string
     {
-        if ($checklist->stage !== ProcurementStage::Keuangan || ! $checklist->needsOwnUpload()) {
+        $uploaded = $checklist->needsOwnUpload()
+            || $checklist->checklistItem->documentTypes->every(fn (DocumentType $type): bool => $type->upload_only);
+
+        if ($checklist->stage !== ProcurementStage::Keuangan || ! $uploaded) {
             return null;
         }
 

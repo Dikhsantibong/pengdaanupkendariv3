@@ -385,6 +385,15 @@ return [
         'work_category' => null,
         'name' => 'Surat Pengantar Penyerahan Pekerjaan - Template Mitra',
     ],
+    'keuangan.berita-acara-serah-terima' => [
+        'group' => 'keuangan',
+        'file' => 'keuangan/berita-acara-serah-terima.html',
+        'document_type' => 'berita-acara-serah-terima',
+        'procurement_method' => null,
+        'contract_format' => null,
+        'work_category' => null,
+        'name' => 'Berita Acara Serah Terima Pekerjaan - Template Mitra',
+    ],
     'keuangan.berita-acara-pemeriksaan' => [
         'group' => 'keuangan',
         'file' => 'keuangan/berita-acara-pemeriksaan.html',

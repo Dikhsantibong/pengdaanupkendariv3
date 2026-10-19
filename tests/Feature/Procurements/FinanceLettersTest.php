@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Procurements;
 
+use App\Enums\ProcurementStage;
 use App\Enums\UserRole;
+use App\Models\ChecklistItem;
 use App\Models\ContractNumberFormat;
 use App\Models\DocumentType;
 use App\Models\Procurement;
@@ -25,6 +27,7 @@ use Tests\TestCase;
 /**
  * The letters the partner writes on its own letterhead for Keuangan (Surat
  * Jalan, Surat Pengantar Penyerahan Pekerjaan, Berita Acara Pemeriksaan,
+ * Berita Acara Serah Terima Pekerjaan,
  * Surat Pernyataan Garansi Material, Surat Permohonan Pembayaran) are downloaded from their step as Word, filled in
  * with the contract's data, and uploaded back once signed; they are never
  * generated.
@@ -159,6 +162,28 @@ class FinanceLettersTest extends TestCase
         $this->assertStringContainsString('Link Drive', $letter);
     }
 
+    public function test_the_handover_report_is_signed_with_the_manager(): void
+    {
+        // The SPPL names it the Surat Serah Terima Pekerjaan.
+        $this->procurement = $this->procurementOf('SPPL', 'barang');
+        $step = 'Asli atau Copy Surat Serah Terima Pekerjaan (untuk pekerjaan jasa / barang dan jasa)';
+
+        $letter = $this->download($step)->assertOk()->streamedContent();
+
+        $this->assertStringContainsString('BERITA ACARA SERAH TERIMA PEKERJAAN', $letter);
+        $this->assertStringContainsString('MUHAMMAD RUSLI', $letter);
+        $this->assertStringContainsString('PIHAK PERTAMA', $letter);
+        $this->assertStringContainsString('PIHAK KEDUA', $letter);
+        $this->assertStringContainsString('Materai 10.000', $letter);
+        $this->assertStringContainsString('Surat Pesanan No. KDD066.SPPL/612/UPKD/2026', $letter);
+
+        // A step filing an upload-only document is offered it too.
+        $bast = ChecklistItem::factory()->create(['stage' => ProcurementStage::Keuangan, 'name' => 'Berita Acara Serah Terima Pekerjaan']);
+        $bast->documentTypes()->attach(DocumentType::factory()->create(['upload_only' => true])->id);
+        $row = $this->procurement->checklists()->create(['checklist_item_id' => $bast->id, 'stage' => ProcurementStage::Keuangan]);
+        $this->assertSame('berita-acara-serah-terima', FinanceLetters::codeFor($row));
+    }
+
     public function test_only_a_letter_step_of_this_procurement_downloads_one(): void
     {
         $this->actingAs($this->finance)
@@ -178,7 +203,7 @@ class FinanceLettersTest extends TestCase
     public function test_the_letters_are_never_generated(): void
     {
         $letterTypes = DocumentType::query()->whereIn('code', FinanceLetters::codes())->pluck('id');
-        $this->assertCount(5, $letterTypes);
+        $this->assertCount(6, $letterTypes);
 
         $documentTypes = MasterDataOptions::forProcurementDetail($this->procurement)['documentTypes'];
         $this->assertIsArray($documentTypes);
@@ -195,7 +220,7 @@ class FinanceLettersTest extends TestCase
     protected function procurementOf(string $format, string $category): Procurement
     {
         $procurement = Procurement::factory()->planningApproved()->create([
-            'number' => $category === 'barang' ? 'KDD066.SPK/612/UPKD/2026' : 'KDD067.SPK/612/UPKD/2026',
+            'number' => sprintf('KDD%03d.%s/612/UPKD/2026', $category === 'barang' ? 66 : 67, $format),
             'procurement_method_id' => null,
             'contract_number_format_id' => ContractNumberFormat::query()->where('code', $format)->value('id'),
             'work_category' => $category,

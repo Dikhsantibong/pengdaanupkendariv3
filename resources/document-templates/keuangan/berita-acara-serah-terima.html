@@ -1,0 +1,59 @@
+<style>
+    .surat-kop { border: 1.5pt dashed #888888; color: #666666; text-align: center; font-style: italic; padding: 12pt 8pt; margin: 0 0 10pt; }
+    .surat-title { text-align: center; font-size: 12pt; font-weight: bold; text-decoration: underline; margin: 6pt 0 0; }
+    .surat-number { text-align: center; margin: 0 0 12pt; }
+    table.surat-plain { width: 100%; border: none; margin: 0; }
+    table.surat-plain td { border: none; padding: 1pt 4pt; vertical-align: top; }
+    .surat-body { text-align: justify; }
+    .surat-party { text-align: center; margin: 4pt 0 10pt; }
+    ol.surat-list { margin: 4pt 0 8pt 24pt; padding: 0; }
+    ol.surat-list li { text-align: justify; margin: 0 0 4pt; }
+</style>
+
+<div class="surat-kop">[ KOP SURAT PERUSAHAAN ]<br>Tempatkan kop surat perusahaan di sini</div>
+
+<p class="surat-title">BERITA ACARA SERAH TERIMA PEKERJAAN</p>
+<p class="surat-number">............../BASTP/........../{{tahun}}</p>
+
+<p class="surat-body">Pada hari ini, ................ tanggal ................................ bulan ................ tahun ................................ (......-......-{{tahun}}), kami yang bertanda tangan di bawah ini:</p>
+
+<table class="surat-plain">
+    <tr>
+        <td style="width: 34%;"><span style="text-transform: uppercase;">{{nama_manager}}</span></td>
+        <td style="width: 3%;">:</td>
+        <td class="surat-body">Selaku Manager Unit PT PLN Nusantara Power Unit Pembangkitan Kendari, yang berkedudukan di Jl. Chairil Anwar No.2 Kendari, yang selanjutnya disebut:</td>
+    </tr>
+</table>
+<p class="surat-party">======== PIHAK PERTAMA ========</p>
+
+<table class="surat-plain">
+    <tr>
+        <td style="width: 34%;">( NAMA DIREKTUR )</td>
+        <td style="width: 3%;">:</td>
+        <td class="surat-body">Selaku Direktur {{nama_mitra}} yang berkedudukan di {{alamat_perusahaan}}, yang selanjutnya disebut:</td>
+    </tr>
+</table>
+<p class="surat-party">======== PIHAK KEDUA ========</p>
+
+<p class="surat-body">Sehubungan dengan {{jenis_dokumen_kontrak_judul}} No. {{nomor_kontrak}} tanggal {{tanggal_kontrak}} tentang <span style="text-transform: uppercase;">{{nama_pengadaan}}</span>, menyatakan hal-hal sebagai berikut :</p>
+<ol class="surat-list">
+    <li>Pekerjaan tersebut telah diselesaikan 100% oleh {{nama_mitra}} dan dapat diterima dengan Baik.</li>
+    <li>Dengan berdasarkan hal tersebut di atas, maka dengan ini PIHAK KEDUA menyerahkan hasil pekerjaan tersebut kepada PIHAK PERTAMA dan PIHAK PERTAMA menerima hasil pekerjaan tersebut dari PIHAK KEDUA.</li>
+</ol>
+
+<p class="surat-body">Demikian Berita Acara ini dibuat dengan sesungguhnya dan ditanda tangani di Kendari.</p>
+
+<table class="surat-plain" style="margin-top: 12pt; page-break-inside: avoid;">
+    <tr>
+        <td style="width: 50%; text-align: center;">PELAKSANA<br>{{nama_mitra}}<br><b>DIREKTUR</b></td>
+        <td style="text-align: center;">PT PLN NUSANTARA POWER<br>UP KENDARI<br><b>MANAGER</b></td>
+    </tr>
+    <tr>
+        <td style="height: 56pt; vertical-align: middle; font-size: 8pt; color: #666666;">Materai 10.000</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td style="text-align: center;"><b><u>( NAMA DIREKTUR )</u></b></td>
+        <td style="text-align: center;"><b><u><span style="text-transform: uppercase;">{{nama_manager}}</span></u></b></td>
+    </tr>
+</table>

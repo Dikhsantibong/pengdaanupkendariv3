@@ -429,9 +429,40 @@ class DocumentGenerator
     {
         $values = $this->placeholderValues($procurement, $issuedAt);
 
+        return $this->torApprovalMarkup($procurement, $values['tanggal_terbit_tor'], $values['pengesahan_tor']);
+    }
+
+    /**
+     * The Lembar Pengesahan of a TOR: its title, "Kendari, <date>" and the
+     * signatures.
+     */
+    protected function torApprovalMarkup(Procurement $procurement, string $issueDate, string $signatures): string
+    {
         return '<div class="approval-title">LEMBAR PENGESAHAN<br>TERM OF REFERENCE (TOR)<br>'.e($procurement->name).'</div>'
-            .'<div class="approval-date">Kendari, '.$values['tanggal_terbit_tor'].'</div>'
-            .$values['pengesahan_tor'];
+            .'<div class="approval-date">Kendari, '.$issueDate.'</div>'
+            .$signatures;
+    }
+
+    /**
+     * Draw the Lembar Pengesahan of a TOR someone has typed into again from
+     * the data: who signs follows the contract format (an SPPL by three, an
+     * SPK or PJ by four) and the officials of the day, while everything
+     * typed elsewhere stays.
+     *
+     * @param  array<string, string>  $values
+     */
+    protected function redrawTorApproval(string $body, ProcurementDocument $document, array $values): string
+    {
+        $procurement = $document->procurement;
+        $issueDate = ($procurement->tor_issue_date ?? $document->generated_at ?? now())->translatedFormat('d F Y');
+        $page = $this->torApprovalMarkup($procurement, $issueDate, $values['pengesahan_tor']);
+
+        return preg_replace_callback(
+            '#(<section class="approval"[^>]*>).*?(</section>)#s',
+            fn (array $match): string => $match[1].$page.$match[2],
+            $body,
+            1,
+        ) ?? $body;
     }
 
     /**
@@ -671,6 +702,11 @@ class DocumentGenerator
                 $document->documentType->code,
                 $document->procurement,
             );
+
+            // A TOR's signature page is the data's, not the typist's.
+            if ($document->documentType->code === 'tor') {
+                $body = $this->redrawTorApproval($body, $document, $values);
+            }
         }
 
         $switched = $unedited && $template !== null && $template->getKey() !== $document->document_template_id;

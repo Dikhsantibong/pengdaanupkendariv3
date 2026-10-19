@@ -144,7 +144,7 @@ export type ChecklistRow = {
     /** Finished by uploading its paper on the step (Penyerahan / Pembayaran). */
     needs_upload: boolean;
     files: ChecklistFile[];
-    /** The partner's letter (Surat Jalan, Garansi, Permohonan Pembayaran) to download as Word, filled in. */
+    /** The partner's letter (Surat Jalan, BA, Garansi, Permohonan Pembayaran, ...) to download as Word, filled in. */
     template_url: string | null;
     /** Data the step asks for before it can be ticked, if any. */
     input: ChecklistInput | null;

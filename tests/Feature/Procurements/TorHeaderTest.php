@@ -232,6 +232,61 @@ class TorHeaderTest extends TestCase
         $this->assertStringContainsString('<span style="text-transform: uppercase;">GALIH PRIMA</span>', $body);
     }
 
+    public function test_an_spk_or_pj_tor_is_signed_by_four_and_an_sppl_tor_by_three(): void
+    {
+        $maintenance = WorkDirector::factory()->create(['name' => 'Asman Pemeliharaan']);
+        $engineering = WorkDirector::query()->where('name', 'Asman Engineering')->firstOrFail();
+        $proposer = User::factory()->proposer($maintenance)->create(['name' => 'Galih Prima']);
+        User::factory()->workDirector($maintenance)->create(['name' => 'Budi Pemeliharaan']);
+        User::factory()->workDirector($engineering)->create(['name' => 'Eka Engineering']);
+        $tor = DocumentType::query()->where('code', 'tor')->firstOrFail();
+
+        foreach (['SPK' => 4, 'PJ' => 4, 'SPPL' => 3] as $format => $signers) {
+            $procurement = Procurement::factory()->create([
+                'work_director_id' => $maintenance->id,
+                'created_by' => $proposer->id,
+                'contract_number_format_id' => ContractNumberFormat::query()->where('code', $format)->value('id'),
+            ]);
+
+            $body = app(DocumentGenerator::class)->generate($procurement, $tor, $proposer)->rendered_body;
+            $page = substr($body, (int) strpos($body, 'LEMBAR PENGESAHAN'));
+
+            $this->assertSame($signers, substr_count($page, 'class="name"'), $format);
+            $this->assertSame($signers === 4, str_contains($page, 'EKA ENGINEERING'), $format);
+            $this->assertStringContainsString('MUHAMMAD RUSLI', $page, $format);
+        }
+    }
+
+    public function test_a_typed_tor_follows_a_change_of_contract_format(): void
+    {
+        $maintenance = WorkDirector::factory()->create(['name' => 'Asman Pemeliharaan']);
+        $proposer = User::factory()->proposer($maintenance)->create(['name' => 'Galih Prima']);
+        User::factory()->workDirector(WorkDirector::query()->where('name', 'Asman Engineering')->firstOrFail())->create(['name' => 'Eka Engineering']);
+        $procurement = Procurement::factory()->create([
+            'work_director_id' => $maintenance->id,
+            'created_by' => $proposer->id,
+            'contract_number_format_id' => ContractNumberFormat::query()->where('code', 'SPK')->value('id'),
+        ]);
+        $generator = app(DocumentGenerator::class);
+        $document = $generator->generate($procurement, DocumentType::query()->where('code', 'tor')->firstOrFail(), $proposer);
+
+        // The user types the narrative in, then the format turns out SPPL.
+        $document->update([
+            'rendered_body' => str_replace('<section class="approval">', '<p>Narasi latar belakang yang diketik.</p><section class="approval">', $document->rendered_body),
+            'revision' => 1,
+        ]);
+        $procurement->update(['contract_number_format_id' => ContractNumberFormat::query()->where('code', 'SPPL')->value('id')]);
+
+        $generator->refreshDocument($document->fresh());
+
+        $body = (string) $document->fresh()?->rendered_body;
+        $page = substr($body, (int) strpos($body, 'LEMBAR PENGESAHAN'));
+        $this->assertStringContainsString('Narasi latar belakang yang diketik.', $body);
+        $this->assertSame(3, substr_count($page, 'class="name"'));
+        $this->assertStringNotContainsString('EKA ENGINEERING', $page);
+        $this->assertSame(1, substr_count($body, 'LEMBAR PENGESAHAN'));
+    }
+
     public function test_a_signatory_not_set_up_leaves_a_line_to_write_on(): void
     {
         $division = WorkDirector::factory()->create(['name' => 'Asman Operasi']);

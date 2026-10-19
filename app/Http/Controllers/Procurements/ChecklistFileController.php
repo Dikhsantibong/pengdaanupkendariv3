@@ -98,8 +98,8 @@ class ChecklistFileController extends Controller
     }
 
     /**
-     * Download the partner's letter the step is evidenced by (Surat
-     * Permohonan Pembayaran, Surat Pernyataan Garansi Material) as Word,
+     * Download the partner's letter the step is evidenced by (Surat Jalan,
+     * Berita Acara, Surat Permohonan Pembayaran and the like) as Word,
      * filled in with the contract's data, to be put on the partner's
      * letterhead, signed, and uploaded back on the step.
      */

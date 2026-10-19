@@ -8,7 +8,10 @@ import {
     Lock,
     Pencil,
 } from 'lucide-react';
-import { ChecklistFileList } from '@/components/procurement/checklist-file-list';
+import {
+    ChecklistFileList,
+    LetterTemplateLink,
+} from '@/components/procurement/checklist-file-list';
 import { ChecklistInputForm } from '@/components/procurement/checklist-input-form';
 import {
     SignedUploadDeleteButton,
@@ -167,6 +170,15 @@ export function ChecklistPanel({
                                     templateUrl={row.template_url}
                                     canManage={editable}
                                 />
+                            )}
+
+                            {/* A letter filed as an upload-only document (the BAST). */}
+                            {!row.needs_upload && row.template_url && (
+                                <div className="mt-2">
+                                    <LetterTemplateLink
+                                        url={row.template_url}
+                                    />
+                                </div>
                             )}
 
                             {row.documents.some((d) => !d.is_alternative) && (

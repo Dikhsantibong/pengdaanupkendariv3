@@ -1420,7 +1420,8 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 | Surat (jenis dokumen) | Langkah yang menawarkan |
 |---|---|
 | Surat Jalan (`surat-jalan`) | nama memuat "Surat Jalan" |
-| Surat Pengantar Penyerahan Pekerjaan (`surat-pengantar-penyerahan`) | "Surat (Pengantar) Penyerahan Pekerjaan" / "Serah Terima Pekerjaan" |
+| Surat Pengantar Penyerahan Pekerjaan (`surat-pengantar-penyerahan`) | "Surat (Pengantar) Penyerahan Pekerjaan" |
+| Berita Acara Serah Terima Pekerjaan / BASTP (`berita-acara-serah-terima`) | "Berita Acara Serah Terima" / "Serah Terima Pekerjaan", termasuk langkah yang mengunggah dokumen upload-only (BAST) |
 | BA Pemeriksaan / Penyelesaian Pekerjaan (`berita-acara-pemeriksaan`) | "Berita Acara Pemeriksaan …" / "Berita Acara Penyelesaian …" |
 | Surat Pernyataan Garansi Material (`surat-pernyataan-garansi`) | "Surat (Pernyataan) Garansi …", kecuali "Garansi Pekerjaan" |
 | Surat Permohonan Pembayaran (`surat-permohonan-pembayaran`) | "Permohonan Pembayaran" |
@@ -1433,11 +1434,20 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
   - **Surat Jalan:** tabel barang dari Rincian Item (5 baris kosong bila belum ada).
   - **Penerima (Data Master Manager Unit):** unit tujuan; "Up / Mengetahui" = Manager UL yang memegang unit itu; penerima = TL OPHAR unit itu, atau TL Pemeliharaan Unit Layanannya.
   - **Judul BA:** mengikuti langkahnya (Pemeriksaan Barang / Pemeriksaan Pekerjaan / Penyelesaian Pekerjaan).
+  - **BASTP:** PIHAK PERTAMA = Manager UP Kendari (`{{nama_manager}}`), PIHAK KEDUA = Direktur mitra; kolom materai 10.000 di sisi pelaksana.
   - **Data yang belum ada:** tercetak garis titik-titik.
 - Placeholder baru: `{{unit_penerima}}`, `{{up_penerima}}`, `{{nama_penerima}}`, `{{nama_manager_penerima}}`, `{{tabel_surat_jalan}}`, `{{judul_berita_acara}}`, `{{nama_berita_acara}}`; `{{nomor_kontrak}}`, `{{tanggal_kontrak}}`, `{{jenis_dokumen_kontrak_judul}}` kini juga terisi pada surat mitra.
 - Template tersimpan di Data Master → Template Dokumen (grup `keuangan`, file `resources/document-templates/keuangan/*.html`) dan dapat diubah administrator. Kelima jenis dokumen tidak ditawarkan di panel Generate dan ditolak oleh permintaan generate.
 - File Word dibuat dari HTML (`App\Support\WordDocument`): tampilan cetak A4, gaya template dipindah ke head, dan live field ditulis sebagai teks biasa.
-- **Migrasi:** `add_the_partner_letters_for_keuangan` (jenis dokumen + template). **Test:** `FinanceLettersTest`.
+- Tombol juga muncul pada langkah yang mengunggah dokumen upload-only (mis. BAST), di atas daftar dokumennya; langkah dengan dokumen yang digenerate tidak ditawari.
+- **Migrasi:** `add_the_partner_letters_for_keuangan` (jenis dokumen + template) dan `add_the_handover_report_for_keuangan` (BASTP). **Test:** `FinanceLettersTest`.
+
+### 46. TOR Dua Versi Tanda Tangan: SPPL Tiga Orang, SPK/PJ Empat Orang (Dipastikan)
+- Satu template TOR (`umum.tor`); halaman Lembar Pengesahan (`{{pengesahan_tor}}`) mengikuti format kontrak:
+  - **SPPL (3):** Diperiksa/Diketahui Asman bidang user (kiri), Disusun Penyusun/user (kanan), lalu Disetujui Manager di bawah.
+  - **SPK dan PJ (4):** Disusun Penyusun/user, lalu Diperiksa/Diketahui Asman bidang user (kiri) dan Asman Engineering (kanan), lalu Disetujui Manager.
+- **Perbaikan:** TOR yang narasinya sudah diketik (revisi > 0) kini juga menggambar ulang halaman Lembar Pengesahan dari data saat dibuka atau saat data pengadaan berubah. Bila Jenis Kontrak diganti (mis. SPK menjadi SPPL), jumlah penanda tangannya ikut berubah, dan narasi yang diketik tetap utuh (`DocumentGenerator::redrawTorApproval`). TOR yang sudah memiliki scan bertanda tangan tidak berubah.
+- **Test:** `TorHeaderTest` (`test_an_spk_or_pj_tor_is_signed_by_four_and_an_sppl_tor_by_three`, `test_a_typed_tor_follows_a_change_of_contract_format`).
 
 ---
 

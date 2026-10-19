@@ -25,6 +25,27 @@ import procurements from '@/routes/procurements';
 import type { ChecklistFile } from '@/types';
 
 /**
+ * The partner's letter a Keuangan step asks for, to download as Word filled
+ * in with the contract's data, then sign and upload back on the step.
+ */
+export function LetterTemplateLink({ url }: { url: string }) {
+    return (
+        <div className="flex flex-wrap items-center gap-1.5">
+            <Button asChild size="sm" variant="outline">
+                <a href={url}>
+                    <Download className="size-3.5" />
+                    Unduh Template (Word)
+                </a>
+            </Button>
+            <span className="text-[11px] text-muted-foreground">
+                Sudah terisi data kontrak. Pasang kop perusahaan, lengkapi dan
+                tanda tangani, lalu unggah kembali di sini.
+            </span>
+        </div>
+    );
+}
+
+/**
  * The papers that evidence a Penyerahan or Pembayaran requirement: the step
  * is finished by uploading them, not by a bare tick.
  *
@@ -124,20 +145,7 @@ export function ChecklistFileList({
 
             <UploadedFileRows files={files} onPreview={setPreviewFile} />
 
-            {templateUrl && (
-                <div className="flex flex-wrap items-center gap-1.5">
-                    <Button asChild size="sm" variant="outline">
-                        <a href={templateUrl}>
-                            <Download className="size-3.5" />
-                            Unduh Template (Word)
-                        </a>
-                    </Button>
-                    <span className="text-[11px] text-muted-foreground">
-                        Sudah terisi data kontrak. Pasang kop perusahaan,
-                        lengkapi dan tanda tangani, lalu unggah kembali di sini.
-                    </span>
-                </div>
-            )}
+            {templateUrl && <LetterTemplateLink url={templateUrl} />}
 
             {canManage && (
                 <>
