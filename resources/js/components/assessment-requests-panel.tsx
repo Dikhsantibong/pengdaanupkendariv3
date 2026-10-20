@@ -59,6 +59,8 @@ export function AssessmentRequestsPanel({
         'Untuk request Penilaian Vendor mohon agar dibantu mengisi rincian tagihan pada link berikut :',
         '',
         formUrl,
+        '',
+        'Terima Kasih',
     ].join('\n');
 
     const copy = () =>

@@ -12,6 +12,7 @@
             }
         </style>
 
+        <link rel="icon" href="/favicon.ico" sizes="any">
         <link rel="icon" href="/logo/icon.png" type="image/png">
         <link rel="apple-touch-icon" href="/logo/icon.png">
 

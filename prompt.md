@@ -1645,7 +1645,8 @@ Bagian **Request Penilaian Vendor** ada di halaman Penilaian Penyedia, di atas d
 - **Tautan tetap:** tautannya satu dan tidak pernah berubah, yaitu `{APP_URL}/permintaan-penilaian`.
   - Tautan ini dicantumkan di kontrak lewat variabel template `{{tautan_penilaian_vendor}}`.
   - Di halaman Penilaian Penyedia tautan tampil beserta tombol **Salin Tautan** dan **Buka**.
-  - **Salin Tautan** menyalin pesan siap kirim: "Semangat Pagi / Bapak/Ibu / Untuk request Penilaian Vendor mohon agar dibantu mengisi rincian tagihan pada link berikut :" diikuti tautannya.
+  - **Salin Tautan** menyalin pesan siap kirim: "Semangat Pagi / Bapak/Ibu / Untuk request Penilaian Vendor mohon agar dibantu mengisi rincian tagihan pada link berikut :" diikuti tautannya, lalu "Terima Kasih".
+- **Ikon situs:** `public/favicon.ico`, `favicon.svg`, dan `apple-touch-icon.png` (dulu logo Laravel, yang tampil di pratinjau tautan WhatsApp) diganti logo PLN dari `public/logo/icon.png`.
   - Vendor cukup mengklik tautan, tidak perlu akun.
   - Setiap kiriman menjadi satu request baru, dan tautan tetap bisa dipakai vendor berikutnya. Setelah mengirim, vendor melihat layar "terkirim" dengan tombol **Isi Request Lain**.
   - Batas kiriman 10 per menit per IP.
