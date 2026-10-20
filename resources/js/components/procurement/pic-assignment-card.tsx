@@ -1,4 +1,6 @@
 import { useForm } from '@inertiajs/react';
+import { Pencil } from 'lucide-react';
+import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { PicSelect } from '@/components/procurement/pic-select';
 import { Button } from '@/components/ui/button';
@@ -34,7 +36,9 @@ function PicValue({
 /**
  * The two PICs of a procurement. TL ICC appoints the PIC Perencana once the
  * Asman approved the proposal; TL Pengadaan the PIC Pelaksana once ICC
- * approved the planning. Each picker shows only to whoever may change it.
+ * approved the planning. The card reads as names; whoever may change a PIC
+ * opens the pickers with Ubah, and an appointment still to be made opens
+ * them at once.
  */
 export function PicAssignmentCard({
     procurementId,
@@ -62,11 +66,30 @@ export function PicAssignmentCard({
     });
 
     const executorHint = 'Ditunjuk TL Pengadaan setelah perencanaan disetujui';
+    const canAssign = canAssignPlanner || canAssignExecutor;
+    const [editing, setEditing] = useState(
+        (canAssignPlanner && planner === null) ||
+            (canAssignExecutor && executor === null),
+    );
 
-    if (!canAssignPlanner && !canAssignExecutor) {
+    if (!canAssign || !editing) {
         return (
             <section className="space-y-3 rounded-md border border-border bg-card p-4">
-                <p className="section-label">Penunjukan PIC</p>
+                <div className="flex items-center justify-between gap-2">
+                    <p className="section-label">Penunjukan PIC</p>
+                    {canAssign && (
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => setEditing(true)}
+                        >
+                            <Pencil className="size-3.5" />
+                            Ubah
+                        </Button>
+                    )}
+                </div>
                 <dl className="space-y-2">
                     <PicValue
                         label="PIC Perencana"
@@ -139,14 +162,31 @@ export function PicAssignmentCard({
                 </dl>
             )}
 
-            <Button
-                type="submit"
-                size="sm"
-                className="w-full"
-                disabled={form.processing || !form.isDirty}
-            >
-                Simpan Penunjukan
-            </Button>
+            <div className="flex gap-2">
+                {(planner !== null || !canAssignPlanner) &&
+                    (executor !== null || !canAssignExecutor) && (
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="flex-1"
+                            onClick={() => {
+                                form.reset();
+                                setEditing(false);
+                            }}
+                        >
+                            Batal
+                        </Button>
+                    )}
+                <Button
+                    type="submit"
+                    size="sm"
+                    className="flex-1"
+                    disabled={form.processing || !form.isDirty}
+                >
+                    Simpan Penunjukan
+                </Button>
+            </div>
         </form>
     );
 }

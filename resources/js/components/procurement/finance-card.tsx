@@ -1,17 +1,10 @@
 import { router, useForm } from '@inertiajs/react';
-import {
-    BadgeCheck,
-    CircleAlert,
-    Landmark,
-    RotateCcw,
-    Send,
-} from 'lucide-react';
+import { BadgeCheck, Landmark, RotateCcw, Send } from 'lucide-react';
 import { useState } from 'react';
-import InputError from '@/components/input-error';
+import { DecisionControls } from '@/components/procurement/decision-controls';
+import { PendingList, ReadyNote } from '@/components/procurement/request-board';
 import { ApprovalBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { formatDateTime } from '@/lib/format';
 import procurements from '@/routes/procurements';
 import type { PlanningApprovalState } from '@/types';
@@ -41,26 +34,6 @@ export type FinanceDetail = {
     requirements_waiting_for: string[];
 };
 
-/** A short list of the steps still holding a hand-over back. */
-function PendingSteps({ title, steps }: { title: string; steps: string[] }) {
-    if (steps.length === 0) {
-        return null;
-    }
-
-    return (
-        <div className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs">
-            <p className="font-medium text-amber-800 dark:text-amber-300">
-                {title}
-            </p>
-            <ul className="mt-1 list-inside list-disc text-muted-foreground">
-                {steps.map((step) => (
-                    <li key={step}>{step}</li>
-                ))}
-            </ul>
-        </div>
-    );
-}
-
 /**
  * The execution PIC submits the finished execution and TL Pengadaan approves
  * it into Penyerahan and Pembayaran, shown in the side column under the
@@ -72,12 +45,18 @@ export function ExecutionApproval({
     canSubmit,
     canReview,
     planningApproved,
+    pendingAction,
+    embedded = false,
 }: {
     procurementId: number;
     finance: FinanceDetail;
     canSubmit: boolean;
     canReview: boolean;
     planningApproved: boolean;
+    /** Where an outstanding step is done, when the page can go there. */
+    pendingAction?: (name: string) => (() => void) | undefined;
+    /** Inside the Persetujuan panel, which draws the card and names the stage. */
+    embedded?: boolean;
 }) {
     const [processing, setProcessing] = useState(false);
     const reviewForm = useForm<{ approved: boolean; note: string }>({
@@ -130,9 +109,17 @@ export function ExecutionApproval({
     };
 
     return (
-        <section className="space-y-4 rounded-md border border-border bg-card p-4">
+        <section
+            className={
+                embedded
+                    ? 'space-y-3'
+                    : 'space-y-4 rounded-md border border-border bg-card p-4'
+            }
+        >
             <div className="space-y-2">
-                <p className="section-label">Persetujuan Pelaksanaan</p>
+                {!embedded && (
+                    <p className="section-label">Persetujuan Pelaksanaan</p>
+                )}
                 <div className="flex flex-wrap items-center gap-2">
                     <ApprovalBadge
                         state={approval.state}
@@ -202,17 +189,22 @@ export function ExecutionApproval({
                 </p>
             )}
 
-            {/* Only how many: the checklist beside it already lists them. */}
+            {/* Each outstanding step named, and a click away. */}
             {!isWaiting && finance.pending_execution.length > 0 && (
-                <p className="flex items-start gap-1.5 rounded-sm border border-amber-500/30 bg-amber-500/5 px-2.5 py-2 text-xs text-muted-foreground">
-                    <CircleAlert className="mt-0.5 size-3.5 shrink-0 text-amber-600" />
-                    <span>
-                        <b className="font-medium text-foreground">
-                            {finance.pending_execution.length} tahapan wajib
-                        </b>{' '}
-                        di checklist Pelaksanaan belum selesai.
-                    </span>
-                </p>
+                <PendingList
+                    title={`Belum dapat diajukan: ${finance.pending_execution.length} tahapan wajib Pelaksanaan belum selesai`}
+                    items={finance.pending_execution.map((name) => ({
+                        label: name,
+                        onOpen: pendingAction?.(name),
+                    }))}
+                />
+            )}
+
+            {canSubmit && (
+                <ReadyNote>
+                    Semua tahapan wajib sudah lengkap. Pelaksanaan siap diajukan
+                    ke TL Pengadaan.
+                </ReadyNote>
             )}
 
             {canSubmit && (
@@ -229,44 +221,18 @@ export function ExecutionApproval({
             )}
 
             {canReview && (
-                <div className="space-y-3 border-t border-border pt-3">
-                    <div className="grid gap-2">
-                        <Label htmlFor="execution-review-note">
-                            Catatan Persetujuan
-                        </Label>
-                        <Textarea
-                            id="execution-review-note"
-                            rows={2}
-                            value={reviewForm.data.note}
-                            onChange={(event) =>
-                                reviewForm.setData('note', event.target.value)
-                            }
-                            placeholder="Wajib diisi bila dikembalikan"
-                        />
-                        <InputError message={reviewForm.errors.note} />
-                    </div>
-
-                    <div className="grid gap-2">
-                        <Button
-                            type="button"
-                            size="sm"
-                            className="w-full"
-                            disabled={reviewForm.processing}
-                            onClick={() => decide(true)}
-                        >
-                            Setujui &amp; Teruskan ke Keuangan
-                        </Button>
-                        <Button
-                            type="button"
-                            size="sm"
-                            className="w-full"
-                            variant="destructive"
-                            disabled={reviewForm.processing}
-                            onClick={() => decide(false)}
-                        >
-                            Kembalikan
-                        </Button>
-                    </div>
+                <div className="border-t border-border pt-3">
+                    <DecisionControls
+                        id="execution-review-note"
+                        note={reviewForm.data.note}
+                        onNoteChange={(note) =>
+                            reviewForm.setData('note', note)
+                        }
+                        error={reviewForm.errors.note}
+                        processing={reviewForm.processing}
+                        onDecide={decide}
+                        approveLabel="Setujui & Teruskan ke Keuangan"
+                    />
                 </div>
             )}
         </section>
@@ -280,10 +246,13 @@ export function FinanceStatus({
     procurementId,
     finance,
     canComplete,
+    pendingAction,
 }: {
     procurementId: number;
     finance: FinanceDetail;
     canComplete: boolean;
+    /** Where an outstanding step is done, when the page can go there. */
+    pendingAction?: (name: string) => (() => void) | undefined;
 }) {
     const [processing, setProcessing] = useState(false);
 
@@ -326,10 +295,19 @@ export function FinanceStatus({
                     menutup pengadaan.
                 </p>
             </div>
-            <PendingSteps
-                title="Tahapan wajib yang belum selesai:"
-                steps={finance.pending_finance}
-            />
+            {finance.pending_finance.length > 0 ? (
+                <PendingList
+                    title={`${finance.pending_finance.length} tahapan wajib Penyerahan / Pembayaran belum selesai`}
+                    items={finance.pending_finance.map((name) => ({
+                        label: name,
+                        onOpen: pendingAction?.(name),
+                    }))}
+                />
+            ) : (
+                <ReadyNote>
+                    Semua tahapan wajib Penyerahan dan Pembayaran sudah lengkap.
+                </ReadyNote>
+            )}
             {canComplete && (
                 <Button
                     className="bg-emerald-600 hover:bg-emerald-700"

@@ -4,6 +4,14 @@ import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatDateTime } from '@/lib/format';
@@ -62,7 +70,6 @@ export function StatusCard({
     editable: boolean;
 }) {
     const isCancelled = status.category === 'batal';
-    const [asking, setAsking] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
     const form = useForm<{ cancelled: boolean; note: string }>({
         cancelled: true,
@@ -73,10 +80,7 @@ export function StatusCard({
         form.transform((data) => ({ ...data, cancelled }));
         form.put(procurements.status.update(procurementId).url, {
             preserveScroll: true,
-            onSuccess: () => {
-                form.reset();
-                setAsking(false);
-            },
+            onSuccess: () => form.reset(),
         });
     };
 
@@ -160,61 +164,6 @@ export function StatusCard({
                     Cabut Pembatalan
                 </Button>
             )}
-
-            {editable && !isCancelled && !asking && (
-                <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="w-full text-destructive hover:text-destructive"
-                    onClick={() => setAsking(true)}
-                >
-                    <Ban className="size-3.5" />
-                    Batalkan Pengadaan
-                </Button>
-            )}
-
-            {editable && !isCancelled && asking && (
-                <form
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        send(true);
-                    }}
-                    className="space-y-2 border-t border-border pt-3"
-                >
-                    <Label htmlFor="cancel-note">Alasan pembatalan</Label>
-                    <Textarea
-                        id="cancel-note"
-                        rows={2}
-                        value={form.data.note}
-                        onChange={(event) =>
-                            form.setData('note', event.target.value)
-                        }
-                        placeholder="Wajib diisi"
-                    />
-                    <InputError message={form.errors.note} />
-                    <div className="flex gap-2">
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="flex-1"
-                            onClick={() => setAsking(false)}
-                        >
-                            Batal
-                        </Button>
-                        <Button
-                            type="submit"
-                            size="sm"
-                            variant="destructive"
-                            className="flex-1"
-                            disabled={form.processing}
-                        >
-                            Batalkan Pengadaan
-                        </Button>
-                    </div>
-                </form>
-            )}
         </section>
     );
 }
@@ -226,6 +175,13 @@ export function StatusCard({
  */
 function JourneyView({ journey }: { journey: StatusJourney }) {
     const { position, to_contract: toContract, remaining } = journey;
+    const [all, setAll] = useState(false);
+    const current = journey.steps.findIndex((step) => step.state === 'current');
+    // The status before, the current one and the one after; all on request.
+    const shown =
+        all || current === -1
+            ? journey.steps
+            : journey.steps.slice(Math.max(0, current - 1), current + 2);
     const contracted = remaining === 0 && position !== null;
     const percent =
         position === null
@@ -264,7 +220,7 @@ function JourneyView({ journey }: { journey: StatusJourney }) {
             )}
 
             <ol className="space-y-1">
-                {journey.steps.map((step) => (
+                {shown.map((step) => (
                     <li
                         key={step.key}
                         className={cn(
@@ -317,6 +273,100 @@ function JourneyView({ journey }: { journey: StatusJourney }) {
                     </li>
                 ))}
             </ol>
+            {shown.length < journey.steps.length || all ? (
+                <button
+                    type="button"
+                    onClick={() => setAll(!all)}
+                    className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                >
+                    {all
+                        ? 'Ringkas'
+                        : `Lihat semua status (${journey.steps.length})`}
+                </button>
+            ) : null}
         </div>
+    );
+}
+
+/**
+ * Cancelling the job (Batal): kept out of the status card, in the page's
+ * own menu, and asked for a reason before it is done.
+ */
+export function CancelProcurementDialog({
+    procurementId,
+    open,
+    onOpenChange,
+}: {
+    procurementId: number;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+}) {
+    const form = useForm<{ cancelled: boolean; note: string }>({
+        cancelled: true,
+        note: '',
+    });
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <form
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        form.put(
+                            procurements.status.update(procurementId).url,
+                            {
+                                preserveScroll: true,
+                                onSuccess: () => {
+                                    form.reset();
+                                    onOpenChange(false);
+                                },
+                            },
+                        );
+                    }}
+                    className="space-y-4"
+                >
+                    <DialogHeader>
+                        <DialogTitle>Batalkan pengadaan?</DialogTitle>
+                        <DialogDescription>
+                            Status menjadi Batal dan berhenti diperbarui
+                            otomatis. Pembatalan bisa dicabut lagi dari kartu
+                            Status Progres.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-1.5">
+                        <Label htmlFor="cancel-note">Alasan pembatalan</Label>
+                        <Textarea
+                            id="cancel-note"
+                            rows={3}
+                            value={form.data.note}
+                            onChange={(event) =>
+                                form.setData('note', event.target.value)
+                            }
+                            placeholder="Wajib diisi"
+                        />
+                        <InputError message={form.errors.note} />
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => onOpenChange(false)}
+                        >
+                            Tidak jadi
+                        </Button>
+                        <Button
+                            type="submit"
+                            variant="destructive"
+                            disabled={
+                                form.processing || form.data.note.trim() === ''
+                            }
+                        >
+                            <Ban className="size-4" />
+                            Batalkan Pengadaan
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
     );
 }

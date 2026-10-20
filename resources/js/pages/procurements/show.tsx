@@ -1,5 +1,17 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { AlertTriangle, FileText, Pencil, Trash2 } from 'lucide-react';
+import {
+    AlertTriangle,
+    Ban,
+    FileDiff,
+    MoreHorizontal,
+    FileText,
+    History,
+    Pencil,
+    Send,
+    Trash2,
+    Truck,
+} from 'lucide-react';
+import { useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { AmendmentTab } from '@/components/procurement/amendment-tab';
 import type {
@@ -9,7 +21,13 @@ import type {
 import { ApprovalCard } from '@/components/procurement/approval-card';
 import { ApprovalHistoryTable } from '@/components/procurement/approval-history';
 import type { ApprovalHistory } from '@/components/procurement/approval-history';
-import { ChecklistPanel } from '@/components/procurement/checklist-panel';
+import {
+    ApprovalPanel,
+    ApprovalStage,
+    CompleteProcurementButton,
+} from '@/components/procurement/approval-panel';
+import type { ApprovalStageState } from '@/components/procurement/approval-panel';
+import { ChecklistSteps } from '@/components/procurement/checklist-steps';
 import { DeliveryOrderTab } from '@/components/procurement/delivery-order-tab';
 import type { DeliveryOrders } from '@/components/procurement/delivery-order-tab';
 import {
@@ -20,14 +38,28 @@ import type { FinanceDetail } from '@/components/procurement/finance-card';
 import { IdentityPanel } from '@/components/procurement/identity-panel';
 import { PicAssignmentCard } from '@/components/procurement/pic-assignment-card';
 import { ProposalDocuments } from '@/components/procurement/proposal-documents';
-import { StatusCard } from '@/components/procurement/status-card';
+import { openRememberedPanel } from '@/components/procurement/request-board';
+import { StageStepper } from '@/components/procurement/stage-stepper';
+import type { Stage } from '@/components/procurement/stage-stepper';
+import {
+    CancelProcurementDialog,
+    StatusCard,
+} from '@/components/procurement/status-card';
 import type {
     StatusHistoryEntry,
     StatusJourney,
 } from '@/components/procurement/status-card';
 import { DownloadAllButton } from '@/components/procurement-table';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { formatDateTime } from '@/lib/format';
 import { dashboard } from '@/routes';
 import procurements from '@/routes/procurements';
 import type {
@@ -148,6 +180,215 @@ export default function ShowProcurement({
             (row) => (row.section ?? 'pembayaran') === section,
         );
 
+    const [tab, setTab] = useState(initialTab);
+
+    // The open tab rides in the address, so the page comes back to it after
+    // every save.
+    const changeTab = (next: string) => {
+        setTab(next);
+        const query = new URLSearchParams(window.location.search);
+        query.set('tab', next);
+        router.replace({
+            url: `${window.location.pathname}?${query.toString()}`,
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    /**
+     * Where an outstanding step named beside an Ajukan button is done: its
+     * own row in the stage's step table, opened in the side panel. The
+     * proposal's data and papers have their own places.
+     */
+    const pendingAction =
+        (checklistStage: 'perencanaan' | 'pelaksanaan' | 'keuangan') =>
+        (name: string): (() => void) | undefined => {
+            if (name.endsWith('(data identitas)')) {
+                return can.update
+                    ? () => router.visit(procurements.edit(procurement.id).url)
+                    : undefined;
+            }
+
+            if (name.endsWith('(tab dokumen pengguna)')) {
+                return detail.proposal_documents
+                    ? () => changeTab('usulan')
+                    : undefined;
+            }
+
+            const row = checklists[checklistStage].find(
+                (candidate) => candidate.name === name,
+            );
+
+            if (row === undefined) {
+                return undefined;
+            }
+
+            const target =
+                checklistStage === 'keuangan'
+                    ? (row.section ?? 'pembayaran')
+                    : checklistStage;
+
+            return () => {
+                openRememberedPanel(`checklist:${procurement.id}`, row.id);
+                changeTab(target);
+            };
+        };
+
+    /** "5/8 langkah": the required steps of a checklist, done of all. */
+    const progressOf = (rows: ChecklistRow[]): string => {
+        const required = rows.filter((row) => !row.is_optional);
+
+        return `${required.filter((row) => row.is_completed).length}/${required.length} langkah`;
+    };
+
+    const planningApproved =
+        procurement.planning_approval_state === 'disetujui';
+    const execution = detail.finance.execution_approval;
+    const handedOver = detail.finance.submitted_at !== null;
+    const paid = detail.finance.paid_at !== null;
+    const handoverRows = financeRows('penyerahan');
+    const handoverDone = handoverRows
+        .filter((row) => !row.is_optional)
+        .every((row) => row.is_completed);
+    const stage = procurement.current_stage;
+
+    // The stages in their order, each with where it stands.
+    const stages: Stage[] = [
+        ...(detail.proposal_documents
+            ? [
+                  {
+                      value: 'usulan',
+                      label: 'Usulan',
+                      state:
+                          stage === 'usulan'
+                              ? ('current' as const)
+                              : ('done' as const),
+                      summary: `${detail.proposal_documents.documents.filter((document) => document.is_signed).length}/${detail.proposal_documents.documents.length} dokumen`,
+                  },
+              ]
+            : []),
+        {
+            value: 'perencanaan',
+            label: 'Perencanaan',
+            state: planningApproved
+                ? 'done'
+                : stage === 'perencanaan'
+                  ? 'current'
+                  : 'todo',
+            summary: planningApproved
+                ? 'Disetujui TL ICC'
+                : procurement.planning_approval_state === 'menunggu_persetujuan'
+                  ? 'Menunggu TL ICC'
+                  : procurement.planning_approval_state === 'ditolak'
+                    ? 'Dikembalikan'
+                    : progressOf(checklists.perencanaan),
+            attention: can.submitPlanning || can.reviewPlanning,
+        },
+        {
+            value: 'pelaksanaan',
+            label: 'Pelaksanaan',
+            state: !planningApproved
+                ? 'locked'
+                : handedOver
+                  ? 'done'
+                  : 'current',
+            summary: !planningApproved
+                ? 'Terkunci'
+                : handedOver
+                  ? 'Disetujui TL Pengadaan'
+                  : execution.state === 'menunggu_persetujuan'
+                    ? 'Menunggu TL Pengadaan'
+                    : execution.state === 'ditolak'
+                      ? 'Dikembalikan'
+                      : progressOf(checklists.pelaksanaan),
+            attention: can.submitExecution || can.reviewExecution,
+        },
+        {
+            value: 'penyerahan',
+            label: 'Penyerahan',
+            state: !handedOver ? 'locked' : handoverDone ? 'done' : 'current',
+            summary: !handedOver ? 'Terkunci' : progressOf(handoverRows),
+        },
+        {
+            value: 'pembayaran',
+            label: 'Pembayaran',
+            state: !handedOver
+                ? 'locked'
+                : paid
+                  ? 'done'
+                  : handoverDone
+                    ? 'current'
+                    : 'todo',
+            summary: !handedOver
+                ? 'Terkunci'
+                : paid
+                  ? 'Lunas'
+                  : progressOf(financeRows('pembayaran')),
+            attention: can.completePayment && !paid,
+        },
+    ];
+
+    const [cancelling, setCancelling] = useState(false);
+    const isCancelled = procurement.status.category === 'batal';
+
+    const planningApproval: { state: ApprovalStageState; summary: string } =
+        planningApproved
+            ? {
+                  state: 'done',
+                  summary: `Disetujui ${formatDateTime(detail.planning_reviewed_at)}${detail.planning_reviewer ? ` · ${detail.planning_reviewer}` : ''}`,
+              }
+            : procurement.planning_approval_state === 'menunggu_persetujuan'
+              ? { state: 'waiting', summary: 'Menunggu persetujuan TL ICC' }
+              : procurement.planning_approval_state === 'ditolak'
+                ? { state: 'returned', summary: 'Dikembalikan untuk revisi' }
+                : {
+                      state: 'active',
+                      summary: can.submitPlanning
+                          ? 'Siap diajukan ke TL ICC'
+                          : detail.pending_required_planning.length > 0
+                            ? `Belum diajukan · ${detail.pending_required_planning.length} hal belum selesai`
+                            : 'Belum diajukan',
+                  };
+
+    const executionApproval: { state: ApprovalStageState; summary: string } =
+        !planningApproved
+            ? {
+                  state: 'locked',
+                  summary: 'Terbuka setelah perencanaan disetujui',
+              }
+            : handedOver
+              ? {
+                    state: 'done',
+                    summary: `Disetujui, diserahkan ke Keuangan ${formatDateTime(detail.finance.submitted_at)}`,
+                }
+              : execution.state === 'menunggu_persetujuan'
+                ? {
+                      state: 'waiting',
+                      summary: 'Menunggu persetujuan TL Pengadaan',
+                  }
+                : execution.state === 'ditolak'
+                  ? { state: 'returned', summary: 'Dikembalikan untuk revisi' }
+                  : {
+                        state: 'active',
+                        summary: can.submitExecution
+                            ? 'Siap diajukan ke TL Pengadaan'
+                            : detail.finance.pending_execution.length > 0
+                              ? `Belum diajukan · ${detail.finance.pending_execution.length} langkah belum selesai`
+                              : 'Belum diajukan',
+                    };
+
+    // The approval the user can act on now, for the shortcut on a phone,
+    // where the side column sits below the long tables.
+    const approvalTask = can.submitPlanning
+        ? 'Perencanaan siap diajukan ke TL ICC.'
+        : can.reviewPlanning
+          ? 'Perencanaan menunggu persetujuan Anda.'
+          : can.submitExecution
+            ? 'Pelaksanaan siap diajukan ke TL Pengadaan.'
+            : can.reviewExecution
+              ? 'Pelaksanaan menunggu persetujuan Anda.'
+              : null;
+
     const requirementsNotice =
         detail.finance.requirements_waiting_for.length > 0 ? (
             <p className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-4 py-3 text-sm">
@@ -221,37 +462,67 @@ export default function ShowProcurement({
                                 label="Unduh Semua Dokumen (ZIP)"
                             />
                             {can.update && (
-                                <>
-                                    <Button asChild variant="outline">
-                                        <Link
-                                            href={procurements.edit(
-                                                procurement.id,
-                                            )}
-                                        >
-                                            <Pencil className="size-4" />
-                                            Edit Identitas Pengadaan
-                                        </Link>
-                                    </Button>
-                                    <Button
-                                        variant="destructive"
-                                        onClick={() => {
-                                            if (
-                                                window.confirm(
-                                                    `Arsipkan pengadaan ${procurement.number}?`,
-                                                )
-                                            ) {
-                                                router.delete(
-                                                    procurements.destroy(
-                                                        procurement.id,
-                                                    ).url,
-                                                );
-                                            }
-                                        }}
+                                <Button asChild variant="outline">
+                                    <Link
+                                        href={procurements.edit(procurement.id)}
                                     >
-                                        <Trash2 className="size-4" />
-                                        Arsipkan
-                                    </Button>
-                                </>
+                                        <Pencil className="size-4" />
+                                        Edit Identitas Pengadaan
+                                    </Link>
+                                </Button>
+                            )}
+                            {(can.update ||
+                                (can.updateStatus && !isCancelled)) && (
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            aria-label="Tindakan lain"
+                                        >
+                                            <MoreHorizontal className="size-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        {can.updateStatus && !isCancelled && (
+                                            <DropdownMenuItem
+                                                variant="destructive"
+                                                onSelect={() =>
+                                                    setCancelling(true)
+                                                }
+                                            >
+                                                <Ban className="size-4" />
+                                                Batalkan Pengadaan
+                                            </DropdownMenuItem>
+                                        )}
+                                        {can.updateStatus &&
+                                            !isCancelled &&
+                                            can.update && (
+                                                <DropdownMenuSeparator />
+                                            )}
+                                        {can.update && (
+                                            <DropdownMenuItem
+                                                variant="destructive"
+                                                onSelect={() => {
+                                                    if (
+                                                        window.confirm(
+                                                            `Arsipkan pengadaan ${procurement.number}?`,
+                                                        )
+                                                    ) {
+                                                        router.delete(
+                                                            procurements.destroy(
+                                                                procurement.id,
+                                                            ).url,
+                                                        );
+                                                    }
+                                                }}
+                                            >
+                                                <Trash2 className="size-4" />
+                                                Arsipkan
+                                            </DropdownMenuItem>
+                                        )}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             )}
                         </>
                     }
@@ -268,41 +539,81 @@ export default function ShowProcurement({
                             candidateCount={partnerCandidates.length}
                         />
 
-                        <Tabs defaultValue={initialTab}>
-                            <TabsList className="h-auto flex-wrap">
-                                {detail.proposal_documents && (
-                                    <TabsTrigger value="usulan">
-                                        {detail.proposal_documents.proposer}
-                                    </TabsTrigger>
-                                )}
-                                <TabsTrigger value="perencanaan">
-                                    Perencanaan
-                                </TabsTrigger>
-                                <TabsTrigger value="pelaksanaan">
-                                    Pelaksanaan
-                                </TabsTrigger>
-                                <TabsTrigger value="penyerahan">
-                                    Penyerahan
-                                </TabsTrigger>
-                                <TabsTrigger value="pembayaran">
-                                    Pembayaran
-                                </TabsTrigger>
-                                <TabsTrigger value="amandemen">
-                                    Amandemen
-                                    {amendments.length > 0 &&
-                                        ` (${amendments.length})`}
-                                </TabsTrigger>
-                                {deliveryOrders && (
-                                    <TabsTrigger value="do">
-                                        DO Delivery Order
-                                        {deliveryOrders.orders.length > 0 &&
-                                            ` (${deliveryOrders.orders.length})`}
-                                    </TabsTrigger>
-                                )}
-                                <TabsTrigger value="riwayat">
-                                    Riwayat Approval
-                                </TabsTrigger>
-                            </TabsList>
+                        <Tabs
+                            defaultValue={initialTab}
+                            value={tab}
+                            onValueChange={changeTab}
+                        >
+                            <StageStepper
+                                stages={stages}
+                                active={tab}
+                                onSelect={changeTab}
+                                extras={[
+                                    {
+                                        value: 'amandemen',
+                                        label: 'Amandemen',
+                                        icon: <FileDiff className="size-3.5" />,
+                                        count: amendments.length,
+                                        attention: amendments.some(
+                                            (amendment) =>
+                                                amendment.can.update ||
+                                                amendment.can.decide ||
+                                                amendment.can.issue,
+                                        ),
+                                    },
+                                    ...(deliveryOrders
+                                        ? [
+                                              {
+                                                  value: 'do',
+                                                  label: 'Delivery Order',
+                                                  icon: (
+                                                      <Truck className="size-3.5" />
+                                                  ),
+                                                  count: deliveryOrders.orders
+                                                      .length,
+                                                  attention:
+                                                      deliveryOrders.orders.some(
+                                                          (order) =>
+                                                              order.can
+                                                                  .request ||
+                                                              order.can
+                                                                  .decide ||
+                                                              order.can
+                                                                  .forward ||
+                                                              order.can.issue,
+                                                      ),
+                                              },
+                                          ]
+                                        : []),
+                                    {
+                                        value: 'riwayat',
+                                        label: 'Riwayat Approval',
+                                        icon: <History className="size-3.5" />,
+                                    },
+                                ]}
+                            />
+
+                            {approvalTask !== null && (
+                                <div className="flex items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm lg:hidden">
+                                    <span>{approvalTask}</span>
+                                    <Button
+                                        size="sm"
+                                        onClick={() =>
+                                            document
+                                                .getElementById(
+                                                    'approval-cards',
+                                                )
+                                                ?.scrollIntoView({
+                                                    behavior: 'smooth',
+                                                    block: 'start',
+                                                })
+                                        }
+                                    >
+                                        <Send className="size-3.5" />
+                                        Buka
+                                    </Button>
+                                </div>
+                            )}
 
                             {detail.proposal_documents && (
                                 <TabsContent value="usulan">
@@ -355,9 +666,27 @@ export default function ShowProcurement({
                                         </span>
                                     </p>
                                 )}
-                                <ChecklistPanel
+                                <ChecklistSteps
                                     procurementId={procurement.id}
-                                    description="Dokumen yang harus dilengkapi PIC Perencana sebelum diajukan ke TL ICC."
+                                    description="Kerjakan langkah dari atas ke bawah. Klik sebuah langkah untuk mengisi data, membuat dokumen, dan mengunggah berkasnya."
+                                    doneMessage="Semua langkah wajib perencanaan sudah selesai dan siap diajukan ke TL ICC."
+                                    submit={
+                                        can.submitPlanning
+                                            ? {
+                                                  label: 'Ajukan ke TL ICC',
+                                                  onSubmit: () =>
+                                                      router.post(
+                                                          procurements.approval.store(
+                                                              procurement.id,
+                                                          ).url,
+                                                          {},
+                                                          {
+                                                              preserveScroll: true,
+                                                          },
+                                                      ),
+                                              }
+                                            : undefined
+                                    }
                                     rows={checklists.perencanaan}
                                     editable={can.updatePlanningChecklist}
                                     canManageDocuments={can.generateDocument}
@@ -379,9 +708,27 @@ export default function ShowProcurement({
                                 value="pelaksanaan"
                                 className="space-y-3"
                             >
-                                <ChecklistPanel
+                                <ChecklistSteps
                                     procurementId={procurement.id}
-                                    description="Tahapan pelaksanaan pengadaan hingga masa pemeliharaan selesai."
+                                    description="Tahapan pelaksanaan pengadaan hingga masa pemeliharaan selesai. Klik sebuah langkah untuk mengisi data, membuat dokumen, dan mengunggah berkasnya."
+                                    doneMessage="Semua langkah wajib pelaksanaan sudah selesai dan siap diajukan ke TL Pengadaan."
+                                    submit={
+                                        can.submitExecution
+                                            ? {
+                                                  label: 'Ajukan ke TL Pengadaan',
+                                                  onSubmit: () =>
+                                                      router.post(
+                                                          procurements.executionApproval.store(
+                                                              procurement.id,
+                                                          ).url,
+                                                          {},
+                                                          {
+                                                              preserveScroll: true,
+                                                          },
+                                                      ),
+                                              }
+                                            : undefined
+                                    }
                                     rows={checklists.pelaksanaan}
                                     editable={can.updateExecutionChecklist}
                                     partnerCandidates={partnerCandidates}
@@ -406,9 +753,10 @@ export default function ShowProcurement({
                             >
                                 {requirementsNotice}
                                 {requirementsSource('penyerahan')}
-                                <ChecklistPanel
+                                <ChecklistSteps
                                     procurementId={procurement.id}
-                                    description="Kelengkapan dokumen penyerahan barang / pekerjaan sesuai pasal penyerahan pada kontrak (SPK, Surat Perjanjian, atau Lampiran Surat Pesanan)."
+                                    description="Kelengkapan dokumen penyerahan barang / pekerjaan sesuai pasal penyerahan pada kontrak (SPK, Surat Perjanjian, atau Lampiran Surat Pesanan). Klik sebuah langkah untuk mengunduh template surat dan mengunggah berkasnya."
+                                    doneMessage="Semua kelengkapan penyerahan sudah lengkap. Lanjutkan ke tab Pembayaran."
                                     rows={financeRows('penyerahan')}
                                     editable={can.updateFinanceChecklist}
                                     canManageDocuments={
@@ -426,12 +774,14 @@ export default function ShowProcurement({
                                     procurementId={procurement.id}
                                     finance={detail.finance}
                                     canComplete={can.completePayment}
+                                    pendingAction={pendingAction('keuangan')}
                                 />
                                 {requirementsNotice}
                                 {requirementsSource('pembayaran')}
-                                <ChecklistPanel
+                                <ChecklistSteps
                                     procurementId={procurement.id}
-                                    description="Kelengkapan dokumen permintaan pembayaran sesuai pasal cara pembayaran pada kontrak, diperiksa Keuangan sebelum pengadaan ditutup."
+                                    description="Kelengkapan dokumen permintaan pembayaran sesuai pasal cara pembayaran pada kontrak, diperiksa Keuangan sebelum pengadaan ditutup. Klik sebuah langkah untuk mengunduh template surat dan mengunggah berkasnya."
+                                    doneMessage="Semua kelengkapan pembayaran sudah lengkap. Keuangan dapat mencatat Pembayaran Lunas & Tutup Pengadaan."
                                     rows={financeRows('pembayaran')}
                                     editable={can.updateFinanceChecklist}
                                     canManageDocuments={
@@ -457,6 +807,9 @@ export default function ShowProcurement({
                                         data={deliveryOrders}
                                         canStart={can.startDeliveryOrder}
                                         canManageItems={can.manageContractItems}
+                                        contractValue={
+                                            procurement.value_after_negotiation
+                                        }
                                     />
                                 </TabsContent>
                             )}
@@ -469,7 +822,72 @@ export default function ShowProcurement({
                         </Tabs>
                     </div>
 
-                    <aside className="flex flex-col gap-4">
+                    {/* The side column stays in view beside the long tables. */}
+                    <aside className="flex flex-col gap-4 lg:sticky lg:top-4 lg:max-h-[calc(100svh-2rem)] lg:self-start lg:overflow-y-auto">
+                        <ApprovalPanel
+                            id="approval-cards"
+                            footer={
+                                can.complete && planningApproved ? (
+                                    <CompleteProcurementButton
+                                        procurementId={procurement.id}
+                                    />
+                                ) : undefined
+                            }
+                        >
+                            <ApprovalStage
+                                title="Perencanaan"
+                                state={planningApproval.state}
+                                summary={planningApproval.summary}
+                                defaultOpen={planningApproval.state !== 'done'}
+                            >
+                                <ApprovalCard
+                                    embedded
+                                    procurementId={procurement.id}
+                                    state={procurement.planning_approval_state}
+                                    stateLabel={
+                                        procurement.planning_approval_label
+                                    }
+                                    submittedAt={detail.planning_submitted_at}
+                                    reviewedAt={detail.planning_reviewed_at}
+                                    reviewer={detail.planning_reviewer}
+                                    reviewNote={detail.planning_review_note}
+                                    canSubmit={can.submitPlanning}
+                                    isPlanner={detail.is_planner}
+                                    plannerName={detail.planner_name}
+                                    revision={detail.planning_revision}
+                                    pendingRequired={
+                                        detail.pending_required_planning
+                                    }
+                                    canReview={can.reviewPlanning}
+                                    canRevert={can.revertPlanningRejection}
+                                    canComplete={false}
+                                    completedAt={procurement.completed_at}
+                                    pendingAction={pendingAction('perencanaan')}
+                                />
+                            </ApprovalStage>
+
+                            <ApprovalStage
+                                title="Pelaksanaan"
+                                state={executionApproval.state}
+                                summary={executionApproval.summary}
+                                defaultOpen={executionApproval.state !== 'done'}
+                            >
+                                {planningApproved && !handedOver && (
+                                    <ExecutionApproval
+                                        embedded
+                                        procurementId={procurement.id}
+                                        finance={detail.finance}
+                                        canSubmit={can.submitExecution}
+                                        canReview={can.reviewExecution}
+                                        planningApproved={planningApproved}
+                                        pendingAction={pendingAction(
+                                            'pelaksanaan',
+                                        )}
+                                    />
+                                )}
+                            </ApprovalStage>
+                        </ApprovalPanel>
+
                         <StatusCard
                             procurementId={procurement.id}
                             status={procurement.status}
@@ -477,38 +895,6 @@ export default function ShowProcurement({
                             journey={detail.status_journey}
                             history={detail.status_history}
                             editable={can.updateStatus}
-                        />
-
-                        <ApprovalCard
-                            procurementId={procurement.id}
-                            state={procurement.planning_approval_state}
-                            stateLabel={procurement.planning_approval_label}
-                            submittedAt={detail.planning_submitted_at}
-                            reviewedAt={detail.planning_reviewed_at}
-                            reviewer={detail.planning_reviewer}
-                            reviewNote={detail.planning_review_note}
-                            canSubmit={can.submitPlanning}
-                            isPlanner={detail.is_planner}
-                            plannerName={detail.planner_name}
-                            revision={detail.planning_revision}
-                            pendingRequired={detail.pending_required_planning}
-                            canReview={can.reviewPlanning}
-                            canRevert={can.revertPlanningRejection}
-                            canComplete={can.complete}
-                            completedAt={procurement.completed_at}
-                        />
-
-                        {/* Beside the long execution checklist, in the
-                            column that is otherwise empty below the cards. */}
-                        <ExecutionApproval
-                            procurementId={procurement.id}
-                            finance={detail.finance}
-                            canSubmit={can.submitExecution}
-                            canReview={can.reviewExecution}
-                            planningApproved={
-                                procurement.planning_approval_state ===
-                                'disetujui'
-                            }
                         />
 
                         <PicAssignmentCard
@@ -521,6 +907,12 @@ export default function ShowProcurement({
                             canAssignExecutor={can.assignExecutor}
                         />
                     </aside>
+
+                    <CancelProcurementDialog
+                        procurementId={procurement.id}
+                        open={cancelling}
+                        onOpenChange={setCancelling}
+                    />
                 </div>
             </div>
         </>

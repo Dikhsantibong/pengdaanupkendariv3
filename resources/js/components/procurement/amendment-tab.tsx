@@ -1,9 +1,12 @@
 import { router, useForm } from '@inertiajs/react';
 import {
     CheckCircle2,
+    ChevronRight,
     CircleAlert,
     Eye,
     FilePlus2,
+    MoreHorizontal,
+    Pencil,
     Paperclip,
     Plus,
     RotateCcw,
@@ -11,9 +14,25 @@ import {
     Trash2,
     Upload,
 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import InputError from '@/components/input-error';
+import { DecisionControls } from '@/components/procurement/decision-controls';
+import {
+    forgetRememberedPanel,
+    NextActionBanner,
+    PanelSection,
+    rememberNewestPanel,
+    StageDots,
+    touchRememberedPanel,
+    useRememberedPanel,
+} from '@/components/procurement/request-board';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -23,6 +42,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import {
+    Sheet,
+    SheetContent,
+    SheetDescription,
+    SheetHeader,
+    SheetTitle,
+} from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -107,6 +133,39 @@ const AMD_STEP_OF: Record<string, number> = {
 const actionable = (amendment: Amendment): boolean =>
     amendment.can.update || amendment.can.decide || amendment.can.issue;
 
+/** What the user is to do on an amendment, in a word and in a sentence. */
+function taskOf(
+    amendment: Amendment,
+): { action: string; detail: string } | null {
+    if (amendment.can.update) {
+        return amendment.state === 'dikembalikan'
+            ? {
+                  action: 'Perbaiki',
+                  detail: 'Dikembalikan: perbaiki permohonan sesuai catatan, lalu ajukan ulang.',
+              }
+            : {
+                  action: 'Lengkapi',
+                  detail: 'Isi Nota Dinas usulan dan tanggal notulen, unggah dokumen permohonan, lalu ajukan.',
+              };
+    }
+
+    if (amendment.can.decide) {
+        return {
+            action: 'Tinjau',
+            detail: 'Periksa permohonan dan dokumennya, lalu setujui atau kembalikan.',
+        };
+    }
+
+    if (amendment.can.issue) {
+        return {
+            action: 'Terbitkan',
+            detail: 'Isi nomor, tanggal, dan pasal yang berubah, periksa dokumennya, lalu terbitkan.',
+        };
+    }
+
+    return null;
+}
+
 function StateBadge({ amendment }: { amendment: Amendment }) {
     return (
         <span
@@ -122,9 +181,9 @@ function StateBadge({ amendment }: { amendment: Amendment }) {
 }
 
 /**
- * The Amandemen tab, kept to what matters now: the amendments waiting on
- * the user open in full, every other one is a single line with its Preview
- * PDF and a Detail to open it, the issued ones listed apart.
+ * The Amandemen tab as a table: what waits on the user is named in a banner
+ * above it, every amendment is a row, and the row opens a side panel with
+ * only the user's part of it, step by step.
  */
 export function AmendmentTab({
     procurementId,
@@ -138,26 +197,27 @@ export function AmendmentTab({
     /** The contract's articles, for Laksdan to pick the changed ones. */
     articles?: ContractArticle[];
 }) {
+    const scope = `amendment:${procurementId}`;
     const [starting, setStarting] = useState(false);
+    const [openId, open] = useRememberedPanel(
+        scope,
+        amendments.map((amendment) => amendment.id),
+    );
     const newestFirst = [...amendments].reverse();
     const mine = newestFirst.filter(actionable);
-    const running = newestFirst.filter(
-        (amendment) =>
-            !actionable(amendment) && amendment.state !== 'disetujui',
-    );
-    const issued = newestFirst.filter(
-        (amendment) =>
-            !actionable(amendment) && amendment.state === 'disetujui',
-    );
+    const first = mine[0] ?? null;
+    const firstTask = first === null ? null : taskOf(first);
+    const openAmendment =
+        amendments.find((amendment) => amendment.id === openId) ?? null;
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-3">
             <section className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-card p-4">
                 <div className="text-sm">
                     <p className="font-semibold">Amandemen Kontrak</p>
                     <p className="text-xs text-muted-foreground">
-                        Perubahan pasal kontrak, diajukan pengusul dan
-                        diterbitkan Laksdan.
+                        Perubahan pasal kontrak: diajukan pengusul, disetujui TL
+                        dan Asman, lalu diterbitkan Laksdan.
                     </p>
                 </div>
                 {canStart && (
@@ -170,7 +230,12 @@ export function AmendmentTab({
                                 {},
                                 {
                                     preserveScroll: true,
-                                    onStart: () => setStarting(true),
+                                    onStart: () => {
+                                        setStarting(true);
+                                        // The new draft opens when it is back.
+                                        rememberNewestPanel(scope);
+                                    },
+                                    onError: forgetRememberedPanel,
                                     onFinish: () => setStarting(false),
                                 },
                             )
@@ -182,146 +247,197 @@ export function AmendmentTab({
                 )}
             </section>
 
-            {amendments.length === 0 && (
-                <p className="rounded-md border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
-                    Belum ada amandemen.
-                    {!canStart &&
-                        ' Amandemen dapat diajukan pengusul setelah dokumen kontrak dibuat.'}
-                </p>
+            {first !== null && firstTask !== null && (
+                <NextActionBanner
+                    badge={first.roman}
+                    label={
+                        mine.length > 1
+                            ? `Perlu tindakan Anda (${mine.length})`
+                            : 'Perlu tindakan Anda'
+                    }
+                    title={`Amandemen ${first.roman} · ${first.state_label}`}
+                    detail={
+                        firstTask.detail +
+                        ((first.can.update || first.can.issue) &&
+                        first.missing.length > 0
+                            ? ` Yang belum: ${first.missing.slice(0, 3).join(', ')}${first.missing.length > 3 ? ` dan ${first.missing.length - 3} lainnya` : ''}.`
+                            : '')
+                    }
+                    action={firstTask.action}
+                    onAction={() => open(first.id)}
+                />
             )}
 
-            {mine.length > 0 && (
-                <div className="space-y-3">
-                    <p className="section-label">
-                        Perlu tindakan Anda ({mine.length})
-                    </p>
-                    {mine.map((amendment) => (
-                        <AmendmentCard
-                            key={amendment.id}
-                            procurementId={procurementId}
-                            amendment={amendment}
-                            articles={articles}
-                        />
-                    ))}
+            {amendments.length === 0 ? (
+                <p className="rounded-md border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+                    Belum ada amandemen.
+                    {canStart
+                        ? ' Klik Ajukan Amandemen untuk memulai permohonan.'
+                        : ' Amandemen dapat diajukan pengusul setelah dokumen kontrak dibuat.'}
+                </p>
+            ) : (
+                <div className="overflow-hidden rounded-md border border-border bg-card">
+                    <div
+                        aria-hidden="true"
+                        className="hidden grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,1.5fr)_10rem] gap-3 border-b border-border bg-muted/40 px-4 py-2 text-[0.6875rem] font-semibold tracking-wide text-muted-foreground uppercase md:grid"
+                    >
+                        <span>Amandemen</span>
+                        <span>Nomor &amp; tanggal</span>
+                        <span>Perubahan</span>
+                        <span>Status</span>
+                        <span className="text-right">Aksi</span>
+                    </div>
+                    <ul className="divide-y divide-border">
+                        {newestFirst.map((amendment) => (
+                            <AmendmentRow
+                                key={amendment.id}
+                                amendment={amendment}
+                                highlighted={amendment.id === first?.id}
+                                onOpen={() => open(amendment.id)}
+                            />
+                        ))}
+                    </ul>
                 </div>
             )}
 
-            {running.length > 0 && (
-                <AmendmentList
-                    title="Sedang diproses"
-                    procurementId={procurementId}
-                    amendments={running}
-                />
-            )}
-
-            {issued.length > 0 && (
-                <AmendmentList
-                    title="Amandemen terbit"
-                    procurementId={procurementId}
-                    amendments={issued}
-                />
-            )}
+            <Sheet
+                open={openAmendment !== null}
+                onOpenChange={(isOpen) => {
+                    if (!isOpen) {
+                        open(null);
+                    }
+                }}
+            >
+                <SheetContent
+                    className="w-full gap-0 sm:max-w-2xl lg:max-w-3xl"
+                    onPointerDownCapture={touchRememberedPanel}
+                >
+                    {openAmendment !== null && (
+                        <AmendmentPanel
+                            procurementId={procurementId}
+                            amendment={openAmendment}
+                            articles={articles}
+                        />
+                    )}
+                </SheetContent>
+            </Sheet>
         </div>
     );
 }
 
-/** Amendments nobody waits on the user for: a line each, opened on request. */
-function AmendmentList({
-    title,
-    procurementId,
-    amendments,
-}: {
-    title: string;
-    procurementId: number;
-    amendments: Amendment[];
-}) {
-    return (
-        <section className="overflow-hidden rounded-md border border-border bg-card">
-            <p className="section-label border-b border-border bg-muted/40 px-4 py-2">
-                {title} ({amendments.length})
-            </p>
-            <ul className="divide-y divide-border">
-                {amendments.map((amendment) => (
-                    <AmendmentRow
-                        key={amendment.id}
-                        procurementId={procurementId}
-                        amendment={amendment}
-                    />
-                ))}
-            </ul>
-        </section>
-    );
-}
-
+/** One amendment in the table: what it is, where it stands, and one action. */
 function AmendmentRow({
-    procurementId,
     amendment,
+    highlighted,
+    onOpen,
 }: {
-    procurementId: number;
     amendment: Amendment;
+    highlighted: boolean;
+    onOpen: () => void;
 }) {
-    const [open, setOpen] = useState(false);
-    const facts = [
-        amendment.amendment_date ? formatDate(amendment.amendment_date) : null,
-        amendment.changes.length > 0
-            ? `${amendment.changes.length} perubahan pasal`
-            : null,
-        amendment.state !== 'disetujui' && amendment.created_by
-            ? `oleh ${amendment.created_by}`
-            : null,
-    ].filter(Boolean);
+    const task = taskOf(amendment);
 
     return (
-        <li className="px-4 py-3">
-            <div className="flex flex-wrap items-center gap-2">
-                <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">
-                        Amandemen {amendment.roman}
-                        <span className="tabular font-normal text-muted-foreground">
-                            {' '}
-                            · {amendment.number ?? 'Belum bernomor'}
-                        </span>
-                    </p>
-                    {facts.length > 0 && (
-                        <p className="tabular text-xs text-muted-foreground">
-                            {facts.join(' · ')}
-                        </p>
-                    )}
-                </div>
-                <StateBadge amendment={amendment} />
-                {amendment.document && (
-                    <Button asChild size="sm" variant="outline">
-                        <a
-                            href={amendment.document.preview_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            <Eye className="size-3.5" />
-                            Preview PDF
-                        </a>
-                    </Button>
-                )}
-                <DetailToggle open={open} onToggle={() => setOpen(!open)} />
-            </div>
-
-            {open && (
-                <div className="mt-3 space-y-3 border-t border-border pt-3">
-                    <RequestProgress
-                        steps={AMD_STEPS}
-                        current={AMD_STEP_OF[amendment.state] ?? 0}
-                        returned={amendment.state === 'dikembalikan'}
-                    />
-                    <AmendmentSummary amendment={amendment} />
-                    <FileList
-                        procurementId={procurementId}
-                        amendment={amendment}
-                    />
-                    {amendment.document && (
-                        <RequestDocumentActions document={amendment.document} />
-                    )}
-                    <DecisionList decisions={amendment.decisions} />
-                </div>
+        <li
+            onClick={(event) => {
+                if (
+                    !(event.target as HTMLElement).closest(
+                        'button, a, [role="menuitem"]',
+                    )
+                ) {
+                    onOpen();
+                }
+            }}
+            className={cn(
+                'grid cursor-pointer gap-x-3 gap-y-1.5 px-4 py-3 transition-colors hover:bg-muted/40 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,1.5fr)_10rem] md:items-center',
+                highlighted &&
+                    'bg-primary/[0.03] shadow-[inset_3px_0_0_var(--primary)]',
             )}
+        >
+            <button
+                type="button"
+                onClick={onOpen}
+                className="text-left text-sm font-medium hover:underline"
+            >
+                Amandemen {amendment.roman}
+            </button>
+            <div className="tabular min-w-0 text-xs">
+                <p className="truncate">
+                    {amendment.number ?? (
+                        <span className="text-muted-foreground">
+                            Belum bernomor
+                        </span>
+                    )}
+                </p>
+                <p className="text-muted-foreground">
+                    {amendment.amendment_date
+                        ? formatDate(amendment.amendment_date)
+                        : amendment.created_by
+                          ? `Diajukan ${amendment.created_by}`
+                          : '—'}
+                </p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+                {amendment.changes.length > 0
+                    ? `${amendment.changes.length} pasal`
+                    : '—'}
+            </p>
+            <div className="space-y-1">
+                <StateBadge amendment={amendment} />
+                <StageDots
+                    steps={AMD_STEPS}
+                    current={AMD_STEP_OF[amendment.state] ?? 0}
+                    returned={amendment.state === 'dikembalikan'}
+                />
+            </div>
+            <div className="flex items-center gap-1 md:justify-end">
+                <Button
+                    size="sm"
+                    variant={
+                        task === null
+                            ? 'ghost'
+                            : highlighted
+                              ? 'default'
+                              : 'outline'
+                    }
+                    onClick={onOpen}
+                >
+                    {task?.action ?? 'Lihat'}
+                    {task === null && <ChevronRight className="size-3.5" />}
+                </Button>
+                {amendment.document && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                className="size-8 p-0"
+                                aria-label={`Aksi lain untuk Amandemen ${amendment.roman}`}
+                            >
+                                <MoreHorizontal className="size-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                                <a
+                                    href={amendment.document.preview_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+                                    <Eye className="size-4" />
+                                    Pratinjau PDF
+                                </a>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                                <a href={amendment.document.edit_url}>
+                                    <Pencil className="size-4" />
+                                    Edit dokumen
+                                </a>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
+            </div>
         </li>
     );
 }
@@ -347,12 +463,12 @@ function DecisionList({ decisions }: { decisions: Amendment['decisions'] }) {
 }
 
 /**
- * An amendment waiting on the user: where it stands, and only the part that
- * is theirs. The proposer fills in the request and its papers; an approver
- * reads the request and its papers; Laksdan has them folded away beside the
- * issue form.
+ * An amendment in the side panel: where it stands, then only the user's
+ * part of it, numbered in the order it is done. The proposer fills in the
+ * request and its papers and submits; an approver reads them and decides;
+ * Laksdan fills in the changed articles and issues. Anyone else reads it.
  */
-function AmendmentCard({
+function AmendmentPanel({
     procurementId,
     amendment,
     articles,
@@ -363,118 +479,186 @@ function AmendmentCard({
 }) {
     const args = { procurement: procurementId, amendment: amendment.id };
     const [details, setDetails] = useState(false);
+    const task = taskOf(amendment);
+    let section = 0;
 
     return (
-        <section className="space-y-4 rounded-md border border-primary/30 bg-card p-4">
-            <header className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                    <p className="text-sm font-semibold">
-                        Amandemen {amendment.roman}
+        <>
+            <SheetHeader className="border-b border-border pr-12">
+                <p className="section-label">Amandemen Kontrak</p>
+                <SheetTitle className="flex flex-wrap items-center gap-2 text-base">
+                    Amandemen {amendment.roman}
+                    <StateBadge amendment={amendment} />
+                </SheetTitle>
+                <SheetDescription className="tabular">
+                    {amendment.number ?? 'Nomor belum diisi'}
+                    {amendment.created_by
+                        ? ` · diajukan ${amendment.created_by}`
+                        : ''}
+                </SheetDescription>
+                <RequestProgress
+                    steps={AMD_STEPS}
+                    current={AMD_STEP_OF[amendment.state] ?? 0}
+                    returned={amendment.state === 'dikembalikan'}
+                />
+            </SheetHeader>
+
+            <div className="flex-1 space-y-5 overflow-y-auto p-4">
+                {task !== null && (
+                    <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+                        <b>Tugas Anda:</b> {task.detail}
                     </p>
-                    <p className="tabular text-xs text-muted-foreground">
-                        {amendment.number ?? 'Nomor belum diisi'}
-                        {amendment.created_by
-                            ? ` · oleh ${amendment.created_by}`
-                            : ''}
-                    </p>
-                </div>
-                <StateBadge amendment={amendment} />
-            </header>
+                )}
 
-            <RequestProgress
-                steps={AMD_STEPS}
-                current={AMD_STEP_OF[amendment.state] ?? 0}
-                returned={amendment.state === 'dikembalikan'}
-            />
+                {amendment.state === 'dikembalikan' &&
+                    amendment.review_note && (
+                        <p className="flex items-start gap-1.5 rounded-sm border border-destructive/40 bg-destructive/5 p-2.5 text-xs">
+                            <RotateCcw className="mt-0.5 size-3.5 shrink-0 text-destructive" />
+                            <span>
+                                <b>Yang harus diperbaiki:</b>{' '}
+                                {amendment.review_note}
+                            </span>
+                        </p>
+                    )}
 
-            {amendment.state === 'dikembalikan' && amendment.review_note && (
-                <p className="flex items-start gap-1.5 rounded-sm border border-destructive/40 bg-destructive/5 p-2.5 text-xs">
-                    <RotateCcw className="mt-0.5 size-3.5 shrink-0 text-destructive" />
-                    <span>
-                        <b>Yang harus diperbaiki:</b> {amendment.review_note}
-                    </span>
-                </p>
-            )}
+                {amendment.can.update && (
+                    <>
+                        <PanelSection
+                            number={++section}
+                            title="Isi permohonan"
+                            hint="Simpan isian sebelum mengajukan."
+                        >
+                            <RequestForm
+                                procurementId={procurementId}
+                                amendment={amendment}
+                            />
+                        </PanelSection>
+                        <PanelSection
+                            number={++section}
+                            title="Unggah dokumen permohonan"
+                            hint="Yang bertanda * wajib diunggah."
+                        >
+                            <FileList
+                                procurementId={procurementId}
+                                amendment={amendment}
+                                titled={false}
+                            />
+                        </PanelSection>
+                    </>
+                )}
 
-            {amendment.can.update && (
-                <>
-                    <RequestForm
-                        procurementId={procurementId}
-                        amendment={amendment}
-                    />
-                    <FileList
-                        procurementId={procurementId}
-                        amendment={amendment}
-                    />
-                </>
-            )}
-
-            {amendment.can.decide && (
-                <>
-                    <AmendmentSummary amendment={amendment} />
-                    <FileList
-                        procurementId={procurementId}
-                        amendment={amendment}
-                    />
-                </>
-            )}
-
-            {amendment.can.issue && (
-                <>
-                    <div className="space-y-2">
-                        <DetailToggle
-                            open={details}
-                            onToggle={() => setDetails(!details)}
+                {amendment.can.decide && (
+                    <PanelSection number={++section} title="Periksa permohonan">
+                        <AmendmentSummary amendment={amendment} />
+                        <FileList
+                            procurementId={procurementId}
+                            amendment={amendment}
                         />
-                        {details && (
-                            <>
-                                <AmendmentSummary amendment={amendment} />
-                                <FileList
-                                    procurementId={procurementId}
-                                    amendment={amendment}
-                                />
-                            </>
-                        )}
+                    </PanelSection>
+                )}
+
+                {amendment.can.issue && (
+                    <>
+                        <PanelSection
+                            number={++section}
+                            title="Periksa permohonan"
+                        >
+                            <DetailToggle
+                                open={details}
+                                onToggle={() => setDetails(!details)}
+                            />
+                            {details && (
+                                <>
+                                    <AmendmentSummary amendment={amendment} />
+                                    <FileList
+                                        procurementId={procurementId}
+                                        amendment={amendment}
+                                    />
+                                </>
+                            )}
+                        </PanelSection>
+                        <PanelSection
+                            number={++section}
+                            title="Data amandemen & pasal yang berubah"
+                        >
+                            <IssueForm
+                                procurementId={procurementId}
+                                amendment={amendment}
+                                articles={articles}
+                            />
+                        </PanelSection>
+                    </>
+                )}
+
+                {!actionable(amendment) && (
+                    <>
+                        <PanelSection number={++section} title="Ringkasan">
+                            <AmendmentSummary amendment={amendment} />
+                        </PanelSection>
+                        <PanelSection
+                            number={++section}
+                            title="Dokumen permohonan"
+                        >
+                            <FileList
+                                procurementId={procurementId}
+                                amendment={amendment}
+                                titled={false}
+                            />
+                        </PanelSection>
+                    </>
+                )}
+
+                {amendment.document && (
+                    <PanelSection
+                        number={++section}
+                        title="Dokumen amandemen"
+                        hint="Periksa dokumen yang digenerate; perbaiki redaksinya lewat Edit bila perlu."
+                    >
+                        <RequestDocumentActions document={amendment.document} />
+                    </PanelSection>
+                )}
+
+                {amendment.can.update && (
+                    <PanelSection number={++section} title="Ajukan">
+                        <ActionBar
+                            missing={amendment.missing}
+                            label={
+                                amendment.state === 'dikembalikan'
+                                    ? 'Ajukan Ulang Amandemen'
+                                    : 'Ajukan untuk Persetujuan'
+                            }
+                            url={procurements.amendments.submit(args).url}
+                        />
+                    </PanelSection>
+                )}
+
+                {amendment.can.issue && (
+                    <PanelSection number={++section} title="Terbitkan">
+                        <ActionBar
+                            missing={amendment.missing}
+                            label="Terbitkan Amandemen"
+                            url={procurements.amendments.issue(args).url}
+                        />
+                    </PanelSection>
+                )}
+
+                {amendment.can.decide && (
+                    <PanelSection number={++section} title="Keputusan">
+                        <DecisionForm
+                            procurementId={procurementId}
+                            amendment={amendment}
+                        />
+                    </PanelSection>
+                )}
+
+                {amendment.decisions.length > 0 && (
+                    <div className="space-y-1">
+                        <p className="text-xs font-semibold">Persetujuan</p>
+                        <DecisionList decisions={amendment.decisions} />
                     </div>
-                    <IssueForm
-                        procurementId={procurementId}
-                        amendment={amendment}
-                        articles={articles}
-                    />
-                </>
-            )}
-
-            {amendment.document && (
-                <RequestDocumentActions document={amendment.document} />
-            )}
-
-            {amendment.can.update && (
-                <ActionBar
-                    missing={amendment.missing}
-                    label={
-                        amendment.state === 'dikembalikan'
-                            ? 'Ajukan Ulang Amandemen'
-                            : 'Ajukan untuk Persetujuan'
-                    }
-                    url={procurements.amendments.submit(args).url}
-                />
-            )}
-
-            {amendment.can.issue && (
-                <ActionBar
-                    missing={amendment.missing}
-                    label="Terbitkan Amandemen"
-                    url={procurements.amendments.issue(args).url}
-                />
-            )}
-
-            {amendment.can.decide && (
-                <DecisionForm
-                    procurementId={procurementId}
-                    amendment={amendment}
-                />
-            )}
-        </section>
+                )}
+            </div>
+        </>
     );
 }
 
@@ -698,6 +882,11 @@ function ChangeEditor({
     const picked = articles.findIndex(
         (article) => article.article === change.article,
     );
+    // What changes, marked as it is typed.
+    const words = useMemo(
+        () => changedWords(change.original_text, change.new_text),
+        [change.original_text, change.new_text],
+    );
 
     return (
         <div className="space-y-3 rounded-sm border border-border p-3">
@@ -805,7 +994,11 @@ function ChangeEditor({
                             />
                         ) : (
                             <div className="max-h-72 overflow-y-auto rounded-md border border-border bg-muted/30 p-3">
-                                <ArticleText text={change.original_text} />
+                                <ArticleText
+                                    text={change.original_text}
+                                    changed={words?.removed}
+                                    tone="removed"
+                                />
                             </div>
                         )}
                         <InputError
@@ -836,9 +1029,15 @@ function ChangeEditor({
                         {change.new_text.trim() !== '' && (
                             <div className="rounded-md border border-dashed border-border p-3">
                                 <p className="mb-1 text-[11px] font-medium text-muted-foreground">
-                                    Tampilan di dokumen
+                                    Tampilan di dokumen · yang berubah ditandai
+                                    hijau, yang dihapus dicoret merah di teks
+                                    semula
                                 </p>
-                                <ArticleText text={change.new_text} />
+                                <ArticleText
+                                    text={change.new_text}
+                                    changed={words?.added}
+                                    tone="added"
+                                />
                             </div>
                         )}
                     </div>
@@ -890,17 +1089,111 @@ function layoutArticle(text: string) {
     return rows;
 }
 
+/** The words of an article's wording, in order, numbers and markers left out. */
+function articleWords(text: string): string[] {
+    return layoutArticle(text).flatMap((row) => splitWords(row.body));
+}
+
+function splitWords(text: string): string[] {
+    return text.split(/\s+/).filter(Boolean);
+}
+
+/** Beyond this many word pairs the comparison is left out (too long to weigh). */
+const DIFF_LIMIT = 600_000;
+
+/**
+ * Which words of the old wording went, and which of the new one came: the
+ * words outside their longest common run.
+ */
+function changedWords(
+    before: string,
+    after: string,
+): { removed: Set<number>; added: Set<number> } | null {
+    const a = articleWords(before);
+    const b = articleWords(after);
+
+    if (a.length * b.length > DIFF_LIMIT) {
+        return null;
+    }
+
+    // lengths[i * width + j]: the common run of a[i..] and b[j..].
+    const width = b.length + 1;
+    const lengths = new Uint32Array((a.length + 1) * width);
+
+    for (let i = a.length - 1; i >= 0; i--) {
+        for (let j = b.length - 1; j >= 0; j--) {
+            lengths[i * width + j] =
+                a[i] === b[j]
+                    ? lengths[(i + 1) * width + j + 1] + 1
+                    : Math.max(
+                          lengths[(i + 1) * width + j],
+                          lengths[i * width + j + 1],
+                      );
+        }
+    }
+
+    const removed = new Set<number>();
+    const added = new Set<number>();
+    let i = 0;
+    let j = 0;
+
+    while (i < a.length && j < b.length) {
+        if (a[i] === b[j]) {
+            i++;
+            j++;
+        } else if (lengths[(i + 1) * width + j] >= lengths[i * width + j + 1]) {
+            removed.add(i++);
+        } else {
+            added.add(j++);
+        }
+    }
+
+    while (i < a.length) {
+        removed.add(i++);
+    }
+
+    while (j < b.length) {
+        added.add(j++);
+    }
+
+    return { removed, added };
+}
+
+const CHANGE_TONE = {
+    removed:
+        'rounded-sm bg-red-500/15 text-red-800 line-through decoration-red-500/60 dark:text-red-300',
+    added: 'rounded-sm bg-emerald-500/20 text-emerald-800 dark:text-emerald-300',
+};
+
 /**
  * An article's wording laid out as the amendment prints it: the ayat number
  * hanging beside its text, list items indented under it. Mirrors the
- * server's layout of the document.
+ * server's layout of the document. Words that changed can be marked.
  */
-function ArticleText({ text }: { text: string }) {
+function ArticleText({
+    text,
+    changed,
+    tone = 'added',
+}: {
+    text: string;
+    /** The words (counted across the whole wording) to mark. */
+    changed?: Set<number>;
+    tone?: 'removed' | 'added';
+}) {
     const rows = layoutArticle(text);
 
     if (rows.length === 0) {
         return <p className="text-xs text-muted-foreground">—</p>;
     }
+
+    // Where each row's words start in the count across the wording.
+    const starts = rows.reduce<number[]>(
+        (list, row, at) => [
+            ...list,
+            at === 0 ? 0 : list[at - 1] + splitWords(rows[at - 1].body).length,
+        ],
+        [],
+    );
 
     return (
         <div className="space-y-0.5 text-xs leading-relaxed text-foreground">
@@ -915,9 +1208,55 @@ function ArticleText({ text }: { text: string }) {
                     {row.marker && (
                         <span className="w-5 shrink-0">{row.marker}</span>
                     )}
-                    <span className="min-w-0 flex-1">{row.body}</span>
+                    <span className="min-w-0 flex-1">
+                        {changed === undefined || changed.size === 0
+                            ? row.body
+                            : splitWords(row.body).map((word, index) => (
+                                  <span key={index}>
+                                      {index > 0 && ' '}
+                                      <span
+                                          className={
+                                              changed.has(starts[at] + index)
+                                                  ? CHANGE_TONE[tone]
+                                                  : undefined
+                                          }
+                                      >
+                                          {word}
+                                      </span>
+                                  </span>
+                              ))}
+                    </span>
                 </div>
             ))}
+        </div>
+    );
+}
+
+/**
+ * An article's change side by side: Semula with the words that go struck
+ * through in red, Menjadi with the words that come marked green.
+ */
+function ArticleDiff({ before, after }: { before: string; after: string }) {
+    const words = changedWords(before, after);
+
+    return (
+        <div className="grid gap-2 md:grid-cols-2">
+            <div className="rounded-sm border border-red-500/20 bg-red-500/[0.03] p-2.5">
+                <p className="mb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                    Semula
+                </p>
+                <ArticleText
+                    text={before}
+                    changed={words?.removed}
+                    tone="removed"
+                />
+            </div>
+            <div className="rounded-sm border border-emerald-500/25 bg-emerald-500/[0.03] p-2.5">
+                <p className="mb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                    Menjadi
+                </p>
+                <ArticleText text={after} changed={words?.added} tone="added" />
+            </div>
         </div>
     );
 }
@@ -952,18 +1291,14 @@ function AmendmentSummary({ amendment }: { amendment: Amendment }) {
                 ))}
             </dl>
             {amendment.changes.length > 0 && (
-                <ol className="list-decimal space-y-2 pl-5">
+                <ol className="list-decimal space-y-3 pl-5">
                     {amendment.changes.map((change, index) => (
-                        <li key={index}>
+                        <li key={index} className="space-y-1.5">
                             <p className="font-medium">{change.article}</p>
-                            <p className="text-xs text-muted-foreground">
-                                Semula:
-                            </p>
-                            <ArticleText text={change.original_text} />
-                            <p className="mt-1 text-xs text-muted-foreground">
-                                Menjadi:
-                            </p>
-                            <ArticleText text={change.new_text} />
+                            <ArticleDiff
+                                before={change.original_text}
+                                after={change.new_text}
+                            />
                         </li>
                     ))}
                 </ol>
@@ -976,9 +1311,12 @@ function AmendmentSummary({ amendment }: { amendment: Amendment }) {
 function FileList({
     procurementId,
     amendment,
+    titled = true,
 }: {
     procurementId: number;
     amendment: Amendment;
+    /** Off where the panel section already names the papers. */
+    titled?: boolean;
 }) {
     // Only what was filed, unless the papers are being filled in.
     const shown = amendment.files.filter(
@@ -991,7 +1329,9 @@ function FileList({
 
     return (
         <div className="space-y-2">
-            <p className="text-sm font-semibold">Dokumen Permohonan</p>
+            {titled && (
+                <p className="text-sm font-semibold">Dokumen Permohonan</p>
+            )}
             <ul className="divide-y divide-border rounded-sm border border-border">
                 {shown.map((entry) => (
                     <FileRow
@@ -1170,35 +1510,13 @@ function DecisionForm({
     };
 
     return (
-        <div className="space-y-2 border-t border-border pt-3">
-            <Label htmlFor={`amd-${amendment.id}-note`}>
-                Catatan Persetujuan
-            </Label>
-            <Textarea
-                id={`amd-${amendment.id}-note`}
-                rows={2}
-                value={form.data.note}
-                onChange={(event) => form.setData('note', event.target.value)}
-                placeholder="Wajib diisi bila dikembalikan"
-            />
-            <InputError message={form.errors.note} />
-            <div className="flex flex-wrap gap-2">
-                <Button
-                    size="sm"
-                    disabled={form.processing}
-                    onClick={() => decide(true)}
-                >
-                    Setujui
-                </Button>
-                <Button
-                    size="sm"
-                    variant="destructive"
-                    disabled={form.processing}
-                    onClick={() => decide(false)}
-                >
-                    Kembalikan
-                </Button>
-            </div>
-        </div>
+        <DecisionControls
+            id={`amd-${amendment.id}-note`}
+            note={form.data.note}
+            onNoteChange={(note) => form.setData('note', note)}
+            error={form.errors.note}
+            processing={form.processing}
+            onDecide={decide}
+        />
     );
 }

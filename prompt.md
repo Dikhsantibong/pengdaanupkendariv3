@@ -1587,6 +1587,125 @@ Berlaku di **Edit Dokumen** (pengadaan) dan **editor Template Dokumen** (Data Ma
 - **Cache PDF:** `LAYOUT_VERSION` dinaikkan ke 4, sehingga PDF yang sudah ter-cache dibuat ulang.
 - **Test:** `MergedCellPageBreakTest`.
 
+### 55. Checklist Perencanaan sampai Pembayaran sebagai Tabel Langkah (UX Tahap 1)
+Hanya tampilan. Database, rute, dan aturan server tidak diubah; semua aksi memakai endpoint yang sudah ada.
+
+- **Tab Perencanaan, Pelaksanaan, Penyerahan, dan Pembayaran** memakai komponen `ChecklistSteps` (`resources/js/components/procurement/checklist-steps.tsx`).
+  - `ChecklistPanel` lama tidak dipakai lagi di halaman pengadaan; `ChecklistDocumentActions` di dalamnya tetap dipakai.
+  - Pada Penyerahan/Pembayaran, menu ⋯ juga berisi "Unduh template surat (Word)".
+- **Pesan penutup banner per tahap:**
+  - Perencanaan: siap diajukan ke TL ICC.
+  - Pelaksanaan: siap diajukan ke TL Pengadaan.
+- **Langkah dengan banyak dokumen** (mis. Proses SMART SCM & Berita Acara, lebih dari 3 dokumen):
+  - Di tabel diringkas menjadi "x dari y dokumen lengkap" dengan bilah kemajuan dan nama dokumen berikutnya.
+  - Di panel samping, bila kebutuhan lebih dari 6, hanya yang belum lengkap yang didaftar.
+- **Isian ditulis dengan bahasa sederhana:** "Tanggal mulai & jumlah hari", "Pelaksana & rekening bank", "Masa garansi (bulan)", "Nomor & tanggal nota dinas", "Nomor kontrak".
+- **Banner "Langkah berikutnya"**:
+  - Menunjuk langkah wajib pertama yang belum selesai.
+  - Menampilkan apa yang masih kurang dan satu tombol aksi.
+  - Bila semua langkah wajib selesai, menampilkan pesan bahwa perencanaan siap diajukan.
+- **Tabel langkah** dengan kolom No | Langkah | Yang dibutuhkan | Status | Aksi. Di ponsel berubah menjadi daftar bertumpuk.
+- **Status dibaca dari data**:
+  - Status: Selesai, Siap ditandai selesai, Perlu dilengkapi, Belum mulai, Opsional.
+  - Sumber data: isian, berkas, dan dokumen bertanda tangan.
+  - Tanda selesai tetap lewat tombol "Tandai selesai" dengan validasi server yang sama.
+- **Isian nomor (RKS/HPE/UPB/kontrak) bisa diketik langsung di tabel**; tekan Enter atau ✓ untuk menyimpan.
+- **Satu tombol utama per baris**:
+  - Isi data / Generate / Unggah TTD / Tandai selesai / Lihat.
+  - Aksi lain ada di menu ⋯: buka detail, pratinjau/unduh dokumen, tandai belum selesai.
+- **Klik langkah membuka panel samping** berisi:
+  - Daftar yang dibutuhkan, lalu bagian bernomor "Isi data", "Unggah berkas", dan "Dokumen" (memakai komponen form/unggah/dokumen yang sudah ada).
+  - Tombol Tandai selesai, dinonaktifkan dengan keterangan bila belum lengkap.
+  - Tombol "Langkah berikutnya".
+- **Panel tetap terbuka setelah menyimpan** (halaman dimuat ulang), dan pesan penolakan dari server ditampilkan.
+
+### 56. Amandemen & DO sebagai Tabel dengan Panel Samping
+Hanya tampilan. Endpoint, aturan persetujuan, dan database tidak diubah.
+
+- **Komponen bersama** di `resources/js/components/procurement/request-board.tsx`:
+  - `useRememberedPanel`: panel yang terbuka diingat 60 detik agar muncul lagi setelah halaman dimuat ulang karena menyimpan.
+  - `NextActionBanner`, `PanelSection`, dan `StageDots`.
+- **Banner "Perlu tindakan Anda"**:
+  - Menyebut amandemen/DO pertama yang menunggu pengguna, beserta tugasnya.
+  - Contoh tugas: Lengkapi, Perbaiki, Tinjau, Proses (Rendan), Terbitkan; disertai yang masih kurang.
+  - Tombolnya langsung membuka panel.
+- **Tabel daftar** (terbaru di atas):
+  - Amandemen: Amandemen | Nomor & tanggal | Perubahan (jumlah pasal) | Status (label + titik tahap "TL · 2/5") | Aksi.
+  - DO: DO | Nomor & tanggal | Item & nilai | Status | Aksi.
+  - Satu tombol sesuai tugas; menu ⋯ berisi pratinjau/unduh/edit dokumen.
+- **Panel samping per amandemen/DO**:
+  - Tahapan (Pengusul › TL › Asman › … › Terbit), "Tugas Anda", dan catatan pengembalian.
+  - Bagian bernomor sesuai peran: isi permohonan, unggah dokumen, ajukan / periksa permohonan, keputusan / Nota Dinas DO, teruskan / data DO & pasal, terbitkan.
+  - Diakhiri riwayat persetujuan.
+  - Form yang dipakai tetap form yang sama seperti sebelumnya.
+- **Tombol "Ajukan Amandemen" / "Ajukan DO"** langsung membuka panel draf baru setelah dibuat.
+- **Daftar Harga Satuan Kontrak (DO)**:
+  - Bila masih kosong, tampil paling atas dengan banner "Langkah pertama: Isi Daftar Harga Satuan Kontrak".
+  - Bila sudah terisi, dipindah ke bawah tabel.
+- **Tab yang dipilih di halaman pengadaan kini tersimpan di alamat (`?tab=`)**, sehingga setelah menyimpan apa pun halaman kembali ke tab yang sama. Sebelumnya halaman kembali ke tab tahap berjalan.
+
+### 57. Stepper Tahap dan Hambatan Pengajuan (UX Tahap 2)
+Hanya tampilan. Database, rute, aturan pengajuan/persetujuan, dan data yang dikirim server tidak diubah.
+
+- **Stepper tahap menggantikan deretan 8 tab** (`resources/js/components/procurement/stage-stepper.tsx`):
+  - Usulan › Perencanaan › Pelaksanaan › Penyerahan › Pembayaran, masing-masing bertanda ✔ selesai, nomor biru sedang berjalan, abu-abu belum, atau 🔒 terkunci.
+  - Ringkasan per tahap, mis. "2/2 dokumen", "Disetujui TL ICC", "4/8 langkah", "Menunggu TL Pengadaan", "Dikembalikan", "Lunas", "Terkunci".
+  - Tahap terkunci tetap bisa dibuka untuk dilihat.
+  - Titik merah menandai tahap yang menunggu tindakan Anda (mengajukan/menyetujui, mencatat lunas).
+- **Amandemen, Delivery Order, dan Riwayat Approval** menjadi tombol sekunder di bawah stepper, dengan jumlah dan titik merah bila ada yang menunggu Anda.
+- **Kartu Persetujuan Perencanaan, Persetujuan Pelaksanaan, dan Proses Pembayaran** kini menyebut setiap hal yang belum lengkap, bukan hanya jumlahnya:
+  - Klik nama langkah → pindah ke tab tahapnya dan langsung membuka panel langkah itu.
+  - "(data identitas)" → ke Edit Identitas Pengadaan.
+  - "(tab dokumen pengguna)" → ke tab Usulan.
+  - Bila tidak ada hambatan, tampil catatan hijau "siap diajukan" di atas tombol Ajukan.
+- **Banner selesai di tabel langkah** Perencanaan/Pelaksanaan menampilkan tombol "Ajukan Persetujuan" / "Ajukan ke TL Pengadaan" (endpoint yang sama dengan kartu) bagi yang berhak mengajukan.
+- **Di ponsel:**
+  - Stepper bisa digeser ke samping dan tahap yang dipilih otomatis terlihat.
+  - Bila Anda bisa mengajukan/menyetujui, muncul pintasan di bawah stepper yang menggulir ke kartu persetujuan.
+
+### 58. Panel Kanan, DO Bertahap, dan Perbandingan Pasal (UX Tahap 3)
+Hanya tampilan. Database, rute, aturan, dan pesan server tidak diubah.
+
+**A. Panel kanan halaman pengadaan**
+- **Satu kartu "Persetujuan"** (`approval-panel.tsx`) berisi Perencanaan lalu Pelaksanaan:
+  - Tahap yang sudah lewat cukup satu baris (mis. "✔ Disetujui 18 Agu · Bastial"), bisa dibuka untuk detail.
+  - Tahap terkunci menyebut kapan terbuka.
+  - Tahap yang sedang berjalan terbuka penuh.
+- **Urutan kolom kanan:** Persetujuan → Status Progres → PIC. Di desktop kolom ini menempel saat halaman digulir.
+- **Istilah diseragamkan:**
+  - "Ajukan ke TL ICC" / "Ajukan ke TL Pengadaan".
+  - "Kembalikan untuk Revisi" (sebelumnya "Tolak").
+- **Keputusan dua langkah** di semua persetujuan (perencanaan, pelaksanaan, amandemen, DO; `decision-controls.tsx`):
+  - "Setujui" tombol utama, dengan "Tambah catatan" opsional.
+  - "Kembalikan untuk Revisi" membuka kotak "Yang harus diperbaiki" yang wajib diisi sebelum "Kirim Pengembalian".
+- **Status Progres dipadatkan:** hanya status sebelumnya, sekarang, dan berikutnya, plus "Lihat semua status".
+- **"Batalkan Pengadaan" dan "Arsipkan"** pindah ke menu ⋯ di judul halaman.
+  - Pembatalan lewat dialog yang meminta alasan.
+  - "Cabut Pembatalan" tetap di kartu Status.
+- **Kartu PIC tampil sebagai nama**, dengan tombol "Ubah" bagi yang berhak. Bila PIC belum ditunjuk, pilihan langsung terbuka.
+- "Tandai Pengadaan Selesai" pindah ke bawah kartu Persetujuan.
+
+**D. Notifikasi:** semua aksi di halaman pengadaan ternyata sudah mengirim notifikasi dari server ("Isian tersimpan", "Checklist diperbarui", "Permohonan DO diajukan", dst.), jadi tidak ditambah agar tidak dobel.
+
+**B. Delivery Order** (`delivery-order-items.tsx`)
+- **Ringkasan nilai kontrak** di atas tabel DO: Nilai kontrak (nilai setelah nego), DO terbit, Sedang diproses/draf, dan Sisa, dengan bilah kemajuan dan peringatan bila terlampaui.
+- **Pilih item berupa tabel daftar harga:**
+  - Cari, filter "hanya yang dipilih", kelompok sebagai baris judul, input volume per item, jumlah per baris, dan total berjalan.
+  - Peringatan (bukan blokir) bila total DO melebihi sisa nilai kontrak.
+  - Dipakai di permohonan dan di penerbitan Laksdan.
+  - Volume kosong atau 0 berarti tidak dipesan; item yang sama tidak terulang (sesuai aturan server).
+- **Permohonan DO menjadi wizard 3 langkah:** ① Pilih item → ② Nota Dinas usulan (+ unggah) → ③ Periksa & ajukan.
+  - Tiap langkah menyimpan sebelum lanjut.
+  - Posisi langkah diingat setelah halaman dimuat ulang.
+- **Daftar Harga Kontrak bisa "Tempel dari Excel":**
+  - Kolom: Kelompok, Uraian, Part Number, Satuan, Harga (atau 4/3 kolom).
+  - Baris judul dilewati; format "Rp 1.234.500,00" terbaca.
+- Sisa per item belum ditampilkan karena daftar harga tidak menyimpan kuantitas kontrak; perlu kolom database baru bila diinginkan.
+
+**C. Amandemen:** pasal yang diubah ditampilkan berdampingan **Semula | Menjadi** dengan perbandingan per kata.
+- Kata yang dihapus dicoret merah, kata baru ditandai hijau.
+- Tanda yang sama juga muncul langsung di editor pasal Laksdan saat mengetik.
+
 ---
 
 # Fitur Utama

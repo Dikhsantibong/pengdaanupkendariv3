@@ -1,10 +1,9 @@
 import { router, useForm } from '@inertiajs/react';
-import { CircleAlert, RotateCcw, Undo2 } from 'lucide-react';
-import InputError from '@/components/input-error';
+import { RotateCcw, Undo2 } from 'lucide-react';
+import { DecisionControls } from '@/components/procurement/decision-controls';
+import { PendingList, ReadyNote } from '@/components/procurement/request-board';
 import { ApprovalBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { formatDateTime } from '@/lib/format';
 import procurements from '@/routes/procurements';
 import type { PlanningApprovalState } from '@/types';
@@ -26,6 +25,8 @@ export function ApprovalCard({
     canRevert,
     canComplete,
     completedAt,
+    pendingAction,
+    embedded = false,
 }: {
     procurementId: number;
     state: PlanningApprovalState;
@@ -48,6 +49,10 @@ export function ApprovalCard({
     canRevert: boolean;
     canComplete: boolean;
     completedAt: string | null;
+    /** Where an outstanding item is done, when the page can go there. */
+    pendingAction?: (name: string) => (() => void) | undefined;
+    /** Inside the Persetujuan panel, which draws the card and names the stage. */
+    embedded?: boolean;
 }) {
     const reviewForm = useForm<{ approved: boolean; note: string }>({
         approved: true,
@@ -71,9 +76,17 @@ export function ApprovalCard({
         );
 
     return (
-        <section className="space-y-4 rounded-md border border-border bg-card p-4">
+        <section
+            className={
+                embedded
+                    ? 'space-y-3'
+                    : 'space-y-4 rounded-md border border-border bg-card p-4'
+            }
+        >
             <div className="space-y-2">
-                <p className="section-label">Persetujuan Perencanaan</p>
+                {!embedded && (
+                    <p className="section-label">Persetujuan Perencanaan</p>
+                )}
                 <div className="flex flex-wrap items-center gap-2">
                     <ApprovalBadge
                         state={state}
@@ -169,7 +182,7 @@ export function ApprovalCard({
                                     className="w-full"
                                     onClick={submit}
                                 >
-                                    Ajukan Ulang Persetujuan
+                                    Ajukan Ulang ke TL ICC
                                 </Button>
                             ) : (
                                 <p className="text-xs text-muted-foreground">
@@ -231,69 +244,46 @@ export function ApprovalCard({
             )}
 
             {canSubmit && !isRejected && (
+                <ReadyNote>
+                    Semua tahapan wajib sudah lengkap. Perencanaan siap diajukan
+                    ke TL ICC.
+                </ReadyNote>
+            )}
+
+            {canSubmit && !isRejected && (
                 <Button
                     type="button"
                     size="sm"
                     className="w-full"
                     onClick={submit}
                 >
-                    Ajukan Persetujuan
+                    Ajukan ke TL ICC
                 </Button>
             )}
 
+            {/* Each outstanding item named, and a click away. */}
             {isPlanner && !canSubmit && pendingRequired.length > 0 && (
-                <div className="space-y-1.5 rounded-sm border border-border bg-muted/40 p-2.5">
-                    <p className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-                        <CircleAlert className="size-3.5 text-amber-600 dark:text-amber-400" />
-                        Belum dapat diajukan
-                    </p>
-                    {/* Only how many: the checklist beside it lists them. */}
-                    <p className="text-xs text-muted-foreground">
-                        <b className="font-medium text-foreground">
-                            {pendingRequired.length} tahapan wajib
-                        </b>{' '}
-                        di checklist Perencanaan belum selesai.
-                    </p>
-                </div>
+                <PendingList
+                    title={`Belum dapat diajukan: ${pendingRequired.length} hal belum selesai`}
+                    items={pendingRequired.map((name) => ({
+                        label: name,
+                        onOpen: pendingAction?.(name),
+                    }))}
+                />
             )}
 
             {canReview && (
-                <div className="space-y-3 border-t border-border pt-3">
-                    <div className="grid gap-2">
-                        <Label htmlFor="review-note">Catatan Persetujuan</Label>
-                        <Textarea
-                            id="review-note"
-                            rows={2}
-                            value={reviewForm.data.note}
-                            onChange={(event) =>
-                                reviewForm.setData('note', event.target.value)
-                            }
-                            placeholder="Wajib diisi bila menolak"
-                        />
-                        <InputError message={reviewForm.errors.note} />
-                    </div>
-
-                    <div className="flex gap-2">
-                        <Button
-                            type="button"
-                            size="sm"
-                            className="flex-1"
-                            disabled={reviewForm.processing}
-                            onClick={() => decide(true)}
-                        >
-                            Setujui
-                        </Button>
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="destructive"
-                            className="flex-1"
-                            disabled={reviewForm.processing}
-                            onClick={() => decide(false)}
-                        >
-                            Tolak
-                        </Button>
-                    </div>
+                <div className="border-t border-border pt-3">
+                    <DecisionControls
+                        id="review-note"
+                        note={reviewForm.data.note}
+                        onNoteChange={(note) =>
+                            reviewForm.setData('note', note)
+                        }
+                        error={reviewForm.errors.note}
+                        processing={reviewForm.processing}
+                        onDecide={decide}
+                    />
                 </div>
             )}
 
