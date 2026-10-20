@@ -1449,6 +1449,15 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 - **Perbaikan:** TOR yang narasinya sudah diketik (revisi > 0) kini juga menggambar ulang halaman Lembar Pengesahan dari data saat dibuka atau saat data pengadaan berubah. Bila Jenis Kontrak diganti (mis. SPK menjadi SPPL), jumlah penanda tangannya ikut berubah, dan narasi yang diketik tetap utuh (`DocumentGenerator::redrawTorApproval`). TOR yang sudah memiliki scan bertanda tangan tidak berubah.
 - **Test:** `TorHeaderTest` (`test_an_spk_or_pj_tor_is_signed_by_four_and_an_sppl_tor_by_three`, `test_a_typed_tor_follows_a_change_of_contract_format`).
 
+### 47. Editor Dokumen: Tab Seperti Word dan Toolbar Lebih Lengkap
+- **Tab tidak lagi memindahkan fokus atau halaman** (sebelumnya browser memindahkan fokus ke elemen berikutnya, sehingga halaman melompat). Di editor dokumen (`visual-editor.tsx`), termasuk TOR:
+  - Di sel tabel: Tab / Shift+Tab pindah ke sel berikut / sebelumnya, seperti sebelumnya.
+  - Di butir daftar: Tab menjorokkan butir, Shift+Tab mengembalikannya.
+  - Di teks biasa: Tab menyisipkan jarak satu tab (spasi tak terputus, sehingga tetap terlihat di PDF); Shift+Tab mengurangi indentasi.
+- **Toolbar ditambah:** coret, superskrip, subskrip, ukuran huruf (8–24 pt), warna huruf, stabilo, hapus format, rata kiri / tengah / kanan / kiri-kanan, serta tambah / kurangi indentasi.
+  - Ukuran dan warna ditulis sebagai style inline agar terbaca PDF.
+  - Pilihan teks diingat, sehingga pemilih warna tetap mewarnai teks yang dipilih.
+
 ---
 
 # Fitur Utama

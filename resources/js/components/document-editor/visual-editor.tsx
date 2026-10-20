@@ -1,5 +1,17 @@
 import {
+    AlignCenter,
+    AlignJustify,
+    AlignLeft,
+    AlignRight,
+    Baseline,
     Bold,
+    Highlighter,
+    IndentDecrease,
+    IndentIncrease,
+    RemoveFormatting,
+    Strikethrough,
+    Subscript,
+    Superscript,
     Calculator,
     Columns3,
     Italic,
@@ -37,6 +49,22 @@ import {
 } from '@/components/ui/tooltip';
 
 /** The block styles an author picks from, in their own words. */
+/** A tab's worth of space, kept as non-breaking spaces so the PDF keeps it. */
+const TAB_SPACE = '\u00a0'.repeat(8);
+
+/** The commands whose result is written as an inline style. */
+const STYLED_COMMANDS = ['fontSize', 'foreColor', 'hiliteColor'];
+
+/** The font sizes offered, as the editor's 1–7 scale. */
+const FONT_SIZES = [
+    { value: '1', label: '8 pt' },
+    { value: '2', label: '10 pt' },
+    { value: '3', label: '12 pt' },
+    { value: '4', label: '14 pt' },
+    { value: '5', label: '18 pt' },
+    { value: '6', label: '24 pt' },
+];
+
 const BLOCK_STYLES = [
     { value: 'p', label: 'Paragraf' },
     { value: 'h1', label: 'Judul Dokumen' },
@@ -419,6 +447,27 @@ export function VisualEditor({
     tableTools?: boolean;
 }) {
     const area = useRef<HTMLDivElement>(null);
+    // The last selection in the page, put back when a control (the colour
+    // picker) took the focus away before its command runs.
+    const savedRange = useRef<Range | null>(null);
+
+    useEffect(() => {
+        const remember = () => {
+            const selection = window.getSelection();
+
+            if (
+                selection &&
+                selection.rangeCount > 0 &&
+                area.current?.contains(selection.anchorNode)
+            ) {
+                savedRange.current = selection.getRangeAt(0).cloneRange();
+            }
+        };
+
+        document.addEventListener('selectionchange', remember);
+
+        return () => document.removeEventListener('selectionchange', remember);
+    }, []);
     const lastEmitted = useRef(value);
     const seeded = useRef(false);
     const [inTable, setInTable] = useState(false);
@@ -619,7 +668,22 @@ export function VisualEditor({
 
     /** Run a built-in editing command against the current selection. */
     const run = (command: string, argument?: string) => {
+        const focused = document.activeElement === area.current;
         area.current?.focus();
+
+        if (!focused && savedRange.current) {
+            const selection = window.getSelection();
+            selection?.removeAllRanges();
+            selection?.addRange(savedRange.current);
+        }
+
+        // Sizes and colours are written as inline styles, which the PDF
+        // renderer reads, rather than as <font> tags.
+        document.execCommand(
+            'styleWithCSS',
+            false,
+            String(STYLED_COMMANDS.includes(command)),
+        );
         document.execCommand(command, false, argument);
         emit();
     };
@@ -1091,6 +1155,88 @@ export function VisualEditor({
                         icon={<Underline className="size-4" />}
                         onClick={() => run('underline')}
                     />
+                    <ToolButton
+                        label="Coret"
+                        icon={<Strikethrough className="size-4" />}
+                        onClick={() => run('strikeThrough')}
+                    />
+                    <ToolButton
+                        label="Superskrip"
+                        icon={<Superscript className="size-4" />}
+                        onClick={() => run('superscript')}
+                    />
+                    <ToolButton
+                        label="Subskrip"
+                        icon={<Subscript className="size-4" />}
+                        onClick={() => run('subscript')}
+                    />
+
+                    <Select onValueChange={(next) => run('fontSize', next)}>
+                        <SelectTrigger
+                            className="h-8 w-24 text-xs"
+                            title="Ukuran huruf"
+                        >
+                            <SelectValue placeholder="Ukuran" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {FONT_SIZES.map((size) => (
+                                <SelectItem key={size.value} value={size.value}>
+                                    {size.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <label className="relative inline-flex size-8 cursor-pointer items-center justify-center rounded-md hover:bg-accent">
+                                <Baseline className="size-4" />
+                                <input
+                                    type="color"
+                                    aria-label="Warna huruf"
+                                    className="absolute inset-0 cursor-pointer opacity-0"
+                                    onMouseDown={(e) => e.stopPropagation()}
+                                    onChange={(event) =>
+                                        run('foreColor', event.target.value)
+                                    }
+                                />
+                            </label>
+                        </TooltipTrigger>
+                        <TooltipContent>Warna huruf</TooltipContent>
+                    </Tooltip>
+                    <ToolButton
+                        label="Stabilo kuning"
+                        icon={<Highlighter className="size-4" />}
+                        onClick={() => run('hiliteColor', '#fff59d')}
+                    />
+                    <ToolButton
+                        label="Hapus format"
+                        icon={<RemoveFormatting className="size-4" />}
+                        onClick={() => run('removeFormat')}
+                    />
+
+                    <Separator orientation="vertical" className="mx-1 h-6" />
+
+                    <ToolButton
+                        label="Rata kiri"
+                        icon={<AlignLeft className="size-4" />}
+                        onClick={() => run('justifyLeft')}
+                    />
+                    <ToolButton
+                        label="Rata tengah"
+                        icon={<AlignCenter className="size-4" />}
+                        onClick={() => run('justifyCenter')}
+                    />
+                    <ToolButton
+                        label="Rata kanan"
+                        icon={<AlignRight className="size-4" />}
+                        onClick={() => run('justifyRight')}
+                    />
+                    <ToolButton
+                        label="Rata kiri-kanan"
+                        icon={<AlignJustify className="size-4" />}
+                        onClick={() => run('justifyFull')}
+                    />
 
                     <Separator orientation="vertical" className="mx-1 h-6" />
 
@@ -1103,6 +1249,16 @@ export function VisualEditor({
                         label="Daftar bernomor"
                         icon={<ListOrdered className="size-4" />}
                         onClick={() => run('insertOrderedList')}
+                    />
+                    <ToolButton
+                        label="Kurangi indentasi (Shift+Tab)"
+                        icon={<IndentDecrease className="size-4" />}
+                        onClick={() => run('outdent')}
+                    />
+                    <ToolButton
+                        label="Tambah indentasi (Tab)"
+                        icon={<IndentIncrease className="size-4" />}
+                        onClick={() => run('indent')}
                     />
 
                     <Separator orientation="vertical" className="mx-1 h-6" />
@@ -1402,6 +1558,27 @@ export function VisualEditor({
                                         const sel = window.getSelection();
                                         sel?.removeAllRanges();
                                         sel?.addRange(range);
+                                    }
+                                } else {
+                                    // As in Word: Tab never leaves the page.
+                                    // In a list it moves the item in or out;
+                                    // in running text it puts in a tab's
+                                    // worth of space.
+                                    event.preventDefault();
+                                    const inList = window
+                                        .getSelection()
+                                        ?.anchorNode?.parentElement?.closest(
+                                            'li',
+                                        );
+
+                                    if (inList || event.shiftKey) {
+                                        run(
+                                            event.shiftKey
+                                                ? 'outdent'
+                                                : 'indent',
+                                        );
+                                    } else {
+                                        run('insertText', TAB_SPACE);
                                     }
                                 }
                             }
