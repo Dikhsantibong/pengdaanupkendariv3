@@ -51,8 +51,18 @@ export function AssessmentRequestsPanel({
     const [copied, setCopied] = useState(false);
     const waiting = requests.filter((row) => row.status === 'submitted').length;
 
+    // Copied with the greeting it is sent to the vendor with.
+    const message = [
+        'Semangat Pagi',
+        'Bapak/Ibu',
+        '',
+        'Untuk request Penilaian Vendor mohon agar dibantu mengisi rincian tagihan pada link berikut :',
+        '',
+        formUrl,
+    ].join('\n');
+
     const copy = () =>
-        void navigator.clipboard.writeText(formUrl).then(() => {
+        void navigator.clipboard.writeText(message).then(() => {
             setCopied(true);
             window.setTimeout(() => setCopied(false), 2000);
         });
