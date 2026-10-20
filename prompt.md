@@ -1577,6 +1577,16 @@ Berlaku di **Edit Dokumen** (pengadaan) dan **editor Template Dokumen** (Data Ma
   - Margin dan kertas mengubah jumlah halaman.
   - Posisi footer tetap di F4.
 
+### 54. Garis Tabel Surat Pesanan yang Hilang di PDF
+- **Masalah:** kolom **Batas Waktu Penyerahan** pada Surat Pesanan digabung (rowspan) untuk semua baris barang. Bila tabel menyambung ke halaman berikutnya, mesin PDF tidak menggambar garis sel gabungan itu (garis bawah di akhir halaman dan kolomnya di halaman berikut hilang).
+- **Perbaikan** (`DocumentPdfRenderer::withRowSpansPerSheet`):
+  - Saat PDF dibuat, dokumen dibaca halaman per halaman terlebih dahulu.
+  - Sel gabungan yang melewati batas halaman dipotong menjadi satu sel gabungan per halaman, masing-masing dengan isi yang sama (tanggal tampil di setiap halaman), sehingga garis tabel lengkap di tiap halaman.
+  - Berlaku untuk semua tabel dengan sel gabungan. Tabel yang muat di satu halaman tidak diubah.
+  - Isi dokumen yang tersimpan dan editor tidak berubah.
+- **Cache PDF:** `LAYOUT_VERSION` dinaikkan ke 4, sehingga PDF yang sudah ter-cache dibuat ulang.
+- **Test:** `MergedCellPageBreakTest`.
+
 ---
 
 # Fitur Utama

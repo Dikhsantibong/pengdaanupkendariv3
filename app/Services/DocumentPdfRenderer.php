@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\ProcurementAmendment;
 use App\Models\ProcurementDocument;
+use Dom\Element;
+use Dom\HTMLDocument;
 use DOMElement;
 use Dompdf\Canvas;
 use Dompdf\Dompdf;
@@ -30,7 +32,7 @@ class DocumentPdfRenderer
      * Raised whenever the running headers or footers change, so cached PDFs
      * are drawn again with them.
      */
-    private const LAYOUT_VERSION = '3';
+    private const LAYOUT_VERSION = '4';
 
     /**
      * Where the PDFs of unsaved drafts are kept between previews.
@@ -184,6 +186,25 @@ class DocumentPdfRenderer
      */
     protected function laidOut(ProcurementDocument $document, ?callable $onFrame = null): Dompdf
     {
+        $isLandscape = str_contains(strtolower($document->rendered_body), 'landscape');
+        $html = $this->generator->printableHtml($document, forPdf: true);
+
+        // Where the sheets start is read from the document as it is; the
+        // printed PDF also splits merged cells at the sheets they run over.
+        if ($onFrame === null) {
+            $html = $this->withRowSpansPerSheet($html, $isLandscape);
+        }
+
+        return $this->layOut($html, $isLandscape, $onFrame);
+    }
+
+    /**
+     * Lay HTML out on A4 sheets (or the paper its @page names).
+     *
+     * @param  (callable(Frame, Canvas): void)|null  $onFrame  told about every frame as it is drawn
+     */
+    protected function layOut(string $html, bool $isLandscape, ?callable $onFrame = null): Dompdf
+    {
         $options = new Options;
         $options->set('defaultFont', 'DejaVu Serif');
         $options->set('isRemoteEnabled', false);
@@ -194,9 +215,8 @@ class DocumentPdfRenderer
         $options->set('chroot', public_path());
 
         $dompdf = new Dompdf($options);
-        $isLandscape = str_contains(strtolower($document->rendered_body), 'landscape');
         $dompdf->setPaper('A4', $isLandscape ? 'landscape' : 'portrait');
-        $dompdf->loadHtml($this->generator->printableHtml($document, forPdf: true), 'UTF-8');
+        $dompdf->loadHtml($html, 'UTF-8');
 
         if ($onFrame !== null) {
             $dompdf->setCallbacks([[
@@ -208,6 +228,143 @@ class DocumentPdfRenderer
         $dompdf->render();
 
         return $dompdf;
+    }
+
+    /**
+     * Split each merged (rowspan) cell at the sheets its rows run over.
+     *
+     * The PDF engine draws a cell merged over a page break without its
+     * borders past the break (the Batas Waktu column of a long Surat
+     * Pesanan): the cell is cut into one merged cell per sheet instead, each
+     * with the same content, so every sheet shows the column whole. A table
+     * that fits on one sheet is left as it is.
+     */
+    public function withRowSpansPerSheet(string $html, bool $isLandscape): string
+    {
+        if (stripos($html, 'rowspan') === false) {
+            return $html;
+        }
+
+        $dom = HTMLDocument::createFromString($html, LIBXML_NOERROR);
+
+        /** @var list<array{0: Element, 1: list<Element>}> $spans */
+        $spans = [];
+        $marker = 0;
+
+        foreach ($dom->querySelectorAll('td[rowspan], th[rowspan]') as $cell) {
+            $row = $cell->parentElement;
+
+            if ((int) $cell->getAttribute('rowspan') < 2 || $row === null || $row->tagName !== 'TR') {
+                continue;
+            }
+
+            $rows = [$row];
+
+            while (count($rows) < (int) $cell->getAttribute('rowspan') && $row->nextElementSibling?->tagName === 'TR') {
+                $row = $row->nextElementSibling;
+                $rows[] = $row;
+            }
+
+            foreach ($rows as $spanned) {
+                if (! $spanned->hasAttribute('data-rowspan-row')) {
+                    $spanned->setAttribute('data-rowspan-row', (string) $marker++);
+                }
+            }
+
+            $spans[] = [$cell, $rows];
+        }
+
+        if ($spans === []) {
+            return $html;
+        }
+
+        /** @var array<string, int> $pages */
+        $pages = [];
+
+        $this->layOut($dom->saveHtml(), $isLandscape, function (Frame $frame, Canvas $canvas) use (&$pages): void {
+            $node = $frame->get_node();
+
+            if ($node instanceof DOMElement && $node->hasAttribute('data-rowspan-row')) {
+                $key = $node->getAttribute('data-rowspan-row');
+                $pages[$key] = min($pages[$key] ?? PHP_INT_MAX, $canvas->get_page_number());
+            }
+        });
+
+        $changed = false;
+
+        foreach ($spans as [$cell, $rows]) {
+            /** @var list<list<Element>> $segments */
+            $segments = [];
+            $lastPage = -1;
+
+            foreach ($rows as $row) {
+                $page = $pages[$row->getAttribute('data-rowspan-row')] ?? 0;
+
+                if ($page !== $lastPage) {
+                    $segments[] = [];
+                    $lastPage = $page;
+                }
+
+                $segments[count($segments) - 1][] = $row;
+            }
+
+            if (count($segments) < 2) {
+                continue;
+            }
+
+            $changed = true;
+            $column = $this->columnOf($cell);
+            $cell->setAttribute('rowspan', (string) count($segments[0]));
+
+            foreach (array_slice($segments, 1) as $segment) {
+                $copy = $cell->cloneNode(true);
+
+                if ($copy instanceof Element) {
+                    $copy->setAttribute('rowspan', (string) count($segment));
+                    $this->insertAtColumn($segment[0], $copy, $column);
+                }
+            }
+        }
+
+        return $changed ? $dom->saveHtml() : $html;
+    }
+
+    /**
+     * The column a cell starts at, counting the spans of the cells before it.
+     */
+    protected function columnOf(Element $cell): int
+    {
+        $column = 0;
+        $sibling = $cell->previousElementSibling;
+
+        while ($sibling !== null) {
+            $column += max(1, (int) ($sibling->getAttribute('colspan') ?: 1));
+            $sibling = $sibling->previousElementSibling;
+        }
+
+        return $column;
+    }
+
+    /**
+     * Put a cell into a row where the given column starts.
+     */
+    protected function insertAtColumn(Element $row, Element $cell, int $column): void
+    {
+        $start = 0;
+        $existing = $row->firstElementChild;
+
+        while ($existing !== null) {
+            if ($start >= $column) {
+                $row->insertBefore($cell, $existing);
+
+                return;
+            }
+
+            $start += max(1, (int) ($existing->getAttribute('colspan') ?: 1));
+            $existing = $existing->nextElementSibling;
+        }
+
+        $row->appendChild($cell);
     }
 
     /**
