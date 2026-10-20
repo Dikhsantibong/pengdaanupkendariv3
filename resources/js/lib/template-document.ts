@@ -7,6 +7,14 @@
  * everything is turned back into the stored format on save.
  */
 
+import {
+    pageSetupCss,
+    paperDimensions,
+    readPageSetup,
+    withoutPageSetup,
+} from '@/lib/page-setup';
+import type { PageSetup } from '@/lib/page-setup';
+
 export type PlaceholderOption = { key: string; label: string };
 
 const PLACEHOLDER_PATTERN = /\{\{\s*([a-z0-9_]+)\s*\}\}/gi;
@@ -22,26 +30,36 @@ export function isFullDocument(body: string): boolean {
 }
 
 export function isLandscape(body: string): boolean {
-    return body.toLowerCase().includes('landscape');
+    return readPageSetup(body).landscape;
 }
 
-/** The page margin of the TOR's @page, shown on screen as the sheet's padding. */
-const SHEET_MARGIN = '15mm';
+/** Marks the page setup chosen in an editor (see lib/page-setup). */
+const PAGE_SETUP_ATTRIBUTE = 'data-page-setup';
 
-/** Editor-only styling: the grey desk, the sheet of paper and the chips. */
-function editorStylesheet(landscape: boolean, fullDocument: boolean): string {
-    const paper = landscape
-        ? 'width: 297mm; min-height: 210mm;'
-        : 'width: 210mm; min-height: 297mm;';
+/** The sheet's margins as CSS padding. */
+function sheetPadding(setup: PageSetup): string {
+    const { top, right, bottom, left } = setup.margins;
 
-    // A full document (the TOR) sets its margins with @page, which only the
-    // PDF honours: on screen its sheet gets the same 15mm itself.
+    return `${top}mm ${right}mm ${bottom}mm ${left}mm`;
+}
+
+/**
+ * Editor-only styling: the grey desk, the sheet of paper and the chips.
+ *
+ * The sheet takes the paper and margins of the page setup. Its @page only
+ * reaches the PDF, so on screen the sheet is given the same size itself.
+ */
+function editorStylesheet(setup: PageSetup, fullDocument: boolean): string {
+    const { width, height } = paperDimensions(setup);
+    const paper = `width: ${width}mm; min-height: ${height}mm;`;
+    const { right, left } = setup.margins;
+
     const page = fullDocument
         ? `html { background: #e8ebf0; }
-           body { ${paper} box-sizing: border-box; margin: 24px auto !important; padding: ${SHEET_MARGIN} !important; background: #fff;
+           body { ${paper} box-sizing: border-box; margin: 24px auto !important; padding: ${sheetPadding(setup)} !important; background: #fff;
                   box-shadow: 0 1px 3px rgba(15,23,42,.15), 0 8px 24px rgba(15,23,42,.08); }`
         : `html { background: #e8ebf0; }
-           body { ${paper} box-sizing: border-box; margin: 28px auto; padding: 20mm 15mm; background: #fff;
+           body { ${paper} box-sizing: border-box; margin: 28px auto; padding: ${sheetPadding(setup)}; background: #fff;
                   box-shadow: 0 1px 3px rgba(15,23,42,.15), 0 8px 24px rgba(15,23,42,.08); }`;
 
     return `${page}
@@ -52,7 +70,7 @@ function editorStylesheet(landscape: boolean, fullDocument: boolean): string {
               color: #0b4a8f; border: 1px solid #b9d3f5; font-family: system-ui, sans-serif; font-size: .85em;
               line-height: 1.35; white-space: nowrap; cursor: default; user-select: all; text-indent: 0; }
         .ph.is-unknown { background: #fdecec; color: #9b1c1c; border-color: #f5c2c2; }
-        .page-break { height: 0; border-top: 2px dashed #94a3b8; margin: 18px -15mm; position: relative; }
+        .page-break { height: 0; border-top: 2px dashed #94a3b8; margin: 18px -${right}mm 18px -${left}mm; position: relative; }
         .page-break::after { content: 'Halaman baru'; position: absolute; left: 50%; top: -9px; transform: translateX(-50%);
               background: #e8ebf0; color: #475569; font: 600 10px system-ui, sans-serif; padding: 1px 8px; border-radius: 8px; }
         .signature td, .lampiran-head td, table.plain td, table.plain th { outline: 1px dashed #cbd5e1; outline-offset: -1px; }
@@ -63,7 +81,7 @@ function editorStylesheet(landscape: boolean, fullDocument: boolean): string {
         /* The RKS cover's artwork runs past the cover to the edge of the
            paper, but never over the page after it. */
         .cover:has(> .rks-cover) { content-visibility: visible; }
-        .rks-cover { clip-path: inset(-15mm -15mm 0 -15mm); }`;
+        .rks-cover { clip-path: inset(-${setup.margins.top}mm -${right}mm 0 -${left}mm); }`;
 }
 
 function escapeHtml(value: string): string {
@@ -96,8 +114,7 @@ export function buildEditorDocument(
     documentStylesheet: string,
 ): string {
     const fullDocument = isFullDocument(body);
-    const landscape = isLandscape(body);
-    const editorStyles = `<style ${EDITOR_ATTRIBUTE} id="editor-page">${editorStylesheet(landscape, fullDocument)}</style>`;
+    const editorStyles = `<style ${EDITOR_ATTRIBUTE} id="editor-page">${editorStylesheet(readPageSetup(body), fullDocument)}</style>`;
 
     if (fullDocument) {
         const withStyles = /<\/head>/i.test(body)
@@ -205,7 +222,11 @@ export function serializeEditorDocument(
     const styles = Array.from(
         doc.head.querySelectorAll(`style[${TEMPLATE_STYLE_ATTRIBUTE}]`),
     )
-        .map((style) => `<style>${style.textContent ?? ''}</style>`)
+        .map((style) =>
+            style.hasAttribute(PAGE_SETUP_ATTRIBUTE)
+                ? `<style ${PAGE_SETUP_ATTRIBUTE}>${style.textContent ?? ''}</style>`
+                : `<style>${style.textContent ?? ''}</style>`,
+        )
         .join('\n');
 
     const content = body.innerHTML.trim();
@@ -213,43 +234,46 @@ export function serializeEditorDocument(
     return styles === '' ? content : `${styles}\n${content}`;
 }
 
-/** Switch the paper orientation of the template styles in the editor frame. */
-export function setEditorOrientation(doc: Document, landscape: boolean): void {
-    const templateStyles = Array.from(
-        doc.head.querySelectorAll<HTMLStyleElement>(
-            `style[${TEMPLATE_STYLE_ATTRIBUTE}]`,
-        ),
+/**
+ * The page setup of a template as it stands without one chosen in the
+ * editor: its own @page rules, or the house default.
+ */
+export function templatePageSetup(body: string): PageSetup {
+    return readPageSetup(withoutPageSetup(body));
+}
+
+/**
+ * Lay the template in the editor frame on another paper or margins, kept as
+ * the template's page setup block; `null` takes the block out, back to the
+ * template's own setup (`fallback`).
+ */
+export function setEditorPageSetup(
+    doc: Document,
+    setup: PageSetup | null,
+    fallback: PageSetup,
+    fullDocument: boolean,
+): void {
+    doc.querySelectorAll(`style[${PAGE_SETUP_ATTRIBUTE}]`).forEach((style) =>
+        style.remove(),
     );
 
-    if (landscape) {
-        const hasLandscape = templateStyles.some((style) =>
-            (style.textContent ?? '').toLowerCase().includes('landscape'),
-        );
-
-        if (!hasLandscape) {
-            const style = doc.createElement('style');
-            style.setAttribute(TEMPLATE_STYLE_ATTRIBUTE, '');
-            style.textContent = '@page { size: A4 landscape; }';
-            doc.head.appendChild(style);
-        }
-    } else {
-        templateStyles.forEach((style) => {
-            const css = style.textContent ?? '';
-
-            if (css.trim() === '@page { size: A4 landscape; }') {
-                style.remove();
-
-                return;
-            }
-
-            style.textContent = css.replace(/landscape/gi, 'portrait');
-        });
+    if (setup !== null) {
+        const style = doc.createElement('style');
+        style.setAttribute(TEMPLATE_STYLE_ATTRIBUTE, '');
+        style.setAttribute(PAGE_SETUP_ATTRIBUTE, '');
+        style.textContent = pageSetupCss(setup);
+        doc.head.appendChild(style);
     }
 
     const editorStyle = doc.getElementById('editor-page');
 
     if (editorStyle !== null) {
-        editorStyle.textContent = editorStylesheet(landscape, false);
+        // Kept last in the head, so the sheet's size wins on screen.
+        editorStyle.textContent = editorStylesheet(
+            setup ?? fallback,
+            fullDocument,
+        );
+        doc.head.appendChild(editorStyle);
     }
 }
 
@@ -326,17 +350,19 @@ export function renderPreviewHtml(
         return SAMPLE_VALUES[key.toLowerCase()] ?? match;
     });
 
+    const setup = readPageSetup(body);
+    const { width } = paperDimensions(setup);
+
     if (isFullDocument(rendered)) {
         // Its @page margins only apply in the PDF; on screen the sheet gets
         // the same margin, for screens only.
-        const sheet = `<style>@media screen { html { background: #e8ebf0; } body { max-width: ${isLandscape(body) ? '297mm' : '210mm'}; box-sizing: border-box; margin: 16px auto !important; padding: ${SHEET_MARGIN} !important; background: #fff; } }</style>`;
+        const sheet = `<style>@media screen { html { background: #e8ebf0; } body { max-width: ${width}mm; box-sizing: border-box; margin: 16px auto !important; padding: ${sheetPadding(setup)} !important; background: #fff; } }</style>`;
 
         return /<\/head>/i.test(rendered)
             ? rendered.replace(/<\/head>/i, `${sheet}</head>`)
             : sheet + rendered;
     }
 
-    const landscape = isLandscape(body);
     const baseStyles =
         documentStylesheet ??
         `body { font-family: "Times New Roman", Times, serif; font-size: 10pt; line-height: 1.45; color: #111; }
@@ -353,7 +379,7 @@ export function renderPreviewHtml(
 <style>
     ${baseStyles}
     html { background: #fff; }
-    body { max-width: ${landscape ? '297mm' : '210mm'}; margin: 0 auto; padding: 15mm; box-sizing: border-box; }
+    body { max-width: ${width}mm; margin: 0 auto; padding: ${sheetPadding(setup)}; box-sizing: border-box; }
     .page-break { border-top: 1px dashed #cbd5e1; margin: 16px 0; }
 </style>
 </head>

@@ -591,6 +591,49 @@
 }
 
 /*
+ * The sheet of the visual editor, laid out at the paper and margins of the
+ * page setup (`--page-margin-*`, `--sheet-gap`, set on `.page-sheet`): the
+ * page breaks, the space between printed sheets and the RKS cover follow
+ * those margins instead of fixed ones.
+ */
+.page-sheet .document-preview .page-break {
+    height: calc(var(--page-margin-bottom) + 32px + var(--page-margin-top));
+    margin: 1.5rem calc(-1 * var(--page-margin-right)) 1.5rem
+        calc(-1 * var(--page-margin-left));
+    background: linear-gradient(
+        to bottom,
+        #ffffff 0,
+        #ffffff var(--page-margin-bottom),
+        #cbd5e1 var(--page-margin-bottom),
+        #f1f5f9 calc(var(--page-margin-bottom) + 1px),
+        #f1f5f9 calc(var(--page-margin-bottom) + 31px),
+        #cbd5e1 calc(var(--page-margin-bottom) + 31px),
+        #ffffff calc(var(--page-margin-bottom) + 32px),
+        #ffffff 100%
+    );
+}
+
+.page-sheet .document-preview .page-break::after {
+    top: calc(var(--page-margin-bottom) + 16px);
+}
+
+.page-sheet .document-preview[contenteditable] [data-sheet-start='gap'] {
+    margin-top: var(--sheet-gap) !important;
+}
+
+.page-sheet .document-preview[contenteditable] tr[data-sheet-start='row'] > td,
+.page-sheet .document-preview[contenteditable] tr[data-sheet-start='row'] > th {
+    padding-top: calc(var(--sheet-gap) + 4pt) !important;
+}
+
+.page-sheet .document-preview .rks-cover {
+    clip-path: inset(
+        calc(-1 * var(--page-margin-top)) calc(-1 * var(--page-margin-right)) 0
+            calc(-1 * var(--page-margin-left))
+    );
+}
+
+/*
  * Long documents (an RKS runs to 40+ pages): the browser skips layout and
  * paint for chapters and attachments that are off screen, and lays each one
  * out the moment it scrolls into view. `auto` remembers the real height once

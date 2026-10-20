@@ -315,7 +315,7 @@ export default function DocumentEditor({
         <>
             <Head title={`Edit ${doc.title}`} />
 
-            <div className="flex flex-col gap-4 p-4 md:p-6">
+            <div className="flex flex-col gap-3 p-4 md:p-6">
                 <PageHeader
                     eyebrow={`${procurement.number} · ${doc.type}`}
                     title="Edit Dokumen"
@@ -359,32 +359,31 @@ export default function DocumentEditor({
                     }
                 />
 
-                <dl className="grid gap-3 rounded-md border border-border bg-card p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                    <div>
-                        <dt className="text-xs text-muted-foreground">
-                            Pengadaan
-                        </dt>
-                        <dd className="font-medium">{procurement.name}</dd>
+                {/* One compact line, so the page keeps its room for the editor. */}
+                <dl className="flex flex-wrap gap-x-6 gap-y-1 rounded-md border border-border bg-card px-3 py-2 text-xs">
+                    <div className="flex min-w-0 items-baseline gap-1.5">
+                        <dt className="text-muted-foreground">Pengadaan</dt>
+                        <dd className="truncate font-medium">
+                            {procurement.name}
+                        </dd>
                     </div>
-                    <div>
-                        <dt className="text-xs text-muted-foreground">
+                    <div className="flex items-baseline gap-1.5">
+                        <dt className="text-muted-foreground">
                             Versi Template
                         </dt>
                         <dd className="tabular font-medium">
                             v{doc.template_version}
                         </dd>
                     </div>
-                    <div>
-                        <dt className="text-xs text-muted-foreground">
-                            Digenerate
-                        </dt>
+                    <div className="flex items-baseline gap-1.5">
+                        <dt className="text-muted-foreground">Digenerate</dt>
                         <dd className="tabular">
                             {formatDateTime(doc.generated_at)}
                             {doc.generated_by ? ` · ${doc.generated_by}` : ''}
                         </dd>
                     </div>
-                    <div>
-                        <dt className="text-xs text-muted-foreground">
+                    <div className="flex items-baseline gap-1.5">
+                        <dt className="text-muted-foreground">
                             Revisi Terakhir
                         </dt>
                         <dd className="tabular">
@@ -403,8 +402,10 @@ export default function DocumentEditor({
                     </div>
                 </dl>
 
-                <div className="grid gap-2">
-                    <Label htmlFor="title">Judul Dokumen</Label>
+                <div className="grid gap-1.5 sm:grid-cols-[auto_1fr] sm:items-center sm:gap-3">
+                    <Label htmlFor="title" className="whitespace-nowrap">
+                        Judul Dokumen
+                    </Label>
                     <Input
                         id="title"
                         value={form.data.title}
@@ -412,8 +413,12 @@ export default function DocumentEditor({
                             form.setData('title', event.target.value)
                         }
                         autoComplete="off"
+                        className="h-9"
                     />
-                    <InputError message={form.errors.title} />
+                    <InputError
+                        message={form.errors.title}
+                        className="sm:col-start-2"
+                    />
                 </div>
 
                 <Tabs
@@ -466,7 +471,7 @@ export default function DocumentEditor({
                         </span>
                     </div>
 
-                    <TabsContent value="visual" className="mt-3">
+                    <TabsContent value="visual" className="mt-2">
                         <VisualEditor
                             value={form.data.body}
                             onChange={(html) => form.setData('body', html)}

@@ -226,9 +226,12 @@ class DocumentPdfRenderer
         $docTypeCode = $document?->documentType?->code ?? '';
         $body = $document?->rendered_body ?? '';
         $hasCover = str_contains($body, 'cover-page') || str_contains($body, 'class="cover"');
-        $isLandscape = str_contains(strtolower($body), 'landscape');
-        $footerY = $isLandscape ? 560 : 800;
-        $pageTextX = $isLandscape ? 700 : 500;
+        // The footer is measured from the foot and the right edge of the
+        // sheet, so it keeps its place on any paper the page setup chose
+        // (the numbers give the A4 positions it always had).
+        $isLandscape = $canvas->get_width() > $canvas->get_height();
+        $footerY = $canvas->get_height() - ($isLandscape ? 35.28 : 41.89);
+        $pageTextX = $canvas->get_width() - ($isLandscape ? 141.89 : 95.28);
 
         $isLampiranSp = in_array($docTypeCode, [
             'lampiran-sp-barang',
@@ -279,15 +282,17 @@ class DocumentPdfRenderer
                 $grey = [0.45, 0.45, 0.45];
                 $pageWidth = $canvas->get_width();
 
-                $canvas->text(56, 785, $contractNumber, $bold, 6.5, $grey);
+                $footerY = $canvas->get_height() - 56.89;
+
+                $canvas->text(56, $footerY, $contractNumber, $bold, 6.5, $grey);
 
                 foreach (['PIHAK KESATU : ............', 'PIHAK KEDUA   : ............'] as $line => $text) {
                     $width = $fontMetrics->getTextWidth($text, $font, 7);
-                    $canvas->text($pageWidth - 56 - $width, 785 + ($line * 12), $text, $font, 7, $grey);
+                    $canvas->text($pageWidth - 56 - $width, $footerY + ($line * 12), $text, $font, 7, $grey);
                 }
 
                 $number = (string) $pageNumber;
-                $canvas->text(($pageWidth - $fontMetrics->getTextWidth($number, $font, 8)) / 2, 815, $number, $font, 8, $grey);
+                $canvas->text(($pageWidth - $fontMetrics->getTextWidth($number, $font, 8)) / 2, $footerY + 30, $number, $font, 8, $grey);
             });
 
             return;
@@ -375,7 +380,7 @@ class DocumentPdfRenderer
                 $canvas->image($logo, ($pageWidth - $width) / 2, 30, $width, $height);
             }
 
-            $top = 790 - (count($lines) - 1) * 8;
+            $top = $canvas->get_height() - 51.89 - (count($lines) - 1) * 8;
 
             foreach ($lines as $at => $line) {
                 $canvas->text(62, $top + $at * 8, $line, $italic, 6.5, [0, 0, 0]);

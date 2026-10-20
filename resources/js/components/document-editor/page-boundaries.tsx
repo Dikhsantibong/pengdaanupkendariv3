@@ -9,10 +9,14 @@ import type { RefObject } from 'react';
 export const SHEET_ATTRIBUTE = 'data-sheet-start';
 
 /**
- * The height of the space between two sheets, matching the margin the
- * `[data-sheet-start]` rules in app.css open up before a new sheet.
+ * The height of the space between two sheets when the editor does not say,
+ * matching the margin the `[data-sheet-start]` rules in app.css open up
+ * before a new sheet.
  */
 const SHEET_GAP = 112;
+
+/** The height of the desk band drawn in the gap, in px. */
+const DESK_BAND = 32;
 
 type SheetStart = { page: number; index: number };
 
@@ -126,18 +130,38 @@ export function PageBoundaries({
     endpoint,
     title,
     content,
+    scale = 1,
+    gap = SHEET_GAP,
+    bandOffset = (SHEET_GAP - DESK_BAND) / 2,
+    prepareBody,
 }: {
     area: RefObject<HTMLDivElement | null>;
     endpoint?: string;
     title: string;
     content: string;
+    /** The zoom the sheet is drawn at; positions are measured on screen. */
+    scale?: number;
+    /** The space opened before a new sheet (the `--sheet-gap` of the sheet). */
+    gap?: number;
+    /** Where the desk band starts in that space: the bottom margin. */
+    bandOffset?: number;
+    /**
+     * Puts back what the editable area leaves out (the page setup), so the
+     * PDF engine lays the draft out on the same paper.
+     */
+    prepareBody?: (body: string) => string;
 }) {
     const [marks, setMarks] = useState<Mark[]>([]);
     const layout = useRef<{ body: string; sheets: SheetLayout } | null>(null);
+    const prepare = useRef(prepareBody);
+
+    useEffect(() => {
+        prepare.current = prepareBody;
+    }, [prepareBody]);
 
     // Where the bands go depends on the marked elements' positions, which
-    // shift as the author types, as images load and as long chapters are
-    // laid out on scroll.
+    // shift as the author types, as images load, as long chapters are laid
+    // out on scroll, and as the zoom or the margins change.
     useEffect(() => {
         const element = area.current;
 
@@ -154,7 +178,10 @@ export function PageBoundaries({
             element
                 .querySelectorAll<HTMLElement>(`[${SHEET_ATTRIBUTE}]`)
                 .forEach((marked) => {
-                    const top = marked.getBoundingClientRect().top - origin;
+                    // Measured on screen, at the zoom; the bands are drawn
+                    // inside the sheet, at its own size.
+                    const top =
+                        (marked.getBoundingClientRect().top - origin) / scale;
                     const mode = marked.getAttribute(
                         SHEET_ATTRIBUTE,
                     ) as Mark['mode'];
@@ -162,7 +189,7 @@ export function PageBoundaries({
                     found.push({
                         page: Number(marked.dataset.sheetPage ?? 0),
                         mode,
-                        top: mode === 'gap' ? top - SHEET_GAP : top,
+                        top: mode === 'gap' ? top - gap : top,
                     });
                 });
 
@@ -177,6 +204,7 @@ export function PageBoundaries({
         observer.observe(element);
         element.addEventListener('input', schedule);
         element.addEventListener('sheetschange', schedule);
+        schedule();
 
         return () => {
             cancelAnimationFrame(frame);
@@ -184,7 +212,7 @@ export function PageBoundaries({
             element.removeEventListener('input', schedule);
             element.removeEventListener('sheetschange', schedule);
         };
-    }, [area]);
+    }, [area, scale, gap]);
 
     // Ask the PDF engine for the sheets once the author pauses typing.
     useEffect(() => {
@@ -220,7 +248,11 @@ export function PageBoundaries({
 
         const controller = new AbortController();
         const timer = window.setTimeout(() => {
-            const body = numberedBody(element);
+            const draft = () =>
+                prepare.current
+                    ? prepare.current(numberedBody(element))
+                    : numberedBody(element);
+            const body = draft();
 
             if (layout.current?.body === body) {
                 apply(layout.current.sheets);
@@ -248,7 +280,7 @@ export function PageBoundaries({
                 .then((sheets) => {
                     // Only mark the sheets of the body that was laid out: if
                     // the author typed on meanwhile, the next round will.
-                    if (sheets === null || numberedBody(element) !== body) {
+                    if (sheets === null || draft() !== body) {
                         return;
                     }
 
@@ -284,10 +316,11 @@ export function PageBoundaries({
                 ) : (
                     <div
                         key={`${mark.page}-gap`}
-                        className="absolute -inset-x-px z-10 flex items-center"
+                        className="absolute -inset-x-px z-10"
                         style={{
                             top: mark.top,
-                            height: SHEET_GAP,
+                            height: gap,
+                            paddingTop: Math.max(0, bandOffset),
                         }}
                     >
                         <div className="relative h-8 w-full border-y border-slate-300 bg-slate-100 shadow-[inset_0_4px_6px_-2px_rgba(0,0,0,0.08),inset_0_-4px_6px_-2px_rgba(0,0,0,0.08)] dark:border-slate-600 dark:bg-slate-800">

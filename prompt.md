@@ -1540,6 +1540,43 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
   - Dokumen RKS yang sudah dibuat sebelumnya tidak berubah; buat ulang dokumennya untuk mendapatkan cover baru.
 - **Test:** `RksCoverTest` (baru). `MethodSpecificTemplateTest` dan `RksPjJasaTest` disesuaikan dengan judul cover baru.
 
+### 53. Editor Visual Seperti Word: Zoom, Pengaturan Halaman, dan Area Edit Lebih Luas
+Berlaku di **Edit Dokumen** (pengadaan) dan **editor Template Dokumen** (Data Master).
+
+- **Lembar kertas sesuai ukuran asli:**
+  - Lebar, tinggi, dan margin mengikuti pengaturan halaman dokumen.
+  - Batas halaman (dari mesin PDF) dan jarak antarlembar mengikuti margin.
+  - "Batas Halaman" dan cover RKS juga mengikuti margin.
+- **Zoom** di bilah status bawah:
+  - Tombol − / +, pilihan 50–200%, dan **Sesuai lebar**.
+  - Ctrl + gulir mouse juga mengubah zoom.
+  - Pilihan zoom diingat di browser.
+  - Bila belum pernah memilih, layar sempit otomatis memakai **Sesuai lebar**.
+  - Zoom hanya tampilan; tidak pernah ikut tersimpan.
+- **Pengaturan Halaman** (ikon di toolbar atau klik keterangan halaman di bilah status):
+  - Ukuran kertas: A4, F4/Folio, Letter, Legal.
+  - Orientasi: Potret / Lanskap.
+  - Margin: preset (Standar dokumen 20/15 mm, Normal, Sempit, Sedang, Lebar) atau angka sendiri per sisi (mm), dengan sketsa lembar.
+  - **Bawaan template** mengembalikan pengaturan asli.
+  - Menggantikan menu "A4 Potret/Lanskap" lama di editor template.
+- **Penyimpanan pengaturan halaman:**
+  - Disimpan di dokumen/template sebagai satu blok `<style data-page-setup>@page { size; margin }</style>` (`resources/js/lib/page-setup.ts`).
+  - Blok ini diletakkan paling akhir sehingga mengalahkan `@page` template.
+  - PDF (unduh, pratinjau cetak, dan pembagian halaman di editor) dicetak dengan kertas dan margin itu.
+  - Dokumen tanpa blok ini tidak berubah.
+  - Dokumen yang dibuat dari template ber-blok ikut membawanya.
+- **Footer PDF** (judul, nomor halaman, footer SPK, dan amandemen) kini diukur dari tepi bawah/kanan lembar. Pada A4 posisinya sama seperti sebelumnya; pada F4/Legal tetap di bawah.
+- **Area edit lebih luas:**
+  - Info dokumen dipadatkan menjadi satu baris.
+  - Judul dokumen dibuat sebaris dengan labelnya.
+  - Area kertas setinggi layar.
+  - Tombol **Layar penuh** (Esc untuk keluar) di kedua editor.
+- **Test:** `DocumentPageSetupTest` (baru):
+  - Kertas A4/F4/Legal lanskap sampai ke PDF.
+  - Blok pengaturan menang atas `@page` template.
+  - Margin dan kertas mengubah jumlah halaman.
+  - Posisi footer tetap di F4.
+
 ---
 
 # Fitur Utama

@@ -14,9 +14,12 @@ import {
     Superscript,
     Calculator,
     Columns3,
+    FileCog,
     Italic,
     List,
     ListOrdered,
+    Maximize2,
+    Minimize2,
     Minus,
     PenLine,
     Redo2,
@@ -28,11 +31,18 @@ import {
     Underline,
     Undo2,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import {
     PageBoundaries,
     withoutSheetMarks,
 } from '@/components/document-editor/page-boundaries';
+import { PageSetupDialog } from '@/components/document-editor/page-setup-dialog';
+import {
+    useDocumentZoom,
+    useWheelZoom,
+    ZoomControls,
+} from '@/components/document-editor/zoom-controls';
 import { Button } from '@/components/ui/button';
 import {
     Select,
@@ -47,6 +57,20 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+    describePageSetup,
+    hasPageSetup,
+    paperDimensions,
+    PX_PER_MM,
+    readPageSetup,
+    withoutPageSetup,
+    withPageSetup,
+} from '@/lib/page-setup';
+import type { PageSetup } from '@/lib/page-setup';
+import { cn } from '@/lib/utils';
+
+/** The height of the desk drawn between two sheets, in px. */
+const DESK_GAP = 32;
 
 /** The block styles an author picks from, in their own words. */
 /** A tab's worth of space, kept as non-breaking spaces so the PDF keeps it. */
@@ -447,6 +471,8 @@ export function VisualEditor({
     tableTools?: boolean;
 }) {
     const area = useRef<HTMLDivElement>(null);
+    const scrollContainer = useRef<HTMLDivElement>(null);
+    const paperContainer = useRef<HTMLDivElement>(null);
     // The last selection in the page, put back when a control (the colour
     // picker) took the focus away before its command runs.
     const savedRange = useRef<Range | null>(null);
@@ -472,7 +498,15 @@ export function VisualEditor({
     const seeded = useRef(false);
     const [inTable, setInTable] = useState(false);
     const [blockStyle, setBlockStyle] = useState('p');
-    const isLandscape = value.toLowerCase().includes('landscape');
+
+    // The paper, orientation and margins the document prints with. A setup
+    // chosen here travels in the body as one @page block, kept out of the
+    // editable area and written back on every change.
+    const setup = useMemo(() => readPageSetup(value), [value]);
+    const isCustomSetup = useMemo(() => hasPageSetup(value), [value]);
+    const chosenSetup = useRef<PageSetup | null>(isCustomSetup ? setup : null);
+    const [setupOpen, setSetupOpen] = useState(false);
+    const [fullscreen, setFullscreen] = useState(false);
 
     // The area is uncontrolled while typing: writing innerHTML on every render
     // would move the caret to the start on each keystroke. So it is written on
@@ -486,10 +520,14 @@ export function VisualEditor({
         }
 
         if (!seeded.current || value !== lastEmitted.current) {
+            const content = withoutPageSetup(value);
+            chosenSetup.current = hasPageSetup(value)
+                ? readPageSetup(value)
+                : null;
             // An empty body leaves nowhere to put the caret, so give the author
             // a paragraph to start typing in.
             area.current.innerHTML =
-                value.trim() === '' ? '<p><br></p>' : value;
+                content.trim() === '' ? '<p><br></p>' : content;
             area.current.querySelectorAll('.page-break').forEach((el) => {
                 el.setAttribute('contenteditable', 'false');
             });
@@ -498,8 +536,6 @@ export function VisualEditor({
         }
     }, [value]);
 
-    const scrollContainer = useRef<HTMLDivElement>(null);
-    const paperContainer = useRef<HTMLDivElement>(null);
     const [tableMenuPos, setTableMenuPos] = useState<{
         top: number;
         left: number;
@@ -553,9 +589,83 @@ export function VisualEditor({
             }
         }
 
-        lastEmitted.current = withoutSheetMarks(area.current.innerHTML);
+        lastEmitted.current = withPageSetup(
+            withoutSheetMarks(area.current.innerHTML),
+            chosenSetup.current,
+        );
         onChange(lastEmitted.current);
     }, [onChange]);
+
+    /** Lay the document on another paper or margins; null: the template's. */
+    const applySetup = (next: PageSetup | null) => {
+        chosenSetup.current = next;
+        emit();
+    };
+
+    // The sheet on screen: its paper and margins in millimetres, scaled by
+    // the zoom. The scaling is a transform, so the layout (and the printed
+    // sheets laid over it) stays that of the real paper.
+    const paper = paperDimensions(setup);
+    const { zoom, fit, setZoom, fitWidth, zoomIn, zoomOut } = useDocumentZoom(
+        scrollContainer,
+        paper.width * PX_PER_MM,
+    );
+    useWheelZoom(scrollContainer, zoom, setZoom);
+
+    const [sheetHeight, setSheetHeight] = useState(0);
+
+    useEffect(() => {
+        const element = paperContainer.current;
+
+        if (!element) {
+            return;
+        }
+
+        const observer = new ResizeObserver(() =>
+            setSheetHeight(element.offsetHeight),
+        );
+        observer.observe(element);
+
+        return () => observer.disconnect();
+    }, []);
+
+    const sheetGap =
+        (setup.margins.top + setup.margins.bottom) * PX_PER_MM + DESK_GAP;
+
+    const sheetStyle = {
+        width: `${paper.width}mm`,
+        minHeight: `${paper.height}mm`,
+        padding: `${setup.margins.top}mm ${setup.margins.right}mm ${setup.margins.bottom}mm ${setup.margins.left}mm`,
+        transform: zoom === 1 ? undefined : `scale(${zoom})`,
+        transformOrigin: 'top left',
+        '--page-margin-top': `${setup.margins.top}mm`,
+        '--page-margin-right': `${setup.margins.right}mm`,
+        '--page-margin-bottom': `${setup.margins.bottom}mm`,
+        '--page-margin-left': `${setup.margins.left}mm`,
+        '--sheet-gap': `${sheetGap}px`,
+    } as CSSProperties;
+
+    // Full screen gives the whole window to the page, as Word's focus mode;
+    // Escape leaves it.
+    useEffect(() => {
+        if (!fullscreen) {
+            return;
+        }
+
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && !event.defaultPrevented) {
+                setFullscreen(false);
+            }
+        };
+        const overflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        window.addEventListener('keydown', onKeyDown);
+
+        return () => {
+            document.body.style.overflow = overflow;
+            window.removeEventListener('keydown', onKeyDown);
+        };
+    }, [fullscreen]);
 
     /** The element the caret sits in, or null when it is outside the area. */
     const caretElement = useCallback((): HTMLElement | null => {
@@ -1115,7 +1225,14 @@ export function VisualEditor({
     };
 
     return (
-        <div className="flex flex-col rounded-md border border-border bg-card shadow-sm">
+        <div
+            className={cn(
+                'flex flex-col border border-border bg-card shadow-sm',
+                fullscreen
+                    ? 'fixed inset-0 z-50 rounded-none border-0'
+                    : 'rounded-md',
+            )}
+        >
             {/* Toolbar header: pinned at the top */}
             <div className="sticky top-0 z-30 flex flex-col gap-1.5 border-b border-border bg-card/95 px-3 py-2 backdrop-blur">
                 <div className="flex flex-wrap items-center gap-1">
@@ -1317,6 +1434,31 @@ export function VisualEditor({
                         icon={<Redo2 className="size-4" />}
                         onClick={() => run('redo')}
                     />
+
+                    <Separator orientation="vertical" className="mx-1 h-6" />
+
+                    {!disabled && (
+                        <ToolButton
+                            label="Pengaturan halaman (kertas & margin)"
+                            icon={<FileCog className="size-4" />}
+                            onClick={() => setSetupOpen(true)}
+                        />
+                    )}
+                    <ToolButton
+                        label={
+                            fullscreen
+                                ? 'Keluar layar penuh (Esc)'
+                                : 'Layar penuh'
+                        }
+                        icon={
+                            fullscreen ? (
+                                <Minimize2 className="size-4" />
+                            ) : (
+                                <Maximize2 className="size-4" />
+                            )
+                        }
+                        onClick={() => setFullscreen((current) => !current)}
+                    />
                 </div>
 
                 {tableTools && inTable && (
@@ -1397,7 +1539,12 @@ export function VisualEditor({
             <div
                 ref={scrollContainer}
                 onScroll={updateTableMenuPosition}
-                className="relative h-[72vh] min-h-[520px] overflow-y-auto bg-muted/25 p-4 sm:p-8"
+                className={cn(
+                    'relative overflow-auto bg-muted/40 p-4 sm:p-6',
+                    fullscreen
+                        ? 'min-h-0 flex-1'
+                        : 'h-[calc(100dvh-10rem)] min-h-[480px]',
+                )}
             >
                 {/* Floating Quick Action Menu right at the Table/Cell */}
                 {tableTools && tableMenuPos !== null && inTable && (
@@ -1477,198 +1624,265 @@ export function VisualEditor({
                     </div>
                 )}
 
-                {/* Paper Canvas */}
+                {/* Paper canvas: the sheet at its real size, scaled by the zoom */}
                 <div
-                    ref={paperContainer}
-                    className={`relative mx-auto w-full ${isLandscape ? 'max-w-[297mm]' : 'max-w-[210mm]'} min-h-[65vh] rounded-sm border border-border bg-white p-6 shadow-sm focus-within:ring-2 focus-within:ring-primary/40 sm:p-12`}
+                    className="relative mx-auto"
+                    style={{
+                        width: paper.width * PX_PER_MM * zoom,
+                        height:
+                            Math.max(sheetHeight, paper.height * PX_PER_MM) *
+                            zoom,
+                    }}
                 >
                     <div
-                        ref={area}
-                        contentEditable={!disabled}
-                        suppressContentEditableWarning
-                        role="textbox"
-                        aria-multiline="true"
-                        aria-label="Isi dokumen"
-                        spellCheck={false}
-                        onInput={emit}
-                        onKeyDown={(event) => {
-                            if (event.key === 'Enter') {
-                                // Inside a table cell, Enter starts a new line
-                                // in the same cell, as in Word. Moving between
-                                // cells is what Tab / Shift+Tab are for.
-                                if (currentCell()) {
-                                    event.preventDefault();
-
-                                    if (
-                                        !document.execCommand('insertLineBreak')
-                                    ) {
-                                        document.execCommand(
-                                            'insertHTML',
-                                            false,
-                                            '<br>',
-                                        );
-                                    }
-                                }
-                            } else if (event.key === 'Tab') {
-                                const cell = currentCell();
-
-                                if (cell) {
-                                    event.preventDefault();
-                                    const row = cell.closest('tr');
-                                    let targetCell: HTMLTableCellElement | null =
-                                        null;
-
-                                    if (event.shiftKey) {
-                                        targetCell =
-                                            (cell.previousElementSibling as HTMLTableCellElement) ??
-                                            null;
+                        ref={paperContainer}
+                        style={sheetStyle}
+                        className="page-sheet absolute top-0 left-0 box-border rounded-sm border border-border bg-white shadow-md focus-within:ring-2 focus-within:ring-primary/40"
+                    >
+                        <div
+                            ref={area}
+                            contentEditable={!disabled}
+                            suppressContentEditableWarning
+                            role="textbox"
+                            aria-multiline="true"
+                            aria-label="Isi dokumen"
+                            spellCheck={false}
+                            onInput={emit}
+                            onKeyDown={(event) => {
+                                if (event.key === 'Enter') {
+                                    // Inside a table cell, Enter starts a new line
+                                    // in the same cell, as in Word. Moving between
+                                    // cells is what Tab / Shift+Tab are for.
+                                    if (currentCell()) {
+                                        event.preventDefault();
 
                                         if (
-                                            !targetCell &&
-                                            row?.previousElementSibling
+                                            !document.execCommand(
+                                                'insertLineBreak',
+                                            )
                                         ) {
-                                            const prevRowCells = (
-                                                row.previousElementSibling as HTMLTableRowElement
-                                            ).cells;
-                                            targetCell =
-                                                prevRowCells[
-                                                    prevRowCells.length - 1
-                                                ] ?? null;
+                                            document.execCommand(
+                                                'insertHTML',
+                                                false,
+                                                '<br>',
+                                            );
                                         }
-                                    } else {
-                                        targetCell =
-                                            (cell.nextElementSibling as HTMLTableCellElement) ??
+                                    }
+                                } else if (event.key === 'Tab') {
+                                    const cell = currentCell();
+
+                                    if (cell) {
+                                        event.preventDefault();
+                                        const row = cell.closest('tr');
+                                        let targetCell: HTMLTableCellElement | null =
                                             null;
 
-                                        if (
-                                            !targetCell &&
-                                            row?.nextElementSibling
-                                        ) {
+                                        if (event.shiftKey) {
                                             targetCell =
-                                                (
-                                                    row.nextElementSibling as HTMLTableRowElement
-                                                ).cells[0] ?? null;
-                                        }
-                                    }
+                                                (cell.previousElementSibling as HTMLTableCellElement) ??
+                                                null;
 
-                                    if (targetCell) {
-                                        const range = document.createRange();
-                                        range.selectNodeContents(targetCell);
-                                        range.collapse(false);
-                                        const sel = window.getSelection();
-                                        sel?.removeAllRanges();
-                                        sel?.addRange(range);
-                                    }
-                                } else {
-                                    // As in Word: Tab never leaves the page.
-                                    // In a list it moves the item in or out;
-                                    // in running text it puts in a tab's
-                                    // worth of space.
-                                    event.preventDefault();
-                                    const inList = window
-                                        .getSelection()
-                                        ?.anchorNode?.parentElement?.closest(
-                                            'li',
-                                        );
+                                            if (
+                                                !targetCell &&
+                                                row?.previousElementSibling
+                                            ) {
+                                                const prevRowCells = (
+                                                    row.previousElementSibling as HTMLTableRowElement
+                                                ).cells;
+                                                targetCell =
+                                                    prevRowCells[
+                                                        prevRowCells.length - 1
+                                                    ] ?? null;
+                                            }
+                                        } else {
+                                            targetCell =
+                                                (cell.nextElementSibling as HTMLTableCellElement) ??
+                                                null;
 
-                                    if (inList || event.shiftKey) {
-                                        run(
-                                            event.shiftKey
-                                                ? 'outdent'
-                                                : 'indent',
-                                        );
-                                    } else {
-                                        run('insertText', TAB_SPACE);
-                                    }
-                                }
-                            }
-                        }}
-                        onBlur={() => {
-                            if (lastActiveCell.current) {
-                                const prevCell = lastActiveCell.current;
-                                const prevTable = prevCell.closest(
-                                    'table',
-                                ) as HTMLTableElement | null;
-
-                                if (
-                                    prevTable &&
-                                    isNegotiationTable(prevTable)
-                                ) {
-                                    const row = prevCell.closest('tr');
-
-                                    if (row && row.cells.length === 8) {
-                                        const idx = prevCell.cellIndex;
-
-                                        if (idx === 4 || idx === 6) {
-                                            const raw = parseNegoNumber(
-                                                prevCell.innerText,
-                                            );
-
-                                            if (raw > 0) {
-                                                prevCell.innerText =
-                                                    formatRupiahDisplay(raw);
+                                            if (
+                                                !targetCell &&
+                                                row?.nextElementSibling
+                                            ) {
+                                                targetCell =
+                                                    (
+                                                        row.nextElementSibling as HTMLTableRowElement
+                                                    ).cells[0] ?? null;
                                             }
                                         }
-                                    }
 
-                                    recalculateNegotiationTable(
-                                        prevTable,
-                                        null,
-                                    );
-                                } else if (
-                                    prevTable &&
-                                    isSuratPesananTable(prevTable)
-                                ) {
-                                    const row = prevCell.closest('tr');
+                                        if (targetCell) {
+                                            const range =
+                                                document.createRange();
+                                            range.selectNodeContents(
+                                                targetCell,
+                                            );
+                                            range.collapse(false);
+                                            const sel = window.getSelection();
+                                            sel?.removeAllRanges();
+                                            sel?.addRange(range);
+                                        }
+                                    } else {
+                                        // As in Word: Tab never leaves the page.
+                                        // In a list it moves the item in or out;
+                                        // in running text it puts in a tab's
+                                        // worth of space.
+                                        event.preventDefault();
+                                        const inList = window
+                                            .getSelection()
+                                            ?.anchorNode?.parentElement?.closest(
+                                                'li',
+                                            );
+
+                                        if (inList || event.shiftKey) {
+                                            run(
+                                                event.shiftKey
+                                                    ? 'outdent'
+                                                    : 'indent',
+                                            );
+                                        } else {
+                                            run('insertText', TAB_SPACE);
+                                        }
+                                    }
+                                }
+                            }}
+                            onBlur={() => {
+                                if (lastActiveCell.current) {
+                                    const prevCell = lastActiveCell.current;
+                                    const prevTable = prevCell.closest(
+                                        'table',
+                                    ) as HTMLTableElement | null;
 
                                     if (
-                                        row &&
-                                        (row.cells.length === 7 ||
-                                            row.cells.length === 6)
+                                        prevTable &&
+                                        isNegotiationTable(prevTable)
                                     ) {
-                                        const idx = prevCell.cellIndex;
+                                        const row = prevCell.closest('tr');
 
-                                        if (idx === 4) {
-                                            const raw = parseNegoNumber(
-                                                prevCell.innerText,
-                                            );
+                                        if (row && row.cells.length === 8) {
+                                            const idx = prevCell.cellIndex;
 
-                                            if (raw > 0) {
-                                                prevCell.innerText =
-                                                    'Rp ' +
-                                                    formatRupiahDisplay(raw);
+                                            if (idx === 4 || idx === 6) {
+                                                const raw = parseNegoNumber(
+                                                    prevCell.innerText,
+                                                );
+
+                                                if (raw > 0) {
+                                                    prevCell.innerText =
+                                                        formatRupiahDisplay(
+                                                            raw,
+                                                        );
+                                                }
                                             }
                                         }
+
+                                        recalculateNegotiationTable(
+                                            prevTable,
+                                            null,
+                                        );
+                                    } else if (
+                                        prevTable &&
+                                        isSuratPesananTable(prevTable)
+                                    ) {
+                                        const row = prevCell.closest('tr');
+
+                                        if (
+                                            row &&
+                                            (row.cells.length === 7 ||
+                                                row.cells.length === 6)
+                                        ) {
+                                            const idx = prevCell.cellIndex;
+
+                                            if (idx === 4) {
+                                                const raw = parseNegoNumber(
+                                                    prevCell.innerText,
+                                                );
+
+                                                if (raw > 0) {
+                                                    prevCell.innerText =
+                                                        'Rp ' +
+                                                        formatRupiahDisplay(
+                                                            raw,
+                                                        );
+                                                }
+                                            }
+                                        }
+
+                                        recalculateSuratPesananTable(
+                                            prevTable,
+                                            null,
+                                        );
                                     }
 
-                                    recalculateSuratPesananTable(
-                                        prevTable,
-                                        null,
-                                    );
+                                    lastActiveCell.current = null;
                                 }
 
-                                lastActiveCell.current = null;
+                                emit();
+                            }}
+                            onPaste={(event) => {
+                                event.preventDefault();
+                                const text =
+                                    event.clipboardData.getData('text/plain');
+                                document.execCommand('insertText', false, text);
+                                emit();
+                            }}
+                            style={{
+                                minHeight: `${paper.height - setup.margins.top - setup.margins.bottom}mm`,
+                            }}
+                            className="document-preview outline-none"
+                        />
+                        <PageBoundaries
+                            area={area}
+                            endpoint={pagesEndpoint}
+                            title={title}
+                            content={value}
+                            scale={zoom}
+                            gap={sheetGap}
+                            bandOffset={setup.margins.bottom * PX_PER_MM}
+                            prepareBody={(body) =>
+                                withPageSetup(body, chosenSetup.current)
                             }
-
-                            emit();
-                        }}
-                        onPaste={(event) => {
-                            event.preventDefault();
-                            const text =
-                                event.clipboardData.getData('text/plain');
-                            document.execCommand('insertText', false, text);
-                            emit();
-                        }}
-                        className="document-preview min-h-[60vh] outline-none"
-                    />
-                    <PageBoundaries
-                        area={area}
-                        endpoint={pagesEndpoint}
-                        title={title}
-                        content={value}
-                    />
+                        />
+                    </div>
                 </div>
             </div>
+
+            {/* Status bar: the page setup and the zoom, as in Word */}
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-card px-3 py-1 text-xs text-muted-foreground">
+                <button
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => setSetupOpen(true)}
+                    disabled={disabled}
+                    title="Ubah ukuran kertas, orientasi, dan margin"
+                    className="inline-flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-muted hover:text-foreground disabled:pointer-events-none"
+                >
+                    <FileCog className="size-3.5" />
+                    <span className="tabular">{describePageSetup(setup)}</span>
+                    {!isCustomSetup && (
+                        <span className="text-muted-foreground/80">
+                            (bawaan template)
+                        </span>
+                    )}
+                </button>
+
+                <ZoomControls
+                    zoom={zoom}
+                    fit={fit}
+                    onZoom={setZoom}
+                    onFitWidth={fitWidth}
+                    onZoomIn={zoomIn}
+                    onZoomOut={zoomOut}
+                />
+            </div>
+
+            <PageSetupDialog
+                open={setupOpen}
+                onOpenChange={setSetupOpen}
+                setup={setup}
+                isCustom={isCustomSetup}
+                onApply={applySetup}
+                onReset={() => applySetup(null)}
+            />
         </div>
     );
 }

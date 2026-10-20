@@ -7,6 +7,7 @@ import {
     ChevronDown,
     Columns3,
     Eraser,
+    FileCog,
     FileSignature,
     Grid2x2Plus,
     ImageIcon,
@@ -15,6 +16,8 @@ import {
     Italic,
     List,
     ListOrdered,
+    Maximize2,
+    Minimize2,
     Minus,
     Redo2,
     Rows3,
@@ -26,7 +29,18 @@ import {
     Undo2,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { useCallback, useImperativeHandle, useRef, useState } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useImperativeHandle,
+    useRef,
+    useState,
+} from 'react';
+import { PageSetupDialog } from '@/components/document-editor/page-setup-dialog';
+import {
+    useDocumentZoom,
+    ZoomControls,
+} from '@/components/document-editor/zoom-controls';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -36,13 +50,21 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+    describePageSetup,
+    hasPageSetup,
+    paperDimensions,
+    PX_PER_MM,
+    readPageSetup,
+} from '@/lib/page-setup';
+import type { PageSetup } from '@/lib/page-setup';
+import {
     buildEditorDocument,
     isFullDocument,
-    isLandscape,
     placeholderChipHtml,
     prepareEditorDocument,
     serializeEditorDocument,
-    setEditorOrientation,
+    setEditorPageSetup,
+    templatePageSetup,
 } from '@/lib/template-document';
 import type { PlaceholderOption } from '@/lib/template-document';
 import { cn } from '@/lib/utils';
@@ -208,7 +230,15 @@ export function TemplateEditor({
         buildEditorDocument(initialBody, documentStylesheet),
     );
     const [fullDocument] = useState(() => isFullDocument(initialBody));
-    const [landscape, setLandscape] = useState(() => isLandscape(initialBody));
+    // The template's own paper and margins, and the ones chosen here (kept
+    // in the template as its page setup block).
+    const [templateSetup] = useState(() => templatePageSetup(initialBody));
+    const [chosenSetup, setChosenSetup] = useState<PageSetup | null>(() =>
+        hasPageSetup(initialBody) ? readPageSetup(initialBody) : null,
+    );
+    const setup = chosenSetup ?? templateSetup;
+    const [setupOpen, setSetupOpen] = useState(false);
+    const [fullscreen, setFullscreen] = useState(false);
     const [state, setState] = useState<ToolbarState>(EMPTY_STATE);
     const [gridHover, setGridHover] = useState<[number, number]>([0, 0]);
 
@@ -216,6 +246,65 @@ export function TemplateEditor({
         (): Document | null => frameRef.current?.contentDocument ?? null,
         [],
     );
+
+    // The zoom of the sheet in the frame, as in Word; Ctrl + wheel inside the
+    // frame zooms it too. The zoom lives in an editor-only style, so it is
+    // never saved with the template.
+    const { zoom, fit, setZoom, fitWidth, zoomIn, zoomOut } = useDocumentZoom(
+        frameRef,
+        paperDimensions(setup).width * PX_PER_MM,
+    );
+    const zoomRef = useRef(zoom);
+    const wheelZoom = useRef<(zoomingIn: boolean) => void>(() => {});
+    const leaveFullscreen = useRef<() => void>(() => {});
+
+    const applyZoom = useCallback((doc: Document, value: number) => {
+        let style = doc.getElementById('editor-zoom');
+
+        if (style === null) {
+            style = doc.createElement('style');
+            style.id = 'editor-zoom';
+            style.setAttribute('data-editor-only', '');
+            doc.head.appendChild(style);
+        }
+
+        style.textContent = `html { zoom: ${value}; }`;
+    }, []);
+
+    useEffect(() => {
+        zoomRef.current = zoom;
+        wheelZoom.current = (zoomingIn) =>
+            setZoom(zoom * (zoomingIn ? 1.1 : 1 / 1.1));
+
+        const doc = frameDocument();
+
+        if (doc?.head) {
+            applyZoom(doc, zoom);
+        }
+    }, [zoom, setZoom, frameDocument, applyZoom]);
+
+    // Full screen gives the whole window to the sheet; Escape leaves it.
+    useEffect(() => {
+        leaveFullscreen.current = () => setFullscreen(false);
+
+        if (!fullscreen) {
+            return;
+        }
+
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && !event.defaultPrevented) {
+                setFullscreen(false);
+            }
+        };
+        const overflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        window.addEventListener('keydown', onKeyDown);
+
+        return () => {
+            document.body.style.overflow = overflow;
+            window.removeEventListener('keydown', onKeyDown);
+        };
+    }, [fullscreen]);
 
     const refreshState = useCallback(() => {
         const doc = frameDocument();
@@ -277,6 +366,7 @@ export function TemplateEditor({
         }
 
         prepareEditorDocument(doc, placeholders);
+        applyZoom(doc, zoomRef.current);
 
         try {
             doc.execCommand('styleWithCSS', false, 'true');
@@ -299,7 +389,26 @@ export function TemplateEditor({
             refreshState();
         });
 
+        doc.addEventListener(
+            'wheel',
+            (event) => {
+                if (!event.ctrlKey && !event.metaKey) {
+                    return;
+                }
+
+                event.preventDefault();
+                wheelZoom.current(event.deltaY < 0);
+            },
+            { passive: false },
+        );
+
         doc.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                leaveFullscreen.current();
+
+                return;
+            }
+
             if (event.key !== 'Tab') {
                 return;
             }
@@ -334,7 +443,7 @@ export function TemplateEditor({
 
             doc.execCommand(event.shiftKey ? 'outdent' : 'indent');
         });
-    }, [frameDocument, placeholders, refreshState]);
+    }, [applyZoom, frameDocument, placeholders, refreshState]);
 
     /** Give the frame focus back with the caret where the user left it. */
     const restoreSelection = useCallback((): Document | null => {
@@ -563,15 +672,16 @@ export function TemplateEditor({
         table?.classList.toggle('plain');
     };
 
-    const changeOrientation = (toLandscape: boolean) => {
+    /** Lay the template on another paper or margins; null: its own. */
+    const applySetup = (next: PageSetup | null) => {
         const doc = frameDocument();
 
         if (doc === null) {
             return;
         }
 
-        setEditorOrientation(doc, toLandscape);
-        setLandscape(toLandscape);
+        setEditorPageSetup(doc, next, templateSetup, fullDocument);
+        setChosenSetup(next);
     };
 
     useImperativeHandle(
@@ -602,8 +712,10 @@ export function TemplateEditor({
     return (
         <div
             className={cn(
-                'flex min-h-0 flex-col overflow-hidden rounded-md border border-border bg-card',
-                className,
+                'flex min-h-0 flex-col overflow-hidden border border-border bg-card',
+                fullscreen
+                    ? 'fixed inset-0 z-50 rounded-none border-0'
+                    : cn('rounded-md', className),
             )}
         >
             <div className="flex flex-wrap items-center gap-0.5 border-b border-border bg-card px-2 py-1.5">
@@ -969,35 +1081,27 @@ export function TemplateEditor({
                     </DropdownMenuContent>
                 </DropdownMenu>
 
-                {!fullDocument && (
-                    <>
-                        <ToolbarDivider />
-                        <DropdownMenu>
-                            <ToolbarMenuTrigger label="Orientasi kertas">
-                                <span className="text-sm">
-                                    A4 {landscape ? 'Lanskap' : 'Potret'}
-                                </span>
-                            </ToolbarMenuTrigger>
-                            <DropdownMenuContent
-                                align="start"
-                                onCloseAutoFocus={(event) =>
-                                    event.preventDefault()
-                                }
-                            >
-                                <DropdownMenuItem
-                                    onSelect={() => changeOrientation(false)}
-                                >
-                                    A4 Potret
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onSelect={() => changeOrientation(true)}
-                                >
-                                    A4 Lanskap
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </>
-                )}
+                <ToolbarDivider />
+
+                <ToolbarButton
+                    label="Pengaturan halaman (kertas, orientasi & margin)"
+                    onClick={() => setSetupOpen(true)}
+                >
+                    <FileCog className="size-4" />
+                </ToolbarButton>
+                <ToolbarButton
+                    label={
+                        fullscreen ? 'Keluar layar penuh (Esc)' : 'Layar penuh'
+                    }
+                    active={fullscreen}
+                    onClick={() => setFullscreen((current) => !current)}
+                >
+                    {fullscreen ? (
+                        <Minimize2 className="size-4" />
+                    ) : (
+                        <Maximize2 className="size-4" />
+                    )}
+                </ToolbarButton>
             </div>
 
             <iframe
@@ -1006,6 +1110,43 @@ export function TemplateEditor({
                 srcDoc={srcDoc}
                 onLoad={handleLoad}
                 className="min-h-0 w-full flex-1 bg-[#e8ebf0]"
+            />
+
+            {/* Status bar: the page setup and the zoom, as in Word */}
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-card px-3 py-1 text-xs text-muted-foreground">
+                <button
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => setSetupOpen(true)}
+                    title="Ubah ukuran kertas, orientasi, dan margin"
+                    className="inline-flex items-center gap-1.5 rounded px-1.5 py-1 hover:bg-muted hover:text-foreground"
+                >
+                    <FileCog className="size-3.5" />
+                    <span className="tabular">{describePageSetup(setup)}</span>
+                    {chosenSetup === null && (
+                        <span className="text-muted-foreground/80">
+                            (bawaan)
+                        </span>
+                    )}
+                </button>
+
+                <ZoomControls
+                    zoom={zoom}
+                    fit={fit}
+                    onZoom={setZoom}
+                    onFitWidth={fitWidth}
+                    onZoomIn={zoomIn}
+                    onZoomOut={zoomOut}
+                />
+            </div>
+
+            <PageSetupDialog
+                open={setupOpen}
+                onOpenChange={setSetupOpen}
+                setup={setup}
+                isCustom={chosenSetup !== null}
+                onApply={applySetup}
+                onReset={() => applySetup(null)}
             />
         </div>
     );
