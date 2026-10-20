@@ -63,6 +63,9 @@ use Illuminate\Support\Collection;
  * @property string|null $proposal_memo_number
  * @property CarbonImmutable|null $proposal_memo_date
  * @property string|null $icc_memo_number
+ * @property string|null $rks_number
+ * @property string|null $hpe_number
+ * @property string|null $upb_number
  * @property CarbonImmutable|null $icc_memo_date
  * @property string|null $coa_number
  * @property string|null $wo_number
@@ -127,6 +130,9 @@ use Illuminate\Support\Collection;
     'proposal_memo_date',
     'icc_memo_number',
     'icc_memo_date',
+    'rks_number',
+    'hpe_number',
+    'upb_number',
     'coa_number',
     'wo_number',
     'sr_number',

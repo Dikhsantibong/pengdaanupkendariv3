@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
+import { PeriodFilter } from '@/components/period-filter';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -40,6 +41,7 @@ export default function DocumentArchive({
     folders,
     filters,
     documentTypes,
+    years,
 }: {
     groups: Paginated<ArchiveGroup>;
     folders: ArchiveFolder[];
@@ -47,8 +49,12 @@ export default function DocumentArchive({
         search: string | null;
         document_type_id: number | null;
         folder: string | null;
+        year: number | null;
+        month: number | null;
     };
     documentTypes: Option[];
+    /** The years documents were drawn in. */
+    years: number[];
 }) {
     const openFolder = folders.find((folder) => folder.key === filters.folder);
 
@@ -219,6 +225,13 @@ export default function DocumentArchive({
                             </SelectContent>
                         </Select>
                     </div>
+
+                    <PeriodFilter
+                        years={years}
+                        year={filters.year}
+                        month={filters.month}
+                        onChange={(next) => visit(next)}
+                    />
                 </div>
 
                 {page.data.length === 0 ? (

@@ -185,7 +185,10 @@ export type ChecklistInputKind =
     | 'bank_account'
     | 'partner_candidates'
     | 'procurement_memo'
-    | 'contract_number';
+    | 'contract_number'
+    | 'rks_number'
+    | 'hpe_number'
+    | 'upb_number';
 
 export type ChecklistInput = {
     kind: ChecklistInputKind;
@@ -208,6 +211,10 @@ export type ChecklistInput = {
         number: string | null;
         /** The running number of the job's contract format, to offer. */
         suggested_number: string | null;
+        /** The numbers of the planning documents. */
+        rks_number: string | null;
+        hpe_number: string | null;
+        upb_number: string | null;
     };
 };
 
@@ -287,6 +294,9 @@ export type ProcurementFilters = {
     contract_type_id: number | null;
     planner_id: number | null;
     executor_id: number | null;
+    /** The year and month registered in. */
+    year?: number | null;
+    month?: number | null;
 };
 
 export type FilterOptions = {
@@ -294,4 +304,6 @@ export type FilterOptions = {
     targetUnits: Option[];
     budgetSources: Option[];
     progressStatuses: StatusOption[];
+    /** The years the data can be filtered by, newest first. */
+    years?: number[];
 };

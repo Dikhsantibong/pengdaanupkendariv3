@@ -342,6 +342,10 @@ class EndToEndFlowTest extends TestCase
             'contract_period' => ['execution_start_date' => '2026-11-01', 'execution_duration_days' => 60],
             'warranty' => ['warranty_months' => 6],
             'procurement_memo' => ['icc_memo_number' => 'ND-031/ICC/2026', 'icc_memo_date' => '2026-09-10'],
+            // The number of each planning document.
+            'rks_number' => ['rks_number' => '031.RKS-SPK/612/UPKD/2026'],
+            'hpe_number' => ['hpe_number' => 'ND-031/UPKD/2026-HPE(A)'],
+            'upb_number' => ['upb_number' => 'ND-031/UPKD/2026'],
             // The executor picks the partner from the calon mitra.
             'bank_account' => [
                 'partner_candidate_id' => $procurement->partnerCandidates()->where('name', 'CV Teknik Pendingin')->value('id'),

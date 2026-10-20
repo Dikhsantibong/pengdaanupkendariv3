@@ -60,6 +60,7 @@ class MasterDataOptions
             'targetUnits' => self::targetUnits(false),
             'budgetSources' => self::budgetSources(false),
             'progressStatuses' => self::statuses(),
+            'years' => FilterPeriod::years('procurements'),
         ];
     }
 

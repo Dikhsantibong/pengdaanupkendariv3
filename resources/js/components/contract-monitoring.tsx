@@ -1,9 +1,19 @@
 import { Link, router } from '@inertiajs/react';
 import { FileSearch, FileText, Search, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
+import {
+    FolderBadge,
+    OpenPartnerBar,
+    PartnerFolderGrid,
+} from '@/components/partner-folder-grid';
+import type {
+    OpenPartner,
+    PartnerFolder,
+} from '@/components/partner-folder-grid';
+import { PeriodFilter } from '@/components/period-filter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,6 +44,10 @@ export type MonitoringFilters = {
     search: string | null;
     state: string | null;
     work_director_id: number | null;
+    /** The partner folder open, if any. */
+    mitra: string | null;
+    year: number | null;
+    month: number | null;
 };
 
 /** What every amendment or DO row carries. */
@@ -76,12 +90,17 @@ export function stateTone(state: string): string {
 
 /**
  * A monitoring list of amendments or Delivery Orders across every contract:
- * a card per state (click to filter), a search and division filter run on
- * the server, and a paginated table linking to each procurement's tab.
+ * a card per state (click to filter), a search, division and period filter
+ * run on the server, one folder per partner, and in a partner's folder a
+ * paginated table grouped per work, linking to each procurement's tab.
  */
 export function ContractMonitoring<T extends MonitoringRow>({
     url,
     page,
+    folders,
+    partner,
+    years,
+    unitLabel,
     summary,
     filters,
     workDirectors,
@@ -90,7 +109,14 @@ export function ContractMonitoring<T extends MonitoringRow>({
     extraCells,
 }: {
     url: string;
-    page: Paginated<T>;
+    /** The open partner's rows. */
+    page: Paginated<T> | null;
+    /** One folder per partner, while none is open. */
+    folders: Paginated<PartnerFolder> | null;
+    partner: OpenPartner | null;
+    years: number[];
+    /** What a row is called: amandemen, DO. */
+    unitLabel: string;
     summary: MonitoringSummary[];
     filters: MonitoringFilters;
     workDirectors: Option[];
@@ -136,7 +162,16 @@ export function ContractMonitoring<T extends MonitoringRow>({
     const hasFilters =
         Boolean(filters.search) ||
         Boolean(filters.state) ||
-        Boolean(filters.work_director_id);
+        Boolean(filters.work_director_id) ||
+        Boolean(filters.year) ||
+        Boolean(filters.month);
+
+    // The way back out of a folder keeps every other filter.
+    const outside = Object.fromEntries(
+        Object.entries({ ...filters, mitra: null }).filter(
+            ([, value]) => value !== null && value !== '',
+        ),
+    ) as Record<string, string>;
 
     return (
         <div className="flex flex-col gap-4">
@@ -240,6 +275,12 @@ export function ContractMonitoring<T extends MonitoringRow>({
                         </SelectContent>
                     </Select>
                 </div>
+                <PeriodFilter
+                    years={years}
+                    year={filters.year}
+                    month={filters.month}
+                    onChange={(next) => visit(next)}
+                />
                 {hasFilters && (
                     <Button
                         type="button"
@@ -249,7 +290,7 @@ export function ContractMonitoring<T extends MonitoringRow>({
                             setSearch('');
                             router.get(
                                 url,
-                                {},
+                                filters.mitra ? { mitra: filters.mitra } : {},
                                 { preserveScroll: true, replace: true },
                             );
                         }}
@@ -260,7 +301,44 @@ export function ContractMonitoring<T extends MonitoringRow>({
                 )}
             </div>
 
-            {page.data.length === 0 ? (
+            {partner === null && folders !== null && (
+                <PartnerFolderGrid
+                    page={folders}
+                    emptyTitle={emptyTitle}
+                    href={(folder) => {
+                        const query = new URLSearchParams({
+                            ...outside,
+                            mitra: folder.key,
+                        });
+
+                        return `${url}?${query.toString()}`;
+                    }}
+                    details={(folder) => (
+                        <>
+                            <span className="tabular block text-[11px] text-muted-foreground">
+                                {folder.total} {unitLabel} · {folder.works}{' '}
+                                pekerjaan
+                            </span>
+                            <FolderBadge
+                                done={folder.done}
+                                total={folder.total}
+                                label="terbit"
+                            />
+                        </>
+                    )}
+                />
+            )}
+
+            {partner !== null && (
+                <OpenPartnerBar
+                    partner={partner}
+                    backHref={`${url}?${new URLSearchParams(outside).toString()}`}
+                >
+                    {page?.total ?? page?.data.length ?? 0} {unitLabel}
+                </OpenPartnerBar>
+            )}
+
+            {page === null ? null : page.data.length === 0 ? (
                 <div className="rounded-md border border-border bg-card">
                     <EmptyState icon={FileSearch} title={emptyTitle} />
                 </div>
@@ -288,73 +366,94 @@ export function ContractMonitoring<T extends MonitoringRow>({
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {page.data.map((row) => (
-                                <TableRow key={row.id}>
-                                    <TableCell>
-                                        <Link
-                                            href={row.url}
-                                            className="block font-medium whitespace-nowrap hover:text-primary hover:underline"
-                                        >
-                                            {row.title}
-                                        </Link>
-                                        <span className="tabular text-xs text-muted-foreground">
-                                            {row.number ?? 'Belum bernomor'}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell>
-                                        <span className="block max-w-[18rem] truncate">
-                                            {row.procurement.name}
-                                        </span>
-                                        <span className="tabular text-xs text-muted-foreground">
-                                            {row.procurement.number}
-                                            {row.procurement.partner
-                                                ? ` · ${row.procurement.partner}`
-                                                : ''}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell className="whitespace-nowrap">
-                                        {row.procurement.division}
-                                    </TableCell>
-                                    {extraCells?.(row)}
-                                    <TableCell>
-                                        <span
-                                            className={cn(
-                                                'rounded-sm px-2 py-0.5 text-xs font-medium whitespace-nowrap',
-                                                stateTone(row.state),
-                                            )}
-                                        >
-                                            {row.state_label}
-                                        </span>
-                                    </TableCell>
-                                    <TableCell className="tabular text-xs whitespace-nowrap text-muted-foreground">
-                                        {row.submitted_at
-                                            ? formatDateTime(row.submitted_at)
-                                            : '—'}
-                                        {row.issued_at && (
-                                            <div className="text-emerald-700 dark:text-emerald-400">
-                                                Terbit{' '}
-                                                {formatDateTime(row.issued_at)}
-                                            </div>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        {row.document_url ? (
-                                            <a
-                                                href={row.document_url}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                            {page.data.map((row, index) => (
+                                <Fragment key={row.id}>
+                                    {/* Each work's own under its heading. */}
+                                    {page.data[index - 1]?.procurement.id !==
+                                        row.procurement.id && (
+                                        <TableRow className="bg-muted/40 hover:bg-muted/40">
+                                            <TableCell
+                                                colSpan={
+                                                    6 + extraHeadings.length
+                                                }
+                                                className="py-1.5 text-xs font-semibold"
                                             >
-                                                <FileText className="size-3.5" />
-                                                Pratinjau
-                                            </a>
-                                        ) : (
-                                            <span className="text-xs text-muted-foreground">
-                                                —
+                                                {row.procurement.number} ·{' '}
+                                                {row.procurement.name}
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                    <TableRow>
+                                        <TableCell>
+                                            <Link
+                                                href={row.url}
+                                                className="block font-medium whitespace-nowrap hover:text-primary hover:underline"
+                                            >
+                                                {row.title}
+                                            </Link>
+                                            <span className="tabular text-xs text-muted-foreground">
+                                                {row.number ?? 'Belum bernomor'}
                                             </span>
-                                        )}
-                                    </TableCell>
-                                </TableRow>
+                                        </TableCell>
+                                        <TableCell>
+                                            <span className="block max-w-[18rem] truncate">
+                                                {row.procurement.name}
+                                            </span>
+                                            <span className="tabular text-xs text-muted-foreground">
+                                                {row.procurement.number}
+                                                {row.procurement.partner
+                                                    ? ` · ${row.procurement.partner}`
+                                                    : ''}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="whitespace-nowrap">
+                                            {row.procurement.division}
+                                        </TableCell>
+                                        {extraCells?.(row)}
+                                        <TableCell>
+                                            <span
+                                                className={cn(
+                                                    'rounded-sm px-2 py-0.5 text-xs font-medium whitespace-nowrap',
+                                                    stateTone(row.state),
+                                                )}
+                                            >
+                                                {row.state_label}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="tabular text-xs whitespace-nowrap text-muted-foreground">
+                                            {row.submitted_at
+                                                ? formatDateTime(
+                                                      row.submitted_at,
+                                                  )
+                                                : '—'}
+                                            {row.issued_at && (
+                                                <div className="text-emerald-700 dark:text-emerald-400">
+                                                    Terbit{' '}
+                                                    {formatDateTime(
+                                                        row.issued_at,
+                                                    )}
+                                                </div>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            {row.document_url ? (
+                                                <a
+                                                    href={row.document_url}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                                                >
+                                                    <FileText className="size-3.5" />
+                                                    Pratinjau
+                                                </a>
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground">
+                                                    —
+                                                </span>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                </Fragment>
                             ))}
                         </TableBody>
                     </Table>

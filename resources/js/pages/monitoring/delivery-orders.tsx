@@ -6,6 +6,10 @@ import type {
     MonitoringSummary,
 } from '@/components/contract-monitoring';
 import { PageHeader } from '@/components/page-header';
+import type {
+    OpenPartner,
+    PartnerFolder,
+} from '@/components/partner-folder-grid';
 import { TableCell } from '@/components/ui/table';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { dashboard } from '@/routes';
@@ -20,11 +24,15 @@ type DeliveryOrderRow = MonitoringRow & {
 
 export default function DeliveryOrderMonitoring({
     orders,
+    folders,
+    partner,
     summary,
     filters,
     options,
 }: {
-    orders: Paginated<DeliveryOrderRow>;
+    orders: Paginated<DeliveryOrderRow> | null;
+    folders: Paginated<PartnerFolder> | null;
+    partner: OpenPartner | null;
     summary: MonitoringSummary[];
     filters: MonitoringFilters;
     options: FilterOptions;
@@ -43,6 +51,10 @@ export default function DeliveryOrderMonitoring({
                 <ContractMonitoring<DeliveryOrderRow>
                     url={monitoring.deliveryOrders().url}
                     page={orders}
+                    folders={folders}
+                    partner={partner}
+                    years={options.years ?? []}
+                    unitLabel="DO"
                     summary={summary}
                     filters={filters}
                     workDirectors={options.workDirectors}

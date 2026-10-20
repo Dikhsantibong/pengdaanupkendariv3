@@ -20,6 +20,9 @@ enum ChecklistInput: string
     case PartnerCandidates = 'partner_candidates';
     case ProcurementMemo = 'procurement_memo';
     case ContractNumber = 'contract_number';
+    case RksNumber = 'rks_number';
+    case HpeNumber = 'hpe_number';
+    case UpbNumber = 'upb_number';
 
     /**
      * The name shown when choosing the input on the master data screen.
@@ -33,6 +36,9 @@ enum ChecklistInput: string
             self::PartnerCandidates => 'Calon mitra & penawaran harga',
             self::ProcurementMemo => 'Nomor & tanggal nota dinas ke pengadaan',
             self::ContractNumber => 'Nomor kontrak',
+            self::RksNumber => 'Nomor RKS',
+            self::HpeNumber => 'Nomor HPE',
+            self::UpbNumber => 'Nomor UPB',
         };
     }
 
@@ -54,6 +60,10 @@ enum ChecklistInput: string
             self::ProcurementMemo => ['icc_memo_number', 'icc_memo_date'],
             // Given by the executor; until then the job has its internal number.
             self::ContractNumber => ['number'],
+            // The number of the planning document the step files.
+            self::RksNumber => ['rks_number'],
+            self::HpeNumber => ['hpe_number'],
+            self::UpbNumber => ['upb_number'],
         };
     }
 

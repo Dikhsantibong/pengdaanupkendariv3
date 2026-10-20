@@ -24,6 +24,7 @@ use App\Models\VendorAssessmentRequest;
 use App\Models\WorkDirector;
 use App\Support\FinanceLetters;
 use App\Support\IndonesianNumber;
+use App\Support\LelangDocuments;
 use App\Support\TenderDocuments;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
@@ -71,7 +72,9 @@ class DocumentGenerator
             'sumber_anggaran_keterangan' => 'Kepanjangan sumber anggaran, mis. Anggaran Operasi',
             'jenis_kontrak' => 'Jenis kontrak, mis. KHS atau Lumsum',
             'kategori_pekerjaan' => 'Kategori kontrak: Barang atau Jasa',
-            'nomor_rks' => 'Nomor RKS dari No Kontrak, mis. 017.RKS-PJ/612/UPKD/2026',
+            'nomor_rks' => 'Nomor RKS yang diisi pada checklist RKS; bila kosong diturunkan dari No Kontrak, mis. 017.RKS-PJ/612/UPKD/2026',
+            'nomor_hpe' => 'Nomor HPE yang diisi pada checklist HPE; bila kosong: nomor nota dinas usulan-HPE(A)',
+            'nomor_upb' => 'Nomor UPB yang diisi pada checklist UPB; bila kosong: nomor nota dinas usulan',
             'nama_manager' => 'Nama Manager UP Kendari',
             'nomor_surat_penawaran' => 'Nomor surat penawaran',
             'tanggal_surat_penawaran' => 'Tanggal surat penawaran',
@@ -178,6 +181,7 @@ class DocumentGenerator
             'checklist_perencanaan' => 'Daftar checklist tahap perencanaan',
             'checklist_pelaksanaan' => 'Daftar checklist tahap pelaksanaan',
             ...TenderDocuments::catalog(),
+            ...LelangDocuments::awardCatalog(),
         ];
     }
 
@@ -262,7 +266,10 @@ class DocumentGenerator
                 ? '-'
                 : rtrim($procurement->budgetSource?->description ?? $procurement->budgetSource?->name ?? '-', '.'),
             'kategori_pekerjaan' => $procurement->work_category?->label() ?? '-',
-            'nomor_rks' => $this->rksNumber($procurement->number),
+            // As given on its planning step, else as the documents had it.
+            'nomor_rks' => filled($procurement->rks_number) ? (string) $procurement->rks_number : $this->rksNumber($procurement->number),
+            'nomor_hpe' => filled($procurement->hpe_number) ? (string) $procurement->hpe_number : ($procurement->proposal_memo_number ?? '-').'-HPE(A)',
+            'nomor_upb' => filled($procurement->upb_number) ? (string) $procurement->upb_number : ($procurement->proposal_memo_number ?? '-'),
             'jenis_kontrak' => $procurement->contract_type_id === null
                 ? '-'
                 : ($procurement->contractType?->name ?? '-'),
@@ -366,6 +373,8 @@ class DocumentGenerator
             'pengesahan_tor' => $this->torSignatures($procurement, $signatories, $managerName),
             // The tender's Berita Acara: participants, offers, officials.
             ...TenderDocuments::values($procurement, $issuedAt),
+            // The tenders' own: the winner and the qualification sheets.
+            ...LelangDocuments::awardValues($procurement, $issuedAt),
         ];
     }
 

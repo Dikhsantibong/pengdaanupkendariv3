@@ -20,12 +20,14 @@ class ProcurementFilters
      */
     public static function apply(Builder $query, Request $request): Builder
     {
-        return $query
+        // The year and month the procurement was registered in.
+        return FilterPeriod::apply($query, $request)
             ->when($request->string('search')->trim()->value(), function (Builder $builder, string $search): void {
                 $builder->where(function (Builder $inner) use ($search): void {
                     $inner->where('name', 'like', "%{$search}%")
                         ->orWhere('number', 'like', "%{$search}%")
-                        ->orWhere('prk_number', 'like', "%{$search}%");
+                        ->orWhere('prk_number', 'like', "%{$search}%")
+                        ->orWhere('partner_name', 'like', "%{$search}%");
                 });
             })
             ->when($request->integer('progress_status_id'), fn (Builder $builder, int $id) => $builder->where('progress_status_id', $id))
@@ -67,6 +69,7 @@ class ProcurementFilters
             'approval_state' => PlanningApprovalState::tryFrom(
                 $request->string('approval_state')->value() ?: ''
             )?->value,
+            ...FilterPeriod::current($request),
         ];
     }
 }

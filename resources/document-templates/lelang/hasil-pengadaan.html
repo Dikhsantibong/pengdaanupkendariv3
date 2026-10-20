@@ -1,0 +1,88 @@
+<style>
+    .ba-head { width: 100%; border: none; margin: 0 0 6pt; }
+    .ba-head td { border: none; padding: 0 6pt 0 0; vertical-align: middle; }
+    .ba-title { text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; margin: 8pt 0 4pt; }
+    .ba-heading { text-align: center; font-weight: bold; margin: 8pt 0 4pt; }
+    table.ba-meta { width: auto; margin: 0 auto 6pt; }
+    table.ba-meta td { border: none; padding: 1pt 4pt; }
+    table.ba-left td { border: none; padding: 1pt 4pt; vertical-align: top; }
+    .ba-subject { text-align: center; font-weight: bold; text-transform: uppercase; border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; padding: 5pt 0; margin: 8pt 0 10pt; }
+    .ba-point { font-weight: bold; margin: 10pt 0 4pt; }
+    .ba-in { margin-left: 18pt; }
+    .ba-in2 { margin-left: 34pt; }
+    table.ba-grid { margin-left: 0; }
+    table.ba-grid th, table.ba-grid td { border: 1px solid #000; vertical-align: top; }
+    table.ba-grid th { background: none; text-align: center; }
+    table.ba-plain > tbody > tr > td, table.ba-plain > tr > td, table.ba-sign > tbody > tr > td, table.ba-sign > tr > td { border: none; padding: 1pt 4pt; vertical-align: top; }
+    table.ba-sign > tbody > tr > td, table.ba-sign > tr > td { width: 50%; vertical-align: top; }
+    .c { text-align: center; }
+    .r { text-align: right; }
+</style>
+
+<section>
+    <table class="ba-head">
+        <tr>
+            <td style="width: 74px;"><img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 34px; width: auto;"></td>
+            <td style="white-space: nowrap;">PT PLN Nusantara Power<br><b>UP KENDARI</b></td>
+        </tr>
+    </table>
+
+    <div class="ba-title">BERITA ACARA HASIL PENGADAAN</div>
+    <table class="ba-meta">
+        <tr><td>Nomor</td><td>:</td><td><span class="fill">..........</span>/BAHP/612/UPKD/{{tahun}}</td></tr>
+        <tr><td>Tanggal</td><td>:</td><td>{{tanggal_dokumen}}</td></tr>
+    </table>
+
+    <table class="ba-left" style="width: 100%; border-bottom: 1.5px solid #000; margin-bottom: 8pt;">
+        <tr><td style="width: 24%;">Nama Paket</td><td style="width: 3%;">:</td><td style="text-transform: uppercase;">{{nama_pengadaan}}</td></tr>
+        <tr><td>Lokasi Pekerjaan</td><td>:</td><td>UP KENDARI</td></tr>
+        <tr><td>Sumber Dana</td><td>:</td><td>{{sumber_anggaran}} {{tahun}}</td></tr>
+        <tr><td>Tahun Anggaran</td><td>:</td><td>{{tahun}}</td></tr>
+        <tr><td>HPS</td><td>:</td><td>Rp {{nilai_hpe_total_angka}} (Rupiah), sudah termasuk PPN</td></tr>
+        <tr><td>Metode Penyampaian</td><td>:</td><td>{{metode_penyampaian}}</td></tr>
+        <tr><td>Metode Evaluasi</td><td>:</td><td>Sistem Gugur</td></tr>
+    </table>
+
+    <p>Pada hari ini {{hari_dokumen}}, tanggal {{tanggal_dokumen_terbilang}} bulan {{bulan_dokumen}} tahun {{tahun_dokumen_terbilang}}, yang bertandatangan Pejabat Pelaksana Pengadaan {{nama_pengadaan}} sesuai Rencana Kerja dan Syarat-syarat (RKS) No. {{nomor_rks}} tanggal {{tanggal_rks}}, dengan Hasil sebagai berikut :</p>
+
+    <div class="ba-point">I. MEMBAHAS</div>
+    <table class="ba-plain ba-in" style="width: 96%;">
+        <tr><td style="width: 6%;">1.1.</td><td>Dasar Permintaan {{nama_pengadaan}}, sesuai Nota Dinas Nomor {{nomor_nota_dinas_icc}} tanggal {{tanggal_nota_dinas_icc}}.</td></tr>
+        <tr><td>1.2.</td><td>Anggaran yang disediakan untuk Pengadaan ini adalah sebesar Rp <span class="fill">..........</span> melalui {{sumber_anggaran_keterangan}} PT PLN (Persero) Tahun {{tahun}}.</td></tr>
+        <tr><td>1.3.</td><td>Rencana Kerja dan Syarat-syarat (RKS) No. {{nomor_rks}} tanggal {{tanggal_rks}} perihal {{nama_pengadaan}}.</td></tr>
+    </table>
+
+    <div class="ba-point">II. PROSES {{metode_pemilihan}}</div>
+    <table class="ba-plain ba-in" style="width: 96%;">
+        <tr><td style="width: 6%;">2.1.</td><td>Ijin Pelaksanaan dan Penjelasan Dokumen Pengadaan<br>Proses dilakukan dengan berdasarkan pada Nota Dinas No. {{nomor_nota_dinas_icc}} perihal {{nama_pengadaan}}. Perusahaan yang Mendaftar adalah sebagai berikut :{{daftar_peserta}}</td></tr>
+        <tr><td>2.2.</td><td>Pemasukan, Penutupan dan Pembukaan Surat Penawaran<br>Pemasukan dan Penutupan Surat Penawaran dilaksanakan pada <span class="fill">..........</span> melalui Aplikasi Smart SCM. Perusahaan yang memasukkan penawaran ada {{jumlah_peserta}} Perusahaan sebagai berikut :{{daftar_peserta}}Pembukaan Penawaran dilaksanakan pada <span class="fill">..........</span> melalui Aplikasi Smart SCM.<br>Hasil Pemasukan, Penutupan dan Pembukaan Penawaran telah dirangkum dan dimuat dalam Berita Acara Pembukaan Penawaran No. <span class="fill">..........</span>/BAPP/612/UPKD/{{tahun}}.<br>a. Penawaran yang dinyatakan Lengkap dan Dapat Dievaluasi Lebih Lanjut adalah :{{daftar_peserta}}b. Penawaran yang dinyatakan Tidak Lengkap dan Tidak Dapat Dievaluasi Lebih Lanjut Nihil<br>c. Harga Penawaran{{tabel_nilai_penawaran}}Catatan : Harga Penawaran sudah termasuk Pajak-Pajak yang berlaku</td></tr>
+        <tr><td>2.3.</td><td>Tata Cara Penilaian Penawaran Saat Pembukaan Penawaran<br>Peserta yang memasukkan surat penawaran harus memenuhi syarat dan melampirkan dokumen-dokumen yang telah dipersyaratkan dalam Rencana Kerja dan Syarat-syarat (RKS) No. {{nomor_rks}} tanggal {{tanggal_rks}} dan Berita Acara Penjelasan No. <span class="fill">..........</span>/BAP/612/UPKD/{{tahun}}.</td></tr>
+        <tr><td>2.4.</td><td>Evaluasi / Penilaian<br>Tahapan Evaluasi / Penilaian yang dilakukan dengan menggunakan metode Sistem Gugur dan secara bertahap mulai dari Evaluasi Administrasi, Keuangan, Teknis, sampai dengan Penawaran Harga, terhadap Penawaran yang dinyatakan Lengkap dan Dapat Dievaluasi Lebih Lanjut. Hasil tahapan Evaluasi / Penilaian adalah sebagai berikut :<br>2.4.1. Evaluasi Administrasi — Penawaran yang dinyatakan Lulus Evaluasi Administrasi adalah :{{daftar_peserta}}Penawaran yang dinyatakan Tidak Lulus Evaluasi Administrasi adalah NIHIL.<br>2.4.2. Evaluasi Keuangan — Penawaran yang dinyatakan Lulus Evaluasi Keuangan adalah :{{daftar_peserta}}Penawaran yang dinyatakan Tidak Lulus Evaluasi Keuangan Nihil.<br>2.4.3. Evaluasi Teknis — Penawaran yang dinyatakan Lulus Evaluasi Teknis adalah :{{daftar_peserta}}Penawaran yang dinyatakan Tidak Lulus Evaluasi Teknis Nihil.<br>2.4.4. Evaluasi Penawaran Harga — Urutan dan Rincian Harga Penawaran :{{tabel_urutan_harga_hps}}Catatan : Harga Penawaran sudah termasuk Pajak-Pajak yang berlaku<br>2.4.5. Hasil Evaluasi / Penilaian Administrasi, Keuangan, Teknis dan Harga telah dirangkum dan dimuat dalam Berita Acara Evaluasi Administrasi, Teknis dan Harga No. <span class="fill">..........</span>/BAEATH/612/UPKD/{{tahun}}.</td></tr>
+        <tr><td>2.5.</td><td>Negosiasi Penawaran<br>Negosiasi Penawaran dilakukan terhadap Penawaran yang dinyatakan Lulus Evaluasi Penawaran Harga, dan secara berurutan mulai dari Harga Penawaran terendah. Hasil Negosiasi Penawaran yakni sebagai berikut :{{tabel_negosiasi_hps}}Catatan : Harga Penawaran sudah termasuk Pajak-Pajak yang berlaku. Hasil Negosiasi Harga telah dirangkum dan dimuat dalam Berita Acara Negosiasi No. <span class="fill">..........</span>/BAN/612/UPKD/{{tahun}}.</td></tr>
+    </table>
+
+    <div class="ba-point">III. MENIMBANG</div>
+    <table class="ba-plain ba-in" style="width: 96%;">
+        <tr><td style="width: 6%;">3.1.</td><td>Dari Segi Kebutuhan<br>{{nama_pengadaan}} diperlukan agar pembangkit layak dioperasikan sesuai keselamatan ketenagalistrikan dengan tujuan andal, aman dan ramah lingkungan dengan standarisasi dan pengamanan.</td></tr>
+        <tr><td>3.2.</td><td>Dari Segi Teknis<br>Spesifikasi teknis yang ditawarkan oleh Penyedia telah memenuhi syarat-syarat teknis yang diminta dalam Rencana Kerja dan Syarat-syarat (RKS) No. {{nomor_rks}} tanggal {{tanggal_rks}}.</td></tr>
+        <tr><td>3.3.</td><td>Dari Segi Harga<br>Harga Penawaran yang disampaikan telah dilakukan negosiasi, menjadi sebagai berikut :{{tabel_negosiasi_hps}}HPS : Rp {{nilai_hpe_total_angka}} (Sudah termasuk PPN)</td></tr>
+        <tr><td>3.4.</td><td>Dari Segi Waktu Pelaksanaan<br>Jangka waktu pelaksanaan pekerjaan adalah {{jangka_waktu_hari}} ({{jangka_waktu_hari_terbilang}}) Hari, terhitung sejak tanggal diterbitkannya Surat Perjanjian.</td></tr>
+    </table>
+
+    <div class="ba-point">IV. MEMUTUSKAN</div>
+    <p class="ba-in">Atas dasar hasil evaluasi yang telah dilaksanakan tersebut diatas, maka Pejabat Pelaksana Pengadaan UP KENDARI mengusulkan kepada Manager UP KENDARI, Calon Pelaksana {{nama_pengadaan}} sesuai Rencana Kerja dan Syarat-syarat (RKS) No. {{nomor_rks}} tanggal {{tanggal_rks}}, adalah sebagai berikut :</p>
+    <table class="ba-plain ba-in2" style="width: 90%;">
+        <tr><td style="width: 26%;">Nama Perusahaan</td><td style="width: 3%;">:</td><td>{{nama_pemenang}}</td></tr>
+        <tr><td>Alamat</td><td>:</td><td>{{alamat_pemenang}}</td></tr>
+        <tr><td>Harga Penawaran</td><td>:</td><td>Rp {{nilai_negosiasi_pemenang}}<br>{{nilai_negosiasi_pemenang_terbilang}} (Include PPN)</td></tr>
+        <tr><td>Waktu Penyerahan</td><td>:</td><td>{{jangka_waktu_hari}} ({{jangka_waktu_hari_terbilang}}) Hari terhitung sejak tanggal diterbitkannya Surat Perjanjian</td></tr>
+    </table>
+
+    <p>Demikian Berita Acara Hasil Pengadaan ini dibuat untuk dipergunakan sebagaimana mestinya.</p>
+    <table class="ba-plain" style="margin-top: 12pt; width: 100%;">
+        <tr><td style="width: 34%;"></td><td colspan="4"><b>UP KENDARI</b></td></tr>
+        <tr><td></td><td style="width: 4%;">1</td><td style="width: 26%;"><span style="text-transform: uppercase;">{{nama_pejabat_pelaksana}}</span></td><td>TEAM LEADER PENGADAAN</td><td class="r">..........</td></tr>
+        <tr><td></td><td>&nbsp;</td><td></td><td></td><td></td></tr>
+        <tr><td></td><td>2</td><td><span style="text-transform: uppercase;">{{pic_pelaksana}}</span></td><td>PIC PELAKSANA PENGADAAN</td><td class="r">..........</td></tr>
+    </table>
+</section>

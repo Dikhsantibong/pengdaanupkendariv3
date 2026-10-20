@@ -1458,6 +1458,57 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
   - Ukuran dan warna ditulis sebagai style inline agar terbaca PDF.
   - Pilihan teks diingat, sehingga pemilih warna tetap mewarnai teks yang dipilih.
 
+### 48. Isian Nomor RKS, HPE, dan UPB di Checklist Perencanaan
+- Langkah **RKS**, **HPE**, dan **UPB** pada checklist perencanaan kini masing-masing punya isian **Nomor RKS / Nomor HPE / Nomor UPB** (jenis isian baru `rks_number`, `hpe_number`, `upb_number` pada `ChecklistInput`; kolom `procurements.rks_number`, `hpe_number`, `upb_number`).
+- Sama seperti isian lain: langkah baru bisa dicentang dan perencanaan baru bisa diajukan setelah nomornya diisi. Langkah yang sudah tercentang tetapi nomornya kosong dihitung belum selesai.
+- **Dokumen:**
+  - `{{nomor_rks}}` memakai nomor yang diisi; bila kosong, tetap diturunkan dari No Kontrak seperti sebelumnya.
+  - Placeholder baru `{{nomor_hpe}}` (bila kosong: nomor nota dinas usulan + "-HPE(A)") dan `{{nomor_upb}}` (bila kosong: nomor nota dinas usulan). Template HPE dan UPB kini memakainya pada baris Nomor.
+- **Migrasi:** `add_document_numbers_to_planning_steps` (kolom, pemasangan isian pada ketiga langkah bila belum diberi isian lain oleh administrator, dan sinkron template HPE/UPB). **Test:** `PlanningDocumentNumbersTest`.
+
+### 49. Monitoring dalam Folder per Mitra, Monitoring Kontrak, dan Filter Tahun/Bulan
+- **Monitoring Pengadaan, Amandemen, dan Delivery Order** kini dibuka sebagai **folder per mitra** (nama mitra disamakan tanpa beda huruf besar/kecil dan spasi; mitra yang paling baru aktif di depan; folder **Belum Ada Mitra** di akhir). Tampilannya sama dengan folder Penilaian Penyedia.
+  - **Isi folder:**
+    - **Pengadaan:** jumlah pekerjaan dan berapa yang selesai.
+    - **Amandemen / DO:** jumlah amandemen/DO, jumlah pekerjaan, dan berapa yang terbit.
+  - **Klik folder** (`?mitra=`): Monitoring Pengadaan menampilkan daftar pekerjaan mitra itu (tabel yang sama seperti sebelumnya). Amandemen dan DO menampilkan tabel yang **dikelompokkan per pekerjaan** (baris judul No/nama pekerjaan, lalu Amandemen I, II, ... / DO ke-1, 2, ...).
+  - **Filter tetap berlaku:** kartu status, pencarian, dan filter tetap ada, baik di tampilan folder maupun di dalam folder. Tombol **Semua Mitra** kembali ke folder dengan filter yang sama.
+- **Monitoring Kontrak** (baru, menu Monitoring, `monitoring/kontrak`, hak `menu.monitoring`): folder per **mitra yang sedang terkontrak**, yaitu pengadaan yang sudah bernomor kontrak (bukan PGD/USL), punya mitra, dan status progresnya bukan Selesai/Batal.
+  - Isi folder: No Kontrak, pekerjaan, direksi, jenis (SPK/PJ/SPPL), nilai, masa pelaksanaan beserta sisa/lewat hari, dan status.
+  - Filter: cari, jenis kontrak, direksi pekerjaan, tahun/bulan.
+- **Filter Tahun dan Bulan** di seluruh halaman daftar (`App\Support\FilterPeriod`, komponen `PeriodFilter`):
+  - Daftar Pengadaan, Perencanaan, Pelaksanaan, Penunjukan PIC, Approval, Laporan, Monitoring Pengadaan, dan Monitoring Kontrak: tanggal pengadaan didaftarkan (`created_at`), lewat filter bersama `ProcurementFilters` / `ProcurementFilterBar`.
+  - Monitoring Amandemen / DO: tanggal amandemen/DO dibuat.
+  - Arsip Dokumen: tanggal dokumen digenerate.
+  - Penilaian Penyedia: tanggal formulir dibuat.
+  - Pilihan tahun dimulai dari data paling awal sampai tahun ini; bulan tanpa tahun berarti bulan itu di setiap tahun.
+- Pencarian filter bersama kini juga mencocokkan **nama mitra**.
+- **Test:** `ContractMonitoringTest` (disesuaikan dengan folder, ditambah folder pengadaan, Monitoring Kontrak, dan filter tahun/bulan).
+
+### 50. Berita Acara SMART SCM per Metode Pengadaan (Pengadaan Langsung vs Penunjukan Langsung / Lelang)
+- **Jenis dokumen kini bisa dibatasi per Metode Pengadaan** (pivot `document_type_selection_method`; Data Master → Jenis Dokumen, isian **Hanya untuk Metode Pengadaan**, kolom **Metode**). Kosong berarti semua metode. Pengadaan yang metodenya belum dipilih Rendan dianggap **Pengadaan Langsung** (`DocumentType::appliesTo`).
+- **Langkah "Proses SMART SCM & Berita Acara"** memuat BA semua metode secara berurutan (`App\Support\TenderBeritaAcara::STEP`). Setiap pengadaan hanya diminta BA metodenya:
+
+| Metode | BA |
+|---|---|
+| Pengadaan Langsung | BA Aanwijzing, Lampiran BAPP, BA Evaluasi Teknis (Lampiran 3), BA Evaluasi Harga (Lampiran 4), BA Evaluasi Administrasi, Teknik dan Harga, BA Klarifikasi (seperti sebelumnya) |
+| Penunjukan Langsung, Lelang 1 Tahap 1 Sampul, Lelang 1 Tahap 2 Sampul | BA Pemberian Penjelasan (Aanwijzing) versi lelang, Lampiran BAPP, Evaluasi Kualifikasi Administrasi (Lampiran 1), Keuangan (Lampiran 2), Teknis (Lampiran 3) versi lelang, Lampiran 4 Harga, BA Evaluasi ATH, BA Klarifikasi, BA Negosiasi Penawaran, BA Hasil Pengadaan, Nota Dinas Usulan Calon Pemenang, BA Penetapan Pemenang, Pengumuman Pemenang, SPPBJ |
+| Tambahan khusus Lelang 1 Tahap 2 Sampul | BA Pembukaan Penawaran Sampul 1, Pengumuman Hasil Evaluasi Sampul 1, BA Pembukaan Penawaran Sampul 2 |
+
+- Lampiran BAPP, Lampiran 4 Harga, BA Evaluasi ATH, dan BA Klarifikasi sementara dipakai bersama semua metode, karena versi lelangnya belum dikirim (dianggap sama). Bila nanti ada versi lelangnya, batasi dokumen lama ke Pengadaan Langsung di Data Master atau lewat migrasi.
+- **Template** baru di `resources/document-templates/lelang/*.html` (grup `lelang`), mengikuti formulir unit:
+  - Semua memakai logo `sidebar-logo.png`.
+  - Nomor surat titik-titik (mis. `..../BAPPS2/612/UPKD/{tahun}`).
+  - Hari/tanggal dieja.
+- **Data otomatis** (`App\Support\LelangDocuments`):
+  - **Pemenang** = calon mitra yang dipilih sebagai pelaksana, atau penawaran termurah.
+  - **Harga:** penawarannya (format 2.274.589.800,00), harga setelah negosiasi termasuk PPN beserta terbilang, dan persentase terhadap **HPS termasuk PPN**.
+  - **Metode penyampaian:** Satu Tahap Satu/Dua Sampul.
+  - **Tabel:** Lampiran 1–3 (dokumen a–g / a–d / a–h per calon mitra, tanda M, kesimpulan LULUS/MEMENUHI; tahun laporan keuangan = tahun lalu; kriteria CSMS = level risiko CSMS pengadaan), nilai penawaran, hasil evaluasi sampul 1, nominasi (pemenang = Nominator ke-1; NPWP titik-titik), negosiasi, negosiasi terhadap HPS, urutan harga terhadap HPS, dan pengumuman pemenang (kolom sampul 1/2 hanya untuk 2 sampul).
+  - **Penanda tangan:** TL Pengadaan, PIC Pelaksana, Manager, user/penyusun (Tim Teknis / USER), dan direktur pemenang.
+- **Migrasi:** `add_tender_berita_acara_per_selection_method` (pivot, 13 jenis dokumen baru, batasan metode, tautan ke langkah dengan urutan, dan pemasangan template grup `lelang`). Seeder `MasterDataSeeder` mengikuti `TenderBeritaAcara`.
+- **Test:** `TenderMethodDocumentsTest`; `MethodSpecificTemplateTest` disesuaikan (hanya menghitung jenis dokumen buatannya sendiri).
+
 ---
 
 # Fitur Utama

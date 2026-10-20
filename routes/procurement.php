@@ -130,6 +130,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('can:menu.monitoring')->name('monitoring.amendments');
     Route::get('monitoring/delivery-order', [MonitoringController::class, 'deliveryOrders'])
         ->middleware('can:menu.monitoring')->name('monitoring.delivery-orders');
+    // The partners under contract now, a folder each.
+    Route::get('monitoring/kontrak', [MonitoringController::class, 'contracts'])
+        ->middleware('can:menu.monitoring')->name('monitoring.contracts');
     Route::get('documents', [DocumentArchiveController::class, 'index'])
         ->middleware('can:menu.documents')->name('documents.index');
     Route::get('documents/pekerjaan/{procurement}', [DocumentArchiveController::class, 'procurement'])

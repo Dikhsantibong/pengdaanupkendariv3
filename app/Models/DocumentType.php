@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\MasterDataScopes;
 use App\Enums\ProcurementStage;
+use App\Support\TenderBeritaAcara;
 use Database\Factories\DocumentTypeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -51,6 +52,17 @@ class DocumentType extends Model
     }
 
     /**
+     * The selection methods this document is asked for under; none means
+     * every method.
+     *
+     * @return BelongsToMany<SelectionMethod, $this>
+     */
+    public function selectionMethods(): BelongsToMany
+    {
+        return $this->belongsToMany(SelectionMethod::class)->withTimestamps();
+    }
+
+    /**
      * The contract format this document belongs to, if only one.
      *
      * @return BelongsTo<ContractNumberFormat, $this>
@@ -64,12 +76,24 @@ class DocumentType extends Model
      * Whether a step asks for this document on the procurement: always,
      * unless the document belongs to one contract format only (the SPK's
      * Syarat & Ketentuan (Pasal), for instance, which a PJ already carries
-     * in its Surat Perjanjian).
+     * in its Surat Perjanjian), or to some selection methods only (a
+     * tender's Berita Acara). A procurement whose method is not picked yet
+     * goes by Pengadaan Langsung.
      */
     public function appliesTo(?Procurement $procurement): bool
     {
-        return $this->contract_number_format_id === null
+        $format = $this->contract_number_format_id === null
             || ($procurement !== null && (int) $procurement->contract_number_format_id === $this->contract_number_format_id);
+
+        if (! $format || $this->selectionMethods->isEmpty()) {
+            return $format;
+        }
+
+        $method = $procurement === null
+            ? TenderBeritaAcara::DEFAULT_METHOD
+            : ($procurement->selectionMethod->code ?? TenderBeritaAcara::DEFAULT_METHOD);
+
+        return $this->selectionMethods->contains('code', $method);
     }
 
     /**

@@ -13,9 +13,11 @@ use App\Models\ProcurementChecklist;
 use App\Models\ProcurementDocument;
 use App\Models\User;
 use App\Services\ProcurementService;
+use App\Support\TenderBeritaAcara;
 use Database\Seeders\BeritaAcaraTemplateSeeder;
 use Database\Seeders\DocumentTemplateSeeder;
 use Database\Seeders\KontrakTemplateSeeder;
+use Database\Seeders\LelangTemplateSeeder;
 use Database\Seeders\MasterDataSeeder;
 use Database\Seeders\SpplDocumentTemplateSeeder;
 use Database\Seeders\StandardDocumentTemplateSeeder;
@@ -182,6 +184,11 @@ class ChecklistDocumentRequirementTest extends TestCase
             ['files' => [UploadedFile::fake()->create('tor-ttd.pdf', 100, 'application/pdf')]],
         );
 
+        // The step also asks for the HPE's number.
+        $this->actingAs($planner)
+            ->put(route('procurements.checklists.input', [$procurement, $checklist]), ['hpe_number' => 'HPE-001'])
+            ->assertSessionHasNoErrors();
+
         $this->actingAs($planner)
             ->put(route('procurements.checklists.update', [$procurement, $checklist]), [
                 'is_completed' => true,
@@ -340,6 +347,12 @@ class ChecklistDocumentRequirementTest extends TestCase
             ->where('name', 'Proses SMART SCM & Berita Acara')
             ->firstOrFail();
 
+        // Every method's Berita Acara are filed on the step, in order.
+        $this->assertSame(TenderBeritaAcara::STEP, $item->documentTypes->pluck('code')->all());
+
+        // A Pengadaan Langsung job is asked for its six, as before.
+        $item->load('documentTypes.selectionMethods');
+
         $this->assertSame([
             'proses-smart-scm',
             'ba-aanwijzing',
@@ -348,7 +361,7 @@ class ChecklistDocumentRequirementTest extends TestCase
             'ba-evaluasi-harga',
             'ba-hasil-evaluasi',
             'ba-klarifikasi',
-        ], $item->documentTypes->pluck('code')->all());
+        ], $item->documentTypesFor(Procurement::factory()->create())->pluck('code')->all());
     }
 
     public function test_the_kontrak_step_asks_for_the_spk_and_its_articles(): void
@@ -393,9 +406,12 @@ class ChecklistDocumentRequirementTest extends TestCase
             ->where('checklist_item_id', $item->id)
             ->firstOrFail();
 
+        // The step asks for the documents of the job's method only.
+        $types = $item->load('documentTypes.selectionMethods')->documentTypesFor($procurement);
+
         // File all but the last, then check the step is still refused and the
         // message names the one that is missing.
-        foreach ($item->documentTypes->slice(0, -1) as $type) {
+        foreach ($types->slice(0, -1) as $type) {
             // The SMART SCM document is only ever uploaded.
             if ($type->upload_only) {
                 $this->actingAs($executor)->post(route('procurements.documents.upload', $procurement), [
@@ -427,12 +443,12 @@ class ChecklistDocumentRequirementTest extends TestCase
             ->assertSessionHasErrors('is_completed');
 
         $this->assertStringContainsString(
-            $item->documentTypes->last()->name,
+            $types->last()->name,
             session('errors')->first('is_completed'),
         );
 
         // File the last one and the step goes through.
-        $last = $item->documentTypes->last();
+        $last = $types->last();
 
         $this->actingAs($executor)->post(route('procurements.documents.store', $procurement), [
             'document_type_id' => $last->id,
@@ -467,6 +483,7 @@ class ChecklistDocumentRequirementTest extends TestCase
         $this->seed(KontrakTemplateSeeder::class);
         $this->seed(StandardDocumentTemplateSeeder::class);
         $this->seed(SpplDocumentTemplateSeeder::class);
+        $this->seed(LelangTemplateSeeder::class);
 
         // Uploaded documents are filed as scans and need no template.
         $linked = DocumentType::query()

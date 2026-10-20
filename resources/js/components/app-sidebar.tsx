@@ -190,6 +190,11 @@ export function AppSidebar() {
                               href: monitoring.deliveryOrders(),
                               icon: Truck,
                           },
+                          {
+                              title: 'Monitoring Kontrak',
+                              href: monitoring.contracts(),
+                              icon: FileSignature,
+                          },
                       ]
                     : []),
                 ...(menus.reports

@@ -35,6 +35,28 @@ function endDate(start: string, days: string): string | null {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
+/** The planning steps that ask for their document's number. */
+const DOCUMENT_NUMBERS = [
+    {
+        kind: 'rks_number',
+        field: 'rks_number',
+        label: 'Nomor RKS',
+        placeholder: 'Contoh: 017.RKS-PJ/612/UPKD/2026',
+    },
+    {
+        kind: 'hpe_number',
+        field: 'hpe_number',
+        label: 'Nomor HPE',
+        placeholder: 'Nomor dokumen HPE',
+    },
+    {
+        kind: 'upb_number',
+        field: 'upb_number',
+        label: 'Nomor UPB',
+        placeholder: 'Nomor dokumen UPB',
+    },
+] as const;
+
 /**
  * The data a checklist step asks for before it can be ticked.
  */
@@ -80,6 +102,9 @@ export function ChecklistInputForm({
         icc_memo_number: values.icc_memo_number ?? '',
         icc_memo_date: values.icc_memo_date ?? '',
         number: values.number ?? '',
+        rks_number: values.rks_number ?? '',
+        hpe_number: values.hpe_number ?? '',
+        upb_number: values.upb_number ?? '',
     });
 
     const save = () =>
@@ -276,6 +301,33 @@ export function ChecklistInputForm({
                                 )}
                         </Field>
                     </div>
+                )}
+
+                {DOCUMENT_NUMBERS.map(
+                    ({ kind, field, label, placeholder }) =>
+                        input.kind === kind && (
+                            <div key={kind} className="sm:col-span-2">
+                                <Field
+                                    id={`${field}-${checklistId}`}
+                                    label={label}
+                                    error={form.errors[field]}
+                                >
+                                    <Input
+                                        id={`${field}-${checklistId}`}
+                                        className="tabular h-8"
+                                        value={form.data[field]}
+                                        onChange={(event) =>
+                                            form.setData(
+                                                field,
+                                                event.target.value,
+                                            )
+                                        }
+                                        placeholder={placeholder}
+                                        autoComplete="off"
+                                    />
+                                </Field>
+                            </div>
+                        ),
                 )}
 
                 {input.kind === 'bank_account' && (

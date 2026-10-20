@@ -59,8 +59,11 @@ class ChecklistController extends Controller
             $values = [...$values, ...$candidate->partnerFields()];
         }
 
-        if ($kind === ChecklistInput::ContractNumber) {
-            $values['number'] = trim((string) $values['number']);
+        // Numbers are kept without the spaces typed around them.
+        foreach (['number', 'rks_number', 'hpe_number', 'upb_number'] as $field) {
+            if (array_key_exists($field, $values)) {
+                $values[$field] = trim((string) $values[$field]);
+            }
         }
 
         $procurement->forceFill($values)->save();
@@ -92,7 +95,7 @@ class ChecklistController extends Controller
 
         $isCompleted = $request->boolean('is_completed');
 
-        $checklist->load('checklistItem.documentTypes');
+        $checklist->load('checklistItem.documentTypes.selectionMethods');
 
         // A step that produces documents is only finished once every signed
         // copy is filed, which is what stops an unevidenced stage from moving

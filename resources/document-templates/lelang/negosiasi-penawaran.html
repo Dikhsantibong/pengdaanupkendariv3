@@ -1,0 +1,63 @@
+<style>
+    .ba-head { width: 100%; border: none; margin: 0 0 6pt; }
+    .ba-head td { border: none; padding: 0 6pt 0 0; vertical-align: middle; }
+    .ba-title { text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; margin: 8pt 0 4pt; }
+    .ba-heading { text-align: center; font-weight: bold; margin: 8pt 0 4pt; }
+    table.ba-meta { width: auto; margin: 0 auto 6pt; }
+    table.ba-meta td { border: none; padding: 1pt 4pt; }
+    table.ba-left td { border: none; padding: 1pt 4pt; vertical-align: top; }
+    .ba-subject { text-align: center; font-weight: bold; text-transform: uppercase; border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; padding: 5pt 0; margin: 8pt 0 10pt; }
+    .ba-point { font-weight: bold; margin: 10pt 0 4pt; }
+    .ba-in { margin-left: 18pt; }
+    .ba-in2 { margin-left: 34pt; }
+    table.ba-grid { margin-left: 0; }
+    table.ba-grid th, table.ba-grid td { border: 1px solid #000; vertical-align: top; }
+    table.ba-grid th { background: none; text-align: center; }
+    table.ba-plain > tbody > tr > td, table.ba-plain > tr > td, table.ba-sign > tbody > tr > td, table.ba-sign > tr > td { border: none; padding: 1pt 4pt; vertical-align: top; }
+    table.ba-sign > tbody > tr > td, table.ba-sign > tr > td { width: 50%; vertical-align: top; }
+    .c { text-align: center; }
+    .r { text-align: right; }
+</style>
+
+<section>
+    <table class="ba-head">
+        <tr>
+            <td style="width: 74px;"><img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 34px; width: auto;"></td>
+            <td style="white-space: nowrap;">PT PLN Nusantara Power<br><b>UP KENDARI</b></td>
+        </tr>
+    </table>
+
+    <div class="ba-title">BERITA ACARA NEGOSIASI PENAWARAN</div>
+    <table class="ba-meta">
+        <tr><td>Nomor</td><td>:</td><td><span class="fill">..........</span>/BAN/612/UPKD/{{tahun}}</td></tr>
+        <tr><td>Tanggal</td><td>:</td><td>{{tanggal_dokumen}}</td></tr>
+    </table>
+
+    <div class="ba-subject">{{nama_pengadaan}}</div>
+
+    <p>Pada hari ini {{hari_dokumen}}, tanggal {{tanggal_dokumen_terbilang}} bulan {{bulan_dokumen}} tahun {{tahun_dokumen_terbilang}}, yang bertandatangan di bawah ini kami Pejabat Pelaksana Pengadaan UP KENDARI, telah melaksanakan rapat Negosiasi Harga {{nama_pengadaan}} dengan {{nama_pemenang}}, dengan hasil sebagai berikut :</p>
+
+    <table class="ba-plain" style="width: 100%;">
+        <tr><td style="width: 5%;">1.</td><td colspan="2">Menunjuk :</td></tr>
+        <tr><td></td><td style="width: 6%;">1.1.</td><td>Surat Penawaran Administrasi, Keuangan, Teknis dan Harga dari {{nama_pemenang}} No. {{nomor_surat_penawaran}} tanggal {{tanggal_surat_penawaran}} dengan total penawaran harga sebesar Rp {{nilai_penawaran_pemenang}}</td></tr>
+        <tr><td>2.</td><td colspan="2">Setelah diadakan negosiasi teknis dan harga, maka didapatkan hasil sebagai berikut :</td></tr>
+        <tr><td></td><td>2.1.</td><td>Harga yang ditawarkan dinego menjadi sebagai berikut :{{tabel_negosiasi_penawaran}}</td></tr>
+        <tr><td></td><td>2.2.</td><td>Jangka waktu penyerahan pekerjaan adalah sebagai berikut :<br>a. Untuk Jangka Penyerahan adalah {{jangka_waktu_hari}} ({{jangka_waktu_hari_terbilang}}) hari Kalender Terhitung Sejak tanggal diterbitkannya Surat Penunjukan Penyedia Barang/Jasa</td></tr>
+        <tr><td>3.</td><td colspan="2">Hasil negosiasi penawaran ini belum merupakan suatu ketetapan yang final karena harus mendapat persetujuan dari Pejabat yang berwenang.</td></tr>
+        <tr><td>4.</td><td colspan="2">Disepakati syarat-syarat penawaran teknis dan harga lainnya tetap tidak mengalami perubahan.</td></tr>
+    </table>
+
+    <p>Demikian Berita Acara Negosiasi Penawaran ini dibuat untuk dapat dipergunakan sebagaimana mestinya.</p>
+
+    <table class="ba-sign" style="margin-top: 10pt; page-break-inside: avoid;">
+        <tr>
+            <td class="c"><b>DIREKTUR UTAMA</b><br><b>{{nama_pemenang}}</b></td>
+            <td class="c"><b>TEAM LEADER PENGADAAN</b></td>
+        </tr>
+        <tr><td style="height: 44pt;"></td><td></td></tr>
+        <tr>
+            <td class="c"><span style="text-transform: uppercase;">{{direktur_pemenang}}</span></td>
+            <td class="c"><span style="text-transform: uppercase;">{{nama_pejabat_pelaksana}}</span></td>
+        </tr>
+    </table>
+</section>

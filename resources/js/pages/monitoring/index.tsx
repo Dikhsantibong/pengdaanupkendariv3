@@ -1,5 +1,14 @@
 import { Head, Link } from '@inertiajs/react';
 import { PageHeader } from '@/components/page-header';
+import {
+    FolderBadge,
+    OpenPartnerBar,
+    PartnerFolderGrid,
+} from '@/components/partner-folder-grid';
+import type {
+    OpenPartner,
+    PartnerFolder,
+} from '@/components/partner-folder-grid';
 import { ProcurementFilterBar } from '@/components/procurement-filter-bar';
 import { ProcurementTable } from '@/components/procurement-table';
 import { cn } from '@/lib/utils';
@@ -27,18 +36,38 @@ const categoryBar: Record<StatusCategory, string> = {
     selesai: 'bg-status-selesai',
 };
 
+/** The filters as a query, the empty ones left out. */
+function queryOf(values: Record<string, string | number | null | undefined>) {
+    return Object.fromEntries(
+        Object.entries(values).filter(
+            ([, value]) =>
+                value !== null && value !== undefined && value !== '',
+        ),
+    ) as Record<string, string | number>;
+}
+
 export default function MonitoringIndex({
+    folders,
     procurements: page,
+    partner,
     filters,
     options,
     statusBoard,
 }: {
-    procurements: Paginated<ProcurementRow>;
+    /** One folder per partner, while none is open. */
+    folders: Paginated<PartnerFolder> | null;
+    /** The open partner's work. */
+    procurements: Paginated<ProcurementRow> | null;
+    partner: OpenPartner | null;
     filters: ProcurementFilters;
     options: FilterOptions;
     statusBoard: StatusBoardRow[];
 }) {
     const maxTotal = Math.max(1, ...statusBoard.map((row) => row.total));
+    const { search, ...narrowing } = filters;
+    const persist: Record<string, string> = partner
+        ? { mitra: partner.key }
+        : {};
 
     return (
         <>
@@ -48,7 +77,7 @@ export default function MonitoringIndex({
                 <PageHeader
                     eyebrow="Monitoring"
                     title="Monitoring Progress Pengadaan"
-                    description="Distribusi pengadaan pada setiap status progres beserta detail per pengadaan."
+                    description="Pengadaan dikelompokkan dalam folder per mitra. Klik folder untuk melihat pekerjaan yang pernah dikerjakan mitra itu beserta progresnya."
                 />
 
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -56,7 +85,10 @@ export default function MonitoringIndex({
                         <Link
                             key={row.id}
                             href={monitoring.index({
-                                query: { progress_status_id: row.id },
+                                query: queryOf({
+                                    ...persist,
+                                    progress_status_id: row.id,
+                                }),
                             })}
                             className={cn(
                                 'space-y-2 rounded-md border border-border bg-card p-4 transition-colors hover:bg-accent/40',
@@ -87,20 +119,64 @@ export default function MonitoringIndex({
                     url={monitoring.index().url}
                     filters={filters}
                     options={options}
+                    persist={persist}
                 />
 
-                <ProcurementTable
-                    page={page}
-                    columns={[
-                        'unit',
-                        'status',
-                        'approval',
-                        'planningProgress',
-                        'executionProgress',
-                        'target',
-                    ]}
-                    emptyTitle="Tidak ada pengadaan untuk dipantau"
-                />
+                {partner !== null && page !== null && (
+                    <>
+                        <OpenPartnerBar
+                            partner={partner}
+                            backHref={
+                                monitoring.index({
+                                    query: queryOf({ search, ...narrowing }),
+                                }).url
+                            }
+                        >
+                            {page.meta?.total ?? page.total ?? page.data.length}{' '}
+                            pekerjaan
+                        </OpenPartnerBar>
+
+                        <ProcurementTable
+                            page={page}
+                            columns={[
+                                'unit',
+                                'status',
+                                'approval',
+                                'planningProgress',
+                                'executionProgress',
+                                'target',
+                            ]}
+                            emptyTitle="Tidak ada pekerjaan mitra ini yang cocok"
+                        />
+                    </>
+                )}
+
+                {partner === null && folders !== null && (
+                    <PartnerFolderGrid
+                        page={folders}
+                        emptyTitle="Tidak ada pengadaan untuk dipantau"
+                        href={(folder) =>
+                            monitoring.index({
+                                query: queryOf({
+                                    ...filters,
+                                    mitra: folder.key,
+                                }),
+                            }).url
+                        }
+                        details={(folder) => (
+                            <>
+                                <span className="tabular block text-[11px] text-muted-foreground">
+                                    {folder.total} pekerjaan
+                                </span>
+                                <FolderBadge
+                                    done={folder.done}
+                                    total={folder.total}
+                                    label="selesai"
+                                />
+                            </>
+                        )}
+                    />
+                )}
             </div>
         </>
     );

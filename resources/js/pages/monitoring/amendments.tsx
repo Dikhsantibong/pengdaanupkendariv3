@@ -6,6 +6,10 @@ import type {
     MonitoringSummary,
 } from '@/components/contract-monitoring';
 import { PageHeader } from '@/components/page-header';
+import type {
+    OpenPartner,
+    PartnerFolder,
+} from '@/components/partner-folder-grid';
 import { TableCell } from '@/components/ui/table';
 import { dashboard } from '@/routes';
 import monitoring from '@/routes/monitoring';
@@ -17,11 +21,15 @@ type AmendmentRow = MonitoringRow & {
 
 export default function AmendmentMonitoring({
     amendments,
+    folders,
+    partner,
     summary,
     filters,
     options,
 }: {
-    amendments: Paginated<AmendmentRow>;
+    amendments: Paginated<AmendmentRow> | null;
+    folders: Paginated<PartnerFolder> | null;
+    partner: OpenPartner | null;
     summary: MonitoringSummary[];
     filters: MonitoringFilters;
     options: FilterOptions;
@@ -40,6 +48,10 @@ export default function AmendmentMonitoring({
                 <ContractMonitoring<AmendmentRow>
                     url={monitoring.amendments().url}
                     page={amendments}
+                    folders={folders}
+                    partner={partner}
+                    years={options.years ?? []}
+                    unitLabel="amandemen"
                     summary={summary}
                     filters={filters}
                     workDirectors={options.workDirectors}

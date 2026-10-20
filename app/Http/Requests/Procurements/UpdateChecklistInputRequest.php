@@ -56,6 +56,9 @@ class UpdateChecklistInputRequest extends FormRequest
                     Rule::unique('procurements', 'number')->ignore($checklist->procurement_id)->whereNull('deleted_at'),
                 ],
             ],
+            ChecklistInput::RksNumber => ['rks_number' => ['required', 'string', 'max:255']],
+            ChecklistInput::HpeNumber => ['hpe_number' => ['required', 'string', 'max:255']],
+            ChecklistInput::UpbNumber => ['upb_number' => ['required', 'string', 'max:255']],
             // Filled through the calon mitra themselves.
             ChecklistInput::PartnerCandidates, null => [],
         };
@@ -79,6 +82,9 @@ class UpdateChecklistInputRequest extends FormRequest
             'icc_memo_number' => 'nomor nota dinas ke pengadaan',
             'icc_memo_date' => 'tanggal nota dinas ke pengadaan',
             'number' => 'nomor kontrak',
+            'rks_number' => 'nomor RKS',
+            'hpe_number' => 'nomor HPE',
+            'upb_number' => 'nomor UPB',
         ];
     }
 

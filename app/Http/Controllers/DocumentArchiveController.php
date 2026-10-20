@@ -6,6 +6,7 @@ use App\Models\ContractNumberFormat;
 use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementDocument;
+use App\Support\FilterPeriod;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -54,10 +55,12 @@ class DocumentArchiveController extends Controller
                 'search' => $request->string('search')->trim()->value() ?: null,
                 'document_type_id' => $request->integer('document_type_id') ?: null,
                 'folder' => $folder,
+                ...FilterPeriod::current($request),
             ],
             'documentTypes' => DocumentType::query()->ordered()->get()
                 ->map(fn (DocumentType $type): array => ['value' => $type->id, 'label' => $type->name])
                 ->all(),
+            'years' => FilterPeriod::years('procurement_documents', 'generated_at'),
         ]);
     }
 
@@ -70,7 +73,7 @@ class DocumentArchiveController extends Controller
     {
         $this->authorize('view', $procurement);
 
-        $documents = $procurement->documents()
+        $documents = FilterPeriod::apply($procurement->documents()->getQuery(), $request, 'generated_at')
             ->when($request->integer('document_type_id'), fn (Builder $query, int $id) => $query->where('document_type_id', $id))
             ->with(['documentType', 'generatedBy', 'editedBy', 'signedUploads'])
             ->latest('generated_at')
@@ -101,6 +104,7 @@ class DocumentArchiveController extends Controller
                 'folder' => $request->string('folder')->trim()->value() ?: null,
                 'search' => $request->string('search')->trim()->value() ?: null,
                 'document_type_id' => $request->integer('document_type_id') ?: null,
+                ...FilterPeriod::current($request),
                 'page' => $request->integer('page') > 1 ? $request->integer('page') : null,
             ]),
         ]);
@@ -130,7 +134,8 @@ class DocumentArchiveController extends Controller
      */
     protected function matching(Builder $query, Request $request): Builder
     {
-        return $query
+        // The year and month the document was drawn in.
+        return FilterPeriod::apply($query, $request, 'generated_at')
             ->when($request->integer('document_type_id'), fn (Builder $query, int $id) => $query->where('procurement_documents.document_type_id', $id))
             ->when($request->string('search')->trim()->value(), function (Builder $query, string $search): void {
                 $query->where(function (Builder $inner) use ($search): void {

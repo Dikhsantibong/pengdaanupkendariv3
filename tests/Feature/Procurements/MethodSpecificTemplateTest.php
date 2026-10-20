@@ -305,8 +305,10 @@ class MethodSpecificTemplateTest extends TestCase
         /** @var array<int, array{value: int, hasTemplate: bool}> $documentTypes */
         $documentTypes = $options['documentTypes'];
 
-        $this->assertCount(6, $documentTypes);
-        $this->assertTrue(collect($documentTypes)->every(fn (array $type): bool => $type['hasTemplate']));
+        // The six made here, beside the types the migrations ship.
+        $own = collect($documentTypes)->whereIn('value', $types->pluck('id')->all());
+        $this->assertCount(6, $own);
+        $this->assertTrue($own->every(fn (array $type): bool => $type['hasTemplate']));
 
         // Statuses, planners, executors, contract types, metode pengadaan, the
         // resolvable ids and the document types themselves: a fixed number of

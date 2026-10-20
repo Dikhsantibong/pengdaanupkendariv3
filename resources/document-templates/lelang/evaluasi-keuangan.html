@@ -1,0 +1,49 @@
+<style>
+    .ba-head { width: 100%; border: none; margin: 0 0 6pt; }
+    .ba-head td { border: none; padding: 0 6pt 0 0; vertical-align: middle; }
+    .ba-title { text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; margin: 8pt 0 4pt; }
+    .ba-heading { text-align: center; font-weight: bold; margin: 8pt 0 4pt; }
+    table.ba-meta { width: auto; margin: 0 auto 6pt; }
+    table.ba-meta td { border: none; padding: 1pt 4pt; }
+    table.ba-left td { border: none; padding: 1pt 4pt; vertical-align: top; }
+    .ba-subject { text-align: center; font-weight: bold; text-transform: uppercase; border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; padding: 5pt 0; margin: 8pt 0 10pt; }
+    .ba-point { font-weight: bold; margin: 10pt 0 4pt; }
+    .ba-in { margin-left: 18pt; }
+    .ba-in2 { margin-left: 34pt; }
+    table.ba-grid { margin-left: 0; }
+    table.ba-grid th, table.ba-grid td { border: 1px solid #000; vertical-align: top; }
+    table.ba-grid th { background: none; text-align: center; }
+    table.ba-plain > tbody > tr > td, table.ba-plain > tr > td, table.ba-sign > tbody > tr > td, table.ba-sign > tr > td { border: none; padding: 1pt 4pt; vertical-align: top; }
+    table.ba-sign > tbody > tr > td, table.ba-sign > tr > td { width: 50%; vertical-align: top; }
+    .c { text-align: center; }
+    .r { text-align: right; }
+</style>
+
+<section>
+    <table class="ba-head">
+        <tr>
+            <td style="width: 74px;"><img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 34px; width: auto;"></td>
+            <td style="white-space: nowrap;">PT PLN Nusantara Power<br><b>UP KENDARI</b></td>
+        </tr>
+    </table>
+
+    <table class="ba-plain" style="margin-left: auto; width: auto;">
+        <tr><td>Lampiran 2</td><td>Berita Acara Evaluasi Administrasi, Teknik dan Harga</td></tr>
+        <tr><td>Nomor</td><td>: <span class="fill">..........</span>/BAE/612/UPKD/{{tahun}}</td></tr>
+    </table>
+
+    <div class="ba-title">EVALUASI KUALIFIKASI DAN PEMBUKTIAN KUALIFIKASI (KEUANGAN)</div>
+    <div class="ba-heading" style="text-transform: uppercase;">{{nama_pengadaan}}</div>
+
+    {{tabel_evaluasi_keuangan}}
+
+    <table class="ba-plain" style="margin-top: 8pt;">
+        <tr><td style="width: 34%;"></td><td style="width: 12%;">Tanggal</td><td>: {{tanggal_dokumen}}</td></tr>
+    </table>
+    <table class="ba-plain" style="margin-top: 12pt; width: 100%;">
+        <tr><td style="width: 34%;"><u>KETERANGAN</u><br><br>M / TM : MEMENUHI /<br>TIDAK MEMENUHI</td><td colspan="4"><b>UP KENDARI</b></td></tr>
+        <tr><td></td><td style="width: 4%;">1</td><td style="width: 26%;"><span style="text-transform: uppercase;">{{nama_pejabat_pelaksana}}</span></td><td>TEAM LEADER PENGADAAN</td><td class="r">..........</td></tr>
+        <tr><td></td><td>&nbsp;</td><td></td><td></td><td></td></tr>
+        <tr><td></td><td>2</td><td><span style="text-transform: uppercase;">{{pic_pelaksana}}</span></td><td>PIC PELAKSANA PENGADAAN</td><td class="r">..........</td></tr>
+    </table>
+</section>

@@ -202,7 +202,8 @@ class ProcurementController extends Controller
             'creator',
             'financeSubmitter',
             'paymentCompleter',
-            'checklists.checklistItem.documentTypes',
+            'checklists.checklistItem.documentTypes.selectionMethods',
+            'selectionMethod',
             'checklists.completedBy',
             'checklists.files.uploader',
             'documents.documentType',
@@ -828,6 +829,9 @@ class ProcurementController extends Controller
             'bank_account_holder' => $procurement->bank_account_holder,
             'icc_memo_number' => $procurement->icc_memo_number,
             'icc_memo_date' => $procurement->icc_memo_date?->toDateString(),
+            'rks_number' => $procurement->rks_number,
+            'hpe_number' => $procurement->hpe_number,
+            'upb_number' => $procurement->upb_number,
             // The contract number once given, and the running one to offer.
             'number' => $procurement->hasContractNumber() ? $procurement->number : null,
             'suggested_number' => $procurement->contractNumberFormat === null

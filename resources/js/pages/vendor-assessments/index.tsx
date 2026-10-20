@@ -13,6 +13,7 @@ import type { AssessmentRequestRow } from '@/components/assessment-requests-pane
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
+import { PeriodFilter } from '@/components/period-filter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -33,11 +34,18 @@ export default function VendorAssessmentIndex({
     requests,
     requestFormUrl,
     filters,
+    years,
 }: {
     vendors: Paginated<VendorFolder>;
     requests: AssessmentRequestRow[];
     requestFormUrl: string;
-    filters: { search: string | null };
+    filters: {
+        search: string | null;
+        year: number | null;
+        month: number | null;
+    };
+    /** The years assessments were opened in. */
+    years: number[];
 }) {
     const [search, setSearch] = useState(filters.search ?? '');
     const first = useRef(true);
@@ -52,12 +60,18 @@ export default function VendorAssessmentIndex({
         const timer = setTimeout(() => {
             router.get(
                 vendorAssessments.index().url,
-                { search: search || undefined },
+                {
+                    search: search || undefined,
+                    year: filters.year ?? undefined,
+                    month: filters.month ?? undefined,
+                },
                 { preserveState: true, replace: true },
             );
         }, 300);
 
         return () => clearTimeout(timer);
+        // Only the typed search triggers it; the period travels along.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [search]);
 
     const currentPage = vendors.meta?.current_page ?? vendors.current_page ?? 1;
@@ -89,14 +103,37 @@ export default function VendorAssessmentIndex({
                     formUrl={requestFormUrl}
                 />
 
-                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-                    <div className="relative w-full max-w-sm">
-                        <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                            value={search}
-                            onChange={(event) => setSearch(event.target.value)}
-                            placeholder="Cari pekerjaan, penyedia atau nomor PO"
-                            className="pl-9"
+                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+                    <div className="flex flex-1 flex-wrap items-end gap-3">
+                        <div className="relative w-full max-w-sm">
+                            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                value={search}
+                                onChange={(event) =>
+                                    setSearch(event.target.value)
+                                }
+                                placeholder="Cari pekerjaan, penyedia atau nomor PO"
+                                className="pl-9"
+                            />
+                        </div>
+                        <PeriodFilter
+                            years={years}
+                            year={filters.year}
+                            month={filters.month}
+                            onChange={(next) =>
+                                router.get(
+                                    vendorAssessments.index().url,
+                                    Object.fromEntries(
+                                        Object.entries({
+                                            search: filters.search,
+                                            year: filters.year,
+                                            month: filters.month,
+                                            ...next,
+                                        }).filter(([, value]) => value),
+                                    ),
+                                    { preserveState: true, replace: true },
+                                )
+                            }
                         />
                     </div>
                     <Button
@@ -142,6 +179,14 @@ export default function VendorAssessmentIndex({
                                             vendorAssessments.vendor({
                                                 query: {
                                                     nama: vendor.name,
+                                                    ...(filters.year
+                                                        ? { year: filters.year }
+                                                        : {}),
+                                                    ...(filters.month
+                                                        ? {
+                                                              month: filters.month,
+                                                          }
+                                                        : {}),
                                                     ...(filters.search
                                                         ? {
                                                               search: filters.search,

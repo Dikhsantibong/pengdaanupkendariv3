@@ -1,0 +1,84 @@
+<style>
+    .ba-head { width: 100%; border: none; margin: 0 0 6pt; }
+    .ba-head td { border: none; padding: 0 6pt 0 0; vertical-align: middle; }
+    .ba-title { text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; margin: 8pt 0 4pt; }
+    table.ba-meta { width: auto; margin: 0 auto 6pt; }
+    table.ba-meta td { border: none; padding: 1pt 4pt; }
+    .ba-subject { text-align: center; font-weight: bold; text-transform: uppercase; border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; padding: 5pt 0; margin: 8pt 0 10pt; }
+    .ba-point { font-weight: bold; margin: 10pt 0 4pt; }
+    .ba-point u { text-decoration: underline; }
+    table.ba-grid th, table.ba-grid td { border: 1px solid #000; vertical-align: top; }
+    table.ba-grid th { background: none; text-align: center; }
+    table.ba-plain > tbody > tr > td, table.ba-plain > tr > td, table.ba-sign > tbody > tr > td, table.ba-sign > tr > td { border: none; padding: 1pt 4pt; vertical-align: top; }
+    table.ba-sign > tbody > tr > td, table.ba-sign > tr > td { width: 50%; vertical-align: top; }
+    .c { text-align: center; }
+    .r { text-align: right; }
+</style>
+
+<section>
+    <table class="ba-head">
+        <tr>
+            <td style="width: 74px;"><img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 34px; width: auto;"></td>
+            <td style="white-space: nowrap;">PT PLN Nusantara Power<br><b>UP KENDARI</b></td>
+        </tr>
+    </table>
+
+    <div class="ba-title">BERITA ACARA PEMBERIAN PENJELASAN (AANWIJZING)</div>
+    <table class="ba-meta">
+        <tr><td>Nomor</td><td>:</td><td><span class="fill">..........</span>/BAP/612/UPKD/{{tahun}}</td></tr>
+        <tr><td>Tanggal</td><td>:</td><td>{{tanggal_dokumen}}</td></tr>
+        <tr><td>Perihal</td><td>:</td><td></td></tr>
+    </table>
+
+    <div class="ba-subject">{{nama_pengadaan}}</div>
+
+    <p>Pada hari ini {{hari_dokumen}}, tanggal {{tanggal_dokumen_terbilang}} bulan {{bulan_dokumen}} tahun {{tahun_dokumen_terbilang}}, Pukul <span class="fill">.....</span> WIB, kami Pejabat dan Pelaksana Pengadaan UP KENDARI, telah mengadakan Rapat Penjelasan (Aanwijzing) {{nama_pengadaan}} dengan Peserta {{metode_pemilihan}} Sistem Gugur sesuai daftar hadir Peserta sebagaimana terlampir dan dirangkum sebagai berikut :</p>
+
+    <div class="ba-point">I. <u>PENJELASAN DAN PENEGASAN PELAKSANA PENGADAAN</u></div>
+    <table class="ba-plain">
+        <tr><td style="width: 8%;">Isi</td><td style="width: 3%;">:</td><td>- Penjelasan secara umum tentang Rencana Kerja dan Syarat-Syarat (RKS)</td></tr>
+        <tr><td></td><td></td><td>- Tata Cara Evaluasi</td></tr>
+        <tr><td></td><td></td><td>- Ketentuan Lain-lain</td></tr>
+    </table>
+
+    <div class="ba-point">II. <u>PERTANYAAN PESERTA DAN JAWABAN PELAKSANA PENGADAAN</u></div>
+    <table class="ba-grid">
+        <tr><th style="width: 22%;">PERUSAHAAN</th><th style="width: 39%;">PERTANYAAN</th><th>JAWABAN</th></tr>
+        <tr><td>&nbsp;</td><td>1.&nbsp;</td><td>1.&nbsp;</td></tr>
+        <tr><td>&nbsp;</td><td>2.&nbsp;</td><td>2.&nbsp;</td></tr>
+        <tr><td>&nbsp;</td><td>3.&nbsp;</td><td>3.&nbsp;</td></tr>
+    </table>
+
+    <div class="ba-point">III. <u>PERUBAHAN (KOREKSI) DAN TAMBAHAN DARI PELAKSANA PENGADAAN</u></div>
+    <table class="ba-grid">
+        <tr><th style="width: 8%;">NO</th><th style="width: 30%;">DOKUMEN</th><th>PERUBAHAN / TAMBAHAN</th></tr>
+        <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+    </table>
+    <p>Perubahan atau Penambahan atas isi dan lampiran Rencana Kerja dan Syarat-syarat (RKS) No. {{nomor_rks}} tanggal {{tanggal_rks}} dituangkan dalam Addendum Rencana Kerja dan Syarat-syarat (RKS).</p>
+
+    <div class="ba-point">IV. <u>KESIMPULAN</u></div>
+    <p>Setelah mengikuti Penjelasan ini seluruh Peserta sudah dianggap memahami dan menyetujui segala ketentuan yang tertuang dalam Rencana Kerja &amp; Syarat-syarat (RKS) beserta perubahan-perubahannya.</p>
+
+    <div class="ba-point">V. <u>PENUTUP</u></div>
+    <p>Demikian Berita Acara Penjelasan ini dibuat sebagai kelengkapan dan menjadi kesatuan dari Rencana Kerja dan Syarat-syarat (RKS) No. {{nomor_rks}} tanggal {{tanggal_rks}}.</p>
+
+    <table class="ba-sign" style="margin-top: 10pt; page-break-inside: avoid;">
+        <tr>
+            <td><b><u>PESERTA E-TENDERING</u></b>{{daftar_peserta_ttd}}</td>
+            <td>
+                <b><u>UP KENDARI</u></b>
+                <table class="ba-plain">
+                    <tr><td><span style="text-transform: uppercase;">{{nama_pejabat_pelaksana}}</span></td><td class="r">..........</td></tr>
+                    <tr><td>TEAM LEADER PENGADAAN</td><td></td></tr>
+                    <tr><td>&nbsp;</td><td></td></tr>
+                    <tr><td><span style="text-transform: uppercase;">{{pic_pelaksana}}</span></td><td class="r">..........</td></tr>
+                    <tr><td>OFFICER PENGADAAN</td><td></td></tr>
+                </table>
+                <br><b>TIM TEKNIS PT PLN Nusantara Power</b>
+                <table class="ba-plain">
+                    <tr><td><span style="text-transform: uppercase;">{{nama_penyusun}}</span></td><td class="r">..........</td></tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</section>

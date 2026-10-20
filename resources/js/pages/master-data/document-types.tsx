@@ -12,6 +12,8 @@ type DocumentType = MasterRecord & {
     upload_only: boolean;
     contract_number_format_id: string;
     contract_number_format: string | null;
+    selection_method_ids: number[];
+    selection_methods: string[];
     description: string | null;
     sort_order: number;
     template_count: number;
@@ -22,10 +24,12 @@ export default function DocumentTypes({
     records,
     stages,
     contractNumberFormats,
+    selectionMethods,
 }: {
     records: DocumentType[];
     stages: EnumOption[];
     contractNumberFormats: EnumOption[];
+    selectionMethods: EnumOption[];
 }) {
     return (
         <MasterDataPage<DocumentType>
@@ -48,6 +52,16 @@ export default function DocumentTypes({
                     render: (record) =>
                         record.contract_number_format ?? (
                             <span className="text-muted-foreground">Semua</span>
+                        ),
+                },
+                {
+                    key: 'selection_methods',
+                    label: 'Metode',
+                    render: (record) =>
+                        record.selection_methods.length === 0 ? (
+                            <span className="text-muted-foreground">Semua</span>
+                        ) : (
+                            record.selection_methods.join(', ')
                         ),
                 },
                 {
@@ -112,6 +126,13 @@ export default function DocumentTypes({
                     options: contractNumberFormats,
                     hint: 'Bila dipilih, tahapan checklist hanya meminta dokumen ini pada pengadaan dengan format tersebut (mis. SPK - Syarat & Ketentuan (Pasal) hanya untuk SPK, karena PJ sudah memuat pasal di Surat Perjanjian).',
                 },
+                {
+                    name: 'selection_method_ids',
+                    label: 'Hanya untuk Metode Pengadaan',
+                    type: 'multiselect',
+                    options: selectionMethods,
+                    hint: 'Kosongkan bila diminta pada semua metode. Bila dipilih, tahapan checklist hanya meminta dokumen ini pada pengadaan dengan metode tersebut (pengadaan yang metodenya belum dipilih dianggap Pengadaan Langsung).',
+                },
                 { name: 'sort_order', label: 'Urutan Tampil', type: 'number' },
                 { name: 'is_active', label: 'Aktif', type: 'switch' },
             ]}
@@ -121,6 +142,7 @@ export default function DocumentTypes({
                 stage: 'perencanaan',
                 upload_only: false,
                 contract_number_format_id: 'none',
+                selection_method_ids: [],
                 description: '',
                 sort_order: 0,
                 is_active: true,

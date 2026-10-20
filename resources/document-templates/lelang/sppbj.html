@@ -1,0 +1,61 @@
+<style>
+    .ba-head { width: 100%; border: none; margin: 0 0 6pt; }
+    .ba-head td { border: none; padding: 0 6pt 0 0; vertical-align: middle; }
+    .ba-title { text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; margin: 8pt 0 4pt; }
+    .ba-heading { text-align: center; font-weight: bold; margin: 8pt 0 4pt; }
+    table.ba-meta { width: auto; margin: 0 auto 6pt; }
+    table.ba-meta td { border: none; padding: 1pt 4pt; }
+    table.ba-left td { border: none; padding: 1pt 4pt; vertical-align: top; }
+    .ba-subject { text-align: center; font-weight: bold; text-transform: uppercase; border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; padding: 5pt 0; margin: 8pt 0 10pt; }
+    .ba-point { font-weight: bold; margin: 10pt 0 4pt; }
+    .ba-in { margin-left: 18pt; }
+    .ba-in2 { margin-left: 34pt; }
+    table.ba-grid { margin-left: 0; }
+    table.ba-grid th, table.ba-grid td { border: 1px solid #000; vertical-align: top; }
+    table.ba-grid th { background: none; text-align: center; }
+    table.ba-plain > tbody > tr > td, table.ba-plain > tr > td, table.ba-sign > tbody > tr > td, table.ba-sign > tr > td { border: none; padding: 1pt 4pt; vertical-align: top; }
+    table.ba-sign > tbody > tr > td, table.ba-sign > tr > td { width: 50%; vertical-align: top; }
+    .c { text-align: center; }
+    .r { text-align: right; }
+</style>
+
+<section>
+    <table class="ba-plain" style="width: 100%;">
+        <tr><td></td><td class="r" style="width: 40%;"><img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 34px; width: auto;"><br><b>UP KENDARI</b></td></tr>
+    </table>
+
+    <table class="ba-left" style="width: 100%; margin-top: 8pt;">
+        <tr><td style="width: 14%;">Nomor</td><td style="width: 3%;">:</td><td style="width: 45%;"><span class="fill">..........</span>/DAN.01.02/PLNNP030016/{{tahun}}</td><td>{{tanggal_dokumen}}</td></tr>
+        <tr><td>Lampiran</td><td>:</td><td>1 (Satu) Set</td><td></td></tr>
+        <tr><td>Sifat</td><td>:</td><td>Segera</td><td><b>KEPADA:</b></td></tr>
+        <tr><td>Perihal</td><td>:</td><td>Surat Penunjukan Penyedia Barang/Jasa (SPPBJ)</td><td></td></tr>
+        <tr><td></td><td></td><td></td><td>{{nama_pemenang}}<br>{{alamat_pemenang}}</td></tr>
+    </table>
+
+    <div style="margin-left: 17%; margin-top: 10pt;">
+        <p>Berdasarkan :</p>
+        <ul style="margin-left: 14pt;">
+            <li>BA Penetapan Pemenang No. <span class="fill">..........</span>/PP/612/UPKD/{{tahun}} tanggal {{tanggal_dokumen}}.</li>
+            <li>Berita Acara Klarifikasi &amp; Negosiasi Harga No. <span class="fill">..........</span>/BAKN/UPKD/{{tahun}} tanggal <span class="fill">..........</span></li>
+            <li>Surat Penawaran Harga No. {{nomor_surat_penawaran}} tanggal {{tanggal_surat_penawaran}}</li>
+        </ul>
+        <p>Atas Pekerjaan :</p>
+        <p class="c" style="text-transform: uppercase;"><b>{{nama_pengadaan}}</b></p>
+        <p><i>Sesuai RKS No: {{nomor_rks}} tanggal {{tanggal_rks}}</i></p>
+        <p style="text-align: justify;">Maka kami menunjuk perusahaan Saudara sebagai "PELAKSANA PEKERJAAN" tersebut diatas dengan syarat-syarat sebagai berikut :</p>
+        <ol style="margin-left: 16pt;">
+            <li>Nama Perusahaan : {{nama_pemenang}}</li>
+            <li>Sumber Dana yang digunakan adalah {{sumber_anggaran_keterangan}} tahun {{tahun}}.</li>
+            <li>Jangka waktu pelaksanaan adalah {{jangka_waktu_hari}} ({{jangka_waktu_hari_terbilang}}) hari kalender terhitung sejak tanggal Perjanjian (Kontrak).</li>
+            <li>Jumlah harga : <i>Rp. {{nilai_negosiasi_pemenang}} {{nilai_negosiasi_pemenang_terbilang}} (Include PPN)</i></li>
+        </ol>
+        <p style="text-align: justify;">Agar Saudara memperhatikan waktu pelaksanaan, kwantitas dan kualitas Pelaksanaan pekerjaan tersebut. Sebagai bukti persetujuan Saudara atas perihal tersebut di atas, maka SPPB/J ini ditanda tangani diatas meterai Rp. 10.000,- dan dicap perusahaan.</p>
+        <p>Demikian penyampaian ini kami, kiranya dapat diterima dengan baik.</p>
+    </div>
+
+    <table class="ba-plain" style="width: 100%; margin-top: 10pt; page-break-inside: avoid;">
+        <tr><td style="width: 55%;">Diterima dan setuju melaksanakan<br>{{nama_pemenang}}</td><td class="c">MANAGER</td></tr>
+        <tr><td style="height: 50pt; vertical-align: middle; font-size: 8pt; color: #666666;">Materai 10.000</td><td></td></tr>
+        <tr><td><b><u><span style="text-transform: uppercase;">{{direktur_pemenang}}</span></u></b><br>Direktur</td><td class="c"><b><span style="text-transform: uppercase;">{{nama_manager}}</span></b></td></tr>
+    </table>
+</section>

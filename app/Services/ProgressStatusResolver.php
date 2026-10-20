@@ -255,7 +255,7 @@ class ProgressStatusResolver
         return ProcurementChecklist::query()
             ->where('procurement_id', $procurement->getKey())
             ->where('stage', ProcurementStage::Pelaksanaan->value)
-            ->with('checklistItem.documentTypes')
+            ->with('checklistItem.documentTypes.selectionMethods')
             ->get()
             ->map(fn (ProcurementChecklist $checklist): array => [
                 'completed' => $checklist->is_completed,
@@ -278,7 +278,7 @@ class ProgressStatusResolver
         return ProcurementChecklist::query()
             ->where('procurement_id', $procurement->getKey())
             ->where('stage', $stage->value)
-            ->with('checklistItem.documentTypes')
+            ->with('checklistItem.documentTypes.selectionMethods')
             ->get()
             ->flatMap(fn (ProcurementChecklist $checklist) => $checklist->checklistItem->documentTypesFor($procurement)->map(fn (DocumentType $type): string => $type->code))
             ->unique()

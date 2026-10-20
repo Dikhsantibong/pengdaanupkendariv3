@@ -5,6 +5,7 @@ namespace App\Http\Controllers\MasterData;
 use App\Enums\ProcurementStage;
 use App\Models\ContractNumberFormat;
 use App\Models\DocumentType;
+use App\Models\SelectionMethod;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,11 @@ class DocumentTypeController extends MasterDataController
     {
         $this->normaliseFormat($request);
 
-        return parent::store($request);
+        $response = parent::store($request);
+
+        $this->syncMethods($request, DocumentType::query()->latest('id')->firstOrFail());
+
+        return $response;
     }
 
     /**
@@ -30,7 +35,22 @@ class DocumentTypeController extends MasterDataController
     {
         $this->normaliseFormat($request);
 
-        return $this->updateRecord($request, $documentType);
+        $response = $this->updateRecord($request, $documentType);
+
+        $this->syncMethods($request, $documentType);
+
+        return $response;
+    }
+
+    /**
+     * Keep the document to the selection methods chosen; none means every
+     * method.
+     */
+    protected function syncMethods(Request $request, DocumentType $documentType): void
+    {
+        if ($request->has('selection_method_ids')) {
+            $documentType->selectionMethods()->sync(array_map('intval', (array) $request->input('selection_method_ids', [])));
+        }
     }
 
     /**
@@ -75,7 +95,7 @@ class DocumentTypeController extends MasterDataController
     protected function records(): array
     {
         return DocumentType::query()
-            ->with(['activeTemplate', 'contractNumberFormat'])
+            ->with(['activeTemplate', 'contractNumberFormat', 'selectionMethods'])
             ->withCount(['templates', 'procurementDocuments'])
             ->orderBy('stage')
             ->ordered()
@@ -89,6 +109,8 @@ class DocumentTypeController extends MasterDataController
                 // "none" is the select's way of saying every format.
                 'contract_number_format_id' => $record->contract_number_format_id === null ? 'none' : (string) $record->contract_number_format_id,
                 'contract_number_format' => $record->contractNumberFormat?->code,
+                'selection_method_ids' => $record->selectionMethods->pluck('id')->all(),
+                'selection_methods' => $record->selectionMethods->pluck('name')->all(),
                 'stage_label' => $record->stage->label(),
                 'description' => $record->description,
                 'sort_order' => $record->sort_order,
@@ -121,6 +143,9 @@ class DocumentTypeController extends MasterDataController
     {
         return [
             'stages' => ProcurementStage::options(),
+            'selectionMethods' => SelectionMethod::query()->active()->ordered()->get()
+                ->map(fn (SelectionMethod $method): array => ['value' => (string) $method->id, 'label' => $method->name])
+                ->all(),
             'contractNumberFormats' => [
                 ['value' => 'none', 'label' => 'Semua format'],
                 ...ContractNumberFormat::query()->forContracts()->active()->ordered()->get()
@@ -150,6 +175,9 @@ class DocumentTypeController extends MasterDataController
             'upload_only' => ['sometimes', 'boolean'],
             // Asked for under this contract format only (e.g. the SPK's Pasal).
             'contract_number_format_id' => ['sometimes', 'nullable', Rule::exists('contract_number_formats', 'id')->whereNull('deleted_at')],
+            // Asked for under these selection methods only; none for every one.
+            'selection_method_ids' => ['sometimes', 'array'],
+            'selection_method_ids.*' => ['integer', Rule::exists('selection_methods', 'id')->whereNull('deleted_at')],
             'description' => ['nullable', 'string', 'max:255'],
             'sort_order' => ['required', 'integer', 'min:0', 'max:999'],
             'is_active' => ['required', 'boolean'],
@@ -165,6 +193,9 @@ class DocumentTypeController extends MasterDataController
     protected function prepare(array $validated, ?Model $record = null): array
     {
         $validated['code'] = Str::slug((string) $validated['code']);
+
+        // The methods are synced after the save, not filled onto the model.
+        unset($validated['selection_method_ids']);
 
         return $validated;
     }

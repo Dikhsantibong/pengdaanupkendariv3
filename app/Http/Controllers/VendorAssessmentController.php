@@ -15,6 +15,7 @@ use App\Models\VendorAssessmentRequest;
 use App\Services\AssessmentSigningService;
 use App\Services\VendorAssessmentRenderer;
 use App\Services\VendorAssessmentService;
+use App\Support\FilterPeriod;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -49,7 +50,8 @@ class VendorAssessmentController extends Controller
         // One folder per vendor (spelling and spacing aside), the vendor
         // assessed most recently first, with how many of its assessments
         // have every aspect scored.
-        $vendors = VendorAssessment::query()
+        // The year and month the form was opened in.
+        $vendors = FilterPeriod::apply(VendorAssessment::query(), $request)
             ->when($request->string('search')->trim()->value(), function ($query, string $search): void {
                 $query->where(function ($inner) use ($search): void {
                     $inner->where('project', 'like', "%{$search}%")
@@ -85,7 +87,9 @@ class VendorAssessmentController extends Controller
             'requestFormUrl' => VendorAssessmentRequest::formUrl(),
             'filters' => [
                 'search' => $request->string('search')->trim()->value() ?: null,
+                ...FilterPeriod::current($request),
             ],
+            'years' => FilterPeriod::years('vendor_assessments'),
         ]);
     }
 
@@ -98,7 +102,7 @@ class VendorAssessmentController extends Controller
         $name = $request->string('nama')->trim()->value();
         abort_if($name === '', 404);
 
-        $assessments = VendorAssessment::query()
+        $assessments = FilterPeriod::apply(VendorAssessment::query(), $request)
             ->whereRaw('LOWER(TRIM(vendor_name)) = ?', [mb_strtolower($name)])
             ->with(['procurement', 'creator', 'scores'])
             ->latest('created_at')
@@ -132,6 +136,7 @@ class VendorAssessmentController extends Controller
             ])->all(),
             'back' => array_filter([
                 'search' => $request->string('search')->trim()->value() ?: null,
+                ...FilterPeriod::current($request),
                 'page' => $request->integer('page') > 1 ? $request->integer('page') : null,
             ]),
         ]);

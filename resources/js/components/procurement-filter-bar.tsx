@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { Search, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { PeriodFilter } from '@/components/period-filter';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -49,6 +50,8 @@ export function ProcurementFilterBar({
             budget_source_id: filters.budget_source_id,
             planner_id: filters.planner_id,
             executor_id: filters.executor_id,
+            year: filters.year ?? null,
+            month: filters.month ?? null,
             ...Object.fromEntries(
                 extraSelects.map((select) => [select.name, select.value]),
             ),
@@ -89,6 +92,8 @@ export function ProcurementFilterBar({
         Boolean(filters.work_director_id) ||
         Boolean(filters.target_unit_id) ||
         Boolean(filters.budget_source_id) ||
+        Boolean(filters.year) ||
+        Boolean(filters.month) ||
         extraSelects.some((select) => Boolean(select.value));
 
     return (
@@ -103,7 +108,7 @@ export function ProcurementFilterBar({
                         id="procurement-search"
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
-                        placeholder="Nomor pengadaan, nama pekerjaan, atau nomor PRK"
+                        placeholder="Nomor pengadaan, nama pekerjaan, nomor PRK, atau mitra"
                         className="pl-9"
                     />
                 </div>
@@ -135,6 +140,13 @@ export function ProcurementFilterBar({
                 value={filters.budget_source_id}
                 options={options.budgetSources}
                 onChange={(value) => visit({ budget_source_id: value })}
+            />
+
+            <PeriodFilter
+                years={options.years ?? []}
+                year={filters.year}
+                month={filters.month}
+                onChange={(next) => visit(next)}
             />
 
             {extraSelects.map((select) => (

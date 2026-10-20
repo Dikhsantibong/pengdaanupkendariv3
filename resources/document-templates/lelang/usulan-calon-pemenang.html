@@ -1,0 +1,62 @@
+<style>
+    .ba-head { width: 100%; border: none; margin: 0 0 6pt; }
+    .ba-head td { border: none; padding: 0 6pt 0 0; vertical-align: middle; }
+    .ba-title { text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; margin: 8pt 0 4pt; }
+    .ba-heading { text-align: center; font-weight: bold; margin: 8pt 0 4pt; }
+    table.ba-meta { width: auto; margin: 0 auto 6pt; }
+    table.ba-meta td { border: none; padding: 1pt 4pt; }
+    table.ba-left td { border: none; padding: 1pt 4pt; vertical-align: top; }
+    .ba-subject { text-align: center; font-weight: bold; text-transform: uppercase; border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; padding: 5pt 0; margin: 8pt 0 10pt; }
+    .ba-point { font-weight: bold; margin: 10pt 0 4pt; }
+    .ba-in { margin-left: 18pt; }
+    .ba-in2 { margin-left: 34pt; }
+    table.ba-grid { margin-left: 0; }
+    table.ba-grid th, table.ba-grid td { border: 1px solid #000; vertical-align: top; }
+    table.ba-grid th { background: none; text-align: center; }
+    table.ba-plain > tbody > tr > td, table.ba-plain > tr > td, table.ba-sign > tbody > tr > td, table.ba-sign > tr > td { border: none; padding: 1pt 4pt; vertical-align: top; }
+    table.ba-sign > tbody > tr > td, table.ba-sign > tr > td { width: 50%; vertical-align: top; }
+    .c { text-align: center; }
+    .r { text-align: right; }
+</style>
+
+<section>
+    <table class="ba-head">
+        <tr>
+            <td style="width: 74px;"><img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 34px; width: auto;"></td>
+            <td style="white-space: nowrap;"><b>PT PLN NUSANTARA POWER</b><br><b><u>UP KENDARI</u></b></td>
+        </tr>
+    </table>
+
+    <div class="ba-title" style="margin-top: 14pt;">NOTA DINAS</div>
+    <div class="ba-heading" style="font-weight: normal;">Nomor <span class="fill">..........</span>.UP/612/UPKD/{{tahun}}</div>
+
+    <table class="ba-left" style="margin: 10pt 0;">
+        <tr><td style="width: 14%;">Kepada</td><td style="width: 3%;">:</td><td>Manager PT PLN Nusantara Power UP Kendari</td></tr>
+        <tr><td>Dari</td><td>:</td><td>Team Leader Pengadaan Barang/Jasa</td></tr>
+        <tr><td>Tanggal</td><td>:</td><td>{{tanggal_dokumen}}</td></tr>
+        <tr><td>Sifat</td><td>:</td><td>Rahasia</td></tr>
+        <tr><td>Perihal</td><td>:</td><td>Usulan Calon Pemenang</td></tr>
+    </table>
+
+    <div style="margin-left: 17%;">
+        <p style="text-align: justify;">Sehubungan dengan {{nama_pengadaan}}, dengan Memperhatikan Ketentuan Pelaksana Pengadaan Barang/Jasa di Lingkungan PT PLN Nusantara Power serta Mengacu pada :</p>
+        <ol style="margin-left: 16pt;">
+            <li>Dokumen Tender/RKS No. {{nomor_rks}} tanggal {{tanggal_rks}}</li>
+            <li>Adendum RKS Tender/RKS (apabila ada)</li>
+            <li>Berita Acara Rapat Penjelasan No. <span class="fill">..........</span>/BAP/612/UPKD/{{tahun}}</li>
+        </ol>
+        <p style="text-align: justify;">Dengan ini Mengusulkan Calon {{nama_pengadaan}}, sebagai berikut.</p>
+        <table class="ba-left" style="width: 100%;">
+            <tr><td style="width: 22%;"><b>Perusahaan</b></td><td style="width: 3%;">:</td><td><b>{{nama_pemenang}}</b></td></tr>
+            <tr><td><b>Alamat</b></td><td>:</td><td><b>{{alamat_pemenang}}</b></td></tr>
+            <tr><td><b>Harga</b></td><td>:</td><td><b>Rp {{nilai_negosiasi_pemenang}}<br>{{nilai_negosiasi_pemenang_terbilang}} (Include PPN)</b></td></tr>
+        </table>
+        <p>Demikian, untuk dilaksanakan lebih lanjut, atas perhatiannya diucapkan terima kasih.</p>
+    </div>
+
+    <table class="ba-plain" style="width: 100%; margin-top: 16pt;">
+        <tr><td style="width: 55%;"></td><td class="c"><b>TEAM LEADER PENGADAAN</b></td></tr>
+        <tr><td></td><td style="height: 44pt;"></td></tr>
+        <tr><td></td><td class="c"><b><span style="text-transform: uppercase;">{{nama_pejabat_pelaksana}}</span></b></td></tr>
+    </table>
+</section>

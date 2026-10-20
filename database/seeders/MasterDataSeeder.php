@@ -19,6 +19,7 @@ use App\Models\TargetUnit;
 use App\Models\UnitManager;
 use App\Models\WorkDirector;
 use App\Services\ProgressStatusResolver;
+use App\Support\TenderBeritaAcara;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
@@ -411,6 +412,10 @@ class MasterDataSeeder extends Seeder
             // that hands the job to procurement.
             'Penawaran' => ChecklistInput::PartnerCandidates,
             'Nota Dinas ke Pengadaan' => ChecklistInput::ProcurementMemo,
+            // The number of each planning document.
+            'RKS (Rencana Kerja dan Syarat)' => ChecklistInput::RksNumber,
+            'HPE (Harga Perkiraan Engineer)' => ChecklistInput::HpeNumber,
+            'UPB' => ChecklistInput::UpbNumber,
         ];
 
         foreach ($planning as $index => [$name, $isOptional]) {
@@ -496,18 +501,11 @@ class MasterDataSeeder extends Seeder
             ],
             ProcurementStage::Pelaksanaan->value => [
                 'Penyusunan HPS' => ['penyusunan-hps'],
-                // One step: the SMART SCM document and the six berita acara,
+                // One step: the SMART SCM document and the berita acara,
                 // all of which have to be signed and filed before the step
-                // counts as finished.
-                'Proses SMART SCM & Berita Acara' => [
-                    'proses-smart-scm',
-                    'ba-aanwijzing',
-                    'lampiran-bapp',
-                    'ba-evaluasi-teknis',
-                    'ba-evaluasi-harga',
-                    'ba-hasil-evaluasi',
-                    'ba-klarifikasi',
-                ],
+                // counts as finished; each selection method asks for its
+                // own (TenderBeritaAcara).
+                TenderBeritaAcara::STEP_NAME => TenderBeritaAcara::STEP,
                 'Penyusunan Kontrak' => ['penyusunan-kontrak'],
                 'Jaminan Bank' => ['jaminan-bank'],
                 // Only the SPK with its articles is uploaded for the contract.
@@ -714,10 +712,24 @@ class MasterDataSeeder extends Seeder
             ['surat-permohonan-pembayaran', 'Surat Permohonan Pembayaran', ProcurementStage::Keuangan],
         ];
 
+        // The tenders' own Berita Acara (TenderBeritaAcara).
+        foreach (TenderBeritaAcara::TYPES as $code => $name) {
+            $types[] = [$code, $name, ProcurementStage::Pelaksanaan];
+        }
+
         foreach ($types as $index => [$code, $name, $stage]) {
             DocumentType::query()->updateOrCreate(
                 ['code' => $code],
                 ['name' => $name, 'stage' => $stage, 'sort_order' => $index + 1, 'is_active' => true],
+            );
+        }
+
+        // Documents belonging to some selection methods only.
+        $methods = SelectionMethod::query()->pluck('id', 'code');
+
+        foreach (TenderBeritaAcara::METHODS as $code => $methodCodes) {
+            DocumentType::query()->where('code', $code)->first()?->selectionMethods()->sync(
+                collect($methodCodes)->map(fn (string $method) => $methods[$method] ?? null)->filter()->values()->all(),
             );
         }
 

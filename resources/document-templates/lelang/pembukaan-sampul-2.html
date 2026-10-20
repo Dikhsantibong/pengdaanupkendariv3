@@ -1,0 +1,66 @@
+<style>
+    .ba-head { width: 100%; border: none; margin: 0 0 6pt; }
+    .ba-head td { border: none; padding: 0 6pt 0 0; vertical-align: middle; }
+    .ba-title { text-align: center; font-size: 13pt; font-weight: bold; text-decoration: underline; margin: 8pt 0 4pt; }
+    .ba-heading { text-align: center; font-weight: bold; margin: 8pt 0 4pt; }
+    table.ba-meta { width: auto; margin: 0 auto 6pt; }
+    table.ba-meta td { border: none; padding: 1pt 4pt; }
+    table.ba-left td { border: none; padding: 1pt 4pt; vertical-align: top; }
+    .ba-subject { text-align: center; font-weight: bold; text-transform: uppercase; border-top: 1.5px solid #000; border-bottom: 1.5px solid #000; padding: 5pt 0; margin: 8pt 0 10pt; }
+    .ba-point { font-weight: bold; margin: 10pt 0 4pt; }
+    .ba-in { margin-left: 18pt; }
+    .ba-in2 { margin-left: 34pt; }
+    table.ba-grid { margin-left: 0; }
+    table.ba-grid th, table.ba-grid td { border: 1px solid #000; vertical-align: top; }
+    table.ba-grid th { background: none; text-align: center; }
+    table.ba-plain > tbody > tr > td, table.ba-plain > tr > td, table.ba-sign > tbody > tr > td, table.ba-sign > tr > td { border: none; padding: 1pt 4pt; vertical-align: top; }
+    table.ba-sign > tbody > tr > td, table.ba-sign > tr > td { width: 50%; vertical-align: top; }
+    .c { text-align: center; }
+    .r { text-align: right; }
+</style>
+
+<section>
+    <table class="ba-head">
+        <tr>
+            <td style="width: 74px;"><img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 34px; width: auto;"></td>
+            <td style="white-space: nowrap;">PT PLN Nusantara Power<br><b>UP KENDARI</b></td>
+        </tr>
+    </table>
+
+    <div class="ba-title">BERITA ACARA PEMBUKAAN PENAWARAN SAMPUL 2</div>
+    <table class="ba-meta">
+        <tr><td>Nomor</td><td>:</td><td><span class="fill">..........</span>/BAPPS2/612/UPKD/{{tahun}}</td></tr>
+        <tr><td>Tanggal</td><td>:</td><td>{{tanggal_dokumen}}</td></tr>
+    </table>
+
+    <div class="ba-subject">{{nama_pengadaan}}</div>
+
+    <p>Pada hari ini {{hari_dokumen}}, tanggal {{tanggal_dokumen_terbilang}} bulan {{bulan_dokumen}} tahun {{tahun_dokumen_terbilang}}, yang bertandatangan di bawah ini kami Pejabat dan Pelaksana Pengadaan UP KENDARI, telah menyelenggarakan Pembukaan Penawaran Sampul 2 {{nama_pengadaan}} sesuai Rencana Kerja dan Syarat-syarat (RKS) No. {{nomor_rks}} tanggal {{tanggal_rks}}, dan disaksikan oleh Peserta {{metode_pemilihan}} dengan hasil sebagai berikut :</p>
+
+    <table class="ba-plain" style="width: 100%;">
+        <tr><td style="width: 5%;">1.</td><td>Perusahaan yang dinyatakan lulus evaluasi sampul 1 adalah sebagai berikut :{{daftar_peserta}}</td></tr>
+        <tr><td>2.</td><td>Perusahaan yang mengikuti Rapat Pembukaan Penawaran Sampul 2 adalah sebagai berikut :{{daftar_peserta}}</td></tr>
+        <tr><td>3.</td><td>Setelah diadakan pemeriksaan kelengkapan dokumen penawaran tersebut diatas, sebanyak {{jumlah_peserta}} penawaran yang dinyatakan Lengkap Sampul 2 dan Dapat Dievaluasi Lebih Lanjut, yakni sebagai berikut :{{daftar_peserta}}Penawaran yang dinyatakan Tidak Lengkap dan Tidak Dapat Dievaluasi Lebih Lanjut adalah NIHIL</td></tr>
+        <tr><td>4.</td><td>Nilai Penawaran dari Peserta adalah sebagai berikut :{{tabel_nilai_penawaran}}</td></tr>
+        <tr><td>5.</td><td>Kelengkapan dokumen Pembukaan Penawaran Sampul 2 sesuai dengan Lampiran Berita acara Pembukaan Penawaran Sampul 2 ini.</td></tr>
+        <tr><td>6.</td><td>Berdasarkan hasil Pembukaan Penawaran Sampul 2 tersebut diatas, maka proses pengadaan dapat dilanjutkan.</td></tr>
+    </table>
+
+    <p>Demikian Berita Acara Pembukaan Penawaran Sampul 2 ini dibuat untuk dipergunakan sebagaimana mestinya.</p>
+
+    <table class="ba-sign" style="margin-top: 10pt; page-break-inside: avoid;">
+        <tr>
+            <td><b><u>PESERTA PELELANGAN TERBUKA</u></b>{{daftar_peserta_ttd}}</td>
+            <td>
+                <b><u>UP KENDARI</u></b>
+                <table class="ba-plain">
+                    <tr><td><span style="text-transform: uppercase;">{{nama_pejabat_pelaksana}}</span></td><td class="r">..........</td></tr>
+                    <tr><td>TEAM LEADER PENGADAAN</td><td></td></tr>
+                    <tr><td>&nbsp;</td><td></td></tr>
+                    <tr><td><span style="text-transform: uppercase;">{{pic_pelaksana}}</span></td><td class="r">..........</td></tr>
+                    <tr><td>PIC PELAKSANA PENGADAAN</td><td></td></tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</section>
