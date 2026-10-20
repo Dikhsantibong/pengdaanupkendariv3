@@ -89,7 +89,7 @@ function isDocument(requirement: Requirement): boolean {
  * finished, ready to be marked finished, started but short of something,
  * not started, or optional.
  */
-type StepState = 'done' | 'ready' | 'progress' | 'todo' | 'optional';
+export type StepState = 'done' | 'ready' | 'progress' | 'todo' | 'optional';
 
 /** The numbers short enough to type straight into the table. */
 const INLINE_NUMBERS: Partial<
@@ -255,7 +255,7 @@ const STATES: Record<
     },
 };
 
-function StateBadge({ state }: { state: StepState }) {
+export function StateBadge({ state }: { state: StepState }) {
     const { label, icon, className } = STATES[state];
 
     return (

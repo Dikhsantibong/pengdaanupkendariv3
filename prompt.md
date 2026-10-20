@@ -1706,6 +1706,12 @@ Hanya tampilan. Database, rute, aturan, dan pesan server tidak diubah.
 - Kata yang dihapus dicoret merah, kata baru ditandai hijau.
 - Tanda yang sama juga muncul langsung di editor pasal Laksdan saat mengetik.
 
+**Tab Usulan** (`proposal-documents.tsx`, juga dipakai di halaman Usulan Pekerjaan) kini memakai pola yang sama:
+- Banner "Langkah berikutnya" untuk dokumen yang belum terunggah, atau catatan hijau bila keduanya sudah terunggah.
+- Tabel TOR dan Nota Dinas Usulan: Yang dibutuhkan, nama berkas, Status, satu tombol (Generate / Unggah TTD / Unggah / Lihat), dan menu ⋯ (pratinjau / unduh / edit).
+- Panel samping berisi tombol dan berkas dokumen.
+- Hambatan "(tab dokumen pengguna)" di kartu Persetujuan langsung membuka panel dokumennya.
+
 ---
 
 # Fitur Utama

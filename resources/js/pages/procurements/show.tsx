@@ -210,9 +210,25 @@ export default function ShowProcurement({
             }
 
             if (name.endsWith('(tab dokumen pengguna)')) {
-                return detail.proposal_documents
-                    ? () => changeTab('usulan')
-                    : undefined;
+                if (!detail.proposal_documents) {
+                    return undefined;
+                }
+
+                // The proposal paper itself, opened on its own tab.
+                const paper = detail.proposal_documents.documents.find(
+                    (document) => name.startsWith(`${document.type_name} (`),
+                );
+
+                return () => {
+                    if (paper) {
+                        openRememberedPanel(
+                            `proposal:${procurement.id}`,
+                            paper.type_id,
+                        );
+                    }
+
+                    changeTab('usulan');
+                };
             }
 
             const row = checklists[checklistStage].find(
