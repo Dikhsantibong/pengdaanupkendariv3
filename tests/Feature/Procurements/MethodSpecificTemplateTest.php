@@ -185,8 +185,8 @@ class MethodSpecificTemplateTest extends TestCase
         $body = $document->rendered_body;
 
         foreach ([
-            'DOKUMEN RENCANA KERJA DAN SYARAT-SYARAT (RKS)',
-            'SURAT PERINTAH KERJA (SPK)',
+            'RENCANA KERJA DAN SYARAT-SYARAT<br>(RKS)',
+            'UNIT PEMBANGKITAN KENDARI',
             'BAB I<br>UMUM',
             'INSTRUKSI KEPADA PESERTA',
             'KEPATUHAN TERHADAP HUKUM DAN ANTI PENYUAPAN',
@@ -228,7 +228,7 @@ class MethodSpecificTemplateTest extends TestCase
         $body = ProcurementDocument::query()->firstOrFail()->rendered_body;
 
         foreach ([
-            'DOKUMEN PELELANGAN TERBUKA',
+            'RENCANA KERJA DAN SYARAT-SYARAT<br>(RKS)',
             'BAB II<br>INSTRUKSI KEPADA PESERTA PELELANGAN',
             'Satu Tahap Dua Sampul',
             'JAMINAN PELAKSANAAN (PERFORMANCE BOND)',
@@ -267,8 +267,8 @@ class MethodSpecificTemplateTest extends TestCase
         $this->assertNotNull($spkTemplate);
         $this->assertNotNull($tenderTemplate);
         $this->assertNotSame($spkTemplate->id, $tenderTemplate->id);
-        $this->assertStringContainsString('SURAT PERINTAH KERJA (SPK)', $spkTemplate->body);
-        $this->assertStringContainsString('DOKUMEN PELELANGAN TERBUKA', $tenderTemplate->body);
+        $this->assertSame('rks.spk', $spkTemplate->library_key);
+        $this->assertSame('rks.tender', $tenderTemplate->library_key);
 
         // Methods without their own template still fall back to the general one.
         $suratPesanan = ProcurementMethod::query()->where('code', 'surat-pesanan')->first();

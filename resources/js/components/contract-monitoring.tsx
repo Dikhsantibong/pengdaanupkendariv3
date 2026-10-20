@@ -33,6 +33,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { formatDateTime } from '@/lib/format';
+import { cardBasis, evenColumns } from '@/lib/layout';
 import { cn } from '@/lib/utils';
 import type { Option, Paginated } from '@/types';
 
@@ -174,8 +175,8 @@ export function ContractMonitoring<T extends MonitoringRow>({
     ) as Record<string, string>;
 
     return (
-        <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+        <div className="flex flex-1 flex-col gap-4">
+            <div className="flex flex-wrap gap-3">
                 {summary.map((item) => {
                     const active = filters.state === item.value;
 
@@ -187,8 +188,15 @@ export function ContractMonitoring<T extends MonitoringRow>({
                             onClick={() =>
                                 visit({ state: active ? null : item.value })
                             }
+                            // As many per row as divide the states evenly; the
+                            // cards grow, so a last row still fills.
+                            style={{
+                                flexBasis: cardBasis(
+                                    evenColumns(summary.length),
+                                ),
+                            }}
                             className={cn(
-                                'rounded-md border border-border bg-card p-3 text-left transition-colors hover:border-primary/50',
+                                'min-w-[9rem] flex-1 rounded-md border border-border bg-card p-3 text-left transition-colors hover:border-primary/50',
                                 active &&
                                     'border-primary ring-1 ring-primary/30',
                             )}
@@ -205,7 +213,7 @@ export function ContractMonitoring<T extends MonitoringRow>({
             </div>
 
             <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
-                <div className="min-w-64 flex-1 space-y-1.5">
+                <div className="w-full space-y-1.5 sm:w-auto sm:min-w-[12rem] sm:flex-[2_3_14rem]">
                     <Label
                         htmlFor="monitoring-search"
                         className="section-label"
@@ -223,7 +231,7 @@ export function ContractMonitoring<T extends MonitoringRow>({
                         />
                     </div>
                 </div>
-                <div className="w-full space-y-1.5 sm:w-56">
+                <div className="w-full space-y-1.5 sm:w-auto sm:min-w-24 sm:flex-[1_1_auto]">
                     <Label className="section-label">Status</Label>
                     <Select
                         value={filters.state ?? ALL}
@@ -231,7 +239,7 @@ export function ContractMonitoring<T extends MonitoringRow>({
                             visit({ state: value === ALL ? null : value })
                         }
                     >
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger className="w-0 min-w-full">
                             <SelectValue placeholder="Semua" />
                         </SelectTrigger>
                         <SelectContent>
@@ -244,7 +252,7 @@ export function ContractMonitoring<T extends MonitoringRow>({
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="w-full space-y-1.5 sm:w-56">
+                <div className="w-full space-y-1.5 sm:w-auto sm:min-w-24 sm:flex-[1_1_auto]">
                     <Label className="section-label">Direksi Pekerjaan</Label>
                     <Select
                         value={
@@ -259,7 +267,7 @@ export function ContractMonitoring<T extends MonitoringRow>({
                             })
                         }
                     >
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger className="w-0 min-w-full">
                             <SelectValue placeholder="Semua" />
                         </SelectTrigger>
                         <SelectContent>

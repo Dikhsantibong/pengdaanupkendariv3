@@ -54,7 +54,6 @@ import planning from '@/routes/planning';
 import procurements from '@/routes/procurements';
 import proposals from '@/routes/proposals';
 import publicMonitoring from '@/routes/public-monitoring';
-import reports from '@/routes/reports';
 import users from '@/routes/users';
 import vendorAssessments from '@/routes/vendor-assessments';
 import type { Auth, NavGroup } from '@/types';
@@ -194,15 +193,6 @@ export function AppSidebar() {
                               title: 'Monitoring Kontrak',
                               href: monitoring.contracts(),
                               icon: FileSignature,
-                          },
-                      ]
-                    : []),
-                ...(menus.reports
-                    ? [
-                          {
-                              title: 'Laporan',
-                              href: reports.index(),
-                              icon: FileText,
                           },
                       ]
                     : []),

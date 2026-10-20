@@ -59,7 +59,11 @@ function editorStylesheet(landscape: boolean, fullDocument: boolean): string {
         td:focus-within, th:focus-within { background-color: #f5f9ff; }
         img { max-width: 100%; }
         /* Off-screen chapters of long documents are not laid out until seen. */
-        .cover, .bab, .lampiran { content-visibility: auto; contain-intrinsic-size: auto 1100px; }`;
+        .cover, .bab, .lampiran { content-visibility: auto; contain-intrinsic-size: auto 1100px; }
+        /* The RKS cover's artwork runs past the cover to the edge of the
+           paper, but never over the page after it. */
+        .cover:has(> .rks-cover) { content-visibility: visible; }
+        .rks-cover { clip-path: inset(-15mm -15mm 0 -15mm); }`;
 }
 
 function escapeHtml(value: string): string {

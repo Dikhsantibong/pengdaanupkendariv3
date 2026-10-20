@@ -97,8 +97,8 @@ export function ProcurementFilterBar({
         extraSelects.some((select) => Boolean(select.value));
 
     return (
-        <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
-            <div className="min-w-64 flex-1 space-y-1.5">
+        <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3 xl:flex-nowrap">
+            <div className="w-full space-y-1.5 sm:w-auto sm:min-w-[12rem] sm:flex-[2_3_14rem]">
                 <Label htmlFor="procurement-search" className="section-label">
                     Cari
                 </Label>
@@ -192,7 +192,7 @@ function FilterSelect({
     onChange: (value: number | null) => void;
 }) {
     return (
-        <div className="w-full space-y-1.5 sm:w-48">
+        <div className="w-full space-y-1.5 sm:w-auto sm:min-w-24 sm:flex-[1_1_auto]">
             <Label className="section-label">{label}</Label>
             <Select
                 value={value === null ? ALL : String(value)}
@@ -200,7 +200,7 @@ function FilterSelect({
                     onChange(next === ALL ? null : Number(next))
                 }
             >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-0 min-w-full">
                     <SelectValue placeholder="Semua" />
                 </SelectTrigger>
                 <SelectContent>

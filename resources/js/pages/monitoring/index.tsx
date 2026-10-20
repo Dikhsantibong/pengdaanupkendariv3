@@ -11,6 +11,7 @@ import type {
 } from '@/components/partner-folder-grid';
 import { ProcurementFilterBar } from '@/components/procurement-filter-bar';
 import { ProcurementTable } from '@/components/procurement-table';
+import { cardBasis, evenColumns } from '@/lib/layout';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import monitoring from '@/routes/monitoring';
@@ -64,6 +65,7 @@ export default function MonitoringIndex({
     statusBoard: StatusBoardRow[];
 }) {
     const maxTotal = Math.max(1, ...statusBoard.map((row) => row.total));
+    const basis = cardBasis(evenColumns(statusBoard.length));
     const { search, ...narrowing } = filters;
     const persist: Record<string, string> = partner
         ? { mitra: partner.key }
@@ -73,14 +75,14 @@ export default function MonitoringIndex({
         <>
             <Head title="Monitoring" />
 
-            <div className="flex flex-col gap-5 p-4 md:p-6">
+            <div className="flex flex-1 flex-col gap-5 p-4 md:p-6">
                 <PageHeader
                     eyebrow="Monitoring"
                     title="Monitoring Progress Pengadaan"
                     description="Pengadaan dikelompokkan dalam folder per mitra. Klik folder untuk melihat pekerjaan yang pernah dikerjakan mitra itu beserta progresnya."
                 />
 
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="flex flex-wrap gap-3">
                     {statusBoard.map((row) => (
                         <Link
                             key={row.id}
@@ -90,8 +92,11 @@ export default function MonitoringIndex({
                                     progress_status_id: row.id,
                                 }),
                             })}
+                            // As many per row as divide the statuses evenly;
+                            // the cards grow, so a last row still fills.
+                            style={{ flexBasis: basis }}
                             className={cn(
-                                'space-y-2 rounded-md border border-border bg-card p-4 transition-colors hover:bg-accent/40',
+                                'min-w-[11rem] flex-1 space-y-2 rounded-md border border-border bg-card p-4 transition-colors hover:bg-accent/40',
                                 filters.progress_status_id === row.id &&
                                     'border-primary ring-1 ring-primary/30',
                             )}

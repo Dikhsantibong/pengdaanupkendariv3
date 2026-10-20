@@ -42,7 +42,7 @@ export function PeriodFilter({
 }) {
     return (
         <>
-            <div className="w-full space-y-1.5 sm:w-32">
+            <div className="w-full space-y-1.5 sm:w-auto sm:min-w-[5.5rem] sm:flex-[1_1_auto]">
                 <Label className="section-label">Tahun</Label>
                 <Select
                     value={year ? String(year) : ALL}
@@ -50,7 +50,7 @@ export function PeriodFilter({
                         onChange({ year: next === ALL ? null : Number(next) })
                     }
                 >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-0 min-w-full">
                         <SelectValue placeholder="Semua" />
                     </SelectTrigger>
                     <SelectContent>
@@ -63,7 +63,7 @@ export function PeriodFilter({
                     </SelectContent>
                 </Select>
             </div>
-            <div className="w-full space-y-1.5 sm:w-36">
+            <div className="w-full space-y-1.5 sm:w-auto sm:min-w-[7rem] sm:flex-[1_1_auto]">
                 <Label className="section-label">Bulan</Label>
                 <Select
                     value={month ? String(month) : ALL}
@@ -71,7 +71,7 @@ export function PeriodFilter({
                         onChange({ month: next === ALL ? null : Number(next) })
                     }
                 >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-0 min-w-full">
                         <SelectValue placeholder="Semua" />
                     </SelectTrigger>
                     <SelectContent>

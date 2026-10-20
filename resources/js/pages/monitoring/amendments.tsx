@@ -38,7 +38,7 @@ export default function AmendmentMonitoring({
         <>
             <Head title="Monitoring Amandemen" />
 
-            <div className="flex flex-col gap-5 p-4 md:p-6">
+            <div className="flex flex-1 flex-col gap-5 p-4 md:p-6">
                 <PageHeader
                     eyebrow="Monitoring"
                     title="Monitoring Amandemen"

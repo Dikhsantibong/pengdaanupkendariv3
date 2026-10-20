@@ -54,7 +54,8 @@ class RksPjJasaTest extends TestCase
         $text = strip_tags($document->rendered_body);
 
         foreach ([
-            'DOKUMEN RENCANA KERJA DAN SYARAT-SYARAT (RKS)',
+            'RENCANA KERJA DAN SYARAT-SYARAT',
+            'UNIT PEMBANGKITAN KENDARI',
             '017.RKS-PJ/612/UPKD/2026',
             'BAB I',
             'INSTRUKSI KEPADA PESERTA PELELANGAN',

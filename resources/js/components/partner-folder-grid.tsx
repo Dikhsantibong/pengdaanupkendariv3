@@ -52,9 +52,20 @@ export function PartnerFolderGrid({
         );
     }
 
+    const perPage = page.meta?.per_page ?? page.per_page ?? 30;
+    // A full page stretches its rows to the bottom of the screen.
+    const isFullPage = page.data.length >= perPage;
+
+    // The pagination sits at the bottom of the screen, as on Penilaian
+    // Penyedia, however few folders there are.
     return (
-        <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <div className="flex flex-1 flex-col gap-4">
+            <div
+                className={cn(
+                    'grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5',
+                    isFullPage && 'flex-1 auto-rows-fr',
+                )}
+            >
                 {page.data.map((folder) => (
                     <Link
                         key={folder.key}
@@ -74,7 +85,7 @@ export function PartnerFolderGrid({
                 ))}
             </div>
 
-            <div className="overflow-hidden rounded-md border border-border bg-card">
+            <div className="mt-auto overflow-hidden rounded-md border border-border bg-card">
                 <DataPagination page={page} />
             </div>
         </div>

@@ -135,7 +135,7 @@ export default function ContractMonitoring({
         <>
             <Head title="Monitoring Kontrak" />
 
-            <div className="flex flex-col gap-5 p-4 md:p-6">
+            <div className="flex flex-1 flex-col gap-5 p-4 md:p-6">
                 <PageHeader
                     eyebrow="Monitoring"
                     title="Monitoring Kontrak"
@@ -143,7 +143,7 @@ export default function ContractMonitoring({
                 />
 
                 <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
-                    <div className="min-w-64 flex-1 space-y-1.5">
+                    <div className="w-full space-y-1.5 sm:w-auto sm:min-w-[12rem] sm:flex-[2_3_14rem]">
                         <Label
                             htmlFor="contract-search"
                             className="section-label"
@@ -340,7 +340,7 @@ function OptionFilter({
     onChange: (value: number | null) => void;
 }) {
     return (
-        <div className="w-full space-y-1.5 sm:w-48">
+        <div className="w-full space-y-1.5 sm:w-auto sm:min-w-24 sm:flex-[1_1_auto]">
             <Label className="section-label">{label}</Label>
             <Select
                 value={value === null ? ALL : String(value)}
@@ -348,7 +348,7 @@ function OptionFilter({
                     onChange(next === ALL ? null : Number(next))
                 }
             >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-0 min-w-full">
                     <SelectValue placeholder="Semua" />
                 </SelectTrigger>
                 <SelectContent>

@@ -2,14 +2,6 @@
     <style>
         @page { size: A4 portrait; margin: 20mm 18mm 22mm 22mm; }
         .rks { font-family: Arial, Helvetica, sans-serif; font-size: 10pt; line-height: 1.45; color: #000; text-align: justify; }
-        .rks .cover { border: 5px double #1f2f6b; padding: 34px 24px 0; height: 238mm; text-align: center; font-weight: bold; }
-        .rks .cover .org { font-size: 15pt; margin-top: 48px; line-height: 1.5; }
-        .rks .cover .doc { font-size: 11.5pt; margin-top: 70px; line-height: 1.5; }
-        .rks .cover .meta { margin: 56px auto 0; width: auto; }
-        .rks .cover .meta td { border: none; padding: 4px 6px; text-align: left; font-size: 11pt; }
-        .rks .cover .for { margin-top: 100px; font-size: 11.5pt; }
-        .rks .cover .job { font-size: 12pt; margin-top: 8px; line-height: 1.5; text-transform: uppercase; }
-        .rks .cover .foot { margin-top: 150px; font-size: 15pt; line-height: 1.5; }
         .rks h1.bab-title { font-size: 12pt; text-align: center; text-transform: uppercase; border: none; margin: 0 0 12px; }
         .rks h2 { font-size: 10.5pt; text-transform: uppercase; border: none; margin: 14px 0 4px; padding: 0; }
         .rks h3 { font-size: 10pt; margin: 10px 0 3px; }
@@ -33,17 +25,15 @@
         .rks .box { border: 1px solid #000; padding: 6px 8px; }
     </style>
 
-    <div class="cover">
-        <img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 56px; width: auto;">
-        <div class="org">PT PLN NUSANTARA POWER<br>UP KENDARI</div>
-        <div class="doc">DOKUMEN RENCANA KERJA DAN SYARAT-SYARAT (RKS)<br>PENUNJUKAN LANGSUNG</div>
-        <table class="meta">
-            <tr><td>NOMOR</td><td>: {{nomor_rks}}</td></tr>
-            <tr><td>TANGGAL</td><td class="upper">: {{tanggal_dokumen}}</td></tr>
-        </table>
-        <div class="for">UNTUK</div>
-        <div class="job">{{nama_pengadaan}}</div>
-        <div class="foot">UP KENDARI<br>{{tahun}}</div>
+    <div class="cover" style="padding: 0;">
+        <div class="rks-cover" style="position: relative; height: 252mm; font-family: Arial, Helvetica, sans-serif; font-weight: bold; color: #1b1b1b; text-align: center;">
+            <img class="rks-cover-art" src="/image/rks-cover.png" alt="" style="position: absolute; top: -20mm; left: -22mm; width: 210mm; height: 297mm; max-width: none;">
+            <div style="position: relative; padding-top: 15mm; font-size: 16pt; line-height: 1.4;">PT PLN NUSANTARA POWER<br>RENCANA KERJA DAN SYARAT-SYARAT<br>(RKS)</div>
+            <div style="position: relative; margin-top: 32mm; font-size: 12pt; line-height: 1.6; text-transform: uppercase;">NOMOR : {{nomor_rks}}<br>TANGGAL : {{tanggal_dokumen}}</div>
+            <div style="position: relative; margin-top: 32mm;"><img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="display: inline-block; width: 95mm; height: auto;"></div>
+            <div style="position: relative; margin: 42mm 12mm 0; font-size: 14pt; line-height: 1.45; text-transform: uppercase;">{{nama_pengadaan}}</div>
+            <div style="position: absolute; left: 0; right: 0; top: 236mm; color: #ffffff; font-size: 14pt; line-height: 1.5;">UNIT PEMBANGKITAN KENDARI<br>{{tahun}}</div>
+        </div>
     </div>
 
     <h1 class="bab-title">DAFTAR ISI</h1>

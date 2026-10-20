@@ -1509,6 +1509,37 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 - **Migrasi:** `add_tender_berita_acara_per_selection_method` (pivot, 13 jenis dokumen baru, batasan metode, tautan ke langkah dengan urutan, dan pemasangan template grup `lelang`). Seeder `MasterDataSeeder` mengikuti `TenderBeritaAcara`.
 - **Test:** `TenderMethodDocumentsTest`; `MethodSpecificTemplateTest` disesuaikan (hanya menghitung jenis dokumen buatannya sendiri).
 
+### 51. Rapikan Tampilan Monitoring dan Filter Daftar
+- **Folder mitra (Pengadaan, Amandemen, DO, Kontrak):** halaman terisi sampai bawah layar dan pagination selalu di bagian paling bawah, seperti di Penilaian Penyedia (`partner-folder-grid.tsx`).
+- **Kartu status tanpa baris ganjil** (`resources/js/lib/layout.ts`):
+  - `evenColumns()` memilih jumlah kolom (4 sampai 7) yang menyisakan tempat kosong paling sedikit di baris terakhir, misalnya 21 status menjadi 7 × 3.
+  - `cardBasis()` membuat kartu baris terakhir tetap memenuhi lebar.
+  - Dipakai di kartu status Monitoring Pengadaan dan ringkasan Amandemen/DO/Kontrak.
+- **Menu Laporan dihapus dari grup Monitoring di sidebar.** Halaman, rute, dan hak aksesnya tetap ada.
+- **Filter Pelaksanaan, Perencanaan, dan semua halaman yang memakai `ProcurementFilterBar`:**
+  - Lebar setiap filter mengikuti panjang labelnya.
+  - Isi pilihan tidak lagi melebarkan kolom (`w-0 min-w-full`).
+  - Mulai layar `xl`, semua filter muat dalam satu baris; bila sempit, label turun ke baris kedua, bukan filternya.
+  - Juga diterapkan pada Tahun/Bulan (`period-filter.tsx`) dan filter Monitoring Kontrak/Amandemen/DO.
+
+### 52. Cover RKS Baru (Sesuai Contoh)
+- **Semua RKS** (template `rks.spk`, `rks.tender`, `pj.rks-jasa`, `umum.rks`) memakai cover yang sama seperti contoh, dari atas ke bawah:
+  - Garis biru diagonal di pojok kiri atas dan kanan bawah.
+  - **PT PLN NUSANTARA POWER / RENCANA KERJA DAN SYARAT-SYARAT / (RKS)**.
+  - **NOMOR :** `{{nomor_rks}}` (dari isian No RKS di checklist, atau diturunkan dari No Kontrak) dan **TANGGAL :** `{{tanggal_dokumen}}`, huruf kapital.
+  - Logo PLN Nusantara Power.
+  - Nama pekerjaan `{{nama_pengadaan}}` dalam huruf kapital.
+  - Pita biru di bawah berisi **UNIT PEMBANGKITAN KENDARI** dan `{{tahun}}`; narasi "Satuan Supply Chain Management 2025" pada contoh sudah diganti.
+- **Gambar latar:** `public/image/rks-cover.png` (A4, 150 dpi), ditarik sebesar margin halaman (atas 20 mm, kiri 15 mm, atau 22 mm untuk RKS PJ) sehingga PDF-nya penuh sampai tepi kertas.
+- **Teks cover** tetap teks biasa sehingga bisa diedit di editor.
+- **Halaman kosong setelah cover** di RKS SPK/Tender dihilangkan (`page-break-after: auto` karena bab berikutnya sudah memulai halaman baru).
+- **Di editor dokumen dan editor template:** gambar cover tampil sampai tepi kertas dan dipotong di bawah cover supaya tidak menutupi Daftar Isi (`app.css`, `template-document.ts`).
+- **Migrasi `put_the_new_cover_on_every_rks`:**
+  - Memperbarui keempat template RKS.
+  - Template RKS yang sudah diubah administrator tetap menyimpan perubahannya; hanya cover lamanya yang diganti.
+  - Dokumen RKS yang sudah dibuat sebelumnya tidak berubah; buat ulang dokumennya untuk mendapatkan cover baru.
+- **Test:** `RksCoverTest` (baru). `MethodSpecificTemplateTest` dan `RksPjJasaTest` disesuaikan dengan judul cover baru.
+
 ---
 
 # Fitur Utama

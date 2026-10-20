@@ -287,23 +287,23 @@
     list-style: revert;
 }
 
-.document-preview ol[type="a"] {
+.document-preview ol[type='a'] {
     list-style-type: lower-alpha;
 }
 
-.document-preview ol[type="A"] {
+.document-preview ol[type='A'] {
     list-style-type: upper-alpha;
 }
 
-.document-preview ol[type="1"] {
+.document-preview ol[type='1'] {
     list-style-type: decimal;
 }
 
-.document-preview ol[type="i"] {
+.document-preview ol[type='i'] {
     list-style-type: lower-roman;
 }
 
-.document-preview ol[type="I"] {
+.document-preview ol[type='I'] {
     list-style-type: upper-roman;
 }
 
@@ -545,7 +545,10 @@
     border: 1px solid #94a3b8;
     border-radius: 9999px;
     padding: 3px 16px;
-    font-family: system-ui, -apple-system, sans-serif;
+    font-family:
+        system-ui,
+        -apple-system,
+        sans-serif;
     font-size: 11px;
     font-weight: 600;
     color: #475569;
@@ -598,4 +601,22 @@
 .document-preview .lampiran {
     content-visibility: auto;
     contain-intrinsic-size: auto 1100px;
+}
+
+/*
+ * The RKS cover's artwork runs past the cover to the edge of the paper, but
+ * never over the page after it.
+ */
+.document-preview .cover:has(> .rks-cover) {
+    content-visibility: visible;
+}
+
+.document-preview .rks-cover {
+    clip-path: inset(-1.5rem -1.5rem 0 -1.5rem);
+}
+
+@media (width >= 40rem) {
+    .document-preview .rks-cover {
+        clip-path: inset(-3rem -3rem 0 -3rem);
+    }
 }
