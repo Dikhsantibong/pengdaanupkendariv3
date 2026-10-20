@@ -1524,7 +1524,7 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 
 ### 52. Cover RKS Baru (Sesuai Contoh)
 - **Semua RKS** (template `rks.spk`, `rks.tender`, `pj.rks-jasa`, `umum.rks`) memakai cover yang sama seperti contoh, dari atas ke bawah:
-  - Garis biru diagonal di pojok kiri atas dan kanan bawah.
+  - Garis biru diagonal di pojok kiri atas dan kanan bawah. Biru muda dan biru tua langsung bersambung, tanpa garis putih pembatas.
   - **PT PLN NUSANTARA POWER / RENCANA KERJA DAN SYARAT-SYARAT / (RKS)**.
   - **NOMOR :** `{{nomor_rks}}` (dari isian No RKS di checklist, atau diturunkan dari No Kontrak) dan **TANGGAL :** `{{tanggal_dokumen}}`, huruf kapital.
   - Logo PLN Nusantara Power.
