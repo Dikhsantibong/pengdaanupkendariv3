@@ -90,6 +90,22 @@ class VendorAssessmentRequestTest extends TestCase
                 ->where('requests.0.term', 'Termin 1 (100%)'));
     }
 
+    public function test_a_processed_request_leaves_the_list_for_its_vendor_folder(): void
+    {
+        $this->seed(VendorAssessmentSeeder::class);
+
+        $waiting = VendorAssessmentRequest::factory()->create();
+        $assessment = VendorAssessment::factory()->create(['vendor_name' => 'PT. Sinar Teknik']);
+        VendorAssessmentRequest::factory()->create(['vendor_assessment_id' => $assessment->id]);
+
+        $this->actingAs(User::factory()->administrator()->create())
+            ->get(route('vendor-assessments.index'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('requests', 1)
+                ->where('requests.0.id', $waiting->id)
+                ->where('vendors.data', fn ($folders) => collect($folders)->contains('name', 'PT. Sinar Teknik')));
+    }
+
     public function test_only_an_administrator_may_delete_a_request(): void
     {
         $request = VendorAssessmentRequest::factory()->create();

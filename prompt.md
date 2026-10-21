@@ -1923,7 +1923,7 @@ Bagian **Request Penilaian Vendor** ada di halaman Penilaian Penyedia, di atas d
   - Tgl BAPP/BASTP → Tanggal BASTP
   - Denda → Denda
   - Termin, Nilai tagihan, No BAPP/BASTP dan nama pengisi → Catatan internal (tidak tercetak)
-- **Setelah penilaian dibuat:** request berstatus **Sudah dibuat penilaian** dan menautkan ke penilaiannya. Request yang salah atau ganda bisa dihapus dari daftar.
+- **Setelah penilaian dibuat:** request otomatis keluar dari daftar Request Penilaian Vendor dan penilaiannya ada di folder mitranya (datanya tetap tersimpan, tertaut ke penilaian lewat `vendor_assessment_id`). Daftar hanya berisi request yang menunggu diproses. Request yang salah atau ganda bisa dihapus dari daftar.
 - **Tanpa request:** pembuatan formulir penilaian berjalan seperti sebelumnya.
 - **Data:** tabel `vendor_assessment_requests`, model `VendorAssessmentRequest` (`formUrl()` memberi tautan tetap). Controller admin `VendorAssessmentRequestController` (hapus), controller publik `AssessmentRequestFormController`. Halaman publik: `assessment-signing/request`.
 

@@ -88,7 +88,8 @@ export function AssessmentRequestsPanel({
                     </code>
                     ). Vendor cukup membuka tautan dan mengisi rincian
                     tagihannya tanpa akun; setiap kiriman muncul di bawah dan
-                    bisa langsung dibuat menjadi formulir penilaian.
+                    bisa langsung dibuat menjadi formulir penilaian. Request
+                    yang sudah dibuat penilaiannya pindah ke folder mitranya.
                 </p>
             </div>
 
@@ -120,7 +121,7 @@ export function AssessmentRequestsPanel({
 
             {requests.length === 0 ? (
                 <p className="p-4 text-sm text-muted-foreground">
-                    Belum ada request dari vendor.
+                    Tidak ada request yang menunggu diproses.
                 </p>
             ) : (
                 <ul className="divide-y divide-border">

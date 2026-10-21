@@ -526,16 +526,15 @@ class VendorAssessmentController extends Controller
     /**
      * The invoice detail requests shown above the assessment list.
      *
-     * Every request still waiting comes first; ones already turned into an
-     * assessment stay listed for a while so the administrator can see where
-     * they went.
+     * Only requests still waiting are listed; once one is turned into an
+     * assessment it lives in that vendor's folder instead.
      *
      * @return array<int, array<string, mixed>>
      */
     protected function requestsPayload(): array
     {
         return VendorAssessmentRequest::query()
-            ->orderByRaw('vendor_assessment_id is not null')
+            ->whereNull('vendor_assessment_id')
             ->latest('created_at')
             ->limit(50)
             ->get()
