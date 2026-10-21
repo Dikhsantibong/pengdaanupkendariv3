@@ -56,7 +56,7 @@ import type { ChecklistInput, ChecklistRow, PartnerCandidate } from '@/types';
 /** What a step still asks for, in the author's words. */
 type Requirement = {
     key: string;
-    /** The thing itself: "Nomor RKS", "Dokumen RKS bertanda tangan". */
+    /** The thing itself: "Nomor RKS", "Dokumen RKS tervalidasi". */
     label: string;
     done: boolean;
     /** The action that fills it, short enough for a button. */
@@ -147,9 +147,9 @@ export function requirementsOf(row: ChecklistRow): Requirement[] {
     if (row.needs_upload) {
         requirements.push({
             key: 'files',
-            label: 'Berkas diunggah',
+            label: 'Dokumen tervalidasi diunggah',
             done: row.files.length > 0,
-            action: 'Unggah berkas',
+            action: 'Unggah Dokumen Tervalidasi',
         });
     }
 
@@ -160,15 +160,12 @@ export function requirementsOf(row: ChecklistRow): Requirement[] {
 
             requirements.push({
                 key: `document-${document.type_id}`,
-                label: document.upload_only
-                    ? `${name} diunggah`
-                    : `${name} bertanda tangan`,
+                label: `${name} tervalidasi`,
                 done: document.is_signed,
-                action: document.upload_only
-                    ? 'Unggah dokumen'
-                    : document.id === null
-                      ? 'Generate'
-                      : 'Unggah TTD',
+                action:
+                    !document.upload_only && document.id === null
+                        ? 'Generate'
+                        : 'Unggah Dokumen Tervalidasi',
                 name,
             });
         });
@@ -184,7 +181,7 @@ export function requirementsOf(row: ChecklistRow): Requirement[] {
                 .map((document) => document.type_name ?? 'dokumen')
                 .join(' / ')}`,
             done: alternatives.some((document) => document.is_signed),
-            action: 'Unggah dokumen',
+            action: 'Unggah Dokumen Tervalidasi',
         });
     }
 
@@ -421,7 +418,7 @@ export function ChecklistSteps({
                 {/* The column heads, on screens wide enough for a table. */}
                 <div
                     aria-hidden="true"
-                    className="hidden grid-cols-[2.25rem_minmax(0,1.3fr)_minmax(0,1.5fr)_11rem_10.5rem] gap-3 border-b border-border bg-muted/40 px-4 py-2 text-[0.6875rem] font-semibold tracking-wide text-muted-foreground uppercase md:grid"
+                    className="hidden grid-cols-[2.25rem_minmax(0,1.3fr)_minmax(0,1.5fr)_10rem_16.5rem] gap-3 border-b border-border bg-muted/40 px-4 py-2 text-[0.6875rem] font-semibold tracking-wide text-muted-foreground uppercase md:grid"
                 >
                     <span>No</span>
                     <span>Langkah</span>
@@ -601,7 +598,7 @@ function StepRow({
                 }
             }}
             className={cn(
-                'grid cursor-pointer grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3 gap-y-2 px-4 py-3 transition-colors hover:bg-muted/40 md:grid-cols-[2.25rem_minmax(0,1.3fr)_minmax(0,1.5fr)_11rem_10.5rem] md:items-center',
+                'grid cursor-pointer grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3 gap-y-2 px-4 py-3 transition-colors hover:bg-muted/40 md:grid-cols-[2.25rem_minmax(0,1.3fr)_minmax(0,1.5fr)_10rem_16.5rem] md:items-center',
                 isNext &&
                     'bg-primary/[0.03] shadow-[inset_3px_0_0_var(--primary)]',
                 state === 'done' && 'text-muted-foreground',
@@ -731,6 +728,9 @@ function StepRow({
                     <Button
                         size="sm"
                         variant={isNext ? 'default' : 'outline'}
+                        // A long label wraps inside the column rather than
+                        // spilling over the status beside it.
+                        className="h-auto min-h-8 min-w-0 py-1.5 whitespace-normal"
                         onClick={
                             state === 'optional' && requirements.length === 0
                                 ? () => onToggle(true)
@@ -1089,7 +1089,10 @@ function StepDetails({
                 )}
 
                 {row.needs_upload && (
-                    <PanelSection number={++section} title="Unggah berkas">
+                    <PanelSection
+                        number={++section}
+                        title="Unggah dokumen tervalidasi"
+                    >
                         <ChecklistFileList
                             procurementId={procurementId}
                             checklistId={row.id}

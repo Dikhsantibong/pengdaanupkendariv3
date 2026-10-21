@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Concerns\GroupsByPartner;
 use App\Enums\AmendmentState;
 use App\Enums\DeliveryOrderState;
 use App\Enums\StatusCategory;
@@ -15,12 +16,9 @@ use App\Support\FilterPeriod;
 use App\Support\MasterDataOptions;
 use App\Support\ProcurementFilters;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
-use stdClass;
 
 /**
  * The monitoring boards. Each opens on one folder per partner (spelling and
@@ -29,10 +27,7 @@ use stdClass;
  */
 class MonitoringController extends Controller
 {
-    /**
-     * The folder of the work no partner is named on yet.
-     */
-    public const NO_PARTNER = 'tanpa-mitra';
+    use GroupsByPartner;
 
     /**
      * Show the progress monitoring board.
@@ -246,47 +241,6 @@ class MonitoringController extends Controller
     }
 
     /**
-     * The partner folder asked for, if one is open.
-     */
-    protected function partner(Request $request): ?string
-    {
-        return $request->string('mitra')->trim()->value() ?: null;
-    }
-
-    /**
-     * Keep the procurements of one partner's folder.
-     *
-     * @template TModel of Model
-     *
-     * @param  Builder<TModel>  $query  A query on procurements.
-     * @return Builder<TModel>
-     */
-    protected function ofPartner(Builder $query, string $partner): Builder
-    {
-        if ($partner === self::NO_PARTNER) {
-            return $query->where(fn (Builder $inner) => $inner
-                ->whereNull('procurements.partner_name')
-                ->orWhereRaw("TRIM(procurements.partner_name) = ''"));
-        }
-
-        return $query->whereRaw('LOWER(TRIM(procurements.partner_name)) = ?', [mb_strtolower($partner)]);
-    }
-
-    /**
-     * The open folder as the page names it: the partner, or the folder of
-     * work without one.
-     *
-     * @return array{key: string, name: string}
-     */
-    protected function partnerPayload(string $partner): array
-    {
-        return [
-            'key' => $partner,
-            'name' => $partner === self::NO_PARTNER ? 'Belum Ada Mitra' : $partner,
-        ];
-    }
-
-    /**
      * Amendments or DOs listed per work: the work most recently busy first,
      * each work's own in their order.
      *
@@ -318,45 +272,6 @@ class MonitoringController extends Controller
                 ->whereColumn('procurements.id', "{$table}.procurement_id")
                 ->limit(1)])
             ->selectRaw('CASE WHEN state = ? THEN 1 ELSE 0 END as done', [$doneState]);
-    }
-
-    /**
-     * One folder per partner, spelling and spacing aside, the partner busiest
-     * most recently first and the work without a partner last: how many rows
-     * it holds, over how many works, and how many are done.
-     *
-     * @param  Builder<covariant Model>  $rows  Selecting partner_name, procurement_id, updated_at and done.
-     * @return array<string, mixed> The page of folders as the board pages it: data, links and meta.
-     */
-    protected function folders(Builder $rows): array
-    {
-        $key = "LOWER(TRIM(COALESCE(partner_name, '')))";
-
-        return DB::query()
-            ->fromSub($rows, 'rows')
-            ->selectRaw("{$key} as partner_key")
-            ->selectRaw('MIN(TRIM(partner_name)) as partner_name')
-            ->selectRaw('COUNT(*) as total')
-            ->selectRaw('COUNT(DISTINCT procurement_id) as works')
-            ->selectRaw('SUM(done) as done')
-            ->selectRaw('MAX(updated_at) as latest_at')
-            // Aggregated, so MySQL's ONLY_FULL_GROUP_BY can order by it.
-            ->selectRaw("MAX(CASE WHEN {$key} = '' THEN 1 ELSE 0 END) as unnamed")
-            ->groupByRaw($key)
-            ->orderBy('unnamed')
-            ->orderByDesc('latest_at')
-            ->orderBy('partner_name')
-            ->paginate(30)
-            ->withQueryString()
-            ->through(fn (stdClass $row): array => [
-                'key' => $row->partner_key === '' ? self::NO_PARTNER : (string) $row->partner_name,
-                'name' => $row->partner_key === '' ? 'Belum Ada Mitra' : (string) $row->partner_name,
-                'total' => (int) $row->total,
-                'works' => (int) $row->works,
-                'done' => (int) $row->done,
-                'latest_at' => $row->latest_at === null ? null : (string) $row->latest_at,
-            ])
-            ->toArray();
     }
 
     /**

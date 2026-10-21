@@ -276,7 +276,7 @@ export function ChecklistDocumentActions({
                     documentTypeId={document.type_id}
                     uploads={document.uploads}
                     canManage={canManage}
-                    label="Unggah Dokumen"
+                    label="Unggah Dokumen Tervalidasi"
                 />
             ) : document.id === null ? (
                 <div className="flex flex-wrap items-center gap-2">

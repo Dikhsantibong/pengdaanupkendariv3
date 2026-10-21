@@ -164,7 +164,7 @@ export function SignedUploadList({
     documentTypeId,
     uploads,
     canManage,
-    label = 'Unggah Hasil TTD',
+    label = 'Unggah Dokumen Tervalidasi',
     deleteInline = true,
 }: {
     procurementId: number;

@@ -492,7 +492,7 @@ export default function ProposalShow({
                                                 ' dan ',
                                             )}
                                         </b>{' '}
-                                        bertanda tangan diunggah.
+                                        tervalidasi diunggah.
                                     </p>
                                 </section>
                             )}

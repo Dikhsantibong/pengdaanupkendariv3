@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Concerns\GroupsByPartner;
 use App\Enums\ActivityType;
 use App\Enums\AmendmentFileKind;
 use App\Enums\AmendmentState;
@@ -9,6 +10,7 @@ use App\Enums\DeliveryOrderState;
 use App\Enums\FinanceSection;
 use App\Enums\Permission;
 use App\Enums\ProcurementStage;
+use App\Enums\StatusCategory;
 use App\Http\Requests\Procurements\StoreProcurementRequest;
 use App\Http\Requests\Procurements\UpdateProcurementRequest;
 use App\Http\Resources\ProcurementResource;
@@ -32,6 +34,7 @@ use App\Support\MasterDataOptions;
 use App\Support\ProcurementFilters;
 use App\Support\ProposalDocuments;
 use App\Support\RoleDashboard;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -40,6 +43,8 @@ use RuntimeException;
 
 class ProcurementController extends Controller
 {
+    use GroupsByPartner;
+
     public function __construct(
         protected ProcurementService $procurements,
         protected DocumentGenerator $generator,
@@ -52,17 +57,25 @@ class ProcurementController extends Controller
     {
         $this->authorize('viewAny', Procurement::class);
 
-        $procurements = ProcurementFilters::apply(
-            Procurement::query()
-                ->visibleTo($request->user())
-                ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor']),
-            $request,
-        )
+        $partner = $this->partner($request);
+        $filtered = ProcurementFilters::apply(Procurement::query()->visibleTo($request->user()), $request);
+
+        // The list: the open folder's work, or every match while searching
+        // across the folders.
+        $procurements = (clone $filtered)
+            ->when($partner !== null, fn (Builder $query) => $this->ofPartner($query, $partner))
+            ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor'])
             ->latest('created_at')
             ->paginate(15)
             ->withQueryString();
 
         return Inertia::render('procurements/index', [
+            'folders' => $partner !== null ? null : $this->folders(
+                (clone $filtered)->reorder()
+                    ->select(['id as procurement_id', 'partner_name', 'updated_at'])
+                    ->selectRaw('CASE WHEN progress_status_id IN (SELECT id FROM progress_statuses WHERE category = ?) THEN 1 ELSE 0 END as done', [StatusCategory::Selesai->value]),
+            ),
+            'partner' => $partner === null ? null : $this->partnerPayload($partner),
             'procurements' => ProcurementResource::collection($procurements),
             'filters' => ProcurementFilters::current($request),
             'options' => MasterDataOptions::forFilters(),

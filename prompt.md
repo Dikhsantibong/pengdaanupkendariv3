@@ -1892,6 +1892,21 @@ Ketentuan tampilan sertifikat:
   - Tombol **Kembali ke Penilaian** membawa pencarian dan halaman sebelumnya.
 - **Test:** `VendorAssessmentTest` (`test_the_list_tells_a_fully_scored_assessment_apart`, `test_assessments_are_filed_in_one_folder_per_vendor`, `test_an_unknown_vendor_folder_is_not_found`).
 
+## Daftar Pengadaan per Mitra & Label Dokumen Tervalidasi
+
+- **Daftar Pengadaan = folder per mitra:** halaman `procurements` kini dibuka dengan grid folder per mitra, sama seperti halaman Monitoring.
+  - Tiap folder menampilkan jumlah pengadaan dan penanda **x/y selesai**. Pengadaan tanpa mitra masuk folder **Belum Ada Mitra** (`?mitra=tanpa-mitra`), yang selalu tampil paling akhir.
+  - Klik folder (`?mitra=`) untuk membuka tabel pengadaan mitra itu, dengan tombol **Semua Mitra** untuk kembali. Filter tetap berlaku di dalam folder.
+  - Saat mengetik pencarian (tanpa folder terbuka), hasilnya langsung tampil sebagai tabel lintas semua folder.
+  - Hak lihat tidak berubah: PIC hanya melihat folder dari pengadaan miliknya.
+  - Logika folder dipindah ke trait `App\Concerns\GroupsByPartner`, dipakai `MonitoringController` dan `ProcurementController` (konstanta `NO_PARTNER` tetap bisa diakses lewat kedua controller). Prop `procurements` tetap dikirim.
+  - Test: `ProcurementPartnerFoldersTest`.
+- **Label dokumen tervalidasi:** di checklist semua tahapan dan tab Usulan:
+  - "Unggah TTD", "Unggah dokumen/berkas", "Unggah Hasil TTD", dan "Unggah Dokumen" diganti menjadi **Unggah Dokumen Tervalidasi**.
+  - "… bertanda tangan" / "… diunggah" diganti menjadi **… tervalidasi**.
+  - Kolom Aksi tabel langkah dilebarkan (16.5rem), dan tombolnya membungkus teks agar tidak menutupi kolom Status.
+- **Request Penilaian Vendor:** request yang sudah dibuat penilaiannya keluar dari daftar request dan cukup dilihat di folder mitranya.
+
 ## Request Penilaian Vendor (tautan rincian tagihan)
 
 Bagian **Request Penilaian Vendor** ada di halaman Penilaian Penyedia, di atas daftar formulir.

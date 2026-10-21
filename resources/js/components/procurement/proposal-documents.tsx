@@ -49,8 +49,8 @@ function stateOf(document: ProposalDocument): StepState {
 /** What the document asks for, in the author's words. */
 function needOf(document: ProposalDocument): string {
     return document.upload_only
-        ? 'Unggah berkas'
-        : 'Generate dari template, lalu unggah yang bertanda tangan';
+        ? 'Unggah dokumen tervalidasi'
+        : 'Generate dari template, lalu unggah dokumen tervalidasi';
 }
 
 /** The one thing to do next on the document. */
@@ -60,10 +60,10 @@ function actionOf(document: ProposalDocument, canManage: boolean): string {
     }
 
     if (document.upload_only) {
-        return 'Unggah';
+        return 'Unggah Dokumen Tervalidasi';
     }
 
-    return document.id === null ? 'Generate' : 'Unggah TTD';
+    return document.id === null ? 'Generate' : 'Unggah Dokumen Tervalidasi';
 }
 
 /**
@@ -101,7 +101,7 @@ export function ProposalDocuments({
                 <NextActionBanner
                     badge={nextIndex + 1}
                     title={next.type_name ?? 'Dokumen usulan'}
-                    detail={`Yang belum: ${next.type_name ?? 'dokumen'} ${next.upload_only ? 'diunggah' : 'bertanda tangan'}.`}
+                    detail={`Yang belum: ${next.type_name ?? 'dokumen'} tervalidasi.`}
                     action={actionOf(next, canManage)}
                     onAction={() => open(next.type_id)}
                 />
@@ -154,7 +154,7 @@ export function ProposalDocuments({
 
                 <div
                     aria-hidden="true"
-                    className="hidden grid-cols-[2.25rem_minmax(0,1.2fr)_minmax(0,1.6fr)_11rem_9.5rem] gap-3 border-b border-border bg-muted/40 px-4 py-2 text-[0.6875rem] font-semibold tracking-wide text-muted-foreground uppercase md:grid"
+                    className="hidden grid-cols-[2.25rem_minmax(0,1.2fr)_minmax(0,1.6fr)_10rem_16.5rem] gap-3 border-b border-border bg-muted/40 px-4 py-2 text-[0.6875rem] font-semibold tracking-wide text-muted-foreground uppercase md:grid"
                 >
                     <span>No</span>
                     <span>Dokumen</span>
@@ -182,7 +182,7 @@ export function ProposalDocuments({
                                     }
                                 }}
                                 className={cn(
-                                    'grid cursor-pointer grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3 gap-y-2 px-4 py-3 transition-colors hover:bg-muted/40 md:grid-cols-[2.25rem_minmax(0,1.2fr)_minmax(0,1.6fr)_11rem_9.5rem] md:items-center',
+                                    'grid cursor-pointer grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3 gap-y-2 px-4 py-3 transition-colors hover:bg-muted/40 md:grid-cols-[2.25rem_minmax(0,1.2fr)_minmax(0,1.6fr)_10rem_16.5rem] md:items-center',
                                     isNext &&
                                         'bg-primary/[0.03] shadow-[inset_3px_0_0_var(--primary)]',
                                 )}
@@ -244,6 +244,7 @@ export function ProposalDocuments({
                                                   ? 'default'
                                                   : 'outline'
                                         }
+                                        className="h-auto min-h-8 min-w-0 py-1.5 whitespace-normal"
                                         onClick={() => open(document.type_id)}
                                     >
                                         {actionOf(document, canManage)}
@@ -299,8 +300,8 @@ export function ProposalDocuments({
                                     number={1}
                                     title={
                                         openDocument.upload_only
-                                            ? 'Unggah berkas'
-                                            : 'Buat, periksa, lalu unggah yang bertanda tangan'
+                                            ? 'Unggah dokumen tervalidasi'
+                                            : 'Buat, periksa, lalu unggah dokumen tervalidasi'
                                     }
                                     hint={
                                         openDocument.upload_only

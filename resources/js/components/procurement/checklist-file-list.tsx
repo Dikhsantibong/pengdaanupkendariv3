@@ -161,7 +161,7 @@ export function ChecklistFileList({
                                 ? 'Mengunggah…'
                                 : filed
                                   ? 'Tambah Berkas'
-                                  : 'Unggah Dokumen'}
+                                  : 'Unggah Dokumen Tervalidasi'}
                         </Button>
 
                         {files.length === 1 && (
