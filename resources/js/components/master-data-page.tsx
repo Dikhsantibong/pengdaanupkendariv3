@@ -42,6 +42,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 import type { EnumOption } from '@/types';
 
 export type MasterRecord = {
@@ -73,6 +74,11 @@ export type MasterField = {
     required?: boolean;
     /** The label of the button that adds a row to a `list` field. */
     addLabel?: string;
+    /**
+     * A date typed beside each row of a `list` field, kept row by row in
+     * another field of the form (blank for none).
+     */
+    rowDate?: { name: string; label: string };
     /** Shows the field only while the form's values call for it. */
     visible?: (values: MasterFormValues) => boolean;
 };
@@ -121,6 +127,20 @@ export function MasterDataPage<T extends MasterRecord>({
     const [open, setOpen] = useState(false);
 
     const form = useForm<MasterFormValues>({ ...defaults });
+
+    // The dates a list field keeps beside its rows, in their own field.
+    const rowDatesOf = (field: MasterField): RowDates | undefined => {
+        const rowDate = field.rowDate;
+
+        if (rowDate === undefined) {
+            return undefined;
+        }
+
+        return {
+            value: form.data[rowDate.name],
+            onChange: (value) => form.setData(rowDate.name, value),
+        };
+    };
 
     const openCreate = () => {
         setEditing(null);
@@ -349,6 +369,7 @@ export function MasterDataPage<T extends MasterRecord>({
                                         onChange={(value) =>
                                             form.setData(field.name, value)
                                         }
+                                        rowDates={rowDatesOf(field)}
                                     />
                                 </div>
                             ))}
@@ -382,25 +403,43 @@ export function MasterDataPage<T extends MasterRecord>({
  * The indicators of an aspect print as a, b, c on the official form, so the
  * order matters and is edited here rather than typed as one blob of text.
  */
+/** The dates kept beside a list's rows, in another field of the form. */
+type RowDates = {
+    value: MasterFormValue;
+    onChange: (value: MasterFormValue) => void;
+};
+
 function ListControl({
     field,
     value,
     error,
     onChange,
+    rowDates,
 }: {
     field: MasterField;
     value: MasterFormValue;
     error?: string;
     onChange: (value: MasterFormValue) => void;
+    rowDates?: RowDates;
 }) {
     const lines = (Array.isArray(value) ? value : []).map(String);
     const letters = 'abcdefghijklmnopqrstuvwxyz';
+    // One date per row, so the dates follow their rows when moved or removed.
+    const storedDates = Array.isArray(rowDates?.value) ? rowDates.value : [];
+    const dates = lines.map((_, at) => String(storedDates[at] ?? ''));
 
     const replace = (index: number, line: string) =>
         onChange(lines.map((item, at) => (at === index ? line : item)));
 
-    const remove = (index: number) =>
+    const replaceDate = (index: number, date: string) =>
+        rowDates?.onChange(
+            dates.map((item, at) => (at === index ? date : item)),
+        );
+
+    const remove = (index: number) => {
         onChange(lines.filter((_, at) => at !== index));
+        rowDates?.onChange(dates.filter((_, at) => at !== index));
+    };
 
     const move = (index: number, by: number) => {
         const target = index + by;
@@ -412,6 +451,18 @@ function ListControl({
         const next = [...lines];
         [next[index], next[target]] = [next[target], next[index]];
         onChange(next);
+
+        const nextDates = [...dates];
+        [nextDates[index], nextDates[target]] = [
+            nextDates[target],
+            nextDates[index],
+        ];
+        rowDates?.onChange(nextDates);
+    };
+
+    const add = () => {
+        onChange([...lines, '']);
+        rowDates?.onChange([...dates, '']);
     };
 
     return (
@@ -419,8 +470,24 @@ function ListControl({
             <Label>{field.label}</Label>
 
             <div className="grid gap-1.5">
+                {field.rowDate && lines.length > 0 && (
+                    <div className="hidden items-center gap-1.5 text-[11px] text-muted-foreground sm:flex">
+                        <span className="w-4 shrink-0" />
+                        <span className="flex-1">Nama</span>
+                        <span className="w-36 shrink-0">
+                            {field.rowDate.label}
+                        </span>
+                        <span className="w-[5.625rem] shrink-0" />
+                    </div>
+                )}
                 {lines.map((line, index) => (
-                    <div key={index} className="flex items-center gap-1.5">
+                    <div
+                        key={index}
+                        className={cn(
+                            'flex items-center gap-1.5',
+                            field.rowDate && 'flex-wrap sm:flex-nowrap',
+                        )}
+                    >
                         <span className="w-4 shrink-0 text-xs text-muted-foreground">
                             {letters[index] ?? '-'}.
                         </span>
@@ -430,9 +497,26 @@ function ListControl({
                             onChange={(event) =>
                                 replace(index, event.target.value)
                             }
-                            className="h-8 flex-1"
+                            className={cn(
+                                'h-8 flex-1',
+                                // A phone puts the date on the line below.
+                                field.rowDate &&
+                                    'basis-[calc(100%-1.375rem)] sm:basis-0',
+                            )}
                             autoComplete="off"
                         />
+                        {field.rowDate && (
+                            <Input
+                                type="date"
+                                value={dates[index]}
+                                title={field.rowDate.label}
+                                aria-label={`${field.rowDate.label} ${line}`}
+                                onChange={(event) =>
+                                    replaceDate(index, event.target.value)
+                                }
+                                className="ml-[1.375rem] h-8 w-36 shrink-0 sm:ml-0"
+                            />
+                        )}
                         <Button
                             type="button"
                             size="icon"
@@ -480,7 +564,7 @@ function ListControl({
                 size="sm"
                 variant="outline"
                 className="justify-self-start"
-                onClick={() => onChange([...lines, ''])}
+                onClick={add}
             >
                 <Plus className="size-3.5" />
                 {field.addLabel ?? 'Tambah Baris'}
@@ -499,11 +583,13 @@ function FieldControl({
     value,
     error,
     onChange,
+    rowDates,
 }: {
     field: MasterField;
     value: MasterFormValue;
     error?: string;
     onChange: (value: MasterFormValue) => void;
+    rowDates?: RowDates;
 }) {
     if (field.type === 'switch') {
         return (
@@ -532,6 +618,7 @@ function FieldControl({
                 value={value}
                 error={error}
                 onChange={onChange}
+                rowDates={rowDates}
             />
         );
     }

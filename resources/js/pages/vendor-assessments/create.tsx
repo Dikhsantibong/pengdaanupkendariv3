@@ -13,6 +13,8 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { WorkDirectorSelect } from '@/components/work-director-select';
+import type { WorkDirector } from '@/components/work-director-select';
 import { dashboard } from '@/routes';
 import vendorAssessments from '@/routes/vendor-assessments';
 import type { Option } from '@/types';
@@ -27,6 +29,7 @@ type Defaults = {
     po_date: string | null;
     bastp_date: string | null;
     vendor_name: string;
+    work_director_name: string;
     has_penalty: boolean;
     notes: string;
     vendor_assessment_request_id: number | null;
@@ -39,9 +42,12 @@ type Defaults = {
 export default function CreateVendorAssessment({
     defaults,
     procurements,
+    workDirectors,
 }: {
     defaults: Defaults;
     procurements: Option[];
+    /** The names of the Direksi Pekerjaan sheet, phone numbers left off. */
+    workDirectors: WorkDirector[];
 }) {
     const form = useForm({
         procurement_id: defaults.procurement_id,
@@ -50,6 +56,7 @@ export default function CreateVendorAssessment({
         po_date: defaults.po_date ?? '',
         bastp_date: defaults.bastp_date ?? '',
         vendor_name: defaults.vendor_name,
+        work_director_name: defaults.work_director_name ?? '',
         has_penalty: defaults.has_penalty,
         form_number: defaults.form_number,
         revision_number: defaults.revision_number,
@@ -260,6 +267,16 @@ export default function CreateVendorAssessment({
                             />
                             <InputError message={form.errors.bastp_date} />
                         </div>
+
+                        <WorkDirectorSelect
+                            names={workDirectors}
+                            bastpDate={form.data.bastp_date}
+                            value={form.data.work_director_name}
+                            onChange={(name) =>
+                                form.setData('work_director_name', name)
+                            }
+                            error={form.errors.work_director_name}
+                        />
                     </section>
 
                     <section className="space-y-4 rounded-md border border-border bg-card p-5">

@@ -83,6 +83,11 @@ class AssessmentFormController extends MasterDataController
                 'assessor_title' => $record->assessor_title,
                 'assessor_name' => $record->assessor_name,
                 'assessor_options' => $record->assessor_options ?? [],
+                // Row by row beside the names, blank where a name is always offered.
+                'assessor_hidden_until' => array_map(
+                    fn (string $option): string => $record->hiddenUntil($option) ?? '',
+                    $record->assessor_options ?? [],
+                ),
                 'description' => $record->description,
                 'aspect_ids' => $record->aspects->pluck('id')->all(),
                 'aspect_names' => $record->aspects->pluck('name')->all(),
@@ -141,6 +146,8 @@ class AssessmentFormController extends MasterDataController
             'assessor_name' => ['nullable', 'string', 'max:255'],
             'assessor_options' => ['nullable', 'array', 'max:50'],
             'assessor_options.*' => ['required', 'string', 'max:255'],
+            'assessor_hidden_until' => ['nullable', 'array'],
+            'assessor_hidden_until.*' => ['date_format:Y-m-d'],
             'description' => ['nullable', 'string', 'max:500'],
             'aspect_ids' => ['required', 'array', 'min:1'],
             'aspect_ids.*' => ['integer', Rule::exists('assessment_aspects', 'id')->whereNull('deleted_at')],
@@ -163,6 +170,13 @@ class AssessmentFormController extends MasterDataController
         // An empty list means the sheet takes a typed name rather than a
         // choice, which is how every sheet but Direksi Pekerjaan works.
         $validated['assessor_options'] = $options === [] ? null : $options;
+
+        // Dates left out of the request are left as they are.
+        if (array_key_exists('assessor_hidden_until', $validated)) {
+            /** @var array<string, string> $hidden */
+            $hidden = $validated['assessor_hidden_until'] ?? [];
+            $validated['assessor_hidden_until'] = $hidden === [] ? null : $hidden;
+        }
 
         // The pivot is synced after the save, not filled onto the model.
         unset($validated['aspect_ids']);
@@ -204,6 +218,38 @@ class AssessmentFormController extends MasterDataController
             $request->merge(['code' => Str::slug((string) $request->input('code'))]);
         }
 
+        $this->pairHiddenDates($request);
         $this->pruneList($request, 'assessor_options');
+    }
+
+    /**
+     * Key the dates typed beside the names by the name they stand next to.
+     *
+     * The form sends one date per name row, blank for a name that is always
+     * offered; stored, each date is keyed by the name without its phone
+     * number, so a corrected number keeps its date.
+     */
+    protected function pairHiddenDates(Request $request): void
+    {
+        if (! $request->has('assessor_hidden_until')) {
+            return;
+        }
+
+        $options = $request->input('assessor_options');
+        $dates = $request->input('assessor_hidden_until');
+        $paired = [];
+
+        if (is_array($options) && is_array($dates)) {
+            foreach (array_values($options) as $index => $option) {
+                $date = $dates[$index] ?? null;
+                $name = is_string($option) ? mb_strtoupper(AssessmentForm::nameOf($option)) : '';
+
+                if ($name !== '' && is_string($date) && trim($date) !== '') {
+                    $paired[$name] = trim($date);
+                }
+            }
+        }
+
+        $request->merge(['assessor_hidden_until' => $paired]);
     }
 }

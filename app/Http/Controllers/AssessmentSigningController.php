@@ -67,7 +67,8 @@ class AssessmentSigningController extends Controller
             'form' => [
                 'name' => $invitation->form->name,
                 'assessor_title' => $invitation->form->assessor_title,
-                'assessor_options' => $invitation->form->assessor_options ?? [],
+                // A name not yet in office by the BASTP date is not offered.
+                'assessor_options' => $invitation->form->optionsFor($invitation->assessment->bastp_date),
             ],
             'assessorName' => $invitation->assessor_name
                 ?? $invitation->recipient_name

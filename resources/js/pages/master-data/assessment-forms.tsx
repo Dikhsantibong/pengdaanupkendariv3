@@ -10,6 +10,8 @@ type AssessmentForm = MasterRecord & {
     assessor_title: string;
     assessor_name: string | null;
     assessor_options: string[];
+    /** Beside each name: the last BASTP date it stays hidden on, or blank. */
+    assessor_hidden_until: string[];
     description: string | null;
     aspect_ids: number[];
     aspect_names: string[];
@@ -88,7 +90,11 @@ export default function AssessmentForms({
                     type: 'list',
                     addLabel: 'Tambah Nama',
                     placeholder: 'Contoh: MUSRIYADI',
-                    hint: 'Kosongkan bila nama penilai diketik bebas. Bila diisi, penilai wajib memilih dari daftar ini, termasuk pada halaman tanda tangan WhatsApp.',
+                    rowDate: {
+                        name: 'assessor_hidden_until',
+                        label: 'Tidak muncul s.d. BASTP',
+                    },
+                    hint: 'Kosongkan bila nama penilai diketik bebas. Bila diisi, penilai wajib memilih dari daftar ini, termasuk pada halaman tanda tangan WhatsApp. Isi tanggal di samping nama yang baru menjabat: pada penilaian dengan Tgl BASTP sampai tanggal itu, namanya tidak ditawarkan. Kosongkan bila selalu muncul.',
                 },
                 {
                     name: 'assessor_name',
@@ -117,6 +123,7 @@ export default function AssessmentForms({
                 assessor_title: '',
                 assessor_name: '',
                 assessor_options: [],
+                assessor_hidden_until: [],
                 description: '',
                 aspect_ids: [],
                 sort_order: 0,

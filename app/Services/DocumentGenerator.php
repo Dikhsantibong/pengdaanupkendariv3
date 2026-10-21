@@ -1930,7 +1930,7 @@ HTML;
      */
     public function printableHtml(ProcurementDocument $document, bool $forPdf = false): string
     {
-        $body = $document->rendered_body;
+        $body = self::withoutRepeatedTableHeaders($document->rendered_body);
 
         if (preg_match('/<html[\s>]/i', $body)) {
             if ($forPdf) {
@@ -1966,9 +1966,25 @@ HTML;
         <title>{$title}</title>
         <style>{$stylesheet}</style>
         </head>
-        <body>{$document->rendered_body}</body>
+        <body>{$body}</body>
         </html>
         HTML;
+    }
+
+    /**
+     * A table's heading rows printed once, where the table starts.
+     *
+     * The PDF engine (and a browser's print) repeats a table's <thead> at
+     * the top of every sheet the table runs over; the heading rows are made
+     * ordinary rows instead, keeping their own styling.
+     */
+    public static function withoutRepeatedTableHeaders(string $html): string
+    {
+        return (string) preg_replace(
+            ['/<thead(?=[\s>])/i', '/<\/thead\s*>/i'],
+            ['<tbody', '</tbody>'],
+            $html,
+        );
     }
 
     /**

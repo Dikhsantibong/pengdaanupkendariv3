@@ -1942,6 +1942,41 @@ Bagian **Request Penilaian Vendor** ada di halaman Penilaian Penyedia, di atas d
 - **Tanpa request:** pembuatan formulir penilaian berjalan seperti sebelumnya.
 - **Data:** tabel `vendor_assessment_requests`, model `VendorAssessmentRequest` (`formUrl()` memberi tautan tetap). Controller admin `VendorAssessmentRequestController` (hapus), controller publik `AssessmentRequestFormController`. Halaman publik: `assessment-signing/request`.
 
+## Header Tabel Tidak Diulang di Setiap Halaman
+
+- **Masalah:** dompdf (dan fitur cetak browser) mengulang `<thead>` di atas setiap halaman yang dilewati tabel. Akibatnya header tabel barang Surat Pesanan tampil lagi di halaman 2 dan seterusnya.
+- **Perbaikan:** `DocumentGenerator::withoutRepeatedTableHeaders()` mengubah `<thead>` menjadi `<tbody>` pada keluaran `printableHtml()`. Fungsi itu dipakai untuk PDF, pratinjau, dan cetak semua dokumen, sehingga header hanya tercetak sekali di awal tabel.
+  - Gaya header tetap sama karena semua gayanya inline.
+  - Template dan dokumen tersimpan tidak diubah, begitu pula editor dan ekspor Word.
+- **Cache:** `DocumentPdfRenderer::LAYOUT_VERSION` dinaikkan ke `'5'` supaya PDF lama dibuat ulang.
+- **Test:** `TableHeaderOncePerTableTest`. Test ini juga membuktikan perilaku lama: sebelum perbaikan, header tergambar sekali di setiap halaman.
+
+## Direksi Pekerjaan pada Penilaian Vendor
+
+- **Field baru:** form **Buat Formulir Penilaian** dan dialog **Ubah Data** sekarang punya field **Direksi Pekerjaan**.
+  - Kolomnya `vendor_assessments.work_director_name`, berisi nama saja.
+  - Pilihannya diambil dari nama di lembar **Direksi Pekerjaan** (Data Master → Lembar Penilai, kode `direksi-pekerjaan`), tanpa nomor HP.
+  - Bila lembar itu tidak punya daftar nama, field menjadi isian bebas.
+  - Nilainya tampil di kepala halaman penilaian.
+- **Nama disaring menurut Tgl BASTP:** tiap nama di **Pilihan Nama Penilai** bisa diberi tanggal **Tidak muncul s.d. BASTP**.
+  - Disimpan di kolom JSON `assessment_forms.assessor_hidden_until`, dengan kunci nama tanpa nomor HP.
+  - Pada penilaian dengan Tgl BASTP **sampai dan termasuk** tanggal itu, nama tersebut tidak ditawarkan. Tanpa Tgl BASTP, semua nama ditawarkan.
+  - Penyaringan berlaku di field Direksi Pekerjaan, di dropdown Nama Penilai lembar Direksi Pekerjaan, dan di halaman tanda tangan WhatsApp.
+  - Validasi `App\Rules\OfferedWorkDirector` menolak nama yang belum menjabat pada Tgl BASTP tersebut.
+- **Isi awal dari migrasi** `add_work_director_to_vendor_assessments`:
+  - WINANDO PANDIANGAN: s.d. 1 Jul 2026
+  - TAUHID ALI: s.d. 1 Agu 2026
+  - TANWIR: s.d. 1 Sep 2026
+- **Sinkron dengan lembar Direksi Pekerjaan:**
+  - Nama Penilai lembar ini mengikuti Direksi Pekerjaan penilaian.
+  - Kalau penilai dipilih atau menandatangani lewat tautan, `work_director_name` ikut diperbarui.
+  - Cetakan memakai nama penilaian itu, bukan lagi "nama penilai terakhir" yang berlaku untuk semua penilaian.
+- **Helper model:** `AssessmentForm::nameOf()`, `optionsFor()`, `namesWithHiding()`, `optionNamed()`, `workDirectorSheet()`.
+- **Komponen:**
+  - `components/work-director-select.tsx`.
+  - Field `list` di `MasterDataPage` mendukung `rowDate` (tanggal per baris; di ponsel turun ke bawah nama).
+- **Test:** `VendorAssessmentWorkDirectorTest`.
+
 ## Pratinjau PDF di Ponsel
 
 - **Masalahnya:** Chrome di Android tidak punya penampil PDF di dalam halaman, dan browser di iOS hanya menampilkan halaman pertama. Desktop Chrome yang disetel "unduh PDF" juga tidak bisa menampilkannya.

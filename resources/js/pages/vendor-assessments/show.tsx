@@ -41,6 +41,8 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { WorkDirectorSelect } from '@/components/work-director-select';
+import type { WorkDirector } from '@/components/work-director-select';
 import { formatDate, formatDateTime } from '@/lib/format';
 import { dashboard } from '@/routes';
 import vendorAssessments from '@/routes/vendor-assessments';
@@ -106,6 +108,7 @@ type Assessment = {
     amendment_number: string | null;
     bastp_date: string | null;
     vendor_name: string;
+    work_director_name: string | null;
     has_penalty: boolean;
     form_number: string;
     revision_number: string;
@@ -134,6 +137,7 @@ export default function ShowVendorAssessment({
     panitiaUrl,
     akumulasiUrl,
     printAllUrl,
+    workDirectors,
 }: {
     assessment: Assessment;
     forms: FormSheet[];
@@ -146,6 +150,8 @@ export default function ShowVendorAssessment({
     panitiaUrl: string;
     akumulasiUrl: string;
     printAllUrl: string;
+    /** The names of the Direksi Pekerjaan sheet, phone numbers left off. */
+    workDirectors: WorkDirector[];
 }) {
     const printUrl = (formId?: number) =>
         vendorAssessments.print(
@@ -201,7 +207,10 @@ export default function ShowVendorAssessment({
                                 <ArrowLeft className="size-4" />
                                 Kembali
                             </Button>
-                            <EditHeaderDialog assessment={assessment} />
+                            <EditHeaderDialog
+                                assessment={assessment}
+                                workDirectors={workDirectors}
+                            />
                             <Button asChild className="bg-green-600 hover:bg-green-700 text-white">
                                 <a href={printAllUrl} target="_blank">
                                     <Printer className="size-4" />
@@ -266,6 +275,10 @@ export default function ShowVendorAssessment({
                 <dl className="grid gap-3 rounded-md border border-border bg-card p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
                     <Field label="Pekerjaan" value={assessment.project} />
                     <Field label="Penyedia" value={assessment.vendor_name} />
+                    <Field
+                        label="Direksi Pekerjaan"
+                        value={assessment.work_director_name || '—'}
+                    />
                     <Field
                         label="No Kontrak"
                         value={
@@ -942,7 +955,13 @@ ShowVendorAssessment.layout = {
     ],
 };
 
-function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
+function EditHeaderDialog({
+    assessment,
+    workDirectors,
+}: {
+    assessment: Assessment;
+    workDirectors: WorkDirector[];
+}) {
     const [open, setOpen] = useState(false);
     const form = useForm({
         procurement_id: assessment.procurement_id,
@@ -952,6 +971,7 @@ function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
         amendment_number: assessment.amendment_number ?? '',
         bastp_date: assessment.bastp_date ?? '',
         vendor_name: assessment.vendor_name,
+        work_director_name: assessment.work_director_name ?? '',
         has_penalty: assessment.has_penalty,
         form_number: assessment.form_number,
         revision_number: assessment.revision_number,
@@ -1048,6 +1068,14 @@ function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
                             <InputError message={form.errors.bastp_date} />
                         </div>
                     </div>
+
+                    <WorkDirectorSelect
+                        names={workDirectors}
+                        bastpDate={form.data.bastp_date}
+                        value={form.data.work_director_name}
+                        onChange={(name) => form.setData('work_director_name', name)}
+                        error={form.errors.work_director_name}
+                    />
                     
                     <div className="grid gap-2">
                         <Label htmlFor="has_penalty_edit">Denda</Label>

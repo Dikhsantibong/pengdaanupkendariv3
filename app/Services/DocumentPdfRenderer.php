@@ -32,7 +32,7 @@ class DocumentPdfRenderer
      * Raised whenever the running headers or footers change, so cached PDFs
      * are drawn again with them.
      */
-    private const LAYOUT_VERSION = '4';
+    private const LAYOUT_VERSION = '5';
 
     /**
      * Where the PDFs of unsaved drafts are kept between previews.

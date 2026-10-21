@@ -97,6 +97,7 @@ class VendorAssessmentService
             'po_date' => null,
             'bastp_date' => null,
             'vendor_name' => '',
+            'work_director_name' => '',
             'has_penalty' => false,
             'notes' => '',
             'vendor_assessment_request_id' => null,
