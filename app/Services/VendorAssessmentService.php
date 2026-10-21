@@ -97,7 +97,6 @@ class VendorAssessmentService
             'po_date' => null,
             'bastp_date' => null,
             'vendor_name' => '',
-            'work_director_name' => '',
             'has_penalty' => false,
             'notes' => '',
             'vendor_assessment_request_id' => null,
@@ -124,6 +123,7 @@ class VendorAssessmentService
                 'Termin: '.$request->term,
                 'Nilai tagihan: Rp '.number_format((float) $request->invoice_amount, 0, ',', '.'),
                 'No BAPP/BASTP: '.$request->bastp_number,
+                ...($request->work_director_name ? ['Direksi Pekerjaan: '.$request->work_director_name] : []),
                 'Diisi oleh: '.$request->submitter_name
                     .($request->submitter_phone ? ' ('.$request->submitter_phone.')' : ''),
             ]),

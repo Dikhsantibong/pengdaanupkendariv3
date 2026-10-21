@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $id
  * @property string $project
  * @property string $vendor_name
+ * @property string|null $work_director_name The Direksi Pekerjaan named by the vendor, by name only.
  * @property string $contract_number
  * @property CarbonImmutable $contract_date
  * @property string $term
@@ -32,6 +33,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'project',
     'vendor_name',
+    'work_director_name',
     'contract_number',
     'contract_date',
     'term',

@@ -248,7 +248,6 @@ class VendorAssessmentController extends Controller
                     'label' => "{$row->number} — {$row->name}",
                 ])->all(),
             // The vendor's name is suggested from the Mitra master data.
-            'workDirectors' => $this->workDirectors(),
         ]);
     }
 
@@ -300,7 +299,6 @@ class VendorAssessmentController extends Controller
             'printAllUrl' => route('vendor-assessments.print-all', [
                 'assessment' => $assessment->id,
             ]),
-            'workDirectors' => $this->workDirectors(),
         ]);
     }
 
@@ -353,12 +351,6 @@ class VendorAssessmentController extends Controller
 
         if ($request->filled('assessor_name')) {
             $form->update(['assessor_name' => $request->string('assessor_name')->trim()->value()]);
-
-            // The Direksi Pekerjaan sheet's signatory is the assessment's
-            // Direksi Pekerjaan.
-            if ($form->code === AssessmentForm::WORK_DIRECTOR) {
-                $assessment->update(['work_director_name' => AssessmentForm::nameOf($form->assessor_name)]);
-            }
         }
 
         Inertia::flash('toast', [
@@ -551,6 +543,7 @@ class VendorAssessmentController extends Controller
                 'status' => $row->status(),
                 'project' => $row->project,
                 'vendor_name' => $row->vendor_name,
+                'work_director_name' => $row->work_director_name,
                 'contract_number' => $row->contract_number,
                 'contract_date' => $row->contract_date->toDateString(),
                 'term' => $row->term,
@@ -564,17 +557,6 @@ class VendorAssessmentController extends Controller
                 'vendor_assessment_id' => $row->vendor_assessment_id,
             ])
             ->all();
-    }
-
-    /**
-     * The Direksi Pekerjaan names an assessment can be given, without their
-     * phone numbers, with the last BASTP date each stays hidden on.
-     *
-     * @return array<int, array{name: string, hidden_until: string|null}>
-     */
-    protected function workDirectors(): array
-    {
-        return AssessmentForm::workDirectorSheet()?->namesWithHiding() ?? [];
     }
 
     /**
@@ -594,7 +576,6 @@ class VendorAssessmentController extends Controller
             'amendment_number' => $assessment->amendment_number,
             'bastp_date' => $assessment->bastp_date?->toDateString(),
             'vendor_name' => $assessment->vendor_name,
-            'work_director_name' => $assessment->work_director_name,
             'has_penalty' => $assessment->has_penalty,
             'form_number' => $assessment->form_number,
             'revision_number' => $assessment->revision_number,
@@ -645,9 +626,7 @@ class VendorAssessmentController extends Controller
                     'code' => $form->code,
                     'name' => $form->name,
                     'assessor_title' => $form->assessor_title,
-                    'assessor_name' => $form->code === AssessmentForm::WORK_DIRECTOR
-                        ? ($invitation->assessor_name ?? $form->optionNamed($assessment->work_director_name) ?? $form->assessor_name)
-                        : $form->assessor_name,
+                    'assessor_name' => $form->assessor_name,
                     // A name not yet in office by the BASTP date is not offered.
                     'assessor_options' => $form->optionsFor($assessment->bastp_date),
                     'description' => $form->description,

@@ -5,6 +5,8 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { WorkDirectorSelect } from '@/components/work-director-select';
+import type { WorkDirector } from '@/components/work-director-select';
 import { formatDateTime } from '@/lib/format';
 import assessmentRequests from '@/routes/assessment-requests';
 import { SigningShell } from './shell';
@@ -12,6 +14,7 @@ import { SigningShell } from './shell';
 type DetailsForm = {
     project: string;
     vendor_name: string;
+    work_director_name: string;
     contract_number: string;
     contract_date: string;
     term: string;
@@ -42,14 +45,18 @@ type Submitted = {
  */
 export default function AssessmentRequestForm({
     submitted,
+    workDirectors,
 }: {
     submitted: Submitted | null;
+    /** The Direksi Pekerjaan to choose from, names only. */
+    workDirectors: WorkDirector[];
 }) {
     const [showForm, setShowForm] = useState(submitted === null);
     const { data, setData, post, processing, errors, transform, reset } =
         useForm<DetailsForm>({
             project: '',
             vendor_name: '',
+            work_director_name: '',
             contract_number: '',
             contract_date: '',
             term: '',
@@ -198,6 +205,14 @@ export default function AssessmentRequestForm({
                             type: 'date',
                         })}
                     </div>
+
+                    <WorkDirectorSelect
+                        names={workDirectors}
+                        bastpDate={data.bastp_date}
+                        value={data.work_director_name}
+                        onChange={(name) => setData('work_director_name', name)}
+                        error={errors.work_director_name}
+                    />
 
                     <fieldset className="grid gap-1.5">
                         <legend className="mb-1.5 text-sm font-medium">

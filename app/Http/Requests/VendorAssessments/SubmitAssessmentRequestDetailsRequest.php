@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\VendorAssessments;
 
+use App\Rules\OfferedWorkDirector;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -17,6 +18,8 @@ class SubmitAssessmentRequestDetailsRequest extends FormRequest
         return [
             'project' => ['required', 'string', 'max:255'],
             'vendor_name' => ['required', 'string', 'max:255'],
+            // Picked from the Direksi Pekerjaan in office by the BAPP/BASTP date.
+            'work_director_name' => ['required', 'string', 'max:255', new OfferedWorkDirector],
             'contract_number' => ['required', 'string', 'max:255'],
             'contract_date' => ['required', 'date'],
             'term' => ['required', 'string', 'max:255'],
@@ -39,6 +42,7 @@ class SubmitAssessmentRequestDetailsRequest extends FormRequest
         return [
             'project' => 'pekerjaan',
             'vendor_name' => 'pelaksana',
+            'work_director_name' => 'direksi pekerjaan',
             'contract_number' => 'no kontrak/DO',
             'contract_date' => 'tanggal kontrak',
             'term' => 'termin',

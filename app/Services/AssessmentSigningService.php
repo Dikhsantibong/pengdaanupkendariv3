@@ -116,10 +116,6 @@ class AssessmentSigningService
 
             // The printed sheet carries whoever actually signed it.
             $invitation->form->update(['assessor_name' => $assessorName]);
-
-            if ($invitation->form->code === AssessmentForm::WORK_DIRECTOR && $assessorName !== '') {
-                $invitation->assessment->update(['work_director_name' => AssessmentForm::nameOf($assessorName)]);
-            }
         });
     }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\VendorAssessments\SubmitAssessmentRequestDetailsRequest;
+use App\Models\AssessmentForm;
 use App\Models\VendorAssessmentRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,6 +26,8 @@ class AssessmentRequestFormController extends Controller
     {
         return Inertia::render('assessment-signing/request', [
             'submitted' => $request->session()->get('assessment_request_submitted'),
+            // Names only: the phone numbers stay with the administrators.
+            'workDirectors' => AssessmentForm::workDirectorSheet()?->namesWithHiding() ?? [],
         ]);
     }
 

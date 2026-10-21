@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\VendorAssessments;
 
-use App\Rules\OfferedWorkDirector;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -24,7 +23,6 @@ class StoreVendorAssessmentRequest extends FormRequest
             'amendment_number' => ['nullable', 'string', 'max:255'],
             'bastp_date' => ['nullable', 'date'],
             'vendor_name' => ['required', 'string', 'max:255'],
-            'work_director_name' => ['nullable', 'string', 'max:255', new OfferedWorkDirector],
             'has_penalty' => ['required', 'boolean'],
             'form_number' => ['required', 'string', 'max:100'],
             'revision_number' => ['required', 'string', 'max:20'],
@@ -50,7 +48,6 @@ class StoreVendorAssessmentRequest extends FormRequest
             'amendment_number' => 'nomor amandemen',
             'bastp_date' => 'tanggal BASTP',
             'vendor_name' => 'penyedia barang/jasa',
-            'work_director_name' => 'direksi pekerjaan',
             'form_number' => 'nomor formulir',
             'revision_number' => 'nomor revisi',
             'form_date' => 'tanggal formulir',

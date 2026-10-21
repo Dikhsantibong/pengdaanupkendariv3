@@ -2,12 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Models\AssessmentForm;
 use App\Models\User;
 use App\Models\VendorAssessment;
 use App\Models\VendorAssessmentRequest;
 use App\Services\DocumentGenerator;
 use Database\Seeders\VendorAssessmentSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -60,12 +62,55 @@ class VendorAssessmentRequestTest extends TestCase
     {
         $this->post(route('assessment-requests.store'), [])
             ->assertSessionHasErrors([
-                'project', 'vendor_name', 'contract_number', 'contract_date', 'term',
+                'project', 'vendor_name', 'work_director_name', 'contract_number', 'contract_date', 'term',
                 'invoice_amount', 'bastp_number', 'bastp_date', 'has_penalty', 'submitter_name',
             ])
             ->assertSessionDoesntHaveErrors('submitter_phone');
 
         $this->assertSame(0, VendorAssessmentRequest::query()->count());
+    }
+
+    public function test_the_form_offers_the_direksi_pekerjaan_by_name_only(): void
+    {
+        $this->seed(VendorAssessmentSeeder::class);
+
+        $this->get(VendorAssessmentRequest::formUrl())
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('workDirectors', fn (Collection $names) => $names->pluck('name')->contains('TAUHID ALI')
+                    && $names->pluck('name')->every(fn (string $name) => ! str_contains($name, '('))));
+    }
+
+    public function test_the_direksi_pekerjaan_must_be_in_office_by_the_bastp_date(): void
+    {
+        $this->seed(VendorAssessmentSeeder::class);
+
+        AssessmentForm::query()->where('code', AssessmentForm::WORK_DIRECTOR)->update([
+            'assessor_hidden_until' => json_encode(['TAUHID ALI' => '2026-08-01']),
+        ]);
+
+        $this->post(route('assessment-requests.store'), [
+            ...$this->details(),
+            'bastp_date' => '2026-08-01',
+            'work_director_name' => 'TAUHID ALI',
+        ])->assertSessionHasErrors('work_director_name');
+
+        $this->post(route('assessment-requests.store'), [
+            ...$this->details(),
+            'bastp_date' => '2026-08-02',
+            'work_director_name' => 'TAUHID ALI',
+        ])->assertSessionHasNoErrors();
+
+        $request = VendorAssessmentRequest::query()->sole();
+
+        $this->assertSame('TAUHID ALI', $request->work_director_name);
+
+        // The assessment opened from it keeps the name in its internal notes.
+        $this->actingAs(User::factory()->administrator()->create())
+            ->get(route('vendor-assessments.create', ['request_id' => $request->id]))
+            ->assertInertia(fn (Assert $page) => $page->where('defaults.notes', fn (string $notes) => str_contains($notes, 'Direksi Pekerjaan: TAUHID ALI')));
+
+        $this->get(route('vendor-assessments.index'))
+            ->assertInertia(fn (Assert $page) => $page->where('requests.0.work_director_name', 'TAUHID ALI'));
     }
 
     public function test_the_contract_template_can_print_the_link(): void
@@ -195,6 +240,7 @@ class VendorAssessmentRequestTest extends TestCase
         return [
             'project' => 'Pemeliharaan Genset Unit 2',
             'vendor_name' => 'PT. Sinar Teknik',
+            'work_director_name' => 'MUSRIYADI',
             'contract_number' => 'KDD001.SPPL/100/UPKD/2026',
             'contract_date' => '2026-08-01',
             'term' => 'Termin 1 (100%)',

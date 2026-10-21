@@ -1951,31 +1951,23 @@ Bagian **Request Penilaian Vendor** ada di halaman Penilaian Penyedia, di atas d
 - **Cache:** `DocumentPdfRenderer::LAYOUT_VERSION` dinaikkan ke `'5'` supaya PDF lama dibuat ulang.
 - **Test:** `TableHeaderOncePerTableTest`. Test ini juga membuktikan perilaku lama: sebelum perbaikan, header tergambar sekali di setiap halaman.
 
-## Direksi Pekerjaan pada Penilaian Vendor
+## Direksi Pekerjaan pada Request Penilaian Vendor
 
-- **Field baru:** form **Buat Formulir Penilaian** dan dialog **Ubah Data** sekarang punya field **Direksi Pekerjaan**.
-  - Kolomnya `vendor_assessments.work_director_name`, berisi nama saja.
-  - Pilihannya diambil dari nama di lembar **Direksi Pekerjaan** (Data Master → Lembar Penilai, kode `direksi-pekerjaan`), tanpa nomor HP.
-  - Bila lembar itu tidak punya daftar nama, field menjadi isian bebas.
-  - Nilainya tampil di kepala halaman penilaian.
-- **Nama disaring menurut Tgl BASTP:** tiap nama di **Pilihan Nama Penilai** bisa diberi tanggal **Tidak muncul s.d. BASTP**.
-  - Disimpan di kolom JSON `assessment_forms.assessor_hidden_until`, dengan kunci nama tanpa nomor HP.
-  - Pada penilaian dengan Tgl BASTP **sampai dan termasuk** tanggal itu, nama tersebut tidak ditawarkan. Tanpa Tgl BASTP, semua nama ditawarkan.
-  - Penyaringan berlaku di field Direksi Pekerjaan, di dropdown Nama Penilai lembar Direksi Pekerjaan, dan di halaman tanda tangan WhatsApp.
-  - Validasi `App\Rules\OfferedWorkDirector` menolak nama yang belum menjabat pada Tgl BASTP tersebut.
-- **Isi awal dari migrasi** `add_work_director_to_vendor_assessments`:
-  - WINANDO PANDIANGAN: s.d. 1 Jul 2026
-  - TAUHID ALI: s.d. 1 Agu 2026
-  - TANWIR: s.d. 1 Sep 2026
-- **Sinkron dengan lembar Direksi Pekerjaan:**
-  - Nama Penilai lembar ini mengikuti Direksi Pekerjaan penilaian.
-  - Kalau penilai dipilih atau menandatangani lewat tautan, `work_director_name` ikut diperbarui.
-  - Cetakan memakai nama penilaian itu, bukan lagi "nama penilai terakhir" yang berlaku untuk semua penilaian.
-- **Helper model:** `AssessmentForm::nameOf()`, `optionsFor()`, `namesWithHiding()`, `optionNamed()`, `workDirectorSheet()`.
-- **Komponen:**
-  - `components/work-director-select.tsx`.
-  - Field `list` di `MasterDataPage` mendukung `rowDate` (tanggal per baris; di ponsel turun ke bawah nama).
-- **Test:** `VendorAssessmentWorkDirectorTest`.
+- **Field baru di form request publik** (`/permintaan-penilaian`): vendor wajib memilih **Direksi Pekerjaan**, letaknya tepat di bawah Tgl BAPP/BASTP.
+  - Pilihannya hanya nama (tanpa nomor HP), diambil dari daftar nama lembar **Direksi Pekerjaan** (Data Master → Lembar Penilai, kode `direksi-pekerjaan`).
+  - Disimpan di `vendor_assessment_requests.work_director_name`.
+  - Tampil di panel Request Penilaian Vendor.
+  - Saat dibuat penilaian, nama ini masuk ke **Catatan internal** ("Direksi Pekerjaan: …"), seperti Termin dan Nilai Tagihan.
+- **Nama disaring menurut Tgl BAPP/BASTP:** tiap nama di **Pilihan Nama Penilai** bisa diberi tanggal **Tidak muncul s.d. BASTP**.
+  - Disimpan di JSON `assessment_forms.assessor_hidden_until`, dengan kunci nama tanpa nomor HP.
+  - Nama tidak ditawarkan bila Tgl BASTP ≤ tanggal itu.
+  - Isi awal dari migrasi: WINANDO PANDIANGAN s.d. 1 Jul 2026, TAUHID ALI s.d. 1 Agu 2026, TANWIR s.d. 1 Sep 2026.
+  - Saringan yang sama berlaku di dropdown Nama Penilai lembar Direksi Pekerjaan dan halaman tanda tangan WhatsApp.
+  - Validasi `App\Rules\OfferedWorkDirector`.
+- **Dihapus (salah tangkap maksud):** field Direksi Pekerjaan di form admin Buat/Ubah Penilaian, beserta sinkronisasinya ke lembar dan cetakan.
+  - Kolom `vendor_assessments.work_director_name` dibuang lewat migrasi `drop_work_director_from_vendor_assessments`. Migrasi aman dijalankan, baik kolom itu sudah ada maupun belum.
+- **Helper dan komponen:** `AssessmentForm::nameOf()`, `optionsFor()`, `namesWithHiding()`, `workDirectorSheet()`; `components/work-director-select.tsx`; field `list` `MasterDataPage` dengan `rowDate`.
+- **Test:** `VendorAssessmentRequestTest`, `VendorAssessmentWorkDirectorTest`.
 
 ## Pratinjau PDF di Ponsel
 

@@ -12,9 +12,9 @@ use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 /**
- * Each assessment names its Direksi Pekerjaan, picked from the Direksi
- * Pekerjaan sheet by name only; one who took office later is not offered on
- * work handed over before then.
+ * A Direksi Pekerjaan who took office later is not offered on work handed
+ * over (BASTP) before then; the dates are set beside the names of the
+ * Direksi Pekerjaan sheet.
  */
 class VendorAssessmentWorkDirectorTest extends TestCase
 {
@@ -31,17 +31,6 @@ class VendorAssessmentWorkDirectorTest extends TestCase
             'TAUHID ALI' => '2026-08-01',
             'TANWIR' => '2026-09-01',
         ]]);
-    }
-
-    public function test_the_form_offers_the_names_without_phone_numbers(): void
-    {
-        $this->actingAs(User::factory()->administrator()->create())
-            ->get(route('vendor-assessments.create'))
-            ->assertInertia(fn (Assert $page) => $page
-                ->where('workDirectors', fn (Collection $names) => $names->pluck('name')->contains('TAUHID ALI')
-                    && $names->pluck('name')->every(fn (string $name) => ! str_contains($name, '('))
-                    && $names->firstWhere('name', 'TAUHID ALI')['hidden_until'] === '2026-08-01'
-                    && $names->firstWhere('name', 'MUSRIYADI')['hidden_until'] === null));
     }
 
     public function test_a_name_is_hidden_up_to_and_including_its_date(): void
@@ -61,83 +50,31 @@ class VendorAssessmentWorkDirectorTest extends TestCase
         $this->assertCount(9, $sheet->optionsFor(null));
     }
 
-    public function test_an_assessment_is_saved_with_its_direksi_pekerjaan(): void
-    {
-        $this->actingAs(User::factory()->administrator()->create())
-            ->post(route('vendor-assessments.store'), $this->header([
-                'bastp_date' => '2026-08-15',
-                'work_director_name' => 'TAUHID ALI',
-            ]))
-            ->assertRedirect();
-
-        $this->assertSame('TAUHID ALI', VendorAssessment::query()->sole()->work_director_name);
-    }
-
-    public function test_a_name_not_yet_in_office_by_the_bastp_date_is_refused(): void
-    {
-        $this->actingAs(User::factory()->administrator()->create())
-            ->post(route('vendor-assessments.store'), $this->header([
-                'bastp_date' => '2026-08-01',
-                'work_director_name' => 'TAUHID ALI',
-            ]))
-            ->assertSessionHasErrors('work_director_name');
-
-        $this->actingAs(User::factory()->administrator()->create())
-            ->post(route('vendor-assessments.store'), $this->header([
-                'bastp_date' => '2026-08-01',
-                'work_director_name' => 'ORANG LAIN',
-            ]))
-            ->assertSessionHasErrors('work_director_name');
-
-        $this->assertSame(0, VendorAssessment::query()->count());
-    }
-
-    public function test_the_direksi_sheet_starts_on_the_chosen_name_and_hides_later_ones(): void
+    public function test_the_direksi_sheet_hides_names_not_yet_in_office(): void
     {
         $administrator = User::factory()->administrator()->create();
 
         $this->actingAs($administrator)
-            ->post(route('vendor-assessments.store'), $this->header([
+            ->post(route('vendor-assessments.store'), [
+                'project' => 'Pemeliharaan Genset Unit 2',
+                'vendor_name' => 'PT. Sinar Teknik',
                 'bastp_date' => '2026-07-15',
-                'work_director_name' => 'MUSRIYADI',
-            ]));
-
-        $assessment = VendorAssessment::query()->sole();
+                'has_penalty' => false,
+                'form_number' => 'SMT-FM-DAN-02.02',
+                'revision_number' => '03',
+                'place' => 'Kendari',
+            ]);
 
         $this->actingAs($administrator)
-            ->get(route('vendor-assessments.show', $assessment))
+            ->get(route('vendor-assessments.show', VendorAssessment::query()->sole()))
             ->assertInertia(fn (Assert $page) => $page
-                ->where('assessment.work_director_name', 'MUSRIYADI')
                 ->where('forms', function (Collection $forms): bool {
-                    $sheet = $forms->firstWhere('code', AssessmentForm::WORK_DIRECTOR);
-                    $options = collect($sheet['assessor_options']);
+                    $options = collect($forms->firstWhere('code', AssessmentForm::WORK_DIRECTOR)['assessor_options']);
 
-                    return $sheet['assessor_name'] === 'MUSRIYADI (081342934948)'
-                        && $options->contains('WINANDO PANDIANGAN (082194498674)')
+                    return $options->contains('WINANDO PANDIANGAN (082194498674)')
                         && ! $options->contains('TAUHID ALI (081943643752)')
                         && ! $options->contains('TANWIR (081242150778)');
                 }));
-    }
-
-    public function test_signing_the_direksi_sheet_updates_the_assessments_direksi_pekerjaan(): void
-    {
-        $administrator = User::factory()->administrator()->create();
-
-        $this->actingAs($administrator)
-            ->post(route('vendor-assessments.store'), $this->header(['bastp_date' => '2026-10-01']));
-
-        $assessment = VendorAssessment::query()->sole();
-        $sheet = $this->sheet();
-        $aspect = $sheet->aspects->first();
-
-        $this->actingAs($administrator)
-            ->put(route('vendor-assessments.scores.update', [$assessment, $sheet]), [
-                'assessor_name' => 'TANWIR (081242150778)',
-                'scores' => [['aspect_id' => $aspect->id, 'level' => 4]],
-            ])
-            ->assertRedirect();
-
-        $this->assertSame('TANWIR', $assessment->fresh()?->work_director_name);
     }
 
     public function test_the_dates_are_set_beside_the_names_in_master_data(): void
@@ -171,24 +108,5 @@ class VendorAssessmentWorkDirectorTest extends TestCase
     protected function sheet(): AssessmentForm
     {
         return AssessmentForm::query()->where('code', AssessmentForm::WORK_DIRECTOR)->firstOrFail();
-    }
-
-    /**
-     * A complete assessment header.
-     *
-     * @param  array<string, mixed>  $overrides
-     * @return array<string, mixed>
-     */
-    protected function header(array $overrides = []): array
-    {
-        return [
-            'project' => 'Pemeliharaan Genset Unit 2',
-            'vendor_name' => 'PT. Sinar Teknik',
-            'has_penalty' => false,
-            'form_number' => 'SMT-FM-DAN-02.02',
-            'revision_number' => '03',
-            'place' => 'Kendari',
-            ...$overrides,
-        ];
     }
 }

@@ -169,15 +169,9 @@ class VendorAssessmentRenderer
             /** @var VendorAssessmentInvitation|null $invitation */
             $invitation = $assessment->invitations->firstWhere('assessment_form_id', $form->id);
 
-            // The Direksi Pekerjaan sheet is signed by the assessment's own
-            // Direksi Pekerjaan unless someone else signed it through the link.
-            $standing = $form->code === AssessmentForm::WORK_DIRECTOR && filled($assessment->work_director_name)
-                ? $assessment->work_director_name
-                : $form->assessor_name;
-
             $name = e($invitation === null
-                ? (string) $standing
-                : (string) ($invitation->assessor_name ?? $standing));
+                ? (string) $form->assessor_name
+                : (string) ($invitation->assessor_name ?? $form->assessor_name));
 
             $name = preg_replace('/\s*\([^)]*\)/', '', $name);
         }

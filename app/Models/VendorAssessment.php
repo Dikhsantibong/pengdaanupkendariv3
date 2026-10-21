@@ -23,7 +23,6 @@ use Illuminate\Support\Collection;
  * @property string|null $amendment_number
  * @property CarbonImmutable|null $bastp_date
  * @property string $vendor_name
- * @property string|null $work_director_name The Direksi Pekerjaan who assesses the work, by name only.
  * @property bool $has_penalty
  * @property string $form_number
  * @property string $revision_number
@@ -43,7 +42,6 @@ use Illuminate\Support\Collection;
     'amendment_number',
     'bastp_date',
     'vendor_name',
-    'work_director_name',
     'has_penalty',
     'form_number',
     'revision_number',

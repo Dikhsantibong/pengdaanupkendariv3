@@ -115,24 +115,6 @@ class AssessmentForm extends Model
     }
 
     /**
-     * The option (name with phone) a bare name stands for, if any.
-     */
-    public function optionNamed(?string $name): ?string
-    {
-        if ($name === null || $name === '') {
-            return null;
-        }
-
-        foreach ($this->assessor_options ?? [] as $option) {
-            if (mb_strtoupper(self::nameOf($option)) === mb_strtoupper(trim($name))) {
-                return $option;
-            }
-        }
-
-        return null;
-    }
-
-    /**
      * The aspects this sheet scores, in the order they are printed.
      *
      * @return BelongsToMany<AssessmentAspect, $this>

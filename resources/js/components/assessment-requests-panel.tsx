@@ -12,6 +12,7 @@ export type AssessmentRequestRow = {
     status: 'submitted' | 'processed';
     project: string;
     vendor_name: string;
+    work_director_name: string | null;
     contract_number: string;
     contract_date: string;
     term: string;
@@ -164,6 +165,10 @@ function RequestItem({ row }: { row: AssessmentRequestRow }) {
             <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2 lg:grid-cols-3">
                 <Detail label="Pekerjaan" value={row.project} />
                 <Detail label="Pelaksana" value={row.vendor_name} />
+                <Detail
+                    label="Direksi Pekerjaan"
+                    value={row.work_director_name ?? ''}
+                />
                 <Detail label="No Kontrak/DO" value={row.contract_number} />
                 <Detail
                     label="Tgl. Kontrak"
