@@ -56,6 +56,9 @@ export function WorkDirectorSelect({
         (director) => director.name.toUpperCase() === value.toUpperCase(),
     );
     const hiddenCount = names.length - offered.length;
+    // Who may be chosen hangs on the BASTP date, so the date comes first.
+    const awaitsDate =
+        !bastpDate && names.some((director) => director.hidden_until !== null);
 
     return (
         <div className="grid gap-2">
@@ -70,13 +73,21 @@ export function WorkDirectorSelect({
                 />
             ) : (
                 <Select
-                    value={value === '' ? NONE : value}
+                    disabled={awaitsDate}
+                    // Empty while locked, so the trigger shows why.
+                    value={awaitsDate ? '' : value === '' ? NONE : value}
                     onValueChange={(next) =>
                         onChange(next === NONE ? '' : next)
                     }
                 >
                     <SelectTrigger id="work_director_name" className="w-full">
-                        <SelectValue placeholder="Pilih direksi pekerjaan" />
+                        <SelectValue
+                            placeholder={
+                                awaitsDate
+                                    ? 'Isi Tgl BAPP/BASTP terlebih dahulu'
+                                    : 'Pilih direksi pekerjaan'
+                            }
+                        />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value={NONE}>Belum dipilih</SelectItem>
@@ -95,7 +106,12 @@ export function WorkDirectorSelect({
                     </SelectContent>
                 </Select>
             )}
-            {value !== '' && names.length > 0 && !isOffered ? (
+            {awaitsDate ? (
+                <p className="text-xs text-muted-foreground">
+                    Isi Tgl BAPP/BASTP terlebih dahulu; nama yang tampil
+                    menyesuaikan tanggal tersebut.
+                </p>
+            ) : value !== '' && names.length > 0 && !isOffered ? (
                 <p className="text-xs text-amber-700 dark:text-amber-400">
                     {value} belum menjabat pada Tgl BASTP{' '}
                     {bastpDate ? formatDate(bastpDate) : ''}. Pilih nama lain.

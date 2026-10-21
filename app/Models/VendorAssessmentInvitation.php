@@ -109,23 +109,33 @@ class VendorAssessmentInvitation extends Model
      *
      * Nothing is sent from the server: the administrator presses send in their
      * own WhatsApp, which keeps the unit's number and consent in their hands.
+     * The one message every sheet is sent with, wherever the button sits.
      */
     public function whatsappUrl(string $project, string $vendor): string
     {
-        $lines = [
-            'Yth. '.($this->recipient_name ?? 'Bapak/Ibu').',',
+        $assessment = $this->assessment;
+        $date = fn (?CarbonImmutable $value): string => $value?->translatedFormat('d M Y') ?? '-';
+
+        $lines = array_values(array_filter([
+            'Yth Bapak/Ibu.',
+            $this->recipient_name ?: 'Tim Penilai',
             '',
             'Mohon kesediaannya mengisi Formulir Penilaian Kinerja Penyedia Barang dan Jasa:',
             'Pekerjaan: '.$project,
             'Penyedia: '.$vendor,
+            'Tanggal Kontrak: '.$date($assessment?->po_date),
+            $assessment?->amendment_number ? 'Amandemen: '.$assessment->amendment_number : null,
+            'Tanggal BASTP: '.$date($assessment?->bastp_date),
+            'Denda: '.($assessment?->has_penalty ? 'Ada' : 'Tidak Ada'),
             'Lembar: '.$this->form->name,
             '',
             'Silakan buka tautan berikut untuk mengisi nilai dan tanda tangan:',
             $this->url(),
             '',
             'Terima kasih.',
+            'Tim Pengadaan',
             'PT PLN Nusantara Power UP Kendari',
-        ];
+        ], fn (?string $line): bool => $line !== null));
 
         $phone = preg_replace('/\D+/', '', (string) $this->recipient_phone);
 

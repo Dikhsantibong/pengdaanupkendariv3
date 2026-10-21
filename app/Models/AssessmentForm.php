@@ -74,6 +74,47 @@ class AssessmentForm extends Model
     }
 
     /**
+     * The phone number written after a name, if there is one: "TAUHID ALI
+     * (0819…)" gives "0819…".
+     */
+    public static function phoneOf(string $option): ?string
+    {
+        return preg_match('/\(([^)]*)\)\s*$/', $option, $match) === 1 && trim($match[1]) !== ''
+            ? trim($match[1])
+            : null;
+    }
+
+    /**
+     * Who a sheet is sent to when nobody picks: the first name offered for
+     * the BASTP date; on the Direksi Pekerjaan sheet, the name the vendor
+     * gave on the request, or nobody until one is picked. A sheet without a
+     * list goes to its standing assessor, with no number to send to.
+     *
+     * @return array{name: string|null, phone: string|null}
+     */
+    public function recipientFor(?CarbonInterface $bastpDate, ?string $workDirector = null): array
+    {
+        $options = $this->optionsFor($bastpDate);
+
+        if ($this->code === self::WORK_DIRECTOR) {
+            $wanted = mb_strtoupper(trim((string) $workDirector));
+            $options = array_values(array_filter(
+                $options,
+                fn (string $option): bool => $wanted !== '' && mb_strtoupper(self::nameOf($option)) === $wanted,
+            ));
+        }
+
+        if ($options === []) {
+            return [
+                'name' => $this->code === self::WORK_DIRECTOR || ($this->assessor_options ?? []) !== [] ? null : $this->assessor_name,
+                'phone' => null,
+            ];
+        }
+
+        return ['name' => self::nameOf($options[0]), 'phone' => self::phoneOf($options[0])];
+    }
+
+    /**
      * The last BASTP date one name stays hidden on, if it has one.
      */
     public function hiddenUntil(string $option): ?string

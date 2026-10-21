@@ -1,5 +1,12 @@
 import { Link, router } from '@inertiajs/react';
-import { Check, ClipboardPlus, Copy, ExternalLink, Trash2 } from 'lucide-react';
+import {
+    Check,
+    ClipboardPlus,
+    Copy,
+    ExternalLink,
+    MessageCircle,
+    Trash2,
+} from 'lucide-react';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -137,6 +144,18 @@ export function AssessmentRequestsPanel({
 
 function RequestItem({ row }: { row: AssessmentRequestRow }) {
     const status = STATUS[row.status];
+    const [processing, setProcessing] = useState(false);
+
+    // One click: the assessment and a WhatsApp link for every sheet.
+    const process = () =>
+        router.post(
+            vendorAssessments.requests.process(row.id).url,
+            {},
+            {
+                onStart: () => setProcessing(true),
+                onFinish: () => setProcessing(false),
+            },
+        );
 
     const remove = () => {
         if (window.confirm('Hapus request ini dari daftar?')) {
@@ -192,16 +211,29 @@ function RequestItem({ row }: { row: AssessmentRequestRow }) {
 
             <div className="flex flex-wrap gap-2">
                 {row.vendor_assessment_id === null ? (
-                    <Button asChild size="sm">
-                        <Link
-                            href={vendorAssessments.create({
-                                query: { request_id: row.id },
-                            })}
+                    <>
+                        <Button
+                            size="sm"
+                            onClick={process}
+                            disabled={processing}
+                            className="bg-green-600 text-white hover:bg-green-700"
                         >
-                            <ClipboardPlus className="size-4" />
-                            Buat Penilaian
-                        </Link>
-                    </Button>
+                            <MessageCircle className="size-4" />
+                            {processing
+                                ? 'Memproses…'
+                                : 'Proses & Siapkan WhatsApp'}
+                        </Button>
+                        <Button asChild size="sm" variant="outline">
+                            <Link
+                                href={vendorAssessments.create({
+                                    query: { request_id: row.id },
+                                })}
+                            >
+                                <ClipboardPlus className="size-4" />
+                                Buat Penilaian
+                            </Link>
+                        </Button>
+                    </>
                 ) : (
                     <Button asChild size="sm" variant="outline">
                         <Link

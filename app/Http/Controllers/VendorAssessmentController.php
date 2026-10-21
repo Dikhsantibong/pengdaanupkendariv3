@@ -429,6 +429,26 @@ class VendorAssessmentController extends Controller
     }
 
     /**
+     * Ready a signing link for every sheet that has none yet, each to its
+     * default assessor.
+     */
+    public function issueAllLinks(Request $request, VendorAssessment $assessment): RedirectResponse
+    {
+        // The request it came from may name the Direksi Pekerjaan.
+        $workDirector = VendorAssessmentRequest::query()
+            ->where('vendor_assessment_id', $assessment->id)
+            ->value('work_director_name');
+
+        $count = $this->signing->issueForEverySheet($assessment, $request->user(), $workDirector);
+
+        Inertia::flash('toast', $count === 0
+            ? ['type' => 'info', 'message' => 'Semua lembar sudah punya tautan.']
+            : ['type' => 'success', 'message' => "{$count} tautan siap dikirim lewat WhatsApp."]);
+
+        return back();
+    }
+
+    /**
      * Withdraw the signing link for one sheet.
      */
     public function revokeLink(

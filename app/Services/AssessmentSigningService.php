@@ -71,6 +71,44 @@ class AssessmentSigningService
     }
 
     /**
+     * Issue a link for every active sheet that has none yet and is not scored
+     * in full, each to the assessor its sheet names by default (see
+     * AssessmentForm::recipientFor).
+     * Links already issued are left as they are.
+     *
+     * @return int How many links were issued.
+     */
+    public function issueForEverySheet(
+        VendorAssessment $assessment,
+        User $author,
+        ?string $workDirector = null,
+    ): int {
+        $issued = $assessment->invitations()->pluck('assessment_form_id')->all();
+        $count = 0;
+
+        AssessmentForm::query()
+            ->active()
+            ->ordered()
+            ->whereNotIn('id', $issued)
+            ->get()
+            ->each(function (AssessmentForm $form) use ($assessment, $author, $workDirector, &$count): void {
+                $scores = $assessment->scores()->where('assessment_form_id', $form->id);
+
+                // A sheet already scored in full has nobody left to ask.
+                if ($scores->exists() && ! (clone $scores)->whereNull('level')->exists()) {
+                    return;
+                }
+
+                $recipient = $form->recipientFor($assessment->bastp_date, $workDirector);
+
+                $this->issue($assessment, $form, $author, $recipient['name'], $recipient['phone']);
+                $count++;
+            });
+
+        return $count;
+    }
+
+    /**
      * Withdraw a link without issuing a replacement.
      */
     public function revoke(VendorAssessmentInvitation $invitation): void

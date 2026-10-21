@@ -1951,6 +1951,27 @@ Bagian **Request Penilaian Vendor** ada di halaman Penilaian Penyedia, di atas d
 - **Cache:** `DocumentPdfRenderer::LAYOUT_VERSION` dinaikkan ke `'5'` supaya PDF lama dibuat ulang.
 - **Test:** `TableHeaderOncePerTableTest`. Test ini juga membuktikan perilaku lama: sebelum perbaikan, header tergambar sekali di setiap halaman.
 
+## Proses Request Penilaian Sekali Klik & Panel Kirim ke Penilai
+
+- **Tombol Proses & Siapkan WhatsApp** ada di setiap request baru (panel Request Penilaian Vendor). Rutenya `vendor-assessments.requests.process` (`POST penilaian-penyedia/permintaan/{id}/proses`). Sekali klik:
+  1. Membuat formulir penilaian dari data request, sama dengan isian otomatis form Buat Penilaian. Tgl Formulir memakai `VendorAssessmentRequestController::FORM_DATE` = 2024-06-10, seperti yang diisi form itu.
+  2. Menautkan request ke penilaiannya, sehingga request pindah ke folder mitra.
+  3. Membuat tautan tanda tangan untuk setiap lembar aktif lewat `AssessmentSigningService::issueForEverySheet()`. Penerimanya ditentukan `AssessmentForm::recipientFor()`:
+     - **Lembar dengan pilihan nama:** nama pertama yang berlaku pada Tgl BASTP. Contohnya lembar Pengadaan: FIRMAN.
+     - **Direksi Pekerjaan:** nama yang dipilih vendor di request, lengkap dengan nomornya. Kalau request tidak memilih, lembar ini dibuat tanpa penerima.
+     - **Lembar tanpa daftar:** nama penilai tetap, tanpa nomor.
+  4. Membuka halaman penilaian.
+  - Request yang sudah diproses hanya diarahkan ke penilaiannya, tanpa membuat penilaian kedua.
+  - Tombol **Buat Penilaian** (cek dan ubah isian dulu) tetap ada.
+- **Panel Kirim ke Penilai** (`components/assessment-send-panel.tsx`) ada di halaman penilaian, di atas tab. Isinya satu daftar semua lembar: penerima dan nomornya, status, tombol **Kirim WA**, dan ✎ untuk membuka tab lembar itu (tempat mengganti penerima).
+  - **Status:** Sudah ditandatangani / Sudah dinilai / Belum ada tautan / Tautan dibatalkan / Kedaluwarsa / Sudah dibuka penilai / Penerima belum dipilih / Nomor belum ada / Terkirim, belum dibuka / Siap dikirim.
+  - **Kirim berikutnya:** membuka WhatsApp untuk lembar berikutnya yang belum dikirim dari browser ini. Tanda "terkirim" disimpan di localStorage `vendor-assessment-sent:{id}`, karena database tidak mencatat pengiriman lewat WhatsApp.
+  - **Siapkan Tautan (n):** muncul kalau ada lembar tanpa tautan. Rutenya `vendor-assessments.links.store-all` (`POST penilaian-penyedia/{id}/tautan`). Hanya membuat tautan yang belum ada; tautan yang sudah ada dan lembar yang sudah dinilai penuh tidak disentuh.
+  - Lembar yang sudah dinilai penuh dihitung selesai dan tidak dikirimi.
+- **Pesan WhatsApp disatukan:** `VendorAssessmentInvitation::whatsappUrl()` kini memuat Tanggal Kontrak, Amandemen, Tanggal BASTP, Denda, dan Lembar. Panel per lembar memakai `whatsapp_url` dari server, bukan lagi menyusun pesan sendiri.
+- **Database:** tidak ada perubahan.
+- **Test:** `VendorAssessmentRequestProcessTest`.
+
 ## Direksi Pekerjaan pada Request Penilaian Vendor
 
 - **Field baru di form request publik** (`/permintaan-penilaian`): vendor wajib memilih **Direksi Pekerjaan**, letaknya tepat di bawah Tgl BAPP/BASTP.
@@ -1960,7 +1981,7 @@ Bagian **Request Penilaian Vendor** ada di halaman Penilaian Penyedia, di atas d
   - Saat dibuat penilaian, nama ini masuk ke **Catatan internal** ("Direksi Pekerjaan: …"), seperti Termin dan Nilai Tagihan.
 - **Nama disaring menurut Tgl BAPP/BASTP:** tiap nama di **Pilihan Nama Penilai** bisa diberi tanggal **Tidak muncul s.d. BASTP**.
   - Disimpan di JSON `assessment_forms.assessor_hidden_until`, dengan kunci nama tanpa nomor HP.
-  - Nama tidak ditawarkan bila Tgl BASTP ≤ tanggal itu.
+  - Nama tidak ditawarkan bila Tgl BASTP ≤ tanggal itu. Selama Tgl BAPP/BASTP belum diisi, pilihan Direksi Pekerjaan **terkunci** ("Isi Tgl BAPP/BASTP terlebih dahulu"), supaya nama yang dibatasi tanggal tidak sempat tampil.
   - Isi awal dari migrasi: WINANDO PANDIANGAN s.d. 1 Jul 2026, TAUHID ALI s.d. 1 Agu 2026, TANWIR s.d. 1 Sep 2026.
   - Saringan yang sama berlaku di dropdown Nama Penilai lembar Direksi Pekerjaan dan halaman tanda tangan WhatsApp.
   - Validasi `App\Rules\OfferedWorkDirector`.

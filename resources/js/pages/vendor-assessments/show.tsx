@@ -13,6 +13,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
+import { AssessmentSendPanel } from '@/components/assessment-send-panel';
 import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -147,6 +148,13 @@ export default function ShowVendorAssessment({
     akumulasiUrl: string;
     printAllUrl: string;
 }) {
+    const [tab, setTab] = useState('rekap');
+    const tabsRef = useRef<HTMLDivElement>(null);
+    const openSheet = (code: string) => {
+        setTab(code);
+        tabsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
     const printUrl = (formId?: number) =>
         vendorAssessments.print(
             formId === undefined
@@ -300,7 +308,19 @@ export default function ShowVendorAssessment({
                     <Field label="Catatan" value={assessment.notes || '—'} />
                 </dl>
 
-                <Tabs defaultValue="rekap">
+                <AssessmentSendPanel
+                    assessmentId={assessment.id}
+                    sheets={forms}
+                    onEdit={openSheet}
+                />
+
+                <Tabs
+                    ref={tabsRef}
+                    defaultValue="rekap"
+                    value={tab}
+                    onValueChange={setTab}
+                    className="scroll-mt-4"
+                >
                     <TabsList className="flex-wrap h-auto">
                         <TabsTrigger value="rekap">Akumulasi</TabsTrigger>
                         {forms.map((sheet) => (
@@ -471,31 +491,8 @@ function SigningLinkPanel({
         normalizePhone(phone) !== (invitation.recipient_phone ?? '')
     );
 
-    let whatsappUrl = null;
-    if (invitation !== null && invitation.recipient_phone !== null) {
-        const lines = [
-            'Yth Bapak/Ibu.',
-            invitation.recipient_name ? invitation.recipient_name : 'Tim Penilai',
-            '',
-            'Mohon kesediaannya mengisi Formulir Penilaian Kinerja Penyedia Barang dan Jasa:',
-            `Pekerjaan: ${assessment.project}`,
-            `Penyedia: ${assessment.vendor_name}`,
-            `Tanggal Kontrak: ${assessment.po_date ? formatDate(assessment.po_date) : '-'}`,
-            assessment.amendment_number ? `Amandemen: ${assessment.amendment_number}` : null,
-            `Tanggal BASTP: ${assessment.bastp_date ? formatDate(assessment.bastp_date) : '-'}`,
-            `Denda: ${assessment.has_penalty ? 'Ada' : 'Tidak Ada'}`,
-            `Lembar: ${sheet.name}`,
-            '',
-            'Silakan buka tautan berikut untuk mengisi nilai dan tanda tangan:',
-            invitation.url,
-            '',
-            'Terima kasih.',
-            'Tim Pengadaan',
-            'PT PLN Nusantara Power UP Kendari',
-        ].filter(Boolean);
-        const rawPhone = invitation.recipient_phone.replace(/\D+/g, '');
-        whatsappUrl = `https://wa.me/${rawPhone}?text=${encodeURIComponent(lines.join('\n'))}`;
-    }
+    // The message is written by the server, the same for every sheet.
+    const whatsappUrl = invitation?.whatsapp_url ?? null;
 
     return (
         <div className="border-b border-border bg-muted/30 p-4">

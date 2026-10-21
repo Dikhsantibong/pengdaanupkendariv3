@@ -18,6 +18,9 @@ Route::middleware(['auth', 'verified', 'can:manage-vendor-assessments'])
         // Invoice details sent in by vendors through the fixed request link.
         Route::delete('permintaan/{assessmentRequest}', [VendorAssessmentRequestController::class, 'destroy'])
             ->name('requests.destroy');
+        // One click: the assessment and a signing link for every sheet.
+        Route::post('permintaan/{assessmentRequest}/proses', [VendorAssessmentRequestController::class, 'process'])
+            ->name('requests.process');
         Route::post('/', [VendorAssessmentController::class, 'store'])->name('store');
         Route::get('{assessment}', [VendorAssessmentController::class, 'show'])->name('show');
         Route::put('{assessment}', [VendorAssessmentController::class, 'update'])->name('update');
@@ -34,6 +37,8 @@ Route::middleware(['auth', 'verified', 'can:manage-vendor-assessments'])
             ->name('links.store');
         Route::delete('{assessment}/forms/{form}/tautan', [VendorAssessmentController::class, 'revokeLink'])
             ->name('links.destroy');
+        Route::post('{assessment}/tautan', [VendorAssessmentController::class, 'issueAllLinks'])
+            ->name('links.store-all');
     });
 
 // Public signed URL: panitia downloads the merged PDF without logging in.
