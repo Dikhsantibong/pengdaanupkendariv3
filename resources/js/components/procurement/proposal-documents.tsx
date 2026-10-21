@@ -117,7 +117,7 @@ export function ProposalDocuments({
                 </div>
             )}
 
-            <div className="overflow-hidden rounded-md border border-border bg-card">
+            <div className="@container overflow-hidden rounded-md border border-border bg-card">
                 <header className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-xs text-muted-foreground">
                         Dokumen usulan yang diunggah{' '}
@@ -154,7 +154,7 @@ export function ProposalDocuments({
 
                 <div
                     aria-hidden="true"
-                    className="hidden grid-cols-[2.25rem_minmax(0,1.2fr)_minmax(0,1.6fr)_10rem_16.5rem] gap-3 border-b border-border bg-muted/40 px-4 py-2 text-[0.6875rem] font-semibold tracking-wide text-muted-foreground uppercase md:grid"
+                    className="hidden grid-cols-[2.25rem_minmax(0,1.2fr)_minmax(0,1.6fr)_10rem_16.5rem] gap-3 border-b border-border bg-muted/40 px-4 py-2 text-[0.6875rem] font-semibold tracking-wide text-muted-foreground uppercase @4xl:grid"
                 >
                     <span>No</span>
                     <span>Dokumen</span>
@@ -182,7 +182,7 @@ export function ProposalDocuments({
                                     }
                                 }}
                                 className={cn(
-                                    'grid cursor-pointer grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3 gap-y-2 px-4 py-3 transition-colors hover:bg-muted/40 md:grid-cols-[2.25rem_minmax(0,1.2fr)_minmax(0,1.6fr)_10rem_16.5rem] md:items-center',
+                                    'grid cursor-pointer grid-cols-[2.25rem_minmax(0,1fr)] gap-x-3 gap-y-2 px-4 py-3 transition-colors hover:bg-muted/40 @4xl:grid-cols-[2.25rem_minmax(0,1.2fr)_minmax(0,1.6fr)_10rem_16.5rem] @4xl:items-center',
                                     isNext &&
                                         'bg-primary/[0.03] shadow-[inset_3px_0_0_var(--primary)]',
                                 )}
@@ -212,7 +212,7 @@ export function ProposalDocuments({
                                     {document.type_name}
                                 </button>
 
-                                <div className="col-start-2 min-w-0 text-xs md:col-start-auto">
+                                <div className="col-start-2 min-w-0 text-xs @4xl:col-start-auto">
                                     <p
                                         className={
                                             state === 'done'
@@ -230,11 +230,11 @@ export function ProposalDocuments({
                                     )}
                                 </div>
 
-                                <div className="col-start-2 md:col-start-auto">
+                                <div className="col-start-2 @4xl:col-start-auto">
                                     <StateBadge state={state} />
                                 </div>
 
-                                <div className="col-start-2 flex items-center gap-1 md:col-start-auto md:justify-end">
+                                <div className="col-start-2 flex items-center gap-1 @4xl:col-start-auto @4xl:justify-end">
                                     <Button
                                         size="sm"
                                         variant={

@@ -340,7 +340,7 @@ function OptionFilter({
     onChange: (value: number | null) => void;
 }) {
     return (
-        <div className="w-full space-y-1.5 sm:w-auto sm:min-w-24 sm:flex-[1_1_auto]">
+        <div className="w-full space-y-1.5 sm:w-auto sm:min-w-28 sm:flex-[1_1_auto]">
             <Label className="section-label">{label}</Label>
             <Select
                 value={value === null ? ALL : String(value)}

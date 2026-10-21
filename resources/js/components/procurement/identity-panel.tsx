@@ -232,31 +232,35 @@ function FieldGroup({ title, fields }: { title: string; fields: Field[] }) {
 /** Label above value, several to a row, so many fit in little height. */
 function FieldGrid({ fields }: { fields: Field[] }) {
     return (
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-4 py-3 sm:grid-cols-3 xl:grid-cols-4">
-            {fields.map((field) => (
-                <div
-                    key={field.label}
-                    className={`min-w-0 ${field.wide ? 'col-span-2 sm:col-span-3 xl:col-span-4' : ''}`}
-                >
-                    <dt className="text-[0.6875rem] tracking-wide text-muted-foreground uppercase">
-                        {field.label}
-                    </dt>
-                    <dd
-                        className={`tabular text-sm font-medium text-foreground ${
-                            typeof field.value === 'string' && !field.wide
-                                ? 'truncate'
-                                : ''
-                        }`}
-                        title={
-                            typeof field.value === 'string'
-                                ? field.value
-                                : undefined
-                        }
+        // As many to a row as the card has room for, not the screen: beside
+        // the side panel a tablet's card is narrow.
+        <div className="@container">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-4 py-3 @xl:grid-cols-3 @3xl:grid-cols-4">
+                {fields.map((field) => (
+                    <div
+                        key={field.label}
+                        className={`min-w-0 ${field.wide ? 'col-span-2 @xl:col-span-3 @3xl:col-span-4' : ''}`}
                     >
-                        {field.value}
-                    </dd>
-                </div>
-            ))}
-        </dl>
+                        <dt className="text-[0.6875rem] tracking-wide text-muted-foreground uppercase">
+                            {field.label}
+                        </dt>
+                        <dd
+                            className={`tabular text-sm font-medium text-foreground ${
+                                typeof field.value === 'string' && !field.wide
+                                    ? 'truncate'
+                                    : ''
+                            }`}
+                            title={
+                                typeof field.value === 'string'
+                                    ? field.value
+                                    : undefined
+                            }
+                        >
+                            {field.value}
+                        </dd>
+                    </div>
+                ))}
+            </dl>
+        </div>
     );
 }

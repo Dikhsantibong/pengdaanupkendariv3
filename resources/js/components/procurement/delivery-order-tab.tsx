@@ -363,10 +363,10 @@ export function DeliveryOrderTab({
                         : ''}
                 </p>
             ) : (
-                <div className="overflow-hidden rounded-md border border-border bg-card">
+                <div className="@container overflow-hidden rounded-md border border-border bg-card">
                     <div
                         aria-hidden="true"
-                        className="hidden grid-cols-[minmax(0,0.7fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.5fr)_10rem] gap-3 border-b border-border bg-muted/40 px-4 py-2 text-[0.6875rem] font-semibold tracking-wide text-muted-foreground uppercase md:grid"
+                        className="hidden grid-cols-[minmax(0,0.7fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.5fr)_10rem] gap-3 border-b border-border bg-muted/40 px-4 py-2 text-[0.6875rem] font-semibold tracking-wide text-muted-foreground uppercase @3xl:grid"
                     >
                         <span>DO</span>
                         <span>Nomor &amp; tanggal</span>
@@ -439,7 +439,7 @@ function OrderRow({
                 }
             }}
             className={cn(
-                'grid cursor-pointer gap-x-3 gap-y-1.5 px-4 py-3 transition-colors hover:bg-muted/40 md:grid-cols-[minmax(0,0.7fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.5fr)_10rem] md:items-center',
+                'grid cursor-pointer gap-x-3 gap-y-1.5 px-4 py-3 transition-colors hover:bg-muted/40 @3xl:grid-cols-[minmax(0,0.7fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.5fr)_10rem] @3xl:items-center',
                 highlighted &&
                     'bg-primary/[0.03] shadow-[inset_3px_0_0_var(--primary)]',
             )}
@@ -487,7 +487,7 @@ function OrderRow({
                     returned={order.state === 'dikembalikan'}
                 />
             </div>
-            <div className="flex items-center gap-1 md:justify-end">
+            <div className="flex items-center gap-1 @3xl:justify-end">
                 <Button
                     size="sm"
                     variant={
@@ -825,7 +825,7 @@ function ContractItemsSection({
 
             {editing ? (
                 <form
-                    className="space-y-2"
+                    className="@container space-y-2"
                     onSubmit={(event) => {
                         event.preventDefault();
                         form.put(
@@ -857,7 +857,7 @@ function ContractItemsSection({
                     {form.data.items.map((row, index) => (
                         <div
                             key={index}
-                            className="grid items-start gap-2 rounded-sm border border-border p-2 md:grid-cols-[1.2fr_2fr_1fr_0.7fr_1fr_auto]"
+                            className="grid items-start gap-2 rounded-sm border border-border p-2 @2xl:grid-cols-[1.2fr_2fr_1fr_0.7fr_1fr_auto]"
                         >
                             <Input
                                 placeholder="Kelompok (opsional)"

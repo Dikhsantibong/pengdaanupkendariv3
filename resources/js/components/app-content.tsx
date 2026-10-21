@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { SidebarInset } from '@/components/ui/sidebar';
+import { cn } from '@/lib/utils';
 import type { AppVariant } from '@/types';
 
 type Props = React.ComponentProps<'main'> & {
@@ -8,7 +9,13 @@ type Props = React.ComponentProps<'main'> & {
 
 export function AppContent({ variant = 'sidebar', children, ...props }: Props) {
     if (variant === 'sidebar') {
-        return <SidebarInset {...props}>{children}</SidebarInset>;
+        // min-w-0: beside the sidebar the page may be narrower than a wide
+        // table; the table scrolls in its own box instead of the whole page.
+        return (
+            <SidebarInset {...props} className={cn('min-w-0', props.className)}>
+                {children}
+            </SidebarInset>
+        );
     }
 
     return (

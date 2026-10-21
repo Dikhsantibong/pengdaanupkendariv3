@@ -1951,6 +1951,24 @@ Bagian **Request Penilaian Vendor** ada di halaman Penilaian Penyedia, di atas d
 - **Cache:** `DocumentPdfRenderer::LAYOUT_VERSION` dinaikkan ke `'5'` supaya PDF lama dibuat ulang.
 - **Test:** `TableHeaderOncePerTableTest`. Test ini juga membuktikan perilaku lama: sebelum perbaikan, header tergambar sekali di setiap halaman.
 
+## Tabel Langkah Menyesuaikan Tablet
+
+- **Masalah:** di tablet (misalnya iPad landscape) tabel langkah checklist berantakan. Kolom Langkah dan Yang Dibutuhkan terjepit dan teksnya saling menimpa. Penyebabnya: tata letak tabel aktif berdasarkan lebar layar (`md:`), padahal kolom utama menyempit karena ada panel kanan (Persetujuan/Status).
+- **Perbaikan:** tabel kini memakai container query, yaitu menyesuaikan lebar kartunya sendiri.
+  - Kartu tabel diberi `@container`.
+  - Checklist semua tahapan dan tab Usulan (`checklist-steps.tsx`, `proposal-documents.tsx`) tampil sebagai tabel mulai lebar kartu `@4xl` (56rem).
+  - Tabel Amandemen dan DO (`amendment-tab.tsx`, `delivery-order-tab.tsx`) mulai `@3xl` (48rem).
+  - Di bawah lebar itu, tiap langkah tampil bertumpuk (nama → yang dibutuhkan → status → aksi), seperti di ponsel.
+- **Hasil pengecekan:** di 1180px kartu selebar 513px tampil bertumpuk dan rapi. Di 1920px tetap tabel lima kolom.
+- **Audit seluruh halaman di lebar tablet** (820/1024/1180px, plus 1440px untuk desktop): halaman dipindai otomatis untuk mencari teks yang saling menimpa, teks terpotong, dan halaman yang bisa digeser ke samping.
+  - **Halaman bisa digeser ke samping** (sampai 241px) di Approval, Perencanaan, Pelaksanaan, Keuangan, Penunjukan PIC, Pengguna, Hak Akses, dan Laporan. Penyebabnya: `<main>` (`SidebarInset`) adalah flex item tanpa `min-w-0`, sehingga melebar mengikuti tabel lebar.
+    - Perbaikan: `components/app-content.tsx` memberi `min-w-0`. Tabel lebar kini bergulir di kotaknya sendiri.
+  - **Teks "Semua" terpotong** di filter. Lebar minimum dinaikkan:
+    - Filter Tahun 6.5rem dan Bulan 8.5rem (`period-filter.tsx`).
+    - Filter pilihan lain `min-w-28` (`procurement-filter-bar.tsx`, `contract-monitoring.tsx`, `monitoring/contracts.tsx`).
+  - **Kolom identitas pengadaan** (`identity-panel.tsx`) kini menyesuaikan lebar kartu (2/3/4 kolom lewat `@container`), bukan layar, sehingga nilai panjang tidak terpotong di tablet.
+  - **Baris daftar harga kontrak di tab DO** memakai grid 6 kolom mulai lebar kartu `@2xl`.
+
 ## Proses Request Penilaian Sekali Klik & Panel Kirim ke Penilai
 
 - **Tombol Proses & Siapkan WhatsApp** ada di setiap request baru (panel Request Penilaian Vendor). Rutenya `vendor-assessments.requests.process` (`POST penilaian-penyedia/permintaan/{id}/proses`). Sekali klik:

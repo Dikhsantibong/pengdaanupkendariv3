@@ -42,7 +42,7 @@ export function PeriodFilter({
 }) {
     return (
         <>
-            <div className="w-full space-y-1.5 sm:w-auto sm:min-w-[5.5rem] sm:flex-[1_1_auto]">
+            <div className="w-full space-y-1.5 sm:w-auto sm:min-w-[6.5rem] sm:flex-[1_1_auto]">
                 <Label className="section-label">Tahun</Label>
                 <Select
                     value={year ? String(year) : ALL}
@@ -63,7 +63,7 @@ export function PeriodFilter({
                     </SelectContent>
                 </Select>
             </div>
-            <div className="w-full space-y-1.5 sm:w-auto sm:min-w-[7rem] sm:flex-[1_1_auto]">
+            <div className="w-full space-y-1.5 sm:w-auto sm:min-w-[8.5rem] sm:flex-[1_1_auto]">
                 <Label className="section-label">Bulan</Label>
                 <Select
                     value={month ? String(month) : ALL}

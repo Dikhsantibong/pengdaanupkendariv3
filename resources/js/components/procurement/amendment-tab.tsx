@@ -276,10 +276,10 @@ export function AmendmentTab({
                         : ' Amandemen dapat diajukan pengusul setelah dokumen kontrak dibuat.'}
                 </p>
             ) : (
-                <div className="overflow-hidden rounded-md border border-border bg-card">
+                <div className="@container overflow-hidden rounded-md border border-border bg-card">
                     <div
                         aria-hidden="true"
-                        className="hidden grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,1.5fr)_10rem] gap-3 border-b border-border bg-muted/40 px-4 py-2 text-[0.6875rem] font-semibold tracking-wide text-muted-foreground uppercase md:grid"
+                        className="hidden grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,1.5fr)_10rem] gap-3 border-b border-border bg-muted/40 px-4 py-2 text-[0.6875rem] font-semibold tracking-wide text-muted-foreground uppercase @3xl:grid"
                     >
                         <span>Amandemen</span>
                         <span>Nomor &amp; tanggal</span>
@@ -349,7 +349,7 @@ function AmendmentRow({
                 }
             }}
             className={cn(
-                'grid cursor-pointer gap-x-3 gap-y-1.5 px-4 py-3 transition-colors hover:bg-muted/40 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,1.5fr)_10rem] md:items-center',
+                'grid cursor-pointer gap-x-3 gap-y-1.5 px-4 py-3 transition-colors hover:bg-muted/40 @3xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,1.5fr)_10rem] @3xl:items-center',
                 highlighted &&
                     'bg-primary/[0.03] shadow-[inset_3px_0_0_var(--primary)]',
             )}
@@ -390,7 +390,7 @@ function AmendmentRow({
                     returned={amendment.state === 'dikembalikan'}
                 />
             </div>
-            <div className="flex items-center gap-1 md:justify-end">
+            <div className="flex items-center gap-1 @3xl:justify-end">
                 <Button
                     size="sm"
                     variant={
