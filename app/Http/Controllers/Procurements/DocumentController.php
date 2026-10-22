@@ -183,6 +183,7 @@ class DocumentController extends Controller
                 'id' => $procurement->id,
                 'number' => $procurement->number,
                 'name' => $procurement->name,
+                'group_letters' => $procurement->group_letters ?? 'upper',
             ],
             // Polled every few seconds: only this fingerprint is sent each
             // time, and the full body is fetched again only when it moves.
@@ -249,6 +250,12 @@ class DocumentController extends Controller
         // (this document's too) drawn from it.
         if ($request->has('item_rows')) {
             $this->authorize('manageItems', $procurement);
+
+            // Kept before the tables are drawn again, so they all follow it.
+            if ($request->filled('group_letters')) {
+                $procurement->update(['group_letters' => $request->string('group_letters')->value()]);
+            }
+
             $this->items->save($procurement, array_values((array) $request->validated('item_rows')), $request->user());
         }
 
@@ -500,6 +507,11 @@ class DocumentController extends Controller
         $document->load('documentType');
         $items = $this->items->unsavedItems(array_values((array) $request->validated('rows')));
         $draft = $request->has('body') ? $request->string('body')->value() : $document->rendered_body;
+
+        // The lettering being tried, in memory only.
+        if ($request->filled('group_letters')) {
+            $procurement->group_letters = $request->string('group_letters')->value();
+        }
 
         return response()->json([
             'body' => $this->generator->applyItemTables($draft, $document->documentType->code, $procurement, $items),

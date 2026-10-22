@@ -84,15 +84,22 @@ class ItemTableRenderer
     }
 
     /**
+     * Whether the table being drawn letters its groups in lower case.
+     */
+    protected bool $lowerLetters = false;
+
+    /**
      * Redraw the item table of a document body, if it has one. The
-     * Evaluasi Harga gives each calon mitra its own price column.
+     * Evaluasi Harga gives each calon mitra its own price column. Groups
+     * are lettered A, B, C, or a, b, c when the job asks for lower case.
      *
      * @param  Collection<int, ProcurementContractItem>  $items
      * @param  Collection<int, ProcurementPartnerCandidate>|null  $partners
      */
-    public function apply(string $html, ?string $typeCode, Collection $items, ?Collection $partners = null): string
+    public function apply(string $html, ?string $typeCode, Collection $items, ?Collection $partners = null, bool $lowerLetters = false): string
     {
         $layout = self::LAYOUTS[$typeCode] ?? null;
+        $this->lowerLetters = $lowerLetters;
 
         if ($layout === null || $items->isEmpty()) {
             return $html;
@@ -520,11 +527,18 @@ class ItemTableRenderer
             $name = filled($item->group_name) ? trim((string) $item->group_name) : null;
 
             if ($name !== null && $name !== $group) {
-                $rows[] = ['label' => $letters ? (string) $letter++ : '', 'name' => $name, 'item' => null];
+                $label = (string) $letter++;
+                $rows[] = ['label' => $letters ? ($this->lowerLetters ? strtolower($label) : $label) : '', 'name' => $name, 'item' => null];
                 $number = 0;
             }
 
             $group = $name;
+
+            // A group still without items prints its heading alone.
+            if ($item->isHeading()) {
+                continue;
+            }
+
             $rows[] = ['label' => (string) ++$number, 'name' => '', 'item' => $item];
         }
 

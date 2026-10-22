@@ -1951,6 +1951,19 @@ Bagian **Request Penilaian Vendor** ada di halaman Penilaian Penyedia, di atas d
 - **Cache:** `DocumentPdfRenderer::LAYOUT_VERSION` dinaikkan ke `'5'` supaya PDF lama dibuat ulang.
 - **Test:** `TableHeaderOncePerTableTest`. Test ini juga membuktikan perilaku lama: sebelum perbaikan, header tergambar sekali di setiap halaman.
 
+## Huruf Kelompok (A/a) & Kelompok Tanpa Item
+
+- **Huruf kelompok bisa besar atau kecil:** pilihannya disimpan per pengadaan di kolom baru `procurements.group_letters` (`upper` sebagai bawaan, atau `lower`) lewat migrasi `add_group_letters_to_procurements`.
+  - Berlaku di semua tabel item pengadaan itu: BA Negosiasi, SPK, HPE, UPB, Evaluasi Harga, Lampiran, Surat Pesanan (`generateSuratPesananTbody`), dan Delivery Order.
+  - Lewat `Procurement::groupLetter()` dan `ItemTableRenderer::apply(..., $lowerLetters)`.
+  - **Cara mengubah di Rincian Item editor dokumen:** pilih **Huruf kelompok: A, B, C / a, b, c** di bawah tabel (muncul kalau ada kelompok), atau klik huruf di kolom NO.
+  - Pratinjau langsung digambar ulang (`items-preview` menerima `group_letters` dan memakainya di memori saja). Pilihannya tersimpan bersama **Simpan Perubahan** (`group_letters` di `UpdateDocumentRequest`), lalu semua tabel digambar ulang.
+- **Kelompok tanpa item kini tetap tampil:**
+  - **Masalah sebelumnya:** nama kelompok hanya menempel pada item, sehingga kelompok yang belum punya item hilang dari Editor Visual dan dokumen.
+  - **Penyimpanan:** kelompok kosong disimpan sebagai **baris judul**, yaitu baris `procurement_contract_items` tanpa uraian (`ProcurementContractItem::isHeading()`). Kalau kelompok itu kemudian diberi item, baris judulnya otomatis terhapus.
+  - **Siapa yang membaca baris judul:** relasi baru `Procurement::itemRows()` memuat baris judul, dan hanya dipakai editor Rincian Item serta penggambar tabel. Relasi `contractItems()` tetap mengabaikannya, jadi DO, Keuangan, nilai setelah nego, dan jumlah item tidak berubah.
+- **Test:** `ProcurementItemsTest`, yaitu `test_the_groups_can_be_lettered_in_lower_case_in_every_table`, `test_the_draft_table_tries_the_lettering_without_keeping_it`, `test_only_upper_or_lower_lettering_is_taken`, dan `test_a_group_without_items_yet_still_prints_its_heading`.
+
 ## Tabel Langkah Menyesuaikan Tablet
 
 - **Masalah:** di tablet (misalnya iPad landscape) tabel langkah checklist berantakan. Kolom Langkah dan Yang Dibutuhkan terjepit dan teksnya saling menimpa. Penyebabnya: tata letak tabel aktif berdasarkan lebar layar (`md:`), padahal kolom utama menyempit karena ada panel kanan (Persetujuan/Status).

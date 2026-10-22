@@ -27,6 +27,8 @@ class UpdateProcurementItemsRequest extends FormRequest
             ...self::rowRules('rows', ['present']),
             // The editor's draft, whose item table is drawn for the preview.
             'body' => ['sometimes', 'string', 'max:2000000'],
+            // A or a: how the groups are lettered.
+            'group_letters' => ['sometimes', Rule::in(['upper', 'lower'])],
         ];
     }
 

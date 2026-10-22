@@ -61,6 +61,15 @@ class ProcurementContractItem extends Model
     }
 
     /**
+     * The heading of a group that holds no item yet: a row without a
+     * description, kept so the group still prints. It is no item.
+     */
+    public function isHeading(): bool
+    {
+        return trim((string) $this->description) === '';
+    }
+
+    /**
      * The amount before negotiation: volume times the unit price.
      */
     public function totalBefore(): float

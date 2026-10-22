@@ -29,7 +29,7 @@ class ProcurementItemService
      */
     public function payload(Procurement $procurement): array
     {
-        return $procurement->contractItems()->with('quotations')->get()
+        return $procurement->itemRows()->with('quotations')->get()
             ->map(fn (ProcurementContractItem $item): array => [
                 'id' => $item->id,
                 'group_name' => $item->group_name,
@@ -131,13 +131,13 @@ class ProcurementItemService
 
             foreach ($this->flatten($rows, $candidates) as [$id, $values, $quotes]) {
                 $existing = $id !== null
-                    ? $procurement->contractItems()->whereKey($id)->first()
+                    ? $procurement->itemRows()->whereKey($id)->first()
                     : null;
 
                 if ($existing !== null) {
                     $existing->update($values);
                 } else {
-                    $existing = $procurement->contractItems()->create($values);
+                    $existing = $procurement->itemRows()->create($values);
                 }
 
                 $kept[] = $existing->id;
@@ -147,7 +147,7 @@ class ProcurementItemService
                 }
             }
 
-            $procurement->contractItems()->whereNotIn('id', $kept)->delete();
+            $procurement->itemRows()->whereNotIn('id', $kept)->delete();
         });
 
         $this->documents->syncItemDocuments($procurement->refresh());
@@ -208,6 +208,9 @@ class ProcurementItemService
         $items = [];
         $group = null;
         $order = 0;
+        // A group not yet followed by an item: kept as a heading row if no
+        // item comes before the next group.
+        $waiting = null;
 
         foreach ($rows as $row) {
             if (! is_array($row)) {
@@ -218,10 +221,17 @@ class ProcurementItemService
             $description = (string) $text('description');
 
             if (($row['kind'] ?? null) === 'group') {
+                if ($waiting !== null) {
+                    $items[] = $this->heading($waiting['id'], $waiting['name'], ++$order);
+                }
+
                 $group = $description === '' ? null : $description;
+                $waiting = $group === null ? null : ['id' => filled($row['id'] ?? null) ? (int) $row['id'] : null, 'name' => $group];
 
                 continue;
             }
+
+            $waiting = null;
 
             // Rows sent without quotes (any editor but the Evaluasi Harga's,
             // say) leave the quotes as they are.
@@ -261,6 +271,29 @@ class ProcurementItemService
             ];
         }
 
+        if ($waiting !== null) {
+            $items[] = $this->heading($waiting['id'], $waiting['name'], ++$order);
+        }
+
         return $items;
+    }
+
+    /**
+     * The row kept for a group that holds no item yet: its heading only.
+     *
+     * @return array{0: int|null, 1: array{sort_order: int, group_name: string, description: string, part_number: null, volume: int, unit: string, price_before: null, unit_price: null}, 2: null}
+     */
+    protected function heading(?int $id, string $name, int $order): array
+    {
+        return [$id, [
+            'sort_order' => $order,
+            'group_name' => $name,
+            'description' => '',
+            'part_number' => null,
+            'volume' => 0,
+            'unit' => '',
+            'price_before' => null,
+            'unit_price' => null,
+        ], null];
     }
 }

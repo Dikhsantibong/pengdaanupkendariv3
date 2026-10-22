@@ -15,6 +15,7 @@ import { VisualEditor } from '@/components/document-editor/visual-editor';
 import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/page-header';
 import { ItemListCard } from '@/components/procurement/item-list-card';
+import type { GroupLetters } from '@/components/procurement/item-list-card';
 import type {
     ItemPartner,
     ItemRowPayload,
@@ -125,7 +126,12 @@ export default function DocumentEditor({
     itemLayout = null,
     canManageItems = false,
 }: {
-    procurement: { id: number; number: string; name: string };
+    procurement: {
+        id: number;
+        number: string;
+        name: string;
+        group_letters: GroupLetters;
+    };
     document: EditorDocument;
     placeholders?: PlaceholderRow[];
     /** Fingerprint of the stored body, polled instead of the body itself. */
@@ -146,6 +152,10 @@ export default function DocumentEditor({
 
     // The Rincian Item as changed in this editor; null while untouched.
     const [itemRows, setItemRows] = useState<ItemRowPayload[] | null>(null);
+    // A, B, C or a, b, c: kept with the Rincian Item when saved.
+    const [groupLetters, setGroupLetters] = useState<GroupLetters>(
+        procurement.group_letters ?? 'upper',
+    );
 
     const dirty =
         form.data.title !== doc.title ||
@@ -185,6 +195,7 @@ export default function DocumentEditor({
                     body: JSON.stringify({
                         rows: itemRows,
                         body: draftBody.current,
+                        group_letters: groupLetters,
                     }),
                     signal: controller.signal,
                 },
@@ -297,7 +308,13 @@ export default function DocumentEditor({
 
     const save = () => {
         form.transform((data) =>
-            itemRows === null ? data : { ...data, item_rows: itemRows },
+            itemRows === null
+                ? data
+                : {
+                      ...data,
+                      item_rows: itemRows,
+                      group_letters: groupLetters,
+                  },
         );
         form.put(
             procurements.documents.update({
@@ -504,6 +521,8 @@ export default function DocumentEditor({
                                     >
                                 }
                                 onRowsChange={setItemRows}
+                                groupLetters={groupLetters}
+                                onGroupLettersChange={setGroupLetters}
                             />
                         </TabsContent>
                     )}

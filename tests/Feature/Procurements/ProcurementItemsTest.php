@@ -91,6 +91,100 @@ class ProcurementItemsTest extends TestCase
         );
     }
 
+    public function test_the_groups_can_be_lettered_in_lower_case_in_every_table(): void
+    {
+        [$procurement, $baNego, $suratPesanan] = $this->spplWithDocuments();
+
+        $this->saveFromEditor($procurement, $baNego, $this->rows(), 'lower')
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $this->assertSame('lower', $procurement->refresh()->group_letters);
+        $this->assertStringContainsString('font-weight: bold;">a</td>', $baNego->refresh()->rendered_body);
+        $this->assertStringNotContainsString('font-weight: bold;">A</td>', $baNego->rendered_body);
+        $this->assertMatchesRegularExpression('/font-weight: bold;">a<\/td>/', $suratPesanan->refresh()->rendered_body);
+
+        // Back to capitals, and every table follows again.
+        $this->saveFromEditor($procurement, $baNego, $this->rows(), 'upper')->assertRedirect();
+
+        $this->assertStringContainsString('font-weight: bold;">A</td>', $baNego->refresh()->rendered_body);
+        $this->assertMatchesRegularExpression('/font-weight: bold;">A<\/td>/', $suratPesanan->refresh()->rendered_body);
+    }
+
+    public function test_the_draft_table_tries_the_lettering_without_keeping_it(): void
+    {
+        [$procurement, $baNego] = $this->spplWithDocuments();
+
+        $html = (string) $this->actingAs($this->executor)
+            ->postJson(route('procurements.documents.items-preview', [$procurement, $baNego]), [
+                'rows' => $this->rows(),
+                'group_letters' => 'lower',
+            ])
+            ->assertOk()
+            ->json('body');
+
+        $this->assertStringContainsString('font-weight: bold;">a</td>', $html);
+        $this->assertSame('upper', $procurement->refresh()->group_letters);
+    }
+
+    public function test_only_upper_or_lower_lettering_is_taken(): void
+    {
+        [$procurement, $baNego] = $this->spplWithDocuments();
+
+        $this->saveFromEditor($procurement, $baNego, $this->rows(), 'roman')
+            ->assertSessionHasErrors('group_letters');
+    }
+
+    public function test_a_group_without_items_yet_still_prints_its_heading(): void
+    {
+        [$procurement, $baNego, $suratPesanan] = $this->spplWithDocuments();
+
+        $rows = [
+            ['id' => null, 'kind' => 'item', 'description' => 'Jasa penggantian fuse', 'volume' => 1, 'unit' => 'Lot', 'price_before' => 32200000, 'unit_price' => 31556000],
+            ['id' => null, 'kind' => 'group', 'description' => 'Cek Admin'],
+            ['id' => null, 'kind' => 'group', 'description' => 'Material Cadangan'],
+        ];
+
+        $this->saveFromEditor($procurement, $baNego, $rows)
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        // Two headings kept, but still one item to everything else.
+        $this->assertSame(1, $procurement->contractItems()->count());
+        $this->assertSame(3, $procurement->itemRows()->count());
+        $this->assertEquals(31556000, (float) $procurement->refresh()->value_after_negotiation);
+
+        $body = $baNego->refresh()->rendered_body;
+        $this->assertStringContainsString('font-weight: bold;">A</td>', $body);
+        $this->assertStringContainsString('Cek Admin', $body);
+        $this->assertStringContainsString('font-weight: bold;">B</td>', $body);
+        $this->assertStringContainsString('Material Cadangan', $body);
+        $this->assertSame(['Jasa penggantian fuse'], array_column(app(DocumentGenerator::class)->parseNegotiationItems($body), 'name'));
+
+        $sp = $suratPesanan->refresh()->rendered_body;
+        $this->assertStringContainsString('Material Cadangan', $sp);
+        $this->assertStringNotContainsString('Rp 0<', $sp);
+
+        // The editor opens on the same rows: the empty groups are group rows.
+        $this->actingAs($this->executor)
+            ->get(route('procurements.documents.edit', [$procurement, $baNego]))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('items', fn ($items) => collect($items)->pluck('description')->all() === ['Jasa penggantian fuse', '', '']
+                    && collect($items)->pluck('group_name')->all() === [null, 'Cek Admin', 'Material Cadangan']));
+
+        // Given an item, the group is an ordinary group again.
+        $headingId = $procurement->itemRows()->where('group_name', 'Cek Admin')->value('id');
+        $this->saveFromEditor($procurement, $baNego, [
+            $rows[0],
+            ['id' => $headingId, 'kind' => 'group', 'description' => 'Cek Admin'],
+            ['id' => null, 'kind' => 'item', 'description' => 'Biaya admin', 'volume' => 1, 'unit' => 'Ls', 'price_before' => 100000, 'unit_price' => 100000],
+        ])->assertRedirect();
+
+        $this->assertSame(2, $procurement->contractItems()->count());
+        $this->assertSame(2, $procurement->itemRows()->count());
+        $this->assertSame('Cek Admin', $procurement->contractItems()->where('description', 'Biaya admin')->value('group_name'));
+    }
+
     public function test_saving_again_keeps_the_items_rows(): void
     {
         [$procurement, $baNego] = $this->spplWithDocuments();
@@ -319,13 +413,14 @@ class ProcurementItemsTest extends TestCase
      *
      * @param  list<array<string, mixed>>  $rows
      */
-    protected function saveFromEditor(Procurement $procurement, ProcurementDocument $document, array $rows): TestResponse
+    protected function saveFromEditor(Procurement $procurement, ProcurementDocument $document, array $rows, ?string $groupLetters = null): TestResponse
     {
         return $this->actingAs($this->executor)
             ->put(route('procurements.documents.update', [$procurement, $document]), [
                 'title' => $document->title,
                 'body' => $document->rendered_body,
                 'item_rows' => $rows,
+                ...($groupLetters === null ? [] : ['group_letters' => $groupLetters]),
             ]);
     }
 

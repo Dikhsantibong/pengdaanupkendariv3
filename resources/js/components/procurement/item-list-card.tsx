@@ -207,9 +207,14 @@ function rowsFrom(items: ProcurementItem[]): Row[] {
     let group: string | null = null;
 
     for (const item of items) {
+        // A row without a description is the heading of a group still
+        // without items: the group row itself, keeping its id.
+        const isHeading = item.description.trim() === '';
+
         if (item.group_name && item.group_name !== group) {
             rows.push({
                 ...emptyItem(),
+                id: isHeading ? item.id : null,
                 kind: 'group',
                 description: item.group_name,
                 volume: '',
@@ -217,6 +222,11 @@ function rowsFrom(items: ProcurementItem[]): Row[] {
         }
 
         group = item.group_name;
+
+        if (isHeading) {
+            continue;
+        }
+
         rows.push({
             key: newKey(),
             id: item.id,
@@ -334,6 +344,9 @@ function payloadOf(rows: Row[]): ItemRowPayload[] {
  * Perubahan. Rows can be pasted straight from Excel. Given calon mitra
  * (the Evaluasi Harga), each gets a column for the unit price it quoted.
  */
+/** How the groups are lettered: A, B, C or a, b, c. */
+export type GroupLetters = 'upper' | 'lower';
+
 export function ItemListCard({
     items,
     editable,
@@ -341,6 +354,8 @@ export function ItemListCard({
     partners = [],
     errors = {},
     onRowsChange,
+    groupLetters = 'upper',
+    onGroupLettersChange,
 }: {
     items: ProcurementItem[];
     editable: boolean;
@@ -350,6 +365,9 @@ export function ItemListCard({
     /** Validation messages keyed item_rows.{index}.{field}. */
     errors?: Record<string, string | undefined>;
     onRowsChange: (rows: ItemRowPayload[]) => void;
+    /** The job's lettering, the same in every item table it prints. */
+    groupLetters?: GroupLetters;
+    onGroupLettersChange?: (letters: GroupLetters) => void;
 }) {
     const [rows, setRowsState] = useState<Row[]>(() => rowsFrom(items));
 
@@ -472,7 +490,11 @@ export function ItemListCard({
     rows.reduce(
         (count, row) => {
             if (row.kind === 'group') {
-                labels.push(String.fromCharCode(65 + count.groups));
+                labels.push(
+                    String.fromCharCode(
+                        (groupLetters === 'lower' ? 97 : 65) + count.groups,
+                    ),
+                );
 
                 return { groups: count.groups + 1, items: 0 };
             }
@@ -483,6 +505,18 @@ export function ItemListCard({
         },
         { groups: 0, items: 0 },
     );
+
+    const hasGroups = rows.some((row) => row.kind === 'group');
+    // The lettering changes every table the job prints: the rows go along,
+    // so the open document is drawn again and saved with it.
+    const setLetters = (letters: GroupLetters) => {
+        if (letters === groupLetters || !onGroupLettersChange) {
+            return;
+        }
+
+        onGroupLettersChange(letters);
+        onRowsChange(payloadOf(rows));
+    };
 
     // Filled, darker fields: the grid reads at once as something to type in.
     const cell =
@@ -601,7 +635,26 @@ export function ItemListCard({
                                     )}
                                 >
                                     <td className="tabular px-2 py-1.5 text-center">
-                                        {labels[index]}
+                                        {row.kind === 'group' &&
+                                        editable &&
+                                        onGroupLettersChange ? (
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setLetters(
+                                                        groupLetters === 'lower'
+                                                            ? 'upper'
+                                                            : 'lower',
+                                                    )
+                                                }
+                                                title="Klik untuk ganti huruf besar / kecil"
+                                                className="rounded px-1.5 font-semibold text-primary hover:bg-primary/10"
+                                            >
+                                                {labels[index]}
+                                            </button>
+                                        ) : (
+                                            labels[index]
+                                        )}
                                     </td>
                                     {editable ? (
                                         <>
@@ -895,6 +948,40 @@ export function ItemListCard({
                         <FolderPlus className="size-3.5" />
                         Tambah Kelompok
                     </Button>
+
+                    {hasGroups && onGroupLettersChange && (
+                        <div
+                            role="radiogroup"
+                            aria-label="Huruf kelompok"
+                            className="ml-auto flex items-center gap-2 text-xs text-muted-foreground"
+                        >
+                            Huruf kelompok
+                            <div className="inline-flex overflow-hidden rounded-md border border-border">
+                                {(
+                                    [
+                                        ['upper', 'A, B, C'],
+                                        ['lower', 'a, b, c'],
+                                    ] as const
+                                ).map(([value, text]) => (
+                                    <button
+                                        key={value}
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={groupLetters === value}
+                                        onClick={() => setLetters(value)}
+                                        className={cn(
+                                            'px-2.5 py-1 font-medium transition-colors',
+                                            groupLetters === value
+                                                ? 'bg-primary text-primary-foreground'
+                                                : 'bg-background text-foreground hover:bg-muted',
+                                        )}
+                                    >
+                                        {text}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </section>

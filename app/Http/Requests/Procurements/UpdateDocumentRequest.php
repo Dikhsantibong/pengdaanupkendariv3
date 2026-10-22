@@ -4,6 +4,7 @@ namespace App\Http\Requests\Procurements;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateDocumentRequest extends FormRequest
 {
@@ -24,6 +25,8 @@ class UpdateDocumentRequest extends FormRequest
             'body' => ['required', 'string', 'max:2000000'],
             // The Rincian Item changed in the editor, saved with the text.
             ...UpdateProcurementItemsRequest::rowRules('item_rows', ['sometimes']),
+            // A or a: how the groups of every item table are lettered.
+            'group_letters' => ['sometimes', Rule::in(['upper', 'lower'])],
         ];
     }
 

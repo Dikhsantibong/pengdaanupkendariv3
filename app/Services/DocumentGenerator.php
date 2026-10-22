@@ -1141,7 +1141,7 @@ class DocumentGenerator
                     $rows .= '<tr><td style="'.$cell.'height:12px;"></td>'.str_repeat($blank, 6).'</tr>';
                 }
 
-                $rows .= '<tr><td style="'.$cell.'text-align:center;font-weight:bold;">'.$letter.'</td>'
+                $rows .= '<tr><td style="'.$cell.'text-align:center;font-weight:bold;">'.$procurement->groupLetter($letter).'</td>'
                     .'<td colspan="6" style="'.$cell.'font-weight:bold;">'.e($heading).'</td></tr>';
                 $letter++;
             }
@@ -1352,15 +1352,16 @@ class DocumentGenerator
      */
     public function applyItemTables(string $body, ?string $typeCode, Procurement $procurement, ?Collection $items = null): string
     {
-        $items ??= $procurement->contractItems()->with('quotations')->get();
+        $items ??= $procurement->itemRows()->with('quotations')->get();
 
-        if ($items->isEmpty()) {
+        // Group headings alone are no table to draw.
+        if ($items->every(fn (ProcurementContractItem $item): bool => $item->isHeading())) {
             return $body;
         }
 
         if (in_array($typeCode, ['purchase-order', 'surat-pesanan'], true)) {
             // Only once the prices after negotiation are known.
-            if ($items->every(fn (ProcurementContractItem $item): bool => $item->unit_price === null)) {
+            if ($items->every(fn (ProcurementContractItem $item): bool => $item->isHeading() || $item->unit_price === null)) {
                 return $body;
             }
 
@@ -1370,7 +1371,7 @@ class DocumentGenerator
         // The Evaluasi Harga compares the calon mitra's quotes.
         $partners = $typeCode === 'rab' ? $procurement->partnerCandidates()->get() : null;
 
-        return $this->itemTables->apply($body, $typeCode, $items, $partners);
+        return $this->itemTables->apply($body, $typeCode, $items, $partners, $procurement->group_letters === 'lower');
     }
 
     /**
@@ -1405,6 +1406,8 @@ class DocumentGenerator
             }
         }
 
+        $rows = $procurement->itemRows()->with('quotations')->get();
+
         $documents = $procurement->documents()
             ->with(['documentType', 'signedUploads'])
             ->whereHas('documentType', fn ($query) => $query->whereIn('code', self::ITEM_TABLE_TYPES))
@@ -1416,7 +1419,8 @@ class DocumentGenerator
                 continue;
             }
 
-            $body = $this->applyItemTables($document->rendered_body, $document->documentType->code, $procurement, $items);
+            // Drawn with the headings of groups still without items.
+            $body = $this->applyItemTables($document->rendered_body, $document->documentType->code, $procurement, $rows);
 
             if ($body !== $document->rendered_body) {
                 $document->rendered_body = $body;
@@ -1433,17 +1437,23 @@ class DocumentGenerator
      */
     protected function suratPesananItems(Collection $items): array
     {
-        return $items->sortBy('sort_order')->values()->map(fn (ProcurementContractItem $item, int $index): array => [
-            'no' => $index + 1,
-            'name' => e($item->description),
-            'volume' => rtrim(rtrim(number_format((float) $item->volume, 3, ',', '.'), '0'), ','),
-            'satuan' => e($item->unit),
-            'price_before' => (float) $item->price_before,
-            'total_before' => $item->totalBefore(),
-            'price_after' => (float) $item->unit_price,
-            'total_after' => $item->totalAfter(),
-            'group' => filled($item->group_name) ? trim((string) $item->group_name) : null,
-        ])->all();
+        $number = 0;
+
+        return $items->sortBy('sort_order')->values()->map(function (ProcurementContractItem $item) use (&$number): array {
+            return [
+                // A group still without items is a heading only.
+                'heading_only' => $item->isHeading(),
+                'no' => $item->isHeading() ? 0 : ++$number,
+                'name' => e($item->description),
+                'volume' => rtrim(rtrim(number_format((float) $item->volume, 3, ',', '.'), '0'), ','),
+                'satuan' => e($item->unit),
+                'price_before' => (float) $item->price_before,
+                'total_before' => $item->totalBefore(),
+                'price_after' => (float) $item->unit_price,
+                'total_after' => $item->totalAfter(),
+                'group' => filled($item->group_name) ? trim((string) $item->group_name) : null,
+            ];
+        })->all();
     }
 
     /**
@@ -1616,7 +1626,7 @@ class DocumentGenerator
     /**
      * Generate the tbody HTML for Surat Pesanan item table with multiple items and totals.
      *
-     * @param  array<int, array{no: int, name: string, volume: string, satuan: string, price_before: float, total_before: float, price_after: float, total_after: float, group?: string|null}>  $items
+     * @param  array<int, array{no: int, name: string, volume: string, satuan: string, price_before: float, total_before: float, price_after: float, total_after: float, group?: string|null, heading_only?: bool}>  $items
      */
     public function generateSuratPesananTbody(array $items, Procurement $procurement, ?string $existingDeadline = null): string
     {
@@ -1639,11 +1649,15 @@ class DocumentGenerator
             $itemGroup = $item['group'] ?? null;
 
             if ($itemGroup !== null && $itemGroup !== $group) {
-                $rows[] = ['heading' => true, 'letter' => (string) $letter++, 'name' => $itemGroup, 'no' => 0, 'item' => null];
+                $rows[] = ['heading' => true, 'letter' => $procurement->groupLetter((string) $letter++), 'name' => $itemGroup, 'no' => 0, 'item' => null];
                 $number = 0;
             }
 
             $group = $itemGroup;
+
+            if ($item['heading_only'] ?? false) {
+                continue;
+            }
             $rows[] = ['heading' => false, 'letter' => '', 'name' => '', 'no' => $group === null ? $item['no'] : ++$number, 'item' => $item];
         }
 
@@ -1722,7 +1736,7 @@ HTML;
     /**
      * Synchronize items into an existing or template Surat Pesanan document body.
      *
-     * @param  array<int, array{no: int, name: string, volume: string, satuan: string, price_before: float, total_before: float, price_after: float, total_after: float, group?: string|null}>  $items
+     * @param  array<int, array{no: int, name: string, volume: string, satuan: string, price_before: float, total_before: float, price_after: float, total_after: float, group?: string|null, heading_only?: bool}>  $items
      */
     public function syncItemsIntoSuratPesanan(string $suratPesananHtml, array $items, Procurement $procurement): string
     {

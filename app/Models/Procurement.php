@@ -32,6 +32,7 @@ use Illuminate\Support\Collection;
  * @property int|null $contract_number_format_id
  * @property string $name
  * @property string|null $partner_name
+ * @property string $group_letters How the item groups are lettered: 'upper' (A, B) or 'lower' (a, b).
  * @property string|null $partner_vendor_code
  * @property string|null $partner_director_name
  * @property string|null $partner_address
@@ -110,6 +111,7 @@ use Illuminate\Support\Collection;
 #[ObservedBy(ProcurementDocumentObserver::class)]
 #[Fillable([
     'name',
+    'group_letters',
     'partner_name',
     'partner_vendor_code',
     'partner_director_name',
@@ -683,6 +685,20 @@ class Procurement extends Model
      */
     public function contractItems(): HasMany
     {
+        // A group heading kept without items yet is no item.
+        return $this->itemRows()->where('description', '<>', '');
+    }
+
+    /**
+     * The Rincian Item as typed: its items, and the heading of a group that
+     * holds no item yet (a row without a description), so the group still
+     * prints. Only the item editor and the item tables read the headings;
+     * everything else reads contractItems().
+     *
+     * @return HasMany<ProcurementContractItem, $this>
+     */
+    public function itemRows(): HasMany
+    {
         return $this->hasMany(ProcurementContractItem::class)->orderBy('sort_order')->orderBy('id');
     }
 
@@ -880,6 +896,15 @@ class Procurement extends Model
             'total' => $total,
             'percentage' => $total > 0 ? (int) round($completed / $total * 100) : 0,
         ];
+    }
+
+    /**
+     * A group's letter as this job's item tables print it: "A" stays "A",
+     * or becomes "a" when the groups are lettered in lower case.
+     */
+    public function groupLetter(string $letter): string
+    {
+        return $this->group_letters === 'lower' ? mb_strtolower($letter) : $letter;
     }
 
     /**
