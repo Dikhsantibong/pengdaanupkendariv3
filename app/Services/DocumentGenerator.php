@@ -1149,7 +1149,7 @@ class DocumentGenerator
             foreach ($items->values() as $index => $item) {
                 $rows .= '<tr>'
                     .'<td style="'.$cell.'text-align:center;">'.($index + 1).'</td>'
-                    .'<td style="'.$cell.'">'.e($item->description).'</td>'
+                    .'<td style="'.$cell.'">'.nl2br(e($item->description), false).'</td>'
                     .'<td style="'.$cell.'text-align:center;">'.e($item->part_number ?? '').'</td>'
                     .'<td style="'.$cell.'text-align:center;">'.$quantity($item->quantity).'</td>'
                     .'<td style="'.$cell.'text-align:center;">'.e($item->unit).'</td>'
@@ -1444,7 +1444,7 @@ class DocumentGenerator
                 // A group still without items is a heading only.
                 'heading_only' => $item->isHeading(),
                 'no' => $item->isHeading() ? 0 : ++$number,
-                'name' => e($item->description),
+                'name' => nl2br(e($item->description), false),
                 'volume' => rtrim(rtrim(number_format((float) $item->volume, 3, ',', '.'), '0'), ','),
                 'satuan' => e($item->unit),
                 'price_before' => (float) $item->price_before,
@@ -1454,6 +1454,24 @@ class DocumentGenerator
                 'group' => filled($item->group_name) ? trim((string) $item->group_name) : null,
             ];
         })->all();
+    }
+
+    /**
+     * A cell's text with the line breaks typed in it (<br>, or the end of a
+     * paragraph) kept as new lines, each line's spaces tidied.
+     */
+    public static function cellLines(string $html): string
+    {
+        // The source's own wrapping is only spacing; a typed break is a tag.
+        $text = (string) preg_replace('/\s+/u', ' ', $html);
+        $text = (string) preg_replace('/<br\s*\/?>|<\/(p|div)>/i', "\n", $text);
+        $text = html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $lines = array_map(
+            fn (string $line): string => trim((string) preg_replace('/[^\S\n]+/u', ' ', str_replace("\xc2\xa0", ' ', $line))),
+            explode("\n", $text),
+        );
+
+        return implode("\n", array_values(array_filter($lines, fn (string $line): bool => $line !== '')));
     }
 
     /**
@@ -1558,10 +1576,9 @@ class DocumentGenerator
                 continue;
             }
 
-            // A line break typed inside the cell separates words, not glues them.
-            $nameHtml = (string) preg_replace('/<br\s*\/?>|<\/(p|div)>/i', ' ', $cells[1]);
-            $name = trim(html_entity_decode(strip_tags($nameHtml), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-            $name = trim((string) preg_replace('/\s+/u', ' ', str_replace("\xc2\xa0", ' ', $name)));
+            // A line break typed inside the cell (Enter) stays a line break,
+            // so the name prints on the lines it was typed on.
+            $name = self::cellLines($cells[1]);
 
             // No price in any of the four price columns: a group heading
             // ("A | Fabrikasi Material", or one typed with a volume of 1 and

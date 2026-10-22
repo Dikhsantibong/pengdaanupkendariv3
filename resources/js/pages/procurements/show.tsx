@@ -118,8 +118,11 @@ type ShowProps = {
         selectionMethods: Option[];
         documentTypes: DocumentTypeOption[];
     };
+    /** Given in the identity: the number once given, and the one offered. */
+    contractNumber: { value: string | null; suggested: string | null };
     can: {
         update: boolean;
+        updateContractNumber: boolean;
         startAmendment: boolean;
         startDeliveryOrder: boolean;
         manageContractItems: boolean;
@@ -155,6 +158,7 @@ export default function ShowProcurement({
     partnerCandidates,
     directAppointment,
     options,
+    contractNumber,
     can,
 }: ShowProps) {
     const { url } = usePage();
@@ -553,6 +557,8 @@ export default function ShowProcurement({
                             contractTypes={options.contractTypes}
                             selectionMethods={options.selectionMethods}
                             candidateCount={partnerCandidates.length}
+                            contractNumber={contractNumber}
+                            editsContractNumber={can.updateContractNumber}
                         />
 
                         <Tabs

@@ -12,6 +12,7 @@ use App\Http\Controllers\Procurements\ApprovalController;
 use App\Http\Controllers\Procurements\ChecklistController;
 use App\Http\Controllers\Procurements\ChecklistFileController;
 use App\Http\Controllers\Procurements\CompletionController;
+use App\Http\Controllers\Procurements\ContractNumberController;
 use App\Http\Controllers\Procurements\DeliveryOrderController;
 use App\Http\Controllers\Procurements\DocumentArchiveDownloadController;
 use App\Http\Controllers\Procurements\DocumentController;
@@ -39,6 +40,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('calon-mitra/{candidate}/penawaran', [PartnerCandidateController::class, 'quotation'])->name('partner-candidates.quotation');
         Route::put('checklists/{checklist}', [ChecklistController::class, 'update'])->name('checklists.update');
         Route::put('checklists/{checklist}/input', [ChecklistController::class, 'updateInput'])->name('checklists.input');
+        // The contract number, given in the identity by the execution side.
+        Route::put('nomor-kontrak', ContractNumberController::class)->name('contract-number.update');
         Route::post('checklists/{checklist}/berkas', [ChecklistFileController::class, 'store'])->name('checklists.files.store');
         Route::get('checklists/{checklist}/berkas/{file}', [ChecklistFileController::class, 'show'])->name('checklists.files.show');
         Route::delete('checklists/{checklist}/berkas/{file}', [ChecklistFileController::class, 'destroy'])->name('checklists.files.destroy');

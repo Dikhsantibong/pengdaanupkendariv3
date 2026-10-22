@@ -289,6 +289,36 @@ class ProcurementItemsTest extends TestCase
         $this->assertSame($before, $baNego->refresh()->rendered_body);
     }
 
+    public function test_a_line_typed_with_enter_in_a_cell_stays_after_saving(): void
+    {
+        [$procurement, $baNego, $suratPesanan] = $this->spplWithDocuments();
+
+        // Enter inside a cell of the editor inserts a <br>.
+        $typed = '<table><thead><tr><th>HARGA SEBELUM NEGO</th></tr></thead><tbody>'
+            .'<tr><td>1</td><td>Jasa penggantian fuse<br>Panel control 380V</td><td>1</td><td>Lot</td><td>32.200.000</td><td>32.200.000</td><td>31.556.000</td><td>31.556.000</td></tr>'
+            .'<tr><td colspan="4">TOTAL HARGA</td><td colspan="2">32.200.000</td><td colspan="2">31.556.000</td></tr>'
+            .'</tbody></table>';
+
+        app(DocumentGenerator::class)->saveEdit($baNego, $this->executor, $baNego->title, $typed);
+
+        $this->assertSame('Jasa penggantian fuse
+Panel control 380V', $procurement->contractItems()->value('description'));
+
+        // Opened again: still on its two lines, in this table and the others.
+        $this->assertStringContainsString('Jasa penggantian fuse<br>'.'
+'.'Panel control 380V', $baNego->refresh()->rendered_body);
+        $this->assertStringContainsString('Jasa penggantian fuse<br>'.'
+'.'Panel control 380V', $suratPesanan->refresh()->rendered_body);
+    }
+
+    public function test_the_source_wrapping_of_a_cell_is_no_line_break(): void
+    {
+        $this->assertSame('Sarung tangan karet', DocumentGenerator::cellLines('<p>Sarung
+   tangan   karet</p>'));
+        $this->assertSame('Baris satu
+Baris dua', DocumentGenerator::cellLines('<div>Baris satu</div><div>Baris&nbsp;dua</div>'));
+    }
+
     public function test_a_table_typed_in_the_editor_becomes_the_items(): void
     {
         [$procurement, $baNego] = $this->spplWithDocuments();

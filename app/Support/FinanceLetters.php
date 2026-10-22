@@ -263,7 +263,7 @@ class FinanceLetters
 
             $rows .= '<tr>'
                 .'<td style="'.$cell.' text-align: center;">'.++$number.'.</td>'
-                .'<td style="'.$cell.'">'.e($item->description).'</td>'
+                .'<td style="'.$cell.'">'.nl2br(e($item->description), false).'</td>'
                 .'<td style="'.$cell.' text-align: center;">'.e((string) $item->part_number).'</td>'
                 .'<td style="'.$cell.' text-align: center;">'.self::volume($item).'</td>'
                 .'<td style="'.$cell.' text-align: center;">'.e($item->unit).'</td>'

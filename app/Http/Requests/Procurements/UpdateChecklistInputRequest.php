@@ -48,13 +48,9 @@ class UpdateChecklistInputRequest extends FormRequest
                 'icc_memo_number' => ['required', 'string', 'max:255'],
                 'icc_memo_date' => ['required', 'date'],
             ],
+            // Given in the identity now; kept here for a step still asking.
             ChecklistInput::ContractNumber => [
-                'number' => [
-                    'required', 'string', 'max:100',
-                    // The internal registration numbers are not contract numbers.
-                    'not_regex:#^(PGD|USL)/\d{4}/\d{2}/\d+$#',
-                    Rule::unique('procurements', 'number')->ignore($checklist->procurement_id)->whereNull('deleted_at'),
-                ],
+                'number' => UpdateContractNumberRequest::numberRules($checklist->procurement_id),
             ],
             ChecklistInput::RksNumber => ['rks_number' => ['required', 'string', 'max:255']],
             ChecklistInput::HpeNumber => ['hpe_number' => ['required', 'string', 'max:255']],

@@ -25,6 +25,7 @@ import {
 } from '@/components/procurement/checklist-file-list';
 import { ChecklistInputForm } from '@/components/procurement/checklist-input-form';
 import { ChecklistDocumentActions } from '@/components/procurement/checklist-panel';
+import { focusContractNumber } from '@/components/procurement/contract-number-field';
 import {
     PanelSection,
     touchRememberedPanel,
@@ -107,7 +108,6 @@ const INLINE_NUMBERS: Partial<
     },
     hpe_number: { field: 'hpe_number', placeholder: 'Nomor dokumen HPE' },
     upb_number: { field: 'upb_number', placeholder: 'Nomor dokumen UPB' },
-    contract_number: { field: 'number', placeholder: 'Nomor kontrak' },
 };
 
 /** "Rentang waktu (tanggal mulai + jumlah hari)" reads "Rentang waktu". */
@@ -121,7 +121,8 @@ const INPUT_LABELS: Partial<Record<ChecklistInput['kind'], string>> = {
     warranty: 'Masa garansi (bulan)',
     bank_account: 'Pelaksana & rekening bank',
     procurement_memo: 'Nomor & tanggal nota dinas',
-    contract_number: 'Nomor kontrak',
+    // Given in the identity of the procurement; the step checks it is there.
+    contract_number: 'Nomor kontrak (di Identitas Pengadaan)',
 };
 
 export function requirementsOf(row: ChecklistRow): Requirement[] {
@@ -140,7 +141,9 @@ export function requirementsOf(row: ChecklistRow): Requirement[] {
             action:
                 row.input.kind === 'partner_candidates'
                     ? 'Isi calon mitra'
-                    : 'Isi data',
+                    : row.input.kind === 'contract_number'
+                      ? 'Isi Nomor Kontrak'
+                      : 'Isi data',
         });
     }
 
@@ -526,13 +529,30 @@ function NextStepBanner({
                     Tandai selesai
                 </Button>
             ) : (
-                <Button onClick={onOpen} className="shrink-0">
+                <Button
+                    onClick={
+                        awaitsContractNumber(row) ? focusContractNumber : onOpen
+                    }
+                    className="shrink-0"
+                >
                     {primaryLabel(row, canManageDocuments)}
                     <ArrowRight className="size-4" />
                 </Button>
             )}
         </div>
     );
+}
+
+/**
+ * Whether the step's next requirement is the contract number, given in the
+ * identity of the procurement rather than in the step.
+ */
+function awaitsContractNumber(row: ChecklistRow): boolean {
+    const missing = requirementsOf(row).find(
+        (requirement) => !requirement.done,
+    );
+
+    return missing?.key === 'input' && row.input?.kind === 'contract_number';
 }
 
 /** The label of a step's main button while it is not finished. */
@@ -734,7 +754,9 @@ function StepRow({
                         onClick={
                             state === 'optional' && requirements.length === 0
                                 ? () => onToggle(true)
-                                : onOpen
+                                : editable && awaitsContractNumber(row)
+                                  ? focusContractNumber
+                                  : onOpen
                         }
                     >
                         {state === 'optional' && requirements.length === 0

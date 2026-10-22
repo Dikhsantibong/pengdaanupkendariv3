@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
 /** One item of the Rincian Item, as the server keeps it. */
@@ -291,6 +292,37 @@ function rowsFromClipboard(text: string, fields: Field[]): Row[] {
         });
 }
 
+/**
+ * The grid's rows from an unsaved draft, as handed to the editor: the grid
+ * opened again (after the Editor Visual, say) shows what was typed.
+ */
+function rowsFromDraft(draft: ItemRowPayload[]): Row[] {
+    const text = (value: number | null) =>
+        value === null ? '' : formatNumber(value);
+
+    return draft.map((row) => ({
+        key: newKey(),
+        id: row.id,
+        kind: row.kind,
+        description: row.description,
+        part_number: row.part_number ?? '',
+        volume: row.kind === 'group' ? '' : text(row.volume),
+        unit: row.unit ?? '',
+        price_before: text(row.price_before),
+        unit_price: text(row.unit_price),
+        previous_po_number: row.previous_po_number ?? '',
+        previous_po_date: row.previous_po_date ?? '',
+        previous_supplier: row.previous_supplier ?? '',
+        previous_price: text(row.previous_price),
+        quotes: Object.fromEntries(
+            Object.entries(row.quotes).map(([partner, price]) => [
+                partner,
+                formatNumber(price),
+            ]),
+        ),
+    }));
+}
+
 /** A row as the server takes it (to draw the table, or to keep it). */
 export type ItemRowPayload = {
     id: number | null;
@@ -356,6 +388,7 @@ export function ItemListCard({
     onRowsChange,
     groupLetters = 'upper',
     onGroupLettersChange,
+    draft = null,
 }: {
     items: ProcurementItem[];
     editable: boolean;
@@ -368,8 +401,13 @@ export function ItemListCard({
     /** The job's lettering, the same in every item table it prints. */
     groupLetters?: GroupLetters;
     onGroupLettersChange?: (letters: GroupLetters) => void;
+    /** The rows typed but not saved yet, kept by the editor. */
+    draft?: ItemRowPayload[] | null;
 }) {
-    const [rows, setRowsState] = useState<Row[]>(() => rowsFrom(items));
+    // Unsaved rows win: the tab may close and open again before a save.
+    const [rows, setRowsState] = useState<Row[]>(() =>
+        draft !== null ? rowsFromDraft(draft) : rowsFrom(items),
+    );
 
     // Saved items come back with their ids: the grid takes them, so the
     // next save updates those rows instead of adding them again.
@@ -666,14 +704,28 @@ export function ItemListCard({
                                                         : 1
                                                 }
                                             >
-                                                <Input
+                                                {/* Several lines, as Enter in the document's
+                                                    cell makes them; a group name is one. */}
+                                                <Textarea
+                                                    rows={1}
                                                     className={cn(
                                                         cell,
+                                                        'h-auto min-h-8 resize-none py-1.5 leading-snug',
                                                         row.kind === 'group' &&
                                                             'border-primary/50 bg-primary/10 font-semibold',
                                                     )}
                                                     value={row.description}
-                                                    title="Bisa tempel baris dari Excel"
+                                                    onKeyDown={(event) => {
+                                                        if (
+                                                            row.kind ===
+                                                                'group' &&
+                                                            event.key ===
+                                                                'Enter'
+                                                        ) {
+                                                            event.preventDefault();
+                                                        }
+                                                    }}
+                                                    title="Bisa tempel baris dari Excel; Enter untuk baris baru"
                                                     placeholder={
                                                         row.kind === 'group'
                                                             ? 'Nama kelompok'

@@ -1,6 +1,7 @@
 import { ChevronDown } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { ContractNumberField } from '@/components/procurement/contract-number-field';
 import {
     ContractTypePicker,
     SelectionMethodPicker,
@@ -36,6 +37,8 @@ export function IdentityPanel({
     contractTypes,
     selectionMethods = [],
     candidateCount = 0,
+    contractNumber = { value: null, suggested: null },
+    editsContractNumber = false,
 }: {
     procurement: ProcurementRow;
     notes: string | null;
@@ -46,6 +49,10 @@ export function IdentityPanel({
     selectionMethods?: Option[];
     /** How many calon mitra are listed, shown until one is picked. */
     candidateCount?: number;
+    /** The contract number once given, and the one the format offers. */
+    contractNumber?: { value: string | null; suggested: string | null };
+    /** The execution PIC and TL Pengadaan give the contract number here. */
+    editsContractNumber?: boolean;
 }) {
     const [open, setOpen] = useState(() => {
         try {
@@ -131,6 +138,24 @@ export function IdentityPanel({
                     : formatCurrency(procurement.value_after_negotiation),
         },
     ];
+
+    // Given by the execution side once the plan is approved; shown to the
+    // others only once there is one.
+    if (editsContractNumber || contractNumber.value !== null) {
+        primary.push({
+            label: 'Nomor Kontrak',
+            value: (
+                <ContractNumberField
+                    procurementId={procurement.id}
+                    value={contractNumber.value}
+                    suggested={contractNumber.suggested}
+                    editable={editsContractNumber}
+                />
+            ),
+            // Room to type a full number for who gives it.
+            wide: editsContractNumber,
+        });
+    }
 
     const partner: Field[] = [
         {

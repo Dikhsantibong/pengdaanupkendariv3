@@ -173,7 +173,7 @@ class ItemTableRenderer
 
             $item = $row['item'];
             $rows .= '<tr><td style="'.$cell.'">'.$row['label'].'</td>'
-                .'<td style="'.$text.'">'.e($item->description).'</td>'
+                .'<td style="'.$text.'">'.$this->description($item).'</td>'
                 .'<td style="'.$cell.'">'.$this->quantity($item).'</td>'
                 .'<td style="'.$cell.'">'.e($item->unit).'</td>'
                 .'<td style="'.$money.'">'.$this->money($item->price_before).'</td>'
@@ -230,7 +230,7 @@ class ItemTableRenderer
 
             $item = $row['item'];
             $drawn[] = '<tr><td style="'.$cell.'"></td>'
-                .'<td style="'.$cell.'">- '.e($item->description).'</td>'
+                .'<td style="'.$cell.'">- '.$this->description($item).'</td>'
                 .'<td style="'.$cell.' text-align: center;">'.$this->quantity($item).'</td>'
                 .'<td style="'.$cell.' text-align: center;">'.e($item->unit).'</td>'
                 .'<td style="'.$cell.' text-align: right;">Rp '.$this->money($item->unit_price).'</td>'
@@ -434,7 +434,7 @@ class ItemTableRenderer
 
             $item = $row['item'];
             $drawn[] = '<tr><td>'.$row['label'].'</td>'
-                .'<td>'.e($item->description).'</td>'
+                .'<td>'.$this->description($item).'</td>'
                 .'<td>'.$this->quantity($item).'</td>'
                 .'<td>'.e($item->unit).'</td>'
                 .'<td>'.$this->money($item->price_before).'</td>'
@@ -489,7 +489,7 @@ class ItemTableRenderer
 
             $item = $row['item'];
             $drawn[] = '<tr><td>'.$row['label'].'</td>'
-                .'<td>'.e($item->description).'</td>'
+                .'<td>'.$this->description($item).'</td>'
                 .'<td>'.$this->quantity($item).'</td>'
                 .'<td>'.e($item->unit).'</td>'
                 .'<td>'.$this->money($item->getAttribute($price)).'</td>'

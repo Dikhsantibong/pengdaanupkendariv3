@@ -69,15 +69,31 @@ export function useRememberedPanel(
             }
         };
 
-        window.addEventListener(OPEN_EVENT, onOpen);
+        // Closed from elsewhere, to show something under the panel.
+        const onClose = () => {
+            remembered = null;
+            setOpenId(null);
+        };
 
-        return () => window.removeEventListener(OPEN_EVENT, onOpen);
+        window.addEventListener(OPEN_EVENT, onOpen);
+        window.addEventListener(CLOSE_EVENT, onClose);
+
+        return () => {
+            window.removeEventListener(OPEN_EVENT, onOpen);
+            window.removeEventListener(CLOSE_EVENT, onClose);
+        };
     }, [scope]);
 
     return [openId, open];
 }
 
 const OPEN_EVENT = 'remembered-panel:open';
+const CLOSE_EVENT = 'remembered-panel:close';
+
+/** Close every row's side panel, to show what lies under it. */
+export function closeRememberedPanels(): void {
+    window.dispatchEvent(new CustomEvent(CLOSE_EVENT));
+}
 
 /**
  * Open a row's side panel from outside its table: at once if the table is

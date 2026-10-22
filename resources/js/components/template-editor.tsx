@@ -36,6 +36,7 @@ import {
     useRef,
     useState,
 } from 'react';
+import { useColumnResize } from '@/components/document-editor/column-resize';
 import { PageSetupDialog } from '@/components/document-editor/page-setup-dialog';
 import {
     useDocumentZoom,
@@ -247,6 +248,20 @@ export function TemplateEditor({
         [],
     );
 
+    // The page loaded in the frame, so the column lines can be dragged on it
+    // (and again on the next one when the frame reloads).
+    const [loadedPage, setLoadedPage] = useState<Document | null>(null);
+
+    useColumnResize(
+        () => loadedPage?.body ?? null,
+        loadedPage !== null,
+        () =>
+            loadedPage?.body.dispatchEvent(
+                new Event('input', { bubbles: true }),
+            ),
+        loadedPage,
+    );
+
     // The zoom of the sheet in the frame, as in Word; Ctrl + wheel inside the
     // frame zooms it too. The zoom lives in an editor-only style, so it is
     // never saved with the template.
@@ -367,6 +382,7 @@ export function TemplateEditor({
 
         prepareEditorDocument(doc, placeholders);
         applyZoom(doc, zoomRef.current);
+        setLoadedPage(doc);
 
         try {
             doc.execCommand('styleWithCSS', false, 'true');

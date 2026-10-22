@@ -284,6 +284,19 @@ class ProcurementPolicy
     }
 
     /**
+     * Determine whether the user may give the contract number, which sits in
+     * the identity of the procurement: the execution PIC, TL Pengadaan or the
+     * administrator, once there is an approved plan and until the job is with
+     * Keuangan.
+     */
+    public function updateContractNumber(User $user, Procurement $procurement): bool
+    {
+        return $procurement->isPlanningApproved()
+            && $procurement->finance_submitted_at === null
+            && $this->worksOnExecution($user, $procurement);
+    }
+
+    /**
      * Whether the user works on the execution of this job: its execution PIC,
      * or TL Pengadaan / the administrator who oversee execution. TL ICC, like
      * a planning PIC, only follows it.

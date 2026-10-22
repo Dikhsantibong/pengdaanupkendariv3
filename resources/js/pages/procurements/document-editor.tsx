@@ -145,9 +145,8 @@ export default function DocumentEditor({
     canManageItems?: boolean;
 }) {
     const form = useForm({ title: doc.title, body: doc.body });
-    const [mode, setMode] = useState<ViewMode>(
-        items !== null ? 'items' : 'visual',
-    );
+    // The document itself opens first; the Rincian Item is one tab away.
+    const [mode, setMode] = useState<ViewMode>('visual');
     const [confirmReload, setConfirmReload] = useState(false);
 
     // The Rincian Item as changed in this editor; null while untouched.
@@ -521,6 +520,7 @@ export default function DocumentEditor({
                                     >
                                 }
                                 onRowsChange={setItemRows}
+                                draft={itemRows}
                                 groupLetters={groupLetters}
                                 onGroupLettersChange={setGroupLetters}
                             />

@@ -1,6 +1,7 @@
 import { useForm } from '@inertiajs/react';
 import { CheckCircle2, Save } from 'lucide-react';
 import InputError from '@/components/input-error';
+import { focusContractNumber } from '@/components/procurement/contract-number-field';
 import { PartnerCandidatesCard } from '@/components/procurement/partner-candidates-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -133,6 +134,38 @@ export function ChecklistInputForm({
         );
     }
 
+    // The contract number is given in the identity of the procurement; the
+    // step only checks that it is there.
+    if (input.kind === 'contract_number') {
+        return (
+            <div className="space-y-2 rounded-sm border border-border bg-muted/30 p-2.5 text-xs">
+                <div className="flex items-center gap-1.5 font-medium">
+                    {input.is_filled && (
+                        <CheckCircle2 className="size-3.5 text-emerald-600" />
+                    )}
+                    Nomor Kontrak:{' '}
+                    <span className="tabular">{values.number ?? '—'}</span>
+                </div>
+                <p className="text-muted-foreground">
+                    Nomor kontrak diisi di kartu Identitas Pengadaan (bagian
+                    atas halaman) oleh PIC Pelaksana atau TL Pengadaan.
+                </p>
+                {canManage && (
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant={input.is_filled ? 'outline' : 'default'}
+                        onClick={focusContractNumber}
+                    >
+                        {input.is_filled
+                            ? 'Ubah di Identitas Pengadaan'
+                            : 'Isi di Identitas Pengadaan'}
+                    </Button>
+                )}
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-2 rounded-sm border border-border bg-muted/30 p-2.5">
             <div className="flex items-center gap-1.5 text-xs font-medium">
@@ -260,47 +293,6 @@ export function ChecklistInputForm({
                             />
                         </Field>
                     </>
-                )}
-
-                {input.kind === 'contract_number' && (
-                    <div className="sm:col-span-2">
-                        <Field
-                            id={`contract-number-${checklistId}`}
-                            label="Nomor Kontrak"
-                            error={form.errors.number}
-                        >
-                            <Input
-                                id={`contract-number-${checklistId}`}
-                                className="tabular h-8"
-                                value={form.data.number}
-                                onChange={(event) =>
-                                    form.setData('number', event.target.value)
-                                }
-                                placeholder={
-                                    values.suggested_number ??
-                                    'KDD001.SPK/612/UPKD/2026'
-                                }
-                                autoComplete="off"
-                            />
-                            {values.suggested_number !== null &&
-                                form.data.number !==
-                                    values.suggested_number && (
-                                    <button
-                                        type="button"
-                                        className="justify-self-start text-[11px] text-muted-foreground underline-offset-2 hover:underline"
-                                        onClick={() =>
-                                            form.setData(
-                                                'number',
-                                                values.suggested_number ?? '',
-                                            )
-                                        }
-                                    >
-                                        Pakai nomor otomatis (
-                                        {values.suggested_number})
-                                    </button>
-                                )}
-                        </Field>
-                    </div>
                 )}
 
                 {DOCUMENT_NUMBERS.map(

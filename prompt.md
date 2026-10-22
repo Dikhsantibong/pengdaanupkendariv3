@@ -1951,6 +1951,44 @@ Bagian **Request Penilaian Vendor** ada di halaman Penilaian Penyedia, di atas d
 - **Cache:** `DocumentPdfRenderer::LAYOUT_VERSION` dinaikkan ke `'5'` supaya PDF lama dibuat ulang.
 - **Test:** `TableHeaderOncePerTableTest`. Test ini juga membuktikan perilaku lama: sebelum perbaikan, header tergambar sekali di setiap halaman.
 
+## Geser Garis Kolom, Enter di Sel, & Tab Awal Editor
+
+- **Geser garis kolom seperti Word** (`components/document-editor/column-resize.ts`, hook `useColumnResize`). Berlaku di Editor Visual dokumen (`visual-editor.tsx`) dan di editor template Data Master (`template-editor.tsx`, di dalam iframe).
+  - **Cara pakai:** arahkan kursor ke garis antara dua kolom sampai berubah menjadi ↔, lalu tarik. Kolom kiri melebar dan kolom kanan menyempit, sedangkan lebar tabel tetap. Garis tepi luar tabel tidak bisa ditarik.
+  - **Batas:** lebar minimum kolom 16px. Sel gabungan (`colspan`/`rowspan`) dipetakan dengan benar.
+  - **Zoom:** skala dibaca dari rasio ukuran layar dan ukuran tata letak tabel, jadi tepat untuk zoom `transform` (dokumen) maupun CSS `zoom` (template).
+  - **Penyimpanan lebar:** lebar ditulis sebagai persen di `style.width` setiap sel satu-kolom pada dua kolom itu (dibaca dompdf). Untuk tabel `table-layout: fixed`, lebar juga ditulis ke `<colgroup>` (dibaca browser).
+  - **Setelah dilepas:** perubahan diteruskan ke editor (`emit`); di template dengan event `input`.
+  - Sudah dicek: PDF (dompdf) mengikuti lebar baru walau ada `colgroup`.
+  - Catatan: tabel Surat Pesanan menulis ulang `thead`-nya sendiri saat item berubah, sehingga lebar di baris judul tabel itu bisa kembali ke bawaan.
+- **Enter di dalam sel tabel item kini bertahan:**
+  - **Penyebab:** saat BA Negosiasi disimpan, tabel item dibaca menjadi Rincian Item dan `<br>` diubah menjadi spasi, lalu semua tabel item digambar ulang.
+  - **Pembacaan:** `DocumentGenerator::cellLines()` menyimpan baris baru sebagai `
+`. Pembungkusan teks dari sumber HTML tetap dianggap spasi.
+  - **Penggambaran:** uraian digambar dengan `nl2br` di `ItemTableRenderer`, Surat Pesanan, DO, dan Surat Keuangan.
+  - **Rincian Item:** kolom uraian kini `Textarea` yang membesar otomatis (Enter = baris baru; nama kelompok tetap satu baris).
+  - Test `SpplExecutionTest::test_a_line_break_in_an_item_name_keeps_the_words_apart` disesuaikan: kini mengharapkan baris baru, bukan spasi.
+- **Tab awal editor dokumen:** selalu **Editor Visual**, bukan Rincian Item (`document-editor.tsx`).
+- **Test:** `ProcurementItemsTest::test_a_line_typed_with_enter_in_a_cell_stays_after_saving` dan `test_the_source_wrapping_of_a_cell_is_no_line_break`.
+
+## Nomor Kontrak Diisi di Identitas Pengadaan
+
+- **Pindah tempat:** nomor kontrak (`procurements.number`) tidak lagi diketik di langkah **Lampiran Surat Pesanan**, tetapi di kartu **Identitas Pengadaan**, pada field **Nomor Kontrak** (`components/procurement/contract-number-field.tsx`).
+  - Ada tombol "Pakai nomor otomatis" dari format kontrak.
+  - Cara simpan: Enter atau ✓. Esc membatalkan.
+  - Untuk yang tidak berhak mengisi, field tampil sebagai teks biasa begitu nomor sudah ada.
+- **Yang boleh mengisi:** PIC Pelaksana, TL Pengadaan, atau administrator (policy `updateContractNumber`: perencanaan sudah disetujui dan belum diserahkan ke Keuangan).
+  - Rute: `procurements.contract-number.update` (`PUT procurements/{id}/nomor-kontrak`), lewat `ContractNumberController` dan `UpdateContractNumberRequest`.
+  - Aturan validasi sama seperti sebelumnya (`numberRules()` dipakai bersama `UpdateChecklistInputRequest`): wajib, unik, dan bukan nomor registrasi PGD/USL.
+  - Setiap perubahan tercatat di riwayat aktivitas.
+  - Untuk yang berhak mengisi, field mengisi satu baris penuh kartu (maks. `max-w-md`) agar nomor lengkap terlihat saat diketik.
+- **Langkah checklist tetap menagih nomor kontrak**, jadi alur tidak berubah:
+  - Kebutuhannya kini tertulis "Nomor kontrak (di Identitas Pengadaan)".
+  - Tombol **Isi Nomor Kontrak** (di baris langkah dan di banner "Langkah berikutnya") menutup panel, menggulir ke kartu Identitas, dan membuka field-nya (`focusContractNumber()`).
+  - Panel langkah menampilkan nomor saat ini dan tombol **Isi/Ubah di Identitas Pengadaan**.
+  - Panel samping bisa ditutup dari luar lewat `closeRememberedPanels()` (`request-board.tsx`).
+- **Test:** `ContractNumberTest`.
+
 ## Huruf Kelompok (A/a) & Kelompok Tanpa Item
 
 - **Huruf kelompok bisa besar atau kecil:** pilihannya disimpan per pengadaan di kolom baru `procurements.group_letters` (`upper` sebagai bawaan, atau `lower`) lewat migrasi `add_group_letters_to_procurements`.
@@ -1962,6 +2000,7 @@ Bagian **Request Penilaian Vendor** ada di halaman Penilaian Penyedia, di atas d
   - **Masalah sebelumnya:** nama kelompok hanya menempel pada item, sehingga kelompok yang belum punya item hilang dari Editor Visual dan dokumen.
   - **Penyimpanan:** kelompok kosong disimpan sebagai **baris judul**, yaitu baris `procurement_contract_items` tanpa uraian (`ProcurementContractItem::isHeading()`). Kalau kelompok itu kemudian diberi item, baris judulnya otomatis terhapus.
   - **Siapa yang membaca baris judul:** relasi baru `Procurement::itemRows()` memuat baris judul, dan hanya dipakai editor Rincian Item serta penggambar tabel. Relasi `contractItems()` tetap mengabaikannya, jadi DO, Keuangan, nilai setelah nego, dan jumlah item tidak berubah.
+- **Draf Rincian Item tidak hilang saat pindah tab:** tab yang tidak aktif dilepas dari halaman. Sebelumnya, isian yang belum disimpan (misalnya kelompok baru) hilang dari tabel isian setelah membuka Editor Visual lalu kembali, padahal drafnya masih ada di belakang layar. Kini `ItemListCard` menerima `draft` (baris yang belum disimpan dari editor dokumen) dan membangun tabel dari draf itu (`rowsFromDraft`).
 - **Test:** `ProcurementItemsTest`, yaitu `test_the_groups_can_be_lettered_in_lower_case_in_every_table`, `test_the_draft_table_tries_the_lettering_without_keeping_it`, `test_only_upper_or_lower_lettering_is_taken`, dan `test_a_group_without_items_yet_still_prints_its_heading`.
 
 ## Tabel Langkah Menyesuaikan Tablet

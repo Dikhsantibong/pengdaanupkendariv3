@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
+import { useColumnResize } from '@/components/document-editor/column-resize';
 import {
     PageBoundaries,
     withoutSheetMarks,
@@ -595,6 +596,9 @@ export function VisualEditor({
         );
         onChange(lastEmitted.current);
     }, [onChange]);
+
+    // A column line dragged, as in Word: one column wider, the next narrower.
+    useColumnResize(() => area.current, !disabled, emit);
 
     /** Lay the document on another paper or margins; null: the template's. */
     const applySetup = (next: PageSetup | null) => {

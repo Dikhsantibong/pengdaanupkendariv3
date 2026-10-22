@@ -534,7 +534,8 @@ HTML;
 
         $items = app(DocumentGenerator::class)->parseNegotiationItems($html);
 
-        $this->assertSame(['Uji CMM + Kekerasan (Shaft Idle Gear)'], array_column($items, 'name'));
+        // Kept on its two lines, never glued into one word.
+        $this->assertSame(["Uji CMM + Kekerasan\n(Shaft Idle Gear)"], array_column($items, 'name'));
     }
 
     public function test_ba_and_surat_pesanan_letterheads_carry_the_company_address_but_attachments_do_not(): void
