@@ -1,5 +1,5 @@
 import { Minus, MoveHorizontal, Plus } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import {
     Select,
@@ -169,9 +169,26 @@ export function ZoomControls({
 
             <Select
                 value={fit ? FIT : String(percent)}
-                onValueChange={(next) =>
-                    next === FIT ? onFitWidth() : onZoom(Number(next) / 100)
-                }
+                onValueChange={(next) => {
+                    if (next === FIT) {
+                        onFitWidth();
+
+                        return;
+                    }
+
+                    // The list can report an empty value while the zoom moves
+                    // between its levels (a pinch): that is no choice, and
+                    // read as 0 it would drop the zoom to its minimum.
+                    const percentage = Number(next);
+
+                    if (
+                        next !== '' &&
+                        Number.isFinite(percentage) &&
+                        percentage > 0
+                    ) {
+                        onZoom(percentage / 100);
+                    }
+                }}
             >
                 <SelectTrigger
                     className="h-7 w-[7.5rem] text-xs"
@@ -230,6 +247,8 @@ export function useWheelZoom(
     zoom: number,
     setZoom: (zoom: number) => void,
 ): void {
+    const step = usePinchZoom(zoom, setZoom);
+
     useEffect(() => {
         const element = target.current;
 
@@ -238,16 +257,63 @@ export function useWheelZoom(
         }
 
         const onWheel = (event: WheelEvent) => {
-            if (!event.ctrlKey && !event.metaKey) {
-                return;
+            if (step(event)) {
+                event.preventDefault();
             }
-
-            event.preventDefault();
-            setZoom(zoom * (event.deltaY < 0 ? 1.1 : 1 / 1.1));
         };
 
         element.addEventListener('wheel', onWheel, { passive: false });
 
         return () => element.removeEventListener('wheel', onWheel);
-    }, [target, zoom, setZoom]);
+    }, [target, step]);
+}
+
+/**
+ * Ctrl + wheel and a touchpad pinch (which the browser sends as Ctrl +
+ * wheel), as in Word. A pinch comes as many small steps, each zooming by as
+ * much as the fingers moved, gathered on the zoom as it is now so none is
+ * lost to rounding or to a render in between; a mouse wheel's notch zooms
+ * 10%. Returns the handler, true when it zoomed.
+ */
+export function usePinchZoom(
+    zoom: number,
+    setZoom: (zoom: number) => void,
+): (event: WheelEvent) => boolean {
+    const current = useRef(zoom);
+    const setter = useRef(setZoom);
+
+    // Zoomed from elsewhere (the buttons, the fit): carry on from there.
+    useEffect(() => {
+        current.current = zoom;
+    }, [zoom]);
+
+    useEffect(() => {
+        setter.current = setZoom;
+    }, [setZoom]);
+
+    return useCallback((event: WheelEvent) => {
+        if (!event.ctrlKey && !event.metaKey) {
+            return false;
+        }
+
+        // Lines or pages (some mice) read as pixels.
+        const delta =
+            event.deltaY *
+            (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 400 : 1);
+        // A mouse notch is a large, whole step; a pinch, small fractions.
+        const isNotch = Math.abs(delta) >= 50 && Number.isInteger(delta);
+        const factor = isNotch
+            ? delta < 0
+                ? 1.1
+                : 1 / 1.1
+            : Math.exp(-delta * 0.01);
+
+        current.current = Math.min(
+            MAX_ZOOM,
+            Math.max(MIN_ZOOM, current.current * factor),
+        );
+        setter.current(current.current);
+
+        return true;
+    }, []);
 }

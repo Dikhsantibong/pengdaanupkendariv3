@@ -10,6 +10,7 @@ use App\Models\DocumentType;
 use App\Models\ProcurementMethod;
 use App\Services\DocumentGenerator;
 use App\Services\DocumentTemplateLibrary;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -24,6 +25,8 @@ class DocumentTemplateController extends Controller
      */
     public function index(Request $request, DocumentTemplateLibrary $library): Response
     {
+        $filters = $this->filters($request);
+
         return Inertia::render('master-data/document-templates', [
             // Bodies are large (an RKS is 100+ KB), so the list ships without
             // them and the preview pulls the one it shows on demand.
@@ -36,14 +39,15 @@ class DocumentTemplateController extends Controller
                     'body' => $template->body,
                 ];
             }),
-            'templates' => DocumentTemplate::query()
+            'templates' => $this->filtered(DocumentTemplate::query(), $filters)
                 ->with(['documentType', 'procurementMethod', 'contractNumberFormat'])
                 ->withCount('procurementDocuments')
                 ->orderBy('document_type_id')
                 ->orderBy('procurement_method_id')
                 ->orderByDesc('version')
-                ->get()
-                ->map(fn (DocumentTemplate $template): array => [
+                ->paginate(20)
+                ->withQueryString()
+                ->through(fn (DocumentTemplate $template): array => [
                     'id' => $template->id,
                     'document_type_id' => $template->document_type_id,
                     'document_type' => $template->documentType->name,
@@ -61,8 +65,71 @@ class DocumentTemplateController extends Controller
                     'is_active' => $template->is_active,
                     'usage_count' => $template->procurement_documents_count,
                     'updated_at' => $template->updated_at?->toDateTimeString(),
-                ])->all(),
+                ]),
+            'filters' => $filters,
+            'filterOptions' => [
+                'documentTypes' => DocumentType::query()->ordered()->get(['id', 'name'])
+                    ->map(fn (DocumentType $type): array => ['value' => (string) $type->id, 'label' => $type->name])->all(),
+                'procurementMethods' => ProcurementMethod::query()->ordered()->get(['id', 'name'])
+                    ->map(fn (ProcurementMethod $method): array => ['value' => (string) $method->id, 'label' => $method->name])->all(),
+                'contractNumberFormats' => ContractNumberFormat::query()->ordered()->get(['id', 'code'])
+                    ->map(fn (ContractNumberFormat $format): array => ['value' => (string) $format->id, 'label' => $format->code])->all(),
+                'workCategories' => WorkCategory::options(),
+            ],
         ]);
+    }
+
+    /**
+     * The filters asked for, each null when not set.
+     *
+     * @return array{q: string|null, jenis: string|null, metode: string|null, format: string|null, kategori: string|null, status: string|null, asal: string|null}
+     */
+    protected function filters(Request $request): array
+    {
+        $value = fn (string $key): ?string => $request->string($key)->trim()->value() ?: null;
+
+        return [
+            'q' => $value('q'),
+            'jenis' => $value('jenis'),
+            'metode' => $value('metode'),
+            'format' => $value('format'),
+            'kategori' => $value('kategori'),
+            'status' => $value('status'),
+            'asal' => $value('asal'),
+        ];
+    }
+
+    /**
+     * Keep the templates the filters ask for. "semua" picks the templates
+     * that apply to every metode, format or kategori (none set).
+     *
+     * @param  Builder<DocumentTemplate>  $query
+     * @param  array{q: string|null, jenis: string|null, metode: string|null, format: string|null, kategori: string|null, status: string|null, asal: string|null}  $filters
+     * @return Builder<DocumentTemplate>
+     */
+    protected function filtered(Builder $query, array $filters): Builder
+    {
+        $scoped = function (Builder $query, string $column, ?string $value): void {
+            if ($value === 'semua') {
+                $query->whereNull($column);
+            } elseif ($value !== null) {
+                $query->where($column, $value);
+            }
+        };
+
+        $scoped($query, 'procurement_method_id', $filters['metode']);
+        $scoped($query, 'contract_number_format_id', $filters['format']);
+        $scoped($query, 'work_category', $filters['kategori']);
+
+        return $query
+            ->when($filters['q'], fn (Builder $query, string $search) => $query->where(fn (Builder $inner) => $inner
+                ->where('name', 'like', "%{$search}%")
+                ->orWhereHas('documentType', fn (Builder $type) => $type->where('name', 'like', "%{$search}%"))))
+            ->when($filters['jenis'], fn (Builder $query, string $type) => $query->where('document_type_id', $type))
+            ->when($filters['status'], fn (Builder $query, string $status) => $query->where('is_active', $status === 'aktif'))
+            ->when($filters['asal'], fn (Builder $query, string $origin) => $origin === 'bawaan'
+                ? $query->whereNotNull('library_key')
+                : $query->whereNull('library_key'));
     }
 
     /**

@@ -40,6 +40,7 @@ import { useColumnResize } from '@/components/document-editor/column-resize';
 import { PageSetupDialog } from '@/components/document-editor/page-setup-dialog';
 import {
     useDocumentZoom,
+    usePinchZoom,
     ZoomControls,
 } from '@/components/document-editor/zoom-controls';
 import {
@@ -270,7 +271,9 @@ export function TemplateEditor({
         paperDimensions(setup).width * PX_PER_MM,
     );
     const zoomRef = useRef(zoom);
-    const wheelZoom = useRef<(zoomingIn: boolean) => void>(() => {});
+    // Ctrl + wheel and a touchpad pinch inside the frame.
+    const pinchZoom = usePinchZoom(zoom, setZoom);
+    const wheelZoom = useRef(pinchZoom);
     const leaveFullscreen = useRef<() => void>(() => {});
 
     const applyZoom = useCallback((doc: Document, value: number) => {
@@ -288,15 +291,14 @@ export function TemplateEditor({
 
     useEffect(() => {
         zoomRef.current = zoom;
-        wheelZoom.current = (zoomingIn) =>
-            setZoom(zoom * (zoomingIn ? 1.1 : 1 / 1.1));
+        wheelZoom.current = pinchZoom;
 
         const doc = frameDocument();
 
         if (doc?.head) {
             applyZoom(doc, zoom);
         }
-    }, [zoom, setZoom, frameDocument, applyZoom]);
+    }, [zoom, pinchZoom, frameDocument, applyZoom]);
 
     // Full screen gives the whole window to the sheet; Escape leaves it.
     useEffect(() => {
@@ -408,12 +410,9 @@ export function TemplateEditor({
         doc.addEventListener(
             'wheel',
             (event) => {
-                if (!event.ctrlKey && !event.metaKey) {
-                    return;
+                if (wheelZoom.current(event)) {
+                    event.preventDefault();
                 }
-
-                event.preventDefault();
-                wheelZoom.current(event.deltaY < 0);
             },
             { passive: false },
         );

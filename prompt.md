@@ -1951,6 +1951,44 @@ Bagian **Request Penilaian Vendor** ada di halaman Penilaian Penyedia, di atas d
 - **Cache:** `DocumentPdfRenderer::LAYOUT_VERSION` dinaikkan ke `'5'` supaya PDF lama dibuat ulang.
 - **Test:** `TableHeaderOncePerTableTest`. Test ini juga membuktikan perilaku lama: sebelum perbaikan, header tergambar sekali di setiap halaman.
 
+## Sidebar "Portal Saya" dengan Pin & Rincian Item Gaya Excel
+
+- **Sidebar tersembunyi di balik tab "Portal Saya"** (`components/portal-tab.tsx`, dipasang di `app-sidebar-layout.tsx`):
+  - **Bentuk tab:** tab vertikal di tepi kiri tengah layar.
+  - **Membuka:** didekati kursor (area hover diperlebar) atau diklik membuka sidebar sambil **menggeser konten**, tidak menutupinya. Di ponsel, tab membuka sheet sidebar.
+  - **Tidak disematkan:** sidebar menutup sendiri 400ms setelah kursor keluar dari sidebar (`scheduleClose`/`cancelClose` di `ui/sidebar.tsx`).
+  - **Disematkan:** tombol pin di pojok atas sidebar (`app-sidebar.tsx`). Sidebar tetap tampil, tidak menutup saat kursor keluar, dan pilihan ini disimpan di cookie baru `sidebar_docked`. Tombol yang sama melepas pin.
+  - **Header & Ctrl+B:** tombol sidebar di header dan Ctrl+B ikut menyematkan atau menutup (`setOpen` = pin).
+  - **Bawaan untuk semua pengguna:** tidak disematkan. `HandleInertiaRequests` membaca `sidebar_docked` (dulu `sidebar_state`), dan cookie ini dikecualikan dari enkripsi di `bootstrap/app.php`.
+  - **Konteks sidebar:** `pinned`, `unpin()`, `openForAWhile()`, `scheduleClose()`, `cancelClose()`. Sidebar memakai `collapsible="offcanvas"` (dulu "icon"). Saat tertutup, konten tetap diberi jarak `ml-2`.
+  - **Tablet & ponsel (< 1024px, `useIsCompact()` di `hooks/use-mobile.tsx`):** sidebar dibuka sebagai panel geser di atas halaman dengan latar gelap (Sheet), sehingga konten tidak terdorong dan tidak sesak. Ketuk di luar panel untuk menutup. Tombol pin tidak tampil di mode ini.
+  - **Tablet landscape / layar sentuh ≥ 1024px:** mode desktop (menggeser konten). Sidebar yang dibuka tanpa pin juga tertutup saat diketuk atau diklik di luarnya, karena di layar sentuh tidak ada kursor yang "keluar".
+  - **Diuji di 768/820px:** tab Portal Saya tidak menutupi isi halaman (ada di margin kiri) dan tidak ada geser halaman ke samping.
+- **Rincian Item bergaya lembar Excel** (`item-list-card.tsx`). Hanya tampilan yang berubah; fungsi tidak berubah.
+  - Garis sel di semua sisi (`border-collapse`).
+  - Kotak isian tanpa bingkai yang mengisi penuh selnya (`h-px` pada sel + `h-full` pada isian).
+  - Sel yang sedang diisi bergaris biru tebal (`focus:shadow-[inset_0_0_0_2px_var(--primary)]`), seperti sel aktif Excel.
+  - Kolom No abu-abu seperti nomor baris Excel, dan baris yang sedang diedit tersorot.
+  - Header dan baris total abu-abu.
+
+## Zoom Touchpad & Daftar Template Berfilter
+
+- **Pinch touchpad di editor template (dan Editor Visual dokumen):**
+  - **Penyebab utama:** dropdown persen zoom (`ZoomControls`, Radix Select) mengirim nilai kosong saat zoom berada di antara pilihan bakunya. Nilai kosong itu dibaca sebagai 0 lalu dibulatkan ke batas minimum, sehingga pinch selalu jatuh ke 30%.
+  - **Perbaikan dropdown:** nilai kosong atau tidak valid kini diabaikan.
+  - **Perbaikan gerakan (`usePinchZoom` di `zoom-controls.tsx`, dipakai `useWheelZoom` dan editor template):**
+    - Pinch mengubah zoom sebesar gerakannya (`exp(-deltaY × 0.01)`), dikumpulkan dari nilai terbaru agar tidak hilang karena pembulatan atau render.
+    - Satu putaran roda mouse + Ctrl tetap 10%.
+- **Daftar Template Dokumen** (`master-data/document-templates`) kini berhalaman, 20 per halaman (`DataPagination`), dengan pencarian dan filter di server (`DocumentTemplateController::filters()` / `filtered()`):
+  - **Pencarian (`q`):** nama template atau nama jenis dokumen, dengan jeda 300ms.
+  - **Jenis Dokumen (`jenis`).**
+  - **Metode (`metode`), Format Kontrak (`format`), Kategori (`kategori`):** pilihan "semua" berarti template yang berlaku untuk semua (nilai kosong).
+  - **Status (`status`):** aktif atau nonaktif.
+  - **Asal (`asal`):** `bawaan` (`library_key` terisi) atau `buatan` (dibuat di sini).
+  - Tombol **Reset**, dan keadaan kosong khusus ketika tidak ada yang cocok.
+  - Prop baru: `filters`, `filterOptions`. `templates` kini berbentuk `Paginated`.
+- **Test:** `DocumentTemplateListTest`.
+
 ## Geser Garis Kolom, Enter di Sel, & Tab Awal Editor
 
 - **Geser garis kolom seperti Word** (`components/document-editor/column-resize.ts`, hook `useColumnResize`). Berlaku di Editor Visual dokumen (`visual-editor.tsx`) dan di editor template Data Master (`template-editor.tsx`, di dalam iframe).

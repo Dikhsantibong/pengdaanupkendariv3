@@ -19,6 +19,8 @@ import {
     LayoutDashboard,
     ListChecks,
     MonitorPlay,
+    Pin,
+    PinOff,
     Play,
     Settings2,
     ShieldCheck,
@@ -40,7 +42,9 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    useSidebar,
 } from '@/components/ui/sidebar';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import accessRights from '@/routes/access-rights';
 import approvals from '@/routes/approvals';
@@ -60,6 +64,7 @@ import type { Auth, NavGroup } from '@/types';
 
 export function AppSidebar() {
     const { auth } = usePage<{ auth: Auth }>().props;
+    const { setOpen, isMobile, pinned, unpin } = useSidebar();
     const { permissions } = auth;
     const { menus } = permissions;
 
@@ -314,15 +319,53 @@ export function AppSidebar() {
     ];
 
     return (
-        <Sidebar collapsible="icon" variant="inset">
+        // Closed, it waits behind the "Portal Saya" tab.
+        <Sidebar collapsible="offcanvas" variant="inset">
             <SidebarHeader>
                 <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
+                    <SidebarMenuItem className="flex items-center gap-1">
+                        <SidebarMenuButton
+                            size="lg"
+                            asChild
+                            className="min-w-0 flex-1"
+                        >
                             <Link href={dashboard()} prefetch>
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
+                        {!isMobile && (
+                            // Pinned, it stays; unpinned, it hides behind the
+                            // "Portal Saya" tab once the pointer leaves it.
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    pinned ? unpin() : setOpen(true)
+                                }
+                                title={
+                                    pinned
+                                        ? 'Lepas pin: sidebar tersembunyi dan muncul lewat Portal Saya'
+                                        : 'Sematkan sidebar agar selalu tampil'
+                                }
+                                aria-label={
+                                    pinned
+                                        ? 'Lepas pin sidebar'
+                                        : 'Sematkan sidebar'
+                                }
+                                aria-pressed={pinned}
+                                className={cn(
+                                    'flex size-8 shrink-0 items-center justify-center rounded-md hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                                    pinned
+                                        ? 'text-sidebar-foreground'
+                                        : 'text-sidebar-foreground/60',
+                                )}
+                            >
+                                {pinned ? (
+                                    <Pin className="size-4 fill-current" />
+                                ) : (
+                                    <PinOff className="size-4" />
+                                )}
+                            </button>
+                        )}
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarHeader>

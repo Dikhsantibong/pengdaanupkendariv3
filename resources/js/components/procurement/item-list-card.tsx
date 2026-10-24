@@ -556,9 +556,10 @@ export function ItemListCard({
         onRowsChange(payloadOf(rows));
     };
 
-    // Filled, darker fields: the grid reads at once as something to type in.
+    // A sheet's cell, as in Excel: the field fills it without a box of its
+    // own, and the cell being typed in takes a thick blue edge.
     const cell =
-        'h-8 border-input bg-muted px-2 text-xs shadow-none hover:border-primary/60 focus-visible:bg-background';
+        'h-full min-h-8 w-full rounded-none border-0 bg-transparent px-2 text-xs shadow-none hover:bg-primary/[0.04] focus:relative focus:z-10 focus:bg-background focus:shadow-[inset_0_0_0_2px_var(--primary)] focus-visible:ring-0 dark:bg-transparent';
     const alignOf = (field: Field) =>
         isText(field) ? 'text-left' : 'text-right';
     const widthOf = (field: Field) =>
@@ -571,7 +572,7 @@ export function ItemListCard({
                 : 'w-32';
 
     const fieldInput = (row: Row, index: number, field: Field) => (
-        <td key={field} className="px-1 py-1">
+        <td key={field} className="h-px p-0">
             <Input
                 className={cn(cell, alignOf(field), 'tabular')}
                 inputMode={isText(field) ? 'text' : 'decimal'}
@@ -585,7 +586,7 @@ export function ItemListCard({
     );
     const quoteInputs = (row: Row, index: number) =>
         partners.map((partner) => (
-            <td key={`quote-${partner.id}`} className="px-1 py-1">
+            <td key={`quote-${partner.id}`} className="h-px p-0">
                 <Input
                     className={cn(cell, 'tabular text-right')}
                     inputMode="decimal"
@@ -613,12 +614,12 @@ export function ItemListCard({
             ) : (
                 <div className="overflow-x-auto">
                     <table
-                        className="w-full text-xs"
+                        className="w-full border-collapse text-xs [&_td]:border [&_td]:border-border [&_th]:border [&_th]:border-border"
                         style={{
                             minWidth: `${36 + (columns.length + partners.length) * 8}rem`,
                         }}
                     >
-                        <thead className="border-b border-input bg-muted text-left text-[11px] font-semibold tracking-wide text-foreground/80 uppercase">
+                        <thead className="bg-muted text-left text-[11px] font-semibold tracking-wide text-foreground/80 uppercase">
                             <tr>
                                 <th className="w-10 px-2 py-2 text-center">
                                     No
@@ -663,16 +664,17 @@ export function ItemListCard({
                                 {editable && <th className="w-40 px-2 py-2" />}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-border">
+                        <tbody className="bg-background">
                             {rows.map((row, index) => (
                                 <tr
                                     key={row.key}
                                     className={cn(
+                                        'focus-within:bg-primary/[0.03]',
                                         row.kind === 'group' &&
                                             'bg-primary/5 font-semibold',
                                     )}
                                 >
-                                    <td className="tabular px-2 py-1.5 text-center">
+                                    <td className="tabular bg-muted/70 px-2 py-1.5 text-center text-muted-foreground">
                                         {row.kind === 'group' &&
                                         editable &&
                                         onGroupLettersChange ? (
@@ -697,7 +699,7 @@ export function ItemListCard({
                                     {editable ? (
                                         <>
                                             <td
-                                                className="px-1 py-1"
+                                                className="p-0"
                                                 colSpan={
                                                     row.kind === 'group'
                                                         ? span
@@ -921,7 +923,7 @@ export function ItemListCard({
                                 </tr>
                             ))}
                         </tbody>
-                        <tfoot className="border-t border-border bg-muted/40 font-semibold">
+                        <tfoot className="bg-muted/60 font-semibold">
                             <tr>
                                 <td
                                     colSpan={

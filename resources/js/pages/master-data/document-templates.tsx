@@ -1,10 +1,28 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Archive, Eye, FileCode2, Pencil, Plus } from 'lucide-react';
-import { useState } from 'react';
+import {
+    Archive,
+    Eye,
+    FileCode2,
+    Pencil,
+    Plus,
+    RotateCcw,
+    Search,
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
 import { TemplatePreviewDialog } from '@/components/template-preview-dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import {
     Table,
     TableBody,
@@ -16,6 +34,7 @@ import {
 import { formatDateTime } from '@/lib/format';
 import { dashboard } from '@/routes';
 import masterData from '@/routes/master-data';
+import type { EnumOption, Paginated } from '@/types';
 
 type TemplateRow = {
     id: number;
@@ -37,15 +56,119 @@ type TemplateRow = {
 
 type TemplatePreview = { id: number; title: string; body: string };
 
+/** The filters of the list, each null when not set. */
+type Filters = {
+    q: string | null;
+    jenis: string | null;
+    metode: string | null;
+    format: string | null;
+    kategori: string | null;
+    status: string | null;
+    asal: string | null;
+};
+
+type FilterOptions = {
+    documentTypes: EnumOption[];
+    procurementMethods: EnumOption[];
+    contractNumberFormats: EnumOption[];
+    workCategories: EnumOption[];
+};
+
+/** A Select cannot carry an empty value: this one means "every one". */
+const ALL = '__all__';
+
+function FilterSelect({
+    id,
+    label,
+    value,
+    options,
+    onChange,
+}: {
+    id: string;
+    label: string;
+    value: string | null;
+    options: EnumOption[];
+    onChange: (value: string | null) => void;
+}) {
+    return (
+        <div className="w-full space-y-1.5 sm:w-44">
+            <Label htmlFor={id} className="section-label">
+                {label}
+            </Label>
+            <Select
+                value={value ?? ALL}
+                onValueChange={(next) => onChange(next === ALL ? null : next)}
+            >
+                <SelectTrigger id={id} className="w-full">
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value={ALL}>Semua</SelectItem>
+                    {options.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
+    );
+}
+
 export default function DocumentTemplates({
-    templates,
+    templates: page,
+    filters,
+    filterOptions,
     preview: loadedPreview,
 }: {
-    templates: TemplateRow[];
+    templates: Paginated<TemplateRow>;
+    filters: Filters;
+    filterOptions: FilterOptions;
     /** Loaded on demand: the list itself ships without template bodies. */
     preview?: TemplatePreview | null;
 }) {
+    const templates = page.data;
     const [preview, setPreview] = useState<TemplatePreview | null>(null);
+    const [search, setSearch] = useState(filters.q ?? '');
+    const isFiltered = Object.values(filters).some((value) => value !== null);
+
+    /** The list again with these filters, from its first page. */
+    const visit = (next: Partial<Filters>) =>
+        router.get(
+            masterData.documentTemplates.index().url,
+            Object.fromEntries(
+                Object.entries({ ...filters, ...next }).filter(
+                    ([, value]) => value !== null && value !== '',
+                ),
+            ),
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
+
+    // Typed search waits for a pause before the list follows it.
+    const firstSearch = useRef(true);
+
+    useEffect(() => {
+        if (firstSearch.current) {
+            firstSearch.current = false;
+
+            return;
+        }
+
+        const timer = window.setTimeout(
+            () => visit({ q: search.trim() || null }),
+            300,
+        );
+
+        return () => window.clearTimeout(timer);
+        // Only the typed text starts a search; the other filters ride along.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [search]);
+
+    const scopeOptions = (label: string, options: EnumOption[]) => [
+        // Applies to every one of them: none picked on the template.
+        { value: 'semua', label },
+        ...options,
+    ];
     const [loadingId, setLoadingId] = useState<number | null>(null);
 
     const openPreview = (template: TemplateRow) => {
@@ -93,7 +216,111 @@ export default function DocumentTemplates({
                     }
                 />
 
-                {templates.length === 0 ? (
+                <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
+                    <div className="w-full min-w-56 flex-1 space-y-1.5">
+                        <Label
+                            htmlFor="template-search"
+                            className="section-label"
+                        >
+                            Cari
+                        </Label>
+                        <div className="relative">
+                            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                                id="template-search"
+                                value={search}
+                                onChange={(event) =>
+                                    setSearch(event.target.value)
+                                }
+                                placeholder="Nama template atau jenis dokumen"
+                                className="pl-9"
+                            />
+                        </div>
+                    </div>
+                    <FilterSelect
+                        id="filter-jenis"
+                        label="Jenis Dokumen"
+                        value={filters.jenis}
+                        options={filterOptions.documentTypes}
+                        onChange={(jenis) => visit({ jenis })}
+                    />
+                    <FilterSelect
+                        id="filter-metode"
+                        label="Metode"
+                        value={filters.metode}
+                        options={scopeOptions(
+                            'Semua metode (bawaan)',
+                            filterOptions.procurementMethods,
+                        )}
+                        onChange={(metode) => visit({ metode })}
+                    />
+                    <FilterSelect
+                        id="filter-format"
+                        label="Format Kontrak"
+                        value={filters.format}
+                        options={scopeOptions(
+                            'Semua format',
+                            filterOptions.contractNumberFormats,
+                        )}
+                        onChange={(format) => visit({ format })}
+                    />
+                    <FilterSelect
+                        id="filter-kategori"
+                        label="Kategori"
+                        value={filters.kategori}
+                        options={scopeOptions(
+                            'Semua kategori',
+                            filterOptions.workCategories,
+                        )}
+                        onChange={(kategori) => visit({ kategori })}
+                    />
+                    <FilterSelect
+                        id="filter-status"
+                        label="Status"
+                        value={filters.status}
+                        options={[
+                            { value: 'aktif', label: 'Aktif' },
+                            { value: 'nonaktif', label: 'Nonaktif' },
+                        ]}
+                        onChange={(status) => visit({ status })}
+                    />
+                    <FilterSelect
+                        id="filter-asal"
+                        label="Asal"
+                        value={filters.asal}
+                        options={[
+                            { value: 'bawaan', label: 'Template bawaan' },
+                            { value: 'buatan', label: 'Dibuat di sini' },
+                        ]}
+                        onChange={(asal) => visit({ asal })}
+                    />
+                    {isFiltered && (
+                        <Button
+                            variant="ghost"
+                            onClick={() => {
+                                setSearch('');
+                                router.get(
+                                    masterData.documentTemplates.index().url,
+                                    {},
+                                    { preserveScroll: true, replace: true },
+                                );
+                            }}
+                        >
+                            <RotateCcw className="size-4" />
+                            Reset
+                        </Button>
+                    )}
+                </div>
+
+                {templates.length === 0 && isFiltered ? (
+                    <div className="rounded-md border border-border bg-card">
+                        <EmptyState
+                            icon={Search}
+                            title="Tidak ada template yang cocok"
+                            description="Ubah kata pencarian atau filter, atau klik Reset untuk melihat semua template."
+                        />
+                    </div>
+                ) : templates.length === 0 ? (
                     <div className="rounded-md border border-border bg-card">
                         <EmptyState
                             icon={FileCode2}
@@ -276,6 +503,7 @@ export default function DocumentTemplates({
                                 ))}
                             </TableBody>
                         </Table>
+                        <DataPagination page={page} />
                     </div>
                 )}
             </div>

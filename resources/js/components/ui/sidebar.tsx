@@ -20,10 +20,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { useIsMobile } from "@/hooks/use-mobile"
+import { useIsCompact } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
 
-const SIDEBAR_COOKIE_NAME = "sidebar_state"
+// Whether the sidebar is pinned open; without it, it hides behind the
+// "Portal Saya" tab and slides out on demand.
+const SIDEBAR_COOKIE_NAME = "sidebar_docked"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
@@ -38,6 +40,16 @@ type SidebarContext = {
   setOpenMobile: (open: boolean) => void
   isMobile: boolean
   toggleSidebar: () => void
+  /** Pinned open: stays, and is remembered. setOpen pins (or unpins). */
+  pinned: boolean
+  /** Unpin, leaving it open until the pointer leaves it. */
+  unpin: () => void
+  /** Open without pinning (the "Portal Saya" tab): it closes again once
+   * the pointer leaves it. */
+  openForAWhile: () => void
+  /** The pointer left an unpinned sidebar, or came back to it. */
+  scheduleClose: () => void
+  cancelClose: () => void
 }
 
 const SidebarContext = React.createContext<SidebarContext | null>(null)
@@ -66,7 +78,9 @@ function SidebarProvider({
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }) {
-  const isMobile = useIsMobile()
+  // Phones and tablets: the sidebar slides over the page (with a backdrop,
+  // closed by a tap beside it) rather than squeezing the page beside it.
+  const isMobile = useIsCompact()
   const [openMobile, setOpenMobile] = React.useState(false)
 
   // This is the internal state of the sidebar.
@@ -79,9 +93,22 @@ function SidebarProvider({
   // Track the user's preferred state so we can restore it when viewport widens
   const userPreferredOpenRef = React.useRef(defaultOpen)
 
+  // Pinned open (remembered), or shown only for a while from the tab.
+  const [pinned, setPinned] = React.useState(defaultOpen)
+  const closeTimer = React.useRef<number | null>(null)
+
+  const cancelClose = React.useCallback(() => {
+    if (closeTimer.current !== null) {
+      window.clearTimeout(closeTimer.current)
+      closeTimer.current = null
+    }
+  }, [])
+
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
       const openState = typeof value === "function" ? value(open) : value
+      cancelClose()
+      setPinned(openState)
       if (setOpenProp) {
         setOpenProp(openState)
       } else {
@@ -95,8 +122,48 @@ function SidebarProvider({
       // This sets the cookie to keep the sidebar state.
       document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
     },
-    [setOpenProp, open]
+    [setOpenProp, open, cancelClose]
   )
+
+  const unpin = React.useCallback(() => {
+    setPinned(false)
+    userPreferredOpenRef.current = false
+    document.cookie = `${SIDEBAR_COOKIE_NAME}=false; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+  }, [])
+
+  const openForAWhile = React.useCallback(() => {
+    cancelClose()
+    _setOpen(true)
+  }, [cancelClose])
+
+  const scheduleClose = React.useCallback(() => {
+    if (pinned) {
+      return
+    }
+
+    cancelClose()
+    closeTimer.current = window.setTimeout(() => _setOpen(false), 400)
+  }, [pinned, cancelClose])
+
+  React.useEffect(() => cancelClose, [cancelClose])
+
+  // Opened without the pin on a touch screen, where no pointer leaves it: a
+  // tap beside it closes it (a click beside it, too).
+  React.useEffect(() => {
+    if (!_open || pinned || isMobile) {
+      return
+    }
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (!(event.target as Element | null)?.closest('[data-slot="sidebar"]')) {
+        cancelClose()
+        _setOpen(false)
+      }
+    }
+
+    document.addEventListener("pointerdown", onPointerDown)
+    return () => document.removeEventListener("pointerdown", onPointerDown)
+  }, [_open, pinned, isMobile, cancelClose])
 
   // Auto-collapse sidebar when viewport is narrow (split-screen / compact mode)
   React.useEffect(() => {
@@ -160,8 +227,13 @@ function SidebarProvider({
       openMobile,
       setOpenMobile,
       toggleSidebar,
+      pinned,
+      unpin,
+      openForAWhile,
+      scheduleClose,
+      cancelClose,
     }),
-    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+    [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar, pinned, unpin, openForAWhile, scheduleClose, cancelClose]
   )
 
   return (
@@ -199,7 +271,7 @@ function Sidebar({
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
 }) {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+  const { isMobile, state, openMobile, setOpenMobile, pinned, scheduleClose, cancelClose } = useSidebar()
 
   if (collapsible === "none") {
     return (
@@ -273,6 +345,9 @@ function Sidebar({
             : "group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l",
           className
         )}
+        // Not pinned: it closes again a moment after the pointer leaves.
+        onMouseEnter={pinned ? undefined : cancelClose}
+        onMouseLeave={pinned ? undefined : scheduleClose}
         {...props}
       >
         <div
@@ -343,7 +418,7 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
       data-slot="sidebar-inset"
       className={cn(
         "bg-background relative flex max-w-full min-h-svh flex-1 flex-col",
-        "peer-data-[variant=inset]:min-h-[calc(100svh-(--spacing(4)))] md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-0",
+        "peer-data-[variant=inset]:min-h-[calc(100svh-(--spacing(4)))] md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",
         className
       )}
       {...props}

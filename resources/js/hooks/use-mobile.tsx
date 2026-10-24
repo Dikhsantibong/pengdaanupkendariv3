@@ -34,3 +34,30 @@ export function useIsMobile(): boolean {
         getServerSnapshot,
     );
 }
+
+const compactMql =
+    typeof window === 'undefined'
+        ? undefined
+        : window.matchMedia('(max-width: 1023px)');
+
+function compactListener(callback: (event: MediaQueryListEvent) => void) {
+    if (!compactMql) {
+        return () => {};
+    }
+
+    compactMql.addEventListener('change', callback);
+
+    return () => compactMql.removeEventListener('change', callback);
+}
+
+/**
+ * A phone or a tablet (narrower than 1024px): too narrow for the sidebar to
+ * stand beside the page, so it slides over it instead.
+ */
+export function useIsCompact(): boolean {
+    return useSyncExternalStore(
+        compactListener,
+        () => compactMql?.matches ?? false,
+        getServerSnapshot,
+    );
+}

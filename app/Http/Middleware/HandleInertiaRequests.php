@@ -78,7 +78,8 @@ class HandleInertiaRequests extends Middleware
                 'active' => $user === null ? null : Impersonation::shared($request),
             ],
             'unreadNotifications' => $user === null ? 0 : $user->unreadNotifications()->count(),
-            'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            // Pinned open only by choice; otherwise it waits behind "Portal Saya".
+            'sidebarOpen' => $request->cookie('sidebar_docked') === 'true',
         ];
     }
 }
