@@ -72,8 +72,8 @@ class StoreProcurementRequest extends FormRequest
             'planner_id' => 'PIC perencana',
             'tor_file' => 'TOR',
             'memo_file' => 'nota dinas usulan',
-            'attachments' => 'lampiran usulan',
-            'attachments.*' => 'lampiran usulan',
+            'attachments' => 'dokumen pendukung',
+            'attachments.*' => 'dokumen pendukung',
         ];
     }
 }

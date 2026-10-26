@@ -14,6 +14,10 @@ import {
 import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { ProposalDocuments } from '@/components/procurement/proposal-documents';
+import {
+    formatFileSize,
+    SupportingDocuments,
+} from '@/components/procurement/supporting-documents';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { formatDate, formatDateTime } from '@/lib/format';
@@ -23,17 +27,7 @@ import type { ProposalRow } from '@/pages/proposals/index';
 import { dashboard } from '@/routes';
 import procurements from '@/routes/procurements';
 import proposals from '@/routes/proposals';
-import type { ProposalDocument } from '@/types';
-
-type Attachment = {
-    id: number;
-    file_name: string;
-    size: number | null;
-    previewable: boolean;
-    is_image: boolean;
-    uploaded_by: string | null;
-    url: string;
-};
+import type { ProposalDocument, SupportingDocument } from '@/types';
 
 type HistoryItem = {
     id: number;
@@ -65,19 +59,10 @@ type Proposal = ProposalRow & {
     missing: string[];
     /** Waiting but incomplete: not yet with the TL / Asman. */
     is_held: boolean;
-    attachments: Attachment[];
+    /** Optional supporting documents beside the TOR and Nota Dinas. */
+    attachments: SupportingDocument[];
     history: HistoryItem[];
 };
-
-function formatSize(bytes: number | null): string {
-    if (bytes === null) {
-        return '';
-    }
-
-    return bytes > 1024 * 1024
-        ? `${(bytes / 1024 / 1024).toFixed(1)} MB`
-        : `${Math.max(1, Math.round(bytes / 1024))} KB`;
-}
 
 /** One readable file in the viewer: a generated document or an upload. */
 type ViewerItem = {
@@ -165,7 +150,7 @@ function DocumentViewer({
                             onClick={() => {
                                 if (
                                     window.confirm(
-                                        `Hapus lampiran ${active.name}?`,
+                                        `Hapus dokumen pendukung ${active.name}?`,
                                     )
                                 ) {
                                     router.delete(
@@ -353,18 +338,18 @@ export default function ProposalShow({
                 url: upload.url,
                 previewable: true,
                 isImage: upload.is_image,
-                meta: `${formatSize(upload.size)}${upload.uploaded_by ? ` · diunggah ${upload.uploaded_by}` : ''}`,
+                meta: `${formatFileSize(upload.size)}${upload.uploaded_by ? ` · diunggah ${upload.uploaded_by}` : ''}`,
                 editUrl: null,
                 attachmentId: null,
             })),
         ]),
         ...proposal.attachments.map((file) => ({
             key: `attachment-${file.id}`,
-            name: file.file_name,
+            name: `Pendukung · ${file.file_name}`,
             url: file.url,
             previewable: file.previewable,
             isImage: file.is_image,
-            meta: `${formatSize(file.size)}${file.uploaded_by ? ` · diunggah ${file.uploaded_by}` : ''}`,
+            meta: `Dokumen pendukung · ${formatFileSize(file.size)}${file.uploaded_by ? ` · diunggah ${file.uploaded_by}` : ''}`,
             editUrl: null,
             attachmentId: file.id,
         })),
@@ -505,6 +490,12 @@ export default function ProposalShow({
                                 canManage={can.editDocuments}
                             />
                         )}
+
+                        <SupportingDocuments
+                            procurementId={proposal.id}
+                            documents={proposal.attachments}
+                            canManage={can.revise}
+                        />
 
                         {can.revise && (
                             <section className="grid gap-2 rounded-lg border border-border bg-card p-4">

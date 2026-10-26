@@ -129,15 +129,8 @@ class ProposalController extends Controller
                 // with the proposer instead of reaching the TL / Asman.
                 'missing' => $procurement->missingProposalRequirements(),
                 'is_held' => $procurement->isProposalHeld(),
-                'attachments' => $procurement->attachments->map(fn (ProcurementAttachment $file): array => [
-                    'id' => $file->id,
-                    'file_name' => $file->file_name,
-                    'size' => $file->size,
-                    'previewable' => $file->isPreviewable(),
-                    'is_image' => str_starts_with((string) $file->mime, 'image/'),
-                    'uploaded_by' => $file->uploader?->name,
-                    'url' => route('proposals.attachments.show', [$procurement, $file]),
-                ])->all(),
+                // Optional supporting documents beside the two above.
+                'attachments' => ProposalDocuments::supporting($procurement),
                 'history' => $procurement->activities->map(fn ($activity): array => [
                     'id' => $activity->id,
                     'label' => $activity->type->label(),
@@ -204,7 +197,7 @@ class ProposalController extends Controller
     }
 
     /**
-     * Add supporting files to a proposal that is not approved yet.
+     * Add supporting documents to a proposal that is not approved yet.
      */
     public function attach(Request $request, Procurement $procurement): RedirectResponse
     {
@@ -217,7 +210,7 @@ class ProposalController extends Controller
 
         $count = $this->procurements->attachFiles($procurement, $request->file('attachments', []), $request->user());
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => "{$count} lampiran ditambahkan."]);
+        Inertia::flash('toast', ['type' => 'success', 'message' => "{$count} dokumen pendukung ditambahkan."]);
 
         return back();
     }
@@ -233,7 +226,7 @@ class ProposalController extends Controller
         Storage::disk('local')->delete($attachment->path);
         $attachment->delete();
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Lampiran dihapus.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Dokumen pendukung dihapus.']);
 
         return back();
     }

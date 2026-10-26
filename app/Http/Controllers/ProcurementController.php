@@ -278,6 +278,10 @@ class ProcurementController extends Controller
                 'proposal_documents' => [
                     'proposer' => $procurement->creator->name ?? 'Pengusul',
                     'documents' => ProposalDocuments::payload($procurement),
+                    // Optional supporting documents; the proposer adds and
+                    // removes them until the proposal is approved.
+                    'supporting' => ProposalDocuments::supporting($procurement),
+                    'can_manage_supporting' => $request->user()->can('reviseProposal', $procurement),
                 ],
                 'finance' => [
                     'submitted_at' => $procurement->finance_submitted_at?->toDateTimeString(),
@@ -771,10 +775,10 @@ class ProcurementController extends Controller
                             'url' => route('procurements.checklists.files.show', [$procurement, $checklist, $file]),
                         ])->values()->all()
                         : [],
-                    'input' => $item->input_kind === null ? null : [
-                        'kind' => $item->input_kind->value,
-                        'label' => $item->input_kind->label(),
-                        'is_filled' => $item->input_kind->isFilledOn($procurement),
+                    'input' => ($input = $item->inputFor($procurement)) === null ? null : [
+                        'kind' => $input->value,
+                        'label' => $input->label(),
+                        'is_filled' => $input->isFilledOn($procurement),
                         'values' => $this->inputValues($procurement),
                     ],
                 ];

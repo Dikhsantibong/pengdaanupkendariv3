@@ -452,6 +452,94 @@ class ProposalFlowTest extends TestCase
                 ->has('detail.proposal_documents.documents', 2));
     }
 
+    public function test_the_proposer_files_supporting_documents_beside_the_tor_and_nota_dinas(): void
+    {
+        $proposer = User::factory()->proposer($this->division)->create();
+
+        $this->actingAs($proposer)
+            ->post(route('procurements.store'), [
+                ...$this->proposalPayload(),
+                'attachments' => [UploadedFile::fake()->create('spesifikasi.pdf', 120, 'application/pdf')],
+            ])
+            ->assertRedirect();
+
+        $procurement = Procurement::query()->latest('id')->firstOrFail();
+
+        // More can be added later, Word and Excel included.
+        $this->actingAs($proposer)
+            ->post(route('proposals.attachments.store', $procurement), [
+                'attachments' => [
+                    UploadedFile::fake()->create('rab.xlsx', 30, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+                    UploadedFile::fake()->image('foto-kondisi.jpg'),
+                ],
+            ])
+            ->assertRedirect()
+            ->assertInertiaFlash('toast.message', '2 dokumen pendukung ditambahkan.');
+
+        $this->assertCount(3, $procurement->attachments()->get());
+
+        $this->actingAs($proposer)
+            ->get(route('proposals.show', $procurement))
+            ->assertInertia(fn ($page) => $page
+                ->has('proposal.attachments', 3)
+                ->where('proposal.attachments.0.file_name', 'spesifikasi.pdf')
+                ->where('proposal.attachments.0.previewable', true)
+                ->where('proposal.attachments.0.uploaded_by', $proposer->name)
+                ->where('can.revise', true));
+
+        // The procurement tab of the proposer lists them too, but only the
+        // proposer manages them.
+        $this->actingAs($proposer)
+            ->get(route('procurements.show', $procurement))
+            ->assertInertia(fn ($page) => $page
+                ->has('detail.proposal_documents.supporting', 3)
+                ->where('detail.proposal_documents.can_manage_supporting', true));
+
+        $this->actingAs(User::factory()->workDirector($this->division)->create())
+            ->get(route('procurements.show', $procurement))
+            ->assertInertia(fn ($page) => $page
+                ->has('detail.proposal_documents.supporting', 3)
+                ->where('detail.proposal_documents.can_manage_supporting', false));
+
+        $this->actingAs($proposer)
+            ->delete(route('proposals.attachments.destroy', [$procurement, $procurement->attachments()->firstOrFail()]))
+            ->assertRedirect();
+
+        $this->assertCount(2, $procurement->attachments()->get());
+    }
+
+    public function test_supporting_documents_are_optional_limited_and_closed_after_approval(): void
+    {
+        $procurement = $this->proposal();
+        $proposer = $procurement->creator;
+
+        $this->assertCount(0, $procurement->attachments);
+        $this->assertSame(ProposalState::MenungguPersetujuan, $procurement->proposal_state);
+
+        $this->actingAs($proposer)
+            ->post(route('proposals.attachments.store', $procurement), [
+                'attachments' => [UploadedFile::fake()->create('program.exe', 10, 'application/octet-stream')],
+            ])
+            ->assertSessionHasErrors('attachments.0');
+
+        $this->actingAs(User::factory()->proposer($this->division)->create())
+            ->post(route('proposals.attachments.store', $procurement), [
+                'attachments' => [UploadedFile::fake()->image('foto.jpg')],
+            ])
+            ->assertForbidden();
+
+        $this->actingAs(User::factory()->workDirector($this->division)->create())
+            ->post(route('proposals.decide', $procurement), ['decision' => 'approve']);
+
+        $this->actingAs($proposer)
+            ->post(route('proposals.attachments.store', $procurement), [
+                'attachments' => [UploadedFile::fake()->image('foto.jpg')],
+            ])
+            ->assertForbidden();
+
+        $this->assertCount(0, $procurement->attachments()->get());
+    }
+
     public function test_planning_is_submitted_only_once_the_tor_and_nota_dinas_are_filed(): void
     {
         $this->proposalDocumentTypes();

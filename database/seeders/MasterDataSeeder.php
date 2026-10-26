@@ -398,16 +398,17 @@ class MasterDataSeeder extends Seeder
             ['Masa Garansi', false],
         ];
 
-        /** @var array<string, ChecklistInput> $inputs */
+        /** @var array<string, ChecklistInput|null> $inputs */
         $inputs = [
             'Pelaksana' => ChecklistInput::BankAccount,
             'Rentang Waktu Pelaksanaan' => ChecklistInput::ContractPeriod,
             'Masa Garansi' => ChecklistInput::Warranty,
             // The executor gives the contract number with the contract itself:
-            // the SPK/PJ, or the SPPL's Lampiran Surat Pesanan (a step of the
-            // SPPL alone, so each format asks for it once).
+            // the SPK/PJ on Kontrak, the SPPL on Surat Pesanan (asked of the
+            // SPPL alone there, so each format asks for it once).
             'Kontrak' => ChecklistInput::ContractNumber,
-            'Lampiran Surat Pesanan' => ChecklistInput::ContractNumber,
+            'Surat Pesanan' => ChecklistInput::ContractNumber,
+            'Lampiran Surat Pesanan' => null,
             // Planning: the calon mitra with their offers, and the memo
             // that hands the job to procurement.
             'Penawaran' => ChecklistInput::PartnerCandidates,
@@ -437,6 +438,12 @@ class MasterDataSeeder extends Seeder
             );
         }
 
+        // With the Surat Pesanan step removed in Data Master, the SPPL gives
+        // its number on the Lampiran Surat Pesanan as it used to.
+        if ($this->removedByUser(ProcurementStage::Pelaksanaan, 'Surat Pesanan')) {
+            $inputs['Lampiran Surat Pesanan'] = ChecklistInput::ContractNumber;
+        }
+
         foreach ($execution as $index => [$name, $isOptional]) {
             if ($this->removedByUser(ProcurementStage::Pelaksanaan, $name)) {
                 continue;
@@ -457,6 +464,14 @@ class MasterDataSeeder extends Seeder
 
         $this->seedChecklistExclusions();
         $this->linkChecklistDocuments();
+
+        // Surat Pesanan is shared with SPK and PJ, which give their number on
+        // Kontrak: only the SPPL is asked for it there.
+        ChecklistItem::query()
+            ->forStage(ProcurementStage::Pelaksanaan)
+            ->where('name', 'Surat Pesanan')
+            ->where('input_kind', ChecklistInput::ContractNumber->value)
+            ->update(['input_contract_number_format_id' => ContractNumberFormat::query()->where('code', 'SPPL')->value('id')]);
     }
 
     /**

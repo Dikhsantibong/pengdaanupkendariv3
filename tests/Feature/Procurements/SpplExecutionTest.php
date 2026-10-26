@@ -411,7 +411,9 @@ HTML;
 
         $expectedDeadline = now()->addDays(14)->translatedFormat('d F Y');
         $this->assertStringContainsString($expectedDeadline, $spDoc->rendered_body);
-        $this->assertSame(2, substr_count($spDoc->rendered_body, $expectedDeadline));
+        // The deadline is the same for every item, so it is one merged cell.
+        $this->assertSame(1, substr_count($spDoc->rendered_body, $expectedDeadline));
+        $this->assertStringContainsString('rowspan="2"', $spDoc->rendered_body);
     }
 
     public function test_surat_pesanan_render_pulls_items_from_existing_ba_negosiasi(): void

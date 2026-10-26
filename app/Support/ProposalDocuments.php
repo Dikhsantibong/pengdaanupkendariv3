@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
 use App\Models\Procurement;
+use App\Models\ProcurementAttachment;
 use App\Models\ProcurementDocument;
 use App\Models\User;
 use App\Services\SignedDocumentStore;
@@ -119,6 +120,31 @@ class ProposalDocuments
                     : null,
             ];
         })->values()->all();
+    }
+
+    /**
+     * The supporting documents the proposer added beside the TOR and the Nota
+     * Dinas Usulan (specifications, photos, quotations): optional, any number.
+     *
+     * @return array<int, array{id: int, file_name: string, size: int|null, previewable: bool, is_image: bool, uploaded_by: string|null, uploaded_at: string|null, url: string}>
+     */
+    public static function supporting(Procurement $procurement): array
+    {
+        $procurement->loadMissing('attachments.uploader');
+
+        return $procurement->attachments
+            ->map(fn (ProcurementAttachment $file): array => [
+                'id' => $file->id,
+                'file_name' => $file->file_name,
+                'size' => $file->size,
+                'previewable' => $file->isPreviewable(),
+                'is_image' => str_starts_with((string) $file->mime, 'image/'),
+                'uploaded_by' => $file->uploader?->name,
+                'uploaded_at' => $file->created_at?->toDateTimeString(),
+                'url' => route('proposals.attachments.show', [$procurement, $file]),
+            ])
+            ->values()
+            ->all();
     }
 
     /**

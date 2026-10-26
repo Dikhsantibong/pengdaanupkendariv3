@@ -858,7 +858,7 @@ class Procurement extends Model
             ->where('stage', ProcurementStage::Perencanaan)
             ->filter(fn (ProcurementChecklist $checklist): bool => ! $checklist->checklistItem->is_optional)
             ->filter(fn (ProcurementChecklist $checklist): bool => ! $checklist->is_completed
-                || ($checklist->checklistItem->input_kind?->isFilledOn($this) === false))
+                || ($checklist->checklistItem->inputFor($this)?->isFilledOn($this) === false))
             ->sortBy(fn (ProcurementChecklist $checklist): int => $checklist->checklistItem->sort_order)
             ->values();
     }

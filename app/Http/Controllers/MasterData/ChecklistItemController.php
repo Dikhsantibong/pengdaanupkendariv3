@@ -103,6 +103,9 @@ class ChecklistItemController extends MasterDataController
                     ->all(),
                 'input_kind' => $record->input_kind === null ? 'none' : $record->input_kind->value,
                 'input_label' => $record->input_kind?->label(),
+                'input_contract_number_format_id' => $record->input_contract_number_format_id === null
+                    ? 'none'
+                    : (string) $record->input_contract_number_format_id,
                 'document_type_ids' => $this->currentLinks($record, false),
                 'alternative_document_type_ids' => $this->currentLinks($record, true),
                 'document_types' => $record->documentTypes
@@ -130,6 +133,15 @@ class ChecklistItemController extends MasterDataController
         // "none" is the select's way of saying the step asks for nothing.
         $kind = $validated['input_kind'] ?? null;
         $validated['input_kind'] = $kind === null || $kind === 'none' ? null : $kind;
+
+        // Left alone when an older form does not send it; "none" asks every
+        // format, and a step without an input has no format to ask.
+        if (array_key_exists('input_contract_number_format_id', $validated)) {
+            $format = $validated['input_contract_number_format_id'];
+            $validated['input_contract_number_format_id'] = $format === null || $format === 'none' || $validated['input_kind'] === null
+                ? null
+                : (int) $format;
+        }
 
         // Left alone when the form does not send them, so an older form
         // cannot wipe them. A tab only means something on the Keuangan stage.
@@ -263,6 +275,10 @@ class ChecklistItemController extends MasterDataController
             'description' => ['nullable', 'string', 'max:255'],
             'is_optional' => ['required', 'boolean'],
             'input_kind' => ['nullable', Rule::in(['none', ...array_column(ChecklistInput::cases(), 'value')])],
+            'input_contract_number_format_id' => ['sometimes', 'nullable', Rule::when(
+                fn ($input): bool => $input->input_contract_number_format_id !== 'none',
+                [Rule::exists('contract_number_formats', 'id')],
+            )],
             'sort_order' => ['required', 'integer', 'min:0', 'max:999'],
             'is_active' => ['required', 'boolean'],
             'excluded_procurement_method_ids' => ['sometimes', 'array'],

@@ -200,6 +200,8 @@ type ChecklistItem = MasterRecord & {
     excluded_contract_number_format_ids: number[];
     input_kind: string;
     input_label: string | null;
+    /** The only contract format asked the input, or "none" for every one. */
+    input_contract_number_format_id: string;
     document_type_ids: number[];
     alternative_document_type_ids: number[];
     document_types: string[];
@@ -468,6 +470,19 @@ export default function ChecklistItems({
                     hint: 'Data yang wajib diisi pada tahapan ini sebelum dapat dicentang, mis. rentang waktu, masa garansi, atau rekening pelaksana.',
                 },
                 {
+                    name: 'input_contract_number_format_id',
+                    label: 'Isian Hanya untuk Format Kontrak',
+                    type: 'select',
+                    options: [
+                        { value: 'none', label: 'Semua format' },
+                        ...contractNumberFormats.map((format) => ({
+                            value: String(format.value),
+                            label: format.label,
+                        })),
+                    ],
+                    hint: 'Untuk tahapan yang dipakai beberapa format: isian hanya diminta pada format ini, format lain tetap melalui tahapannya tanpa isian. Contoh: Nomor kontrak di tahapan Surat Pesanan hanya untuk SPPL (SPK/PJ mengisinya di tahapan Kontrak).',
+                },
+                {
                     name: 'excluded_contract_number_format_ids',
                     label: 'Dilewati oleh Format Kontrak',
                     type: 'multiselect',
@@ -487,6 +502,7 @@ export default function ChecklistItems({
                 document_type_ids: [],
                 alternative_document_type_ids: [],
                 input_kind: 'none',
+                input_contract_number_format_id: 'none',
                 excluded_contract_number_format_ids: [],
                 sort_order: 0,
                 is_active: true,

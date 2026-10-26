@@ -29,6 +29,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $description
  * @property bool $is_optional
  * @property ChecklistInput|null $input_kind
+ * @property int|null $input_contract_number_format_id The only contract format asked the input; null for every format.
  * @property int $sort_order
  * @property bool $is_active
  * @property Carbon|null $created_at
@@ -36,7 +37,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $deleted_at
  * @property-read int|null $procurement_checklists_count
  */
-#[Fillable(['procurement_id', 'stage', 'section', 'work_category', 'name', 'description', 'is_optional', 'input_kind', 'sort_order', 'is_active'])]
+#[Fillable(['procurement_id', 'stage', 'section', 'work_category', 'name', 'description', 'is_optional', 'input_kind', 'input_contract_number_format_id', 'sort_order', 'is_active'])]
 class ChecklistItem extends Model
 {
     /** @use HasFactory<ChecklistItemFactory> */
@@ -240,6 +241,24 @@ class ChecklistItem extends Model
             'excludedProcurementMethods',
             fn (Builder $methods): Builder => $methods->whereKey($procurementMethodId),
         );
+    }
+
+    /**
+     * The input this step asks of a procurement.
+     *
+     * A step shared by several contract formats can ask its input of one of
+     * them alone, such as the Surat Pesanan step asking the contract number
+     * of an SPPL only (SPK and PJ give theirs on the Kontrak step).
+     */
+    public function inputFor(?Procurement $procurement): ?ChecklistInput
+    {
+        if ($this->input_contract_number_format_id === null || $procurement === null) {
+            return $this->input_kind;
+        }
+
+        return (int) $procurement->contract_number_format_id === $this->input_contract_number_format_id
+            ? $this->input_kind
+            : null;
     }
 
     /**

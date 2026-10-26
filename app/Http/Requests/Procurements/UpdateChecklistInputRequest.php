@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Procurements;
 
 use App\Enums\ChecklistInput;
+use App\Models\Procurement;
 use App\Models\ProcurementChecklist;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -24,7 +25,10 @@ class UpdateChecklistInputRequest extends FormRequest
     public function rules(): array
     {
         $checklist = $this->route('checklist');
-        $kind = $checklist instanceof ProcurementChecklist ? $checklist->checklistItem->input_kind : null;
+        $procurement = $this->route('procurement');
+        $kind = $checklist instanceof ProcurementChecklist
+            ? $checklist->checklistItem->inputFor($procurement instanceof Procurement ? $procurement : null)
+            : null;
 
         return match ($kind) {
             ChecklistInput::ContractPeriod => [

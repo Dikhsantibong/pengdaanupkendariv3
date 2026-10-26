@@ -3,6 +3,9 @@ import {
     AlignJustify,
     AlignLeft,
     AlignRight,
+    AlignVerticalJustifyCenter,
+    AlignVerticalJustifyEnd,
+    AlignVerticalJustifyStart,
     Baseline,
     Bold,
     Highlighter,
@@ -69,6 +72,40 @@ import {
 } from '@/lib/page-setup';
 import type { PageSetup } from '@/lib/page-setup';
 import { cn } from '@/lib/utils';
+
+/** Where the text of a table cell sits, top to bottom. */
+type CellAlign = 'top' | 'middle' | 'bottom';
+
+const CELL_ALIGNS: {
+    value: CellAlign;
+    label: string;
+    icon: React.ReactNode;
+}[] = [
+    {
+        value: 'top',
+        label: 'Teks sel di atas',
+        icon: <AlignVerticalJustifyStart className="size-3.5" />,
+    },
+    {
+        value: 'middle',
+        label: 'Teks sel di tengah',
+        icon: <AlignVerticalJustifyCenter className="size-3.5" />,
+    },
+    {
+        value: 'bottom',
+        label: 'Teks sel di bawah',
+        icon: <AlignVerticalJustifyEnd className="size-3.5" />,
+    },
+];
+
+/** Where the text of a cell sits now, as the page draws it. */
+function cellAlignOf(cell: HTMLTableCellElement): CellAlign | null {
+    const align = window.getComputedStyle(cell).verticalAlign;
+
+    return align === 'top' || align === 'middle' || align === 'bottom'
+        ? align
+        : null;
+}
 
 /** The height of the desk drawn between two sheets, in px. */
 const DESK_GAP = 32;
@@ -498,6 +535,7 @@ export function VisualEditor({
     const lastEmitted = useRef(value);
     const seeded = useRef(false);
     const [inTable, setInTable] = useState(false);
+    const [cellAlign, setCellAlign] = useState<CellAlign | null>(null);
     const [blockStyle, setBlockStyle] = useState('p');
 
     // The paper, orientation and margins the document prints with. A setup
@@ -760,6 +798,7 @@ export function VisualEditor({
             lastActiveCell.current = cell;
 
             setInTable(isInTable);
+            setCellAlign(cell ? cellAlignOf(cell) : null);
 
             const block = element?.closest('h1, h2, h3, h4, p');
             setBlockStyle(block ? block.tagName.toLowerCase() : 'p');
@@ -1191,6 +1230,49 @@ export function VisualEditor({
         setTimeout(updateTableMenuPosition, 10);
     };
 
+    /**
+     * The cells to act on: every cell the selection touches within the
+     * caret's table, or just the caret's cell.
+     */
+    const selectedCells = (): HTMLTableCellElement[] => {
+        const cell = currentCell();
+        const table = cell?.closest('table');
+        const selection = window.getSelection();
+
+        if (!cell || !table) {
+            return [];
+        }
+
+        if (!selection || selection.isCollapsed) {
+            return [cell];
+        }
+
+        const touched = Array.from(
+            table.querySelectorAll<HTMLTableCellElement>('td, th'),
+        ).filter(
+            (candidate) =>
+                candidate.closest('table') === table &&
+                selection.containsNode(candidate, true),
+        );
+
+        return touched.length > 0 ? touched : [cell];
+    };
+
+    /** Set the text of the selected cells at the top, middle or bottom. */
+    const alignCells = (align: CellAlign) => {
+        const cells = selectedCells();
+
+        if (cells.length === 0) {
+            return;
+        }
+
+        cells.forEach((cell) => {
+            cell.style.verticalAlign = align;
+        });
+        setCellAlign(align);
+        emit();
+    };
+
     /** Force-recalculate the table the caret is currently in. */
     const recalculateCurrentTable = () => {
         const cell = currentCell();
@@ -1523,6 +1605,14 @@ export function VisualEditor({
                             orientation="vertical"
                             className="mx-1 h-4"
                         />
+                        <CellAlignButtons
+                            current={cellAlign}
+                            onAlign={alignCells}
+                        />
+                        <Separator
+                            orientation="vertical"
+                            className="mx-1 h-4"
+                        />
                         <Button
                             type="button"
                             size="sm"
@@ -1609,6 +1699,15 @@ export function VisualEditor({
                         >
                             <Trash2 className="mr-1 size-3" />- Kolom
                         </Button>
+                        <Separator
+                            orientation="vertical"
+                            className="mx-0.5 h-3.5"
+                        />
+                        <CellAlignButtons
+                            current={cellAlign}
+                            onAlign={alignCells}
+                            compact
+                        />
                         <Separator
                             orientation="vertical"
                             className="mx-0.5 h-3.5"
@@ -1918,5 +2017,45 @@ function ToolButton({
             </TooltipTrigger>
             <TooltipContent>{label}</TooltipContent>
         </Tooltip>
+    );
+}
+
+/** Top, middle and bottom: where the text of the selected cells sits. */
+function CellAlignButtons({
+    current,
+    onAlign,
+    compact = false,
+}: {
+    current: CellAlign | null;
+    onAlign: (align: CellAlign) => void;
+    compact?: boolean;
+}) {
+    return (
+        <div
+            role="group"
+            aria-label="Posisi teks di dalam sel"
+            className="flex items-center gap-0.5"
+        >
+            {CELL_ALIGNS.map(({ value, label, icon }) => (
+                <Tooltip key={value}>
+                    <TooltipTrigger asChild>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant={current === value ? 'default' : 'ghost'}
+                            className={cn('p-0', compact ? 'size-6' : 'size-7')}
+                            // Keep the selection: the button must not steal focus.
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => onAlign(value)}
+                            aria-label={label}
+                            aria-pressed={current === value}
+                        >
+                            {icon}
+                        </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{label}</TooltipContent>
+                </Tooltip>
+            ))}
+        </div>
     );
 }

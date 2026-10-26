@@ -49,6 +49,7 @@ import type {
     StatusHistoryEntry,
     StatusJourney,
 } from '@/components/procurement/status-card';
+import { SupportingDocuments } from '@/components/procurement/supporting-documents';
 import { DownloadAllButton } from '@/components/procurement-table';
 import { Button } from '@/components/ui/button';
 import {
@@ -70,6 +71,7 @@ import type {
     ProcurementRow,
     ProposalDocument,
     StatusOption,
+    SupportingDocument,
 } from '@/types';
 
 type ShowProps = {
@@ -95,6 +97,8 @@ type ShowProps = {
         proposal_documents: {
             proposer: string;
             documents: ProposalDocument[];
+            supporting: SupportingDocument[];
+            can_manage_supporting: boolean;
         } | null;
     };
     checklists: {
@@ -638,7 +642,10 @@ export default function ShowProcurement({
                             )}
 
                             {detail.proposal_documents && (
-                                <TabsContent value="usulan">
+                                <TabsContent
+                                    value="usulan"
+                                    className="space-y-3"
+                                >
                                     <ProposalDocuments
                                         procurementId={procurement.id}
                                         proposer={
@@ -648,6 +655,16 @@ export default function ShowProcurement({
                                             detail.proposal_documents.documents
                                         }
                                         canManage={can.editDocument}
+                                    />
+                                    <SupportingDocuments
+                                        procurementId={procurement.id}
+                                        documents={
+                                            detail.proposal_documents.supporting
+                                        }
+                                        canManage={
+                                            detail.proposal_documents
+                                                .can_manage_supporting
+                                        }
                                     />
                                 </TabsContent>
                             )}

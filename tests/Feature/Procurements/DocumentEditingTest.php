@@ -128,6 +128,41 @@ class DocumentEditingTest extends TestCase
         $this->assertNotSame($cachedBefore[0], $cachedAfter[0]);
     }
 
+    public function test_the_position_of_text_in_table_cells_is_kept_through_to_the_print(): void
+    {
+        Storage::fake('local');
+
+        [$procurement, $document] = $this->generate();
+        $teamLeader = User::factory()->teamLeader()->create();
+        $body = '<table><tbody><tr>'
+            .'<td style="vertical-align: top;">ATAS</td>'
+            .'<td style="vertical-align: middle;">TENGAH</td>'
+            .'<td style="vertical-align: bottom;">BAWAH<br>BARIS KEDUA</td>'
+            .'</tr></tbody></table>';
+
+        $this->actingAs($teamLeader)
+            ->put(route('procurements.documents.update', [$procurement, $document]), [
+                'title' => $document->title,
+                'body' => $body,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertStringContainsString('<td style="vertical-align: bottom;">BAWAH', $document->refresh()->rendered_body);
+
+        $html = $this->actingAs($teamLeader)
+            ->get(route('procurements.documents.show', [$procurement, $document]).'?format=html')
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('vertical-align: top;">ATAS', $html);
+        $this->assertStringContainsString('vertical-align: middle;">TENGAH', $html);
+        $this->assertStringContainsString('vertical-align: bottom;">BAWAH', $html);
+
+        $this->actingAs($teamLeader)
+            ->get(route('procurements.documents.show', [$procurement, $document]))
+            ->assertOk();
+    }
+
     /**
      * Concatenate the decompressed content streams of a PDF.
      */

@@ -129,6 +129,18 @@ export type ProposalDocument = Omit<ChecklistDocument, 'uploads'> & {
     preview_url: string | null;
 };
 
+/** An optional supporting document filed with a proposal. */
+export type SupportingDocument = {
+    id: number;
+    file_name: string;
+    size: number | null;
+    previewable: boolean;
+    is_image: boolean;
+    uploaded_by: string | null;
+    uploaded_at: string | null;
+    url: string;
+};
+
 export type ChecklistRow = {
     id: number;
     name: string;

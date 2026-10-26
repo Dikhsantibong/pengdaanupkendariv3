@@ -5,6 +5,10 @@ import type { FormEvent } from 'react';
 import { CurrencyInput } from '@/components/currency-input';
 import InputError from '@/components/input-error';
 import { PicSelect } from '@/components/procurement/pic-select';
+import {
+    SUPPORTING_ACCEPT,
+    SUPPORTING_MAX_FILES,
+} from '@/components/procurement/supporting-documents';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -113,7 +117,9 @@ export function ProcurementForm({
         ...(withPlanner && !isProposal
             ? { planner_id: initialValues?.planner_id ?? null }
             : {}),
-        ...(asksForTor ? { tor_file: null, memo_file: null } : {}),
+        ...(asksForTor
+            ? { tor_file: null, memo_file: null, attachments: [] }
+            : {}),
         ...(!isProposal
             ? {
                   target_completion_date:
@@ -593,7 +599,8 @@ export function ProcurementForm({
                             tangani, lalu unggah di halaman usulan. Bila sudah
                             punya scan TOR bertanda tangan, boleh langsung
                             diunggah di sini. Usulan baru dapat disetujui
-                            setelah keduanya terunggah.
+                            setelah keduanya terunggah. Dokumen pendukung lain
+                            boleh ditambahkan (opsional).
                         </p>
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
@@ -618,6 +625,17 @@ export function ProcurementForm({
                             }
                         />
                     </div>
+                    <SupportingFilesField
+                        files={data.attachments ?? []}
+                        onChange={(files) => setData('attachments', files)}
+                        error={
+                            Object.entries(
+                                errors as Record<string, string | undefined>,
+                            ).find(([key]) =>
+                                key.startsWith('attachments'),
+                            )?.[1]
+                        }
+                    />
                 </section>
             )}
 
@@ -906,6 +924,103 @@ function SingleFileField({
                 className="sr-only"
                 onChange={(event) => {
                     onChange(event.target.files?.[0] ?? null);
+                    event.target.value = '';
+                }}
+            />
+            <InputError message={error} />
+        </div>
+    );
+}
+
+/**
+ * The optional supporting documents sent with a new proposal: any number of
+ * files beside the TOR and the Nota Dinas Usulan.
+ */
+function SupportingFilesField({
+    files,
+    onChange,
+    error,
+}: {
+    files: File[];
+    onChange: (files: File[]) => void;
+    error?: string;
+}) {
+    const [dragging, setDragging] = useState(false);
+
+    const add = (picked: File[]) =>
+        onChange([...files, ...picked].slice(0, SUPPORTING_MAX_FILES));
+
+    return (
+        <div className="grid gap-2">
+            <FieldLabel
+                htmlFor="attachments"
+                label="Dokumen Pendukung (opsional)"
+            />
+            <label
+                htmlFor="attachments"
+                onDragOver={(event) => {
+                    event.preventDefault();
+                    setDragging(true);
+                }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={(event) => {
+                    event.preventDefault();
+                    setDragging(false);
+                    add(Array.from(event.dataTransfer.files));
+                }}
+                className={cn(
+                    'flex cursor-pointer flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed px-4 py-4 text-center text-sm transition-colors hover:border-primary hover:bg-primary/5',
+                    dragging
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border bg-muted/30',
+                )}
+            >
+                <Upload className="size-5 text-muted-foreground" />
+                <span className="font-medium text-foreground">
+                    Klik atau seret berkas (boleh lebih dari satu)
+                </span>
+                <span className="text-xs text-muted-foreground">
+                    Spesifikasi, foto kondisi, penawaran, dsb. PDF, JPG, PNG,
+                    Word, atau Excel, maks. 20 MB per berkas, hingga{' '}
+                    {SUPPORTING_MAX_FILES} berkas
+                </span>
+            </label>
+            {files.length > 0 && (
+                <ul className="divide-y divide-border rounded-md border border-border">
+                    {files.map((file, index) => (
+                        <li
+                            key={`${file.name}-${index}`}
+                            className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                        >
+                            <span className="flex min-w-0 items-center gap-2">
+                                <FileText className="size-4 shrink-0 text-primary" />
+                                <span className="truncate">{file.name}</span>
+                            </span>
+                            <button
+                                type="button"
+                                className="shrink-0 text-xs font-medium text-destructive hover:underline"
+                                onClick={() =>
+                                    onChange(
+                                        files.filter(
+                                            (_, position) => position !== index,
+                                        ),
+                                    )
+                                }
+                            >
+                                Hapus
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            )}
+            <input
+                id="attachments"
+                type="file"
+                multiple
+                accept={SUPPORTING_ACCEPT}
+                className="sr-only"
+                onChange={(event) => {
+                    add(Array.from(event.target.files ?? []));
                     event.target.value = '';
                 }}
             />

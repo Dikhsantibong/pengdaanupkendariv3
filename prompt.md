@@ -735,9 +735,9 @@ SPK disusun sebagai perjanjian lengkap mengikuti format kontrak UP Kendari (±9�
 | Tahapan | Cara penyelesaian |
 |---------|-------------------|
 | BA Negosiasi | **Generate** Berita Acara Negosiasi (format SPPL, Landscape) lalu unggah hasil TTD |
-| Surat Pesanan | **Generate** Surat Pesanan lalu unggah hasil TTD |
+| Surat Pesanan | **Isian**: nomor kontrak (di Identitas Pengadaan); **Generate** Surat Pesanan lalu unggah hasil TTD |
 | Pelaksana | **Isian**: mitra tunjuk langsung (satu-satunya calon mitra, otomatis terpilih), lalu nomor rekening, bank, dan pemilik rekening |
-| Lampiran Surat Pesanan | Generate **Lampiran SP Barang dan Jasa** (satu dokumen untuk barang maupun jasa); unggah hasil TTD |
+| Lampiran Surat Pesanan | Generate **Lampiran SP Barang dan Jasa** (satu dokumen untuk barang maupun jasa); unggah hasil TTD (nomor kontrak tidak lagi ditagih di sini) |
 | Rentang Waktu Pelaksanaan | **Isian**: tanggal mulai + jumlah hari; **tanggal akhir dihitung otomatis** (tanggal mulai dihitung hari ke-1, mis. 1 Okt + 30 hari = 30 Okt) |
 | Masa Garansi | **Isian**: jumlah bulan (mis. 2 atau 3 bulan) — menggantikan Masa Pemeliharaan |
 
@@ -1257,7 +1257,7 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
   - Untuk usulan dengan format SPK/PJ, dokumen perencanaan menunggu Jenis Kontrak dan Kategori terisi.
 - **Pengadaan baru** terdaftar dengan nomor registrasi internal: `PGD/tahun/bulan/urut`, atau `USL/...` untuk usulan.
 - **Checklist Pelaksanaan:** isian baru **Nomor kontrak** (`ChecklistInput::ContractNumber`), diisi PIC Pelaksana.
-  - Dipasang pada tahapan **Kontrak** untuk SPK/PJ dan **Lampiran Surat Pesanan** untuk SPPL, sehingga tiap format cukup sekali (migrasi `ask_for_the_contract_number_in_execution` dan `MasterDataSeeder`).
+  - Dipasang pada tahapan **Kontrak** untuk SPK/PJ dan **Surat Pesanan** untuk SPPL (sebelumnya di Lampiran Surat Pesanan), sehingga tiap format cukup sekali (migrasi `ask_for_the_contract_number_in_execution`, `move_sppl_contract_number_input_to_surat_pesanan`, dan `MasterDataSeeder`). Lihat bagian *Nomor Kontrak SPPL Pindah ke Langkah Surat Pesanan*.
   - Isian menawarkan nomor otomatis berikutnya sesuai format (tombol "Pakai nomor otomatis").
   - Nomor wajib unik dan tidak boleh berupa nomor registrasi PGD/USL.
   - Tahapan belum bisa dicentang sebelum nomor terisi. Dokumen yang sudah digenerate ikut memakai nomor baru secara otomatis.
@@ -2027,6 +2027,24 @@ Bagian **Request Penilaian Vendor** ada di halaman Penilaian Penyedia, di atas d
   - Panel samping bisa ditutup dari luar lewat `closeRememberedPanels()` (`request-board.tsx`).
 - **Test:** `ContractNumberTest`.
 
+## Nomor Kontrak SPPL Pindah ke Langkah Surat Pesanan
+
+- **Perubahan:** pada SPPL, isian **Nomor kontrak** kini ditagih di langkah **Surat Pesanan**, bukan lagi di **Lampiran Surat Pesanan**. SPK/PJ tetap di langkah **Kontrak**.
+- **Isian dibatasi per format kontrak:**
+  - Kolom baru `checklist_items.input_contract_number_format_id`: isian sebuah langkah bisa diminta dari satu format kontrak saja. Kosong berarti semua format.
+  - Langkah Surat Pesanan dipakai SPK, PJ, dan SPPL, tetapi nomor kontrak hanya diminta dari SPPL. SPK/PJ tetap melewati Surat Pesanan tanpa isian.
+  - Lewat `ChecklistItem::inputFor($procurement)`, yang dipakai `ProcurementController::checklistPayload`, `ChecklistController` (isian dan centang), `UpdateChecklistInputRequest`, dan `Procurement::pendingRequiredPlanningChecklists`.
+  - Di **Data Master → Item Checklist**, ada isian baru **Isian Hanya untuk Format Kontrak** (pilihan "Semua format" atau satu format).
+- **Nilai lama tidak hilang:** nomor kontrak tersimpan di pengadaan (`procurements.number`), bukan di langkah. Jadi nomor yang dulu diisi di Lampiran langsung tampil terisi di langkah Surat Pesanan, dan pekerjaan yang sudah berjalan tidak perlu mengisi ulang.
+- **Migrasi `move_sppl_contract_number_input_to_surat_pesanan`:**
+  - Langkah Surat Pesanan mendapat isian nomor kontrak khusus SPPL, dan isian itu dilepas dari Lampiran Surat Pesanan.
+  - Bila langkah Surat Pesanan sudah dihapus di Data Master, langkah itu dipulihkan **khusus untuk SPPL** beserta dokumen Surat Pesanannya. SPK/PJ diberi pengecualian supaya tidak berubah.
+  - Bila langkah itu dinonaktifkan, dilewati SPPL, atau sudah diberi isian lain oleh administrator, pilihan administrator dihormati dan nomor tetap ditagih di Lampiran.
+  - Pekerjaan SPPL yang berjalan mendapat langkah ini: sebagai langkah yang harus dikerjakan bila pelaksanaannya masih dikerjakan, atau langsung selesai bila sudah diajukan, disetujui, atau dibayar, supaya tidak ada yang tertahan.
+  - `down()` mengembalikan isian ke Lampiran.
+- **Seeder:** `MasterDataSeeder` memasang isian di Surat Pesanan (khusus SPPL). Bila langkah Surat Pesanan dihapus pengguna, isian tetap di Lampiran seperti sebelumnya.
+- **Test:** `ContractNumberInputTest`.
+
 ## Huruf Kelompok (A/a) & Kelompok Tanpa Item
 
 - **Huruf kelompok bisa besar atau kecil:** pilihannya disimpan per pengadaan di kolom baru `procurements.group_letters` (`upper` sebagai bawaan, atau `lower`) lewat migrasi `add_group_letters_to_procurements`.
@@ -2334,6 +2352,45 @@ Pengamanan:
 - **Penyetuju perencanaan:** TL ICC menunjuk PIC Perencana dan menyetujui perencanaan; TL Pengadaan menunjuk PIC Pelaksana dan menyetujui pelaksanaan. Bila akun salah satunya tidak ada, Administrator yang mengisinya.
 - **Penanda:** semua data demo memakai catatan "Data demo (DemoProcurementSeeder)." Menjalankan ulang seeder menghapus data demo sebelumnya (hanya yang bertanda itu), lalu membuat ulang.
 - **Menjalankan:** `php artisan db:seed --class=DemoProcurementSeeder`, setelah `php artisan migrate --seed`. Test: `DemoProcurementSeederTest`.
+
+---
+
+# Dokumen Pendukung Usulan
+
+- Selain **TOR** dan **Nota Dinas Usulan** (wajib), pengusul dapat menambah **Dokumen Pendukung** (opsional): spesifikasi, foto kondisi, penawaran, dsb.
+- **Format:** PDF, JPG, PNG, Word, Excel; maks. 20 MB per berkas, hingga 10 berkas sekali unggah.
+- **Tempat input:**
+  - Form usulan baru, bagian Dokumen Usulan (boleh lebih dari satu berkas, seret atau klik).
+  - Halaman Tinjau Usulan: panel **Dokumen Pendukung** dengan tombol **Tambah Dokumen** dan hapus per berkas.
+  - Tab pengusul di detail pengadaan menampilkan daftar yang sama.
+- **Hak:** hanya pembuat usulan yang menambah atau menghapus, selama usulan belum disetujui (policy `reviseProposal`). Pihak lain (TL, Asman, PIC) hanya melihat dan membuka.
+- Penyetuju juga melihatnya sebagai tab "Pendukung · nama berkas" di penampil dokumen.
+- Tidak memengaruhi kelengkapan usulan: usulan tetap diteruskan begitu TOR dan Nota Dinas Usulan lengkap.
+- **Teknis:**
+  - Memakai tabel dan rute lampiran yang sudah ada (`procurement_attachments`, `proposals.attachments.*`); tanpa migrasi.
+  - Payload bersama `ProposalDocuments::supporting()`; komponen `components/procurement/supporting-documents.tsx`.
+- **Test:** `ProposalFlowTest` (`test_the_proposer_files_supporting_documents_beside_the_tor_and_nota_dinas`, `test_supporting_documents_are_optional_limited_and_closed_after_approval`).
+
+---
+
+# Posisi Teks di Dalam Sel Tabel (Editor Visual)
+
+- Saat kursor berada di tabel, bar **Aksi Tabel** dan menu melayang di sel kini punya tiga tombol: **teks sel di atas / di tengah / di bawah** (perataan vertikal isi sel).
+- Berlaku untuk sel tempat kursor berada, atau semua sel yang tersentuh seleksi bila beberapa sel dipilih sekaligus.
+- Tombol yang menyala menunjukkan posisi sel saat ini (dibaca dari tampilan sel, termasuk gaya bawaan template).
+- Disimpan sebagai `style="vertical-align: top|middle|bottom"` pada `<td>/<th>`, sehingga ikut ke Pratinjau Cetak, PDF, dan unduhan. Tanpa perubahan database.
+- Kode: `CellAlignButtons`, `alignCells`, `selectedCells` di `components/document-editor/visual-editor.tsx`. **Test:** `DocumentEditingTest::test_the_position_of_text_in_table_cells_is_kept_through_to_the_print`.
+
+---
+
+# Presentasi Alur Aplikasi
+
+- **Berkas:** `presentasi/Sistem-Pengadaan-Kendari.pptx` (dapat diedit) dan `presentasi/Sistem-Pengadaan-Kendari.pdf` (distribusi), 13 slide 16:9.
+- **Isi:** Cover, Gambaran Umum, Alur Utama (5 tahap), Aktor & Tanggung Jawab, Usulan, Perencanaan, Pelaksanaan, Percabangan SPK/PJ vs SPPL, Penyerahan, Pembayaran, Amandemen dan DO (proses pendukung, bukan tahap 6–7), Ringkasan.
+- **Header tiap slide:** logo vendor `public/logo/vendor.png` di kiri dan logo PLN `public/logo/logo.png` di kanan, keduanya dengan rasio asli (tinggi 0,5") di atas pita navy.
+- **Dasar alur:** dokumen ini, dicocokkan dengan hak bawaan di kode (`Permission::defaultRoles`): penunjuk PIC Perencana bawaan = TL ICC; Pembayaran Lunas hanya bila semua item wajib Keuangan (Penyerahan dan Pembayaran) selesai (`ProcurementPolicy::completePayment`).
+- **Ditandai "perlu dikonfirmasi":** Surat Pesanan sebagai tahapan checklist SPPL (belum menjadi item checklist aktif) dan penunjuk PIC Perencana (dokumen menyebut TL Pengadaan, kode TL ICC).
+- **Cara membuat ulang:** skrip pptxgenjs; PDF diekspor lewat PowerPoint (Save As PDF).
 
 ---
 

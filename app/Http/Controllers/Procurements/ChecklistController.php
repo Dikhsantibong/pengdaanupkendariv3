@@ -45,7 +45,7 @@ class ChecklistController extends Controller
 
         $this->authorize(self::ABILITIES[$checklist->stage->value], $procurement);
 
-        $kind = $checklist->checklistItem->input_kind;
+        $kind = $checklist->checklistItem->inputFor($procurement);
 
         // A kind without fields of its own (the calon mitra) is not saved here.
         abort_if($kind === null || $kind->fields() === [], 404);
@@ -126,7 +126,7 @@ class ChecklistController extends Controller
         }
 
         // A step that asks for data is only finished once that data is in.
-        $input = $checklist->checklistItem->input_kind;
+        $input = $checklist->checklistItem->inputFor($procurement);
 
         if ($isCompleted && $input !== null && ! $input->isFilledOn($procurement)) {
             throw ValidationException::withMessages([
