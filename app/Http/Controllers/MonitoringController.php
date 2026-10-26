@@ -5,16 +5,23 @@ namespace App\Http\Controllers;
 use App\Concerns\GroupsByPartner;
 use App\Enums\AmendmentState;
 use App\Enums\DeliveryOrderState;
+use App\Enums\FinanceSection;
+use App\Enums\PlanningApprovalState;
+use App\Enums\ProcurementStage;
+use App\Enums\ProposalState;
 use App\Enums\StatusCategory;
 use App\Http\Resources\ProcurementResource;
 use App\Models\ContractNumberFormat;
 use App\Models\Procurement;
 use App\Models\ProcurementAmendment;
+use App\Models\ProcurementChecklist;
 use App\Models\ProcurementDeliveryOrder;
 use App\Models\ProgressStatus;
+use App\Services\ProgressStatusResolver;
 use App\Support\FilterPeriod;
 use App\Support\MasterDataOptions;
 use App\Support\ProcurementFilters;
+use App\Support\RoleDashboard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -37,14 +44,30 @@ class MonitoringController extends Controller
         $this->authorize('viewAny', Procurement::class);
 
         $partner = $this->partner($request);
+        $stageKey = $request->string('stage')->trim()->value();
+        $activeStage = array_key_exists($stageKey, RoleDashboard::STAGES) ? $stageKey : null;
+
         $filtered = ProcurementFilters::apply(Procurement::query()->visibleTo($request->user()), $request);
 
-        $counts = Procurement::query()
+        $baseScope = Procurement::query()
             ->visibleTo($request->user())
-            ->when($partner !== null, fn (Builder $query) => $this->ofPartner($query, $partner))
+            ->when($partner !== null, fn (Builder $query) => $this->ofPartner($query, $partner));
+
+        $stageCounts = RoleDashboard::stages(clone $baseScope);
+
+        if ($activeStage !== null) {
+            $filtered = $this->ofStage($filtered, $activeStage);
+        }
+
+        $counts = (clone $baseScope)
             ->selectRaw('progress_status_id, count(*) as total')
             ->groupBy('progress_status_id')
             ->pluck('total', 'progress_status_id');
+
+        $resolver = app(ProgressStatusResolver::class);
+        $trackerSource = $partner === null
+            ? clone $filtered
+            : $this->ofPartner(clone $filtered, $partner);
 
         return Inertia::render('monitoring/index', [
             'folders' => $partner !== null ? null : $this->folders(
@@ -53,13 +76,34 @@ class MonitoringController extends Controller
                     ->selectRaw('CASE WHEN progress_status_id IN (SELECT id FROM progress_statuses WHERE category = ?) THEN 1 ELSE 0 END as done', [StatusCategory::Selesai->value]),
             ),
             'procurements' => $partner === null ? null : ProcurementResource::collection(
-                $this->ofPartner($filtered, $partner)
+                $this->ofPartner(clone $filtered, $partner)
                     ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor', 'checklists'])
                     ->orderBy('progress_status_id')
                     ->latest('created_at')
                     ->paginate(25)
                     ->withQueryString(),
             ),
+            'tracker' => $trackerSource
+                ->with([
+                    'workDirector',
+                    'targetUnit',
+                    'targetUnits',
+                    'contractNumberFormat',
+                    'procurementMethod',
+                    'progressStatus',
+                    'planner:id,name',
+                    'executor:id,name',
+                    'creator:id,name',
+                    'checklists.checklistItem',
+                    'statusHistories',
+                ])
+                ->latest('updated_at')
+                ->latest('id')
+                ->paginate(15)
+                ->withQueryString()
+                ->through(fn (Procurement $procurement): array => $this->trackingItem($procurement, $resolver)),
+            'stages' => $stageCounts,
+            'activeStage' => $activeStage,
             'partner' => $partner === null ? null : $this->partnerPayload($partner),
             'filters' => ProcurementFilters::current($request),
             'options' => MasterDataOptions::forFilters(),
@@ -68,6 +112,7 @@ class MonitoringController extends Controller
                     'id' => $status->id,
                     'name' => $status->name,
                     'category' => $status->category->value,
+                    'stage' => $this->statusStage($status->system_key),
                     'total' => (int) ($counts[$status->id] ?? 0),
                 ])->all(),
             'categories' => StatusCategory::options(),
@@ -353,6 +398,254 @@ class MonitoringController extends Controller
             'name' => $procurement->name,
             'partner' => $procurement->partner_name,
             'division' => $procurement->workDirector->name,
+        ];
+    }
+
+    /**
+     * Limit the query to procurements standing at a given lifecycle stage,
+     * matching the rules of Procurement::currentStage() and RoleDashboard::stages().
+     *
+     * @param  Builder<Procurement>  $query
+     * @return Builder<Procurement>
+     */
+    protected function ofStage(Builder $query, string $stage): Builder
+    {
+        return match ($stage) {
+            'selesai' => $query->whereNotNull('completed_at'),
+            'keuangan' => $query->whereNull('completed_at')
+                ->whereNotNull('finance_submitted_at'),
+            'pelaksanaan' => $query->whereNull('completed_at')
+                ->whereNull('finance_submitted_at')
+                ->where('planning_approval_state', PlanningApprovalState::Disetujui->value),
+            'perencanaan' => $query->whereNull('completed_at')
+                ->whereNull('finance_submitted_at')
+                ->where('planning_approval_state', '!=', PlanningApprovalState::Disetujui->value)
+                ->where('proposal_state', ProposalState::Disetujui->value),
+            'usulan' => $query->whereNull('completed_at')
+                ->whereNull('finance_submitted_at')
+                ->where('planning_approval_state', '!=', PlanningApprovalState::Disetujui->value)
+                ->where('proposal_state', '!=', ProposalState::Disetujui->value),
+            default => $query,
+        };
+    }
+
+    /**
+     * Map a system status key to the macro lifecycle stage it belongs to.
+     */
+    protected function statusStage(?string $systemKey): string
+    {
+        return match ($systemKey) {
+            'penyusunan_tor', 'draft_nodis_usulan', 'approval_usulan', 'revisi_usulan' => 'usulan',
+            'inisiasi_rendan', 'penyusunan_rks', 'menunggu_penawaran', 'draft_nodis_pengadaan',
+            'draft_nodis_laksdan', 'approval_icc', 'revisi_perencanaan' => 'perencanaan',
+            'inisiasi_laksdan', 'penyusunan_hps', 'proses_smart_scm', 'penyusunan_kontrak',
+            'penyusunan_surat_pesanan', 'approval_tl_pengadaan', 'revisi_pelaksanaan' => 'pelaksanaan',
+            'terkontrak' => 'keuangan',
+            'selesai', 'batal' => 'selesai',
+            default => 'pelaksanaan',
+        };
+    }
+
+    /**
+     * Transform a procurement into a detailed visual tracking payload with
+     * its lifecycle stages, checklist steps, and status journey.
+     *
+     * @return array<string, mixed>
+     */
+    protected function trackingItem(Procurement $procurement, ProgressStatusResolver $resolver): array
+    {
+        $stageSteps = function (ProcurementStage $stage, ?FinanceSection $section = null) use ($procurement): array {
+            $rows = $procurement->checklists
+                ->where('stage', $stage)
+                ->filter(fn (ProcurementChecklist $row): bool => $row->checklistItem !== null)
+                ->when($section !== null, fn ($collection) => $collection->filter(
+                    fn (ProcurementChecklist $row): bool => ($row->checklistItem->section ?? FinanceSection::Pembayaran) === $section
+                ))
+                ->sortBy(fn (ProcurementChecklist $row): int => $row->checklistItem->sort_order)
+                ->values();
+
+            $required = $rows->filter(fn (ProcurementChecklist $row): bool => ! $row->checklistItem->is_optional);
+            $requiredTotal = $required->count();
+            $requiredCompleted = $required->where('is_completed', true)->count();
+
+            $total = $rows->count();
+            $completed = $rows->where('is_completed', true)->count();
+
+            return [
+                'completed' => $completed,
+                'total' => $total,
+                'required_completed' => $requiredCompleted,
+                'required_total' => $requiredTotal,
+                'percentage' => $requiredTotal > 0
+                    ? (int) round(($requiredCompleted / $requiredTotal) * 100)
+                    : ($total > 0 ? (int) round(($completed / $total) * 100) : 0),
+                'steps' => $rows->map(fn (ProcurementChecklist $row): array => [
+                    'id' => $row->id,
+                    'name' => $row->checklistItem->name,
+                    'is_completed' => $row->is_completed,
+                    'is_optional' => $row->checklistItem->is_optional,
+                    'completed_at' => $row->completed_at?->toDateString(),
+                ])->all(),
+            ];
+        };
+
+        $currentStage = $procurement->currentStage();
+        $planningApproved = $procurement->isPlanningApproved();
+        $handedOver = $procurement->finance_submitted_at !== null;
+        $paid = $procurement->payment_completed_at !== null || $procurement->completed_at !== null;
+
+        $planningData = $stageSteps(ProcurementStage::Perencanaan);
+        $executionData = $stageSteps(ProcurementStage::Pelaksanaan);
+        $handoverData = $stageSteps(ProcurementStage::Keuangan, FinanceSection::Penyerahan);
+        $paymentData = $stageSteps(ProcurementStage::Keuangan, FinanceSection::Pembayaran);
+
+        $handoverDone = $handedOver && (
+            $paid || ($handoverData['required_total'] > 0 && $handoverData['required_completed'] >= $handoverData['required_total'])
+        );
+
+        $journey = $resolver->journey($procurement);
+        $journeyStepsCount = count($journey['steps']);
+        $overallPercentage = match (true) {
+            $procurement->isCompleted() => 100,
+            $journey['position'] !== null && $journeyStepsCount > 0 => (int) min(100, round(($journey['position'] / $journeyStepsCount) * 100)),
+            default => 0,
+        };
+
+        return [
+            'id' => $procurement->id,
+            'number' => $procurement->number,
+            'has_contract_number' => $procurement->hasContractNumber(),
+            'name' => $procurement->name,
+            'format' => $procurement->contractNumberFormat?->code,
+            'work_director' => $procurement->workDirector->name,
+            'target_unit' => $procurement->targetUnitNames(),
+            'partner_name' => $procurement->partner_name,
+            'hpe_value' => (float) $procurement->hpe_value,
+            'value_after_negotiation' => $procurement->value_after_negotiation === null
+                ? null
+                : (float) $procurement->value_after_negotiation,
+            'target_completion_date' => $procurement->target_completion_date?->toDateString(),
+            'created_at' => $procurement->created_at?->toDateString(),
+            'updated_at' => $procurement->updated_at?->toDateTimeString(),
+            'url' => route('procurements.show', $procurement),
+            'status' => [
+                'id' => $procurement->progressStatus->id,
+                'name' => $procurement->progressStatus->name,
+                'category' => $procurement->progressStatus->category->value,
+                'rule' => $procurement->progressStatus->systemStatus()?->rule(),
+            ],
+            'current_stage' => $currentStage,
+            'waiting_note' => RoleDashboard::note($procurement),
+            'overall_percentage' => $overallPercentage,
+            'pic' => [
+                'proposer' => $procurement->creator?->name,
+                'planner' => $procurement->planner?->name,
+                'executor' => $procurement->executor?->name,
+            ],
+            'journey' => $journey,
+            'stages' => [
+                [
+                    'key' => 'usulan',
+                    'label' => 'Usulan',
+                    'state' => $procurement->isProposalApproved()
+                        ? 'done'
+                        : ($currentStage['key'] === 'usulan' ? 'current' : 'todo'),
+                    'summary' => $procurement->proposal_submitted_at === null
+                        ? 'Langsung Pengadaan'
+                        : $procurement->proposal_state->label(),
+                    'pic' => $procurement->creator?->name,
+                    'pic_role' => 'Pengusul',
+                    'completed' => $procurement->isProposalApproved() ? 1 : 0,
+                    'total' => 1,
+                    'percentage' => $procurement->isProposalApproved() ? 100 : ($currentStage['key'] === 'usulan' ? 50 : 0),
+                    'steps' => [],
+                    'url' => route('procurements.show', [$procurement, 'tab' => $procurement->proposal_submitted_at !== null ? 'usulan' : 'perencanaan']),
+                ],
+                [
+                    'key' => 'perencanaan',
+                    'label' => 'Perencanaan',
+                    'state' => $planningApproved
+                        ? 'done'
+                        : ($currentStage['key'] === 'perencanaan' ? 'current' : 'locked'),
+                    'summary' => match (true) {
+                        $planningApproved => 'Disetujui TL ICC',
+                        ! $procurement->isProposalApproved() => 'Menunggu Usulan',
+                        $procurement->planning_approval_state === PlanningApprovalState::MenungguPersetujuan => 'Menunggu Approval ICC',
+                        $procurement->planning_approval_state === PlanningApprovalState::Ditolak => 'Revisi Perencanaan',
+                        $planningData['required_total'] > 0 => "{$planningData['required_completed']}/{$planningData['required_total']} langkah wajib",
+                        default => $procurement->planner === null ? 'Menunggu PIC Perencana' : 'Dalam Perencanaan',
+                    },
+                    'pic' => $procurement->planner?->name,
+                    'pic_role' => 'PIC Perencana',
+                    'completed' => $planningData['required_completed'],
+                    'total' => $planningData['required_total'],
+                    'percentage' => $planningApproved ? 100 : $planningData['percentage'],
+                    'steps' => $planningData['steps'],
+                    'url' => route('procurements.show', [$procurement, 'tab' => 'perencanaan']),
+                ],
+                [
+                    'key' => 'pelaksanaan',
+                    'label' => 'Pelaksanaan',
+                    'state' => ! $planningApproved
+                        ? 'locked'
+                        : ($handedOver ? 'done' : 'current'),
+                    'summary' => match (true) {
+                        ! $planningApproved => 'Menunggu Perencanaan',
+                        $handedOver => 'Disetujui TL Pengadaan',
+                        $procurement->execution_approval_state === PlanningApprovalState::MenungguPersetujuan => 'Menunggu Approval TL',
+                        $procurement->execution_approval_state === PlanningApprovalState::Ditolak => 'Revisi Pelaksanaan',
+                        $executionData['required_total'] > 0 => "{$executionData['required_completed']}/{$executionData['required_total']} langkah wajib",
+                        default => $procurement->executor === null ? 'Menunggu PIC Pelaksana' : 'Dalam Pelaksanaan',
+                    },
+                    'pic' => $procurement->executor?->name,
+                    'pic_role' => 'PIC Pelaksana',
+                    'completed' => $executionData['required_completed'],
+                    'total' => $executionData['required_total'],
+                    'percentage' => $handedOver ? 100 : (! $planningApproved ? 0 : $executionData['percentage']),
+                    'steps' => $executionData['steps'],
+                    'url' => route('procurements.show', [$procurement, 'tab' => 'pelaksanaan']),
+                ],
+                [
+                    'key' => 'penyerahan',
+                    'label' => 'Penyerahan',
+                    'state' => ! $handedOver
+                        ? 'locked'
+                        : ($handoverDone ? 'done' : 'current'),
+                    'summary' => match (true) {
+                        ! $handedOver => 'Menunggu Terkontrak',
+                        $handoverDone => 'Berkas Lengkap',
+                        $handoverData['required_total'] > 0 => "{$handoverData['required_completed']}/{$handoverData['required_total']} berkas",
+                        default => 'Proses Penyerahan',
+                    },
+                    'pic' => $procurement->executor?->name,
+                    'pic_role' => 'Penyerahan',
+                    'completed' => $handoverData['required_completed'],
+                    'total' => $handoverData['required_total'],
+                    'percentage' => $handoverDone ? 100 : (! $handedOver ? 0 : $handoverData['percentage']),
+                    'steps' => $handoverData['steps'],
+                    'url' => route('procurements.show', [$procurement, 'tab' => 'penyerahan']),
+                ],
+                [
+                    'key' => 'pembayaran',
+                    'label' => 'Pembayaran',
+                    'state' => ! $handedOver
+                        ? 'locked'
+                        : ($paid ? 'done' : ($handoverDone ? 'current' : 'todo')),
+                    'summary' => match (true) {
+                        $paid => 'Lunas / Selesai',
+                        ! $handedOver => 'Menunggu Penyerahan',
+                        $paymentData['required_total'] > 0 => "{$paymentData['required_completed']}/{$paymentData['required_total']} berkas",
+                        default => 'Proses Pembayaran',
+                    },
+                    'pic' => 'Keuangan',
+                    'pic_role' => 'Unit Keuangan',
+                    'completed' => $paymentData['required_completed'],
+                    'total' => $paymentData['required_total'],
+                    'percentage' => $paid ? 100 : (! $handedOver ? 0 : $paymentData['percentage']),
+                    'steps' => $paymentData['steps'],
+                    'url' => route('procurements.show', [$procurement, 'tab' => 'pembayaran']),
+                ],
+            ],
         ];
     }
 }

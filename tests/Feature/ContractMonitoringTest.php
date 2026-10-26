@@ -158,6 +158,49 @@ class ContractMonitoringTest extends TestCase
                 ->where('procurements.data.0.name', 'Belum Bermitra'));
     }
 
+    public function test_monitoring_board_exposes_visual_stage_tracker_and_stage_filters(): void
+    {
+        $lead = User::factory()->teamLeaderPengadaan()->create();
+
+        $planning = Procurement::factory()->create([
+            'partner_name' => 'PT Sinar Timur',
+            'name' => 'Pekerjaan Perencanaan',
+        ]);
+        $execution = Procurement::factory()->planningApproved()->create([
+            'partner_name' => 'PT Sinar Timur',
+            'name' => 'Pekerjaan Pelaksanaan',
+        ]);
+
+        $this->actingAs($lead)
+            ->get(route('monitoring.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('monitoring/index')
+                ->has('stages', 5)
+                ->has('tracker.data', 2)
+                ->has('tracker.data.0.stages', 5)
+                ->has('tracker.data.0.journey.steps')
+                ->where('activeStage', null));
+
+        $this->actingAs($lead)
+            ->get(route('monitoring.index', ['stage' => 'pelaksanaan']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('activeStage', 'pelaksanaan')
+                ->has('tracker.data', 1)
+                ->where('tracker.data.0.id', $execution->id)
+                ->where('tracker.data.0.current_stage.key', 'pelaksanaan'));
+
+        $this->actingAs($lead)
+            ->get(route('monitoring.index', ['stage' => 'perencanaan']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('activeStage', 'perencanaan')
+                ->has('tracker.data', 1)
+                ->where('tracker.data.0.id', $planning->id)
+                ->where('tracker.data.0.current_stage.key', 'perencanaan'));
+    }
+
     public function test_the_contract_board_holds_the_partners_under_contract_now(): void
     {
         $lead = User::factory()->teamLeaderPengadaan()->create();

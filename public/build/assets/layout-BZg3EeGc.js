@@ -1,1 +1,0 @@
-function e(e,t=4,n=7){if(e<=n)return Math.max(1,e);let r=n,i=1/0;for(let a=n;a>=t;a--){let t=(a-e%a)%a;t<i&&(r=a,i=t)}return r}function t(e,t=.75){return`calc(${100/e}% - ${t}rem)`}export{e as n,t};

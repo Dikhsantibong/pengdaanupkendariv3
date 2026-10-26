@@ -50,6 +50,13 @@ class ProgressStatusResolver
     private ?array $statusIds = null;
 
     /**
+     * The active system status names, by key, once read.
+     *
+     * @var Collection<string, string>|null
+     */
+    private ?Collection $statusNames = null;
+
+    /**
      * Bring the procurement's status in line with where it stands.
      */
     public function sync(Procurement $procurement): void
@@ -399,7 +406,10 @@ class ProgressStatusResolver
      */
     public function journey(Procurement $procurement): array
     {
-        $names = ProgressStatus::query()->active()->whereNotNull('system_key')->pluck('name', 'system_key');
+        $names = $this->statusNames ??= ProgressStatus::query()
+            ->active()
+            ->whereNotNull('system_key')
+            ->pluck('name', 'system_key');
         $path = array_values(array_filter(
             $this->path($procurement),
             fn (SystemStatus $status): bool => $names->has($status->value),
@@ -416,9 +426,11 @@ class ProgressStatusResolver
         $position = $found === false ? null : $found;
 
         // When each status was last entered.
-        $entered = $procurement->statusHistories()
-            ->whereNotNull('system_key')
-            ->get(['system_key', 'created_at'])
+        $histories = $procurement->relationLoaded('statusHistories')
+            ? $procurement->statusHistories->whereNotNull('system_key')
+            : $procurement->statusHistories()->whereNotNull('system_key')->get(['system_key', 'created_at']);
+
+        $entered = $histories
             ->mapWithKeys(fn (ProcurementStatusHistory $entry): array => [(string) $entry->system_key => $entry->created_at?->toIso8601String()]);
 
         $steps = array_map(fn (SystemStatus $status, int $index): array => [
@@ -452,5 +464,6 @@ class ProgressStatusResolver
     public function forget(): void
     {
         $this->statusIds = null;
+        $this->statusNames = null;
     }
 }
