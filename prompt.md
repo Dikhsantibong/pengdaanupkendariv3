@@ -2423,6 +2423,11 @@ Pengamanan:
   2. **Periksa berkas:** pratinjau PDF / gambar langsung di panel, beralih per berkas.
      - Perencanaan / Pelaksanaan: unggahan dokumen tervalidasi tahap itu, atau draf bila belum diunggah.
      - Penyerahan / Pembayaran: berkas checklist tab tersebut.
+  - **Pratinjau leluasa:**
+    - Panel selebar hampir seluruh layar (maks. 1400 px), dengan tombol **Layar penuh / Perkecil**.
+    - Daftar berkas berada di kolom kiri (nama terbaca utuh), dan pratinjau mengisi seluruh tinggi panel (1440×900: ±1100×650 px).
+    - Ada tombol **Buka di tab baru** untuk berkas yang sedang dilihat.
+    - Di tablet / ponsel, daftar berkas menjadi deretan tombol di atas pratinjau.
   3. **Putuskan:** tombol utama Setujui (label sesuai tahap, mis. "Setujui & Teruskan ke Pembayaran", "Setujui: Lunas & Tutup Pengadaan") dan "Kembalikan untuk Revisi" (catatan wajib). Keputusan memakai rute yang sama dengan kartu Persetujuan di detail pengadaan.
 - Amandemen dan DO tetap dibuka di tab masing-masing karena isiannya lebih panjang.
 - **Teknis:** prop `reviews` (dibangun di `ApprovalQueueController::review()` / `papers()`); komponen `components/approval-review.tsx` (`ReviewList`, panel tinjauan). **Test:** `ApprovalQueueTest::test_each_submission_carries_what_the_reviewer_reads_before_deciding`.

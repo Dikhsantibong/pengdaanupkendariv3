@@ -4,6 +4,8 @@ import {
     ExternalLink,
     FileText,
     Inbox,
+    Maximize2,
+    Minimize2,
     UserRound,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -211,6 +213,7 @@ function ReviewSheet({
 }) {
     const words = QUEUE[queue];
     const [paper, setPaper] = useState(review.papers[0] ?? null);
+    const [fullscreen, setFullscreen] = useState(false);
     const form = useForm<{ approved: boolean; note: string }>({
         approved: true,
         note: '',
@@ -224,38 +227,82 @@ function ReviewSheet({
         });
     };
 
+    const paperButton = (item: Review['papers'][number], wide: boolean) => (
+        <button
+            key={item.url}
+            type="button"
+            onClick={() => setPaper(item)}
+            title={item.name}
+            className={cn(
+                'flex items-start gap-1.5 rounded-md border px-2.5 py-1.5 text-left text-xs transition-colors',
+                wide ? 'w-full' : 'max-w-[15rem] shrink-0',
+                paper?.url === item.url
+                    ? 'border-primary bg-primary/10 font-medium text-primary'
+                    : 'border-border text-muted-foreground hover:bg-muted',
+            )}
+        >
+            <FileText className="mt-0.5 size-3.5 shrink-0" />
+            <span className={wide ? 'line-clamp-3' : 'truncate'}>
+                {item.name}
+            </span>
+        </button>
+    );
+
     return (
         <Sheet open onOpenChange={(value) => !value && onClose()}>
             <SheetContent
                 side="right"
-                className="flex w-full flex-col gap-0 p-0 sm:max-w-3xl"
+                className={cn(
+                    'flex w-full flex-col gap-0 p-0',
+                    // Wide enough to read a document; the whole screen on request.
+                    fullscreen
+                        ? 'sm:max-w-none'
+                        : 'sm:max-w-[min(1400px,94vw)]',
+                )}
             >
-                <SheetHeader className="border-b border-border p-4">
-                    <p className="section-label">Tinjau {words.stage}</p>
-                    <SheetTitle className="text-base leading-snug">
-                        {row.name}
-                    </SheetTitle>
-                    <SheetDescription className="tabular text-xs">
-                        {row.number} · {row.work_director} · diajukan{' '}
-                        {review.submitted_by ?? words.submitter},{' '}
-                        {formatDateTime(review.submitted_at)}
-                        {review.tl_reviewer
-                            ? ` · disetujui TL ${review.tl_reviewer}`
-                            : ''}
-                    </SheetDescription>
+                <SheetHeader className="flex-row items-start justify-between gap-3 border-b border-border p-4 pr-12">
+                    <div className="min-w-0 space-y-1">
+                        <p className="section-label">Tinjau {words.stage}</p>
+                        <SheetTitle className="text-base leading-snug">
+                            {row.name}
+                        </SheetTitle>
+                        <SheetDescription className="tabular text-xs">
+                            {row.number} · {row.work_director} · diajukan{' '}
+                            {review.submitted_by ?? words.submitter},{' '}
+                            {formatDateTime(review.submitted_at)}
+                            {review.tl_reviewer
+                                ? ` · disetujui TL ${review.tl_reviewer}`
+                                : ''}
+                        </SheetDescription>
+                    </div>
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="hidden shrink-0 sm:inline-flex"
+                        onClick={() => setFullscreen((value) => !value)}
+                    >
+                        {fullscreen ? (
+                            <Minimize2 className="size-4" />
+                        ) : (
+                            <Maximize2 className="size-4" />
+                        )}
+                        {fullscreen ? 'Perkecil' : 'Layar penuh'}
+                    </Button>
                 </SheetHeader>
 
-                <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
-                    {review.note && (
-                        <p className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs">
-                            <span className="font-medium">
-                                Catatan revisi sebelumnya:{' '}
-                            </span>
-                            {review.note}
-                        </p>
-                    )}
+                {review.note && (
+                    <p className="border-b border-amber-500/30 bg-amber-500/5 px-4 py-2 text-xs">
+                        <span className="font-medium">
+                            Catatan revisi sebelumnya:{' '}
+                        </span>
+                        {review.note}
+                    </p>
+                )}
 
-                    <div className="space-y-2">
+                {/* The papers on the left, the open one filling the rest. */}
+                <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+                    <aside className="flex shrink-0 flex-col gap-2 border-b border-border p-3 lg:w-64 lg:border-r lg:border-b-0">
                         <p className="text-sm font-semibold">
                             1. Periksa berkas ({review.papers.length})
                         </p>
@@ -266,44 +313,16 @@ function ReviewSheet({
                             </p>
                         ) : (
                             <>
-                                <div className="flex gap-1 overflow-x-auto pb-1">
-                                    {review.papers.map((item) => (
-                                        <button
-                                            key={item.url}
-                                            type="button"
-                                            onClick={() => setPaper(item)}
-                                            className={cn(
-                                                'flex max-w-[15rem] shrink-0 items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors',
-                                                paper?.url === item.url
-                                                    ? 'border-primary bg-primary/10 font-medium text-primary'
-                                                    : 'border-border text-muted-foreground hover:bg-muted',
-                                            )}
-                                        >
-                                            <FileText className="size-3.5 shrink-0" />
-                                            <span className="truncate">
-                                                {item.name}
-                                            </span>
-                                        </button>
-                                    ))}
+                                <div className="flex gap-1 overflow-x-auto pb-1 lg:hidden">
+                                    {review.papers.map((item) =>
+                                        paperButton(item, false),
+                                    )}
                                 </div>
-                                {paper && (
-                                    <div className="overflow-hidden rounded-md border border-border bg-muted/30">
-                                        {paper.is_image ? (
-                                            <img
-                                                src={paper.url}
-                                                alt={paper.name}
-                                                className="mx-auto max-h-[55vh] object-contain"
-                                            />
-                                        ) : (
-                                            <iframe
-                                                key={paper.url}
-                                                src={`${paper.url}#view=FitH`}
-                                                title={paper.name}
-                                                className="h-[55vh] w-full bg-white"
-                                            />
-                                        )}
-                                    </div>
-                                )}
+                                <div className="hidden min-h-0 flex-1 flex-col gap-1 overflow-y-auto lg:flex">
+                                    {review.papers.map((item) =>
+                                        paperButton(item, true),
+                                    )}
+                                </div>
                             </>
                         )}
                         <Link
@@ -317,10 +336,51 @@ function ReviewSheet({
                             <ExternalLink className="size-3.5" />
                             Buka detail pengadaan
                         </Link>
+                    </aside>
+
+                    <div className="flex min-h-[50vh] min-w-0 flex-1 flex-col bg-muted/30">
+                        {paper ? (
+                            <>
+                                <div className="flex items-center justify-between gap-2 border-b border-border bg-card px-3 py-1.5 text-xs">
+                                    <span className="truncate font-medium">
+                                        {paper.name}
+                                    </span>
+                                    <a
+                                        href={paper.url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex shrink-0 items-center gap-1 font-medium text-primary hover:underline"
+                                    >
+                                        <ExternalLink className="size-3.5" />
+                                        Buka di tab baru
+                                    </a>
+                                </div>
+                                {paper.is_image ? (
+                                    <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-3">
+                                        <img
+                                            src={paper.url}
+                                            alt={paper.name}
+                                            className="max-h-full max-w-full object-contain"
+                                        />
+                                    </div>
+                                ) : (
+                                    <iframe
+                                        key={paper.url}
+                                        src={`${paper.url}#view=FitH`}
+                                        title={paper.name}
+                                        className="min-h-0 w-full flex-1 bg-white"
+                                    />
+                                )}
+                            </>
+                        ) : (
+                            <p className="m-auto text-xs text-muted-foreground">
+                                Pilih berkas untuk dipratinjau.
+                            </p>
+                        )}
                     </div>
                 </div>
 
-                <div className="space-y-2 border-t border-border bg-card p-4">
+                <div className="space-y-2 border-t border-border bg-card px-4 py-3">
                     {review.can_decide ? (
                         <>
                             <p className="text-sm font-semibold">2. Putuskan</p>
