@@ -2455,6 +2455,10 @@ Pengamanan:
 - Hasilnya, tombol persetujuan langsung terlihat setelah identitas (900px: y≈749; ponsel 375px: y≈952).
 - **Desktop (≥ 1024px) tidak berubah:** kolom kanan tetap di samping dan tetap menempel saat digulir.
 - **Teknis:** `pages/procurements/show.tsx` (urutan `max-lg:order-*`); `ApprovalPanel` menerima `className`.
+- **Kartu tidak lagi terpotong di layar pendek (≥ 1024px):**
+  - Kolom kanan yang menempel dibatasi setinggi layar. Sebelumnya kartu di dalamnya ikut menyusut, sehingga tahap Pembayaran dan tombolnya terpotong.
+  - Kini setiap kartu memakai tinggi penuhnya (`[&>*]:shrink-0`), dan kolom kanan bisa digulir sendiri.
+  - Diuji pada 1920×950, 1280×600, 1024×700, dan ponsel 375px: tidak ada bagian terpotong, dan tombol Setujui / Kembalikan terjangkau.
 
 ---
 

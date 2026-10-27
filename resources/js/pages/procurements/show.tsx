@@ -960,8 +960,10 @@ export default function ShowProcurement({
                         </Tabs>
                     </div>
 
-                    {/* The side column stays in view beside the long tables. */}
-                    <aside className="flex flex-col gap-4 max-lg:contents lg:sticky lg:top-4 lg:max-h-[calc(100svh-2rem)] lg:self-start lg:overflow-y-auto">
+                    {/* The side column stays in view beside the long tables. On a
+                        short screen it scrolls on its own; its cards keep their full
+                        height (shrink-0) so no stage or button is cut off. */}
+                    <aside className="flex flex-col gap-4 max-lg:contents lg:sticky lg:top-4 lg:max-h-[calc(100svh-2rem)] lg:self-start lg:overflow-y-auto lg:overscroll-contain lg:pr-1 [&>*]:shrink-0">
                         <ApprovalPanel
                             id="approval-cards"
                             className="max-lg:order-1"
