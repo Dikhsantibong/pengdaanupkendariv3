@@ -150,6 +150,8 @@ class FinanceLetters
             },
             // The partner's own details, to fill in by hand while not known.
             'nama_mitra' => self::orBlank($procurement->partner_name),
+            // The director signs every letter for the partner.
+            'nama_direktur' => self::orBlank($procurement->partner_director_name),
             'alamat_perusahaan' => self::orBlank($procurement->partner_address),
             'nama_bank' => self::orBlank($procurement->bank_name),
             'nomor_rekening' => self::orBlank($procurement->bank_account_number),

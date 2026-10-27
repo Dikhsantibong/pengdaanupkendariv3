@@ -552,8 +552,14 @@ export default function ShowProcurement({
                     }
                 />
 
-                <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
-                    <div className="flex min-w-0 flex-col gap-5">
+                {/*
+                 * Narrower than lg the side column falls below the long
+                 * tabs, which would hide the approval buttons several screens
+                 * down. There both columns dissolve into one list, ordered:
+                 * identity, Persetujuan, tabs, then status and PIC.
+                 */}
+                <div className="grid grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
+                    <div className="flex min-w-0 flex-col gap-5 max-lg:contents">
                         <IdentityPanel
                             procurement={procurement}
                             notes={detail.notes}
@@ -569,6 +575,7 @@ export default function ShowProcurement({
                             defaultValue={initialTab}
                             value={tab}
                             onValueChange={changeTab}
+                            className="max-lg:order-2"
                         >
                             <StageStepper
                                 stages={stages}
@@ -862,9 +869,10 @@ export default function ShowProcurement({
                     </div>
 
                     {/* The side column stays in view beside the long tables. */}
-                    <aside className="flex flex-col gap-4 lg:sticky lg:top-4 lg:max-h-[calc(100svh-2rem)] lg:self-start lg:overflow-y-auto">
+                    <aside className="flex flex-col gap-4 max-lg:contents lg:sticky lg:top-4 lg:max-h-[calc(100svh-2rem)] lg:self-start lg:overflow-y-auto">
                         <ApprovalPanel
                             id="approval-cards"
+                            className="max-lg:order-1"
                             footer={
                                 can.complete && planningApproved ? (
                                     <CompleteProcurementButton
@@ -927,24 +935,26 @@ export default function ShowProcurement({
                             </ApprovalStage>
                         </ApprovalPanel>
 
-                        <StatusCard
-                            procurementId={procurement.id}
-                            status={procurement.status}
-                            rule={detail.status_rule}
-                            journey={detail.status_journey}
-                            history={detail.status_history}
-                            editable={can.updateStatus}
-                        />
+                        <div className="flex flex-col gap-4 max-lg:order-3">
+                            <StatusCard
+                                procurementId={procurement.id}
+                                status={procurement.status}
+                                rule={detail.status_rule}
+                                journey={detail.status_journey}
+                                history={detail.status_history}
+                                editable={can.updateStatus}
+                            />
 
-                        <PicAssignmentCard
-                            procurementId={procurement.id}
-                            planner={procurement.planner}
-                            executor={procurement.executor}
-                            planners={options.planners}
-                            executors={options.executors}
-                            canAssignPlanner={can.assignPlanner}
-                            canAssignExecutor={can.assignExecutor}
-                        />
+                            <PicAssignmentCard
+                                procurementId={procurement.id}
+                                planner={procurement.planner}
+                                executor={procurement.executor}
+                                planners={options.planners}
+                                executors={options.executors}
+                                canAssignPlanner={can.assignPlanner}
+                                canAssignExecutor={can.assignExecutor}
+                            />
+                        </div>
                     </aside>
 
                     <CancelProcurementDialog

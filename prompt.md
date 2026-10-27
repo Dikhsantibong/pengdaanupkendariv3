@@ -2355,6 +2355,37 @@ Pengamanan:
 
 ---
 
+# Tombol Persetujuan Terlihat di Layar Kecil
+
+- **Masalah:** di layar di bawah 1024px (tablet, atau laptop dengan skala tampilan 125–150%), kolom kanan detail pengadaan turun ke bawah semua tab. Kartu Persetujuan beserta tombol Ajukan / Setujui / Kembalikan berada beberapa layar di bawah (mis. 900px: tombol Setujui di y≈2.530).
+- **Perbaikan:** di bawah `lg`, kedua kolom dilebur menjadi satu daftar (`max-lg:contents`) dengan urutan:
+  1. Identitas Pengadaan
+  2. **Persetujuan**
+  3. Tab tahapan
+  4. Status Progres dan Penunjukan PIC
+- Hasilnya, tombol persetujuan langsung terlihat setelah identitas (900px: y≈749; ponsel 375px: y≈952).
+- **Desktop (≥ 1024px) tidak berubah:** kolom kanan tetap di samping dan tetap menempel saat digulir.
+- **Teknis:** `pages/procurements/show.tsx` (urutan `max-lg:order-*`); `ApprovalPanel` menerima `className`.
+
+---
+
+# Nama Direktur pada Surat Penyerahan & Pembayaran
+
+- **Masalah:** keenam template surat mitra di tab Penyerahan/Pembayaran menulis "( NAMA DIREKTUR )" sebagai teks tetap, sehingga nama direktur mitra tidak pernah terisi. Surat yang terdampak:
+  - Surat Jalan
+  - Surat Pengantar Penyerahan
+  - Berita Acara Pemeriksaan
+  - Berita Acara Serah Terima
+  - Surat Pernyataan Garansi
+  - Surat Permohonan Pembayaran
+- **Perbaikan:**
+  - Kedelapan tempat nama direktur (tanda tangan, serta baris "Nama" di BAST dan Pernyataan Garansi) kini memakai `<span style="text-transform: uppercase;">{{nama_direktur}}</span>`, sehingga tercetak huruf besar seperti nama penanda tangan lain.
+  - `FinanceLetters::values()` mengisi `nama_direktur` dari Nama Direktur calon mitra. Bila belum diisi, ditampilkan garis titik-titik untuk ditulis tangan (sama seperti data mitra lain), bukan "-".
+- **Deploy:** jalankan `php artisan templates:sync --group=keuangan`. Template yang sudah diubah admin tidak ditimpa; untuk itu pakai `--force`, atau ganti teksnya manual di Data Master → Template Dokumen.
+- **Test:** `FinanceLettersTest::test_every_letter_names_the_director_or_leaves_a_line_for_it`.
+
+---
+
 # Dokumen Pendukung Usulan
 
 - Selain **TOR** dan **Nota Dinas Usulan** (wajib), pengusul dapat menambah **Dokumen Pendukung** (opsional): spesifikasi, foto kondisi, penawaran, dsb.

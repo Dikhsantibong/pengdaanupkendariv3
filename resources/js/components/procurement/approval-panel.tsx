@@ -27,15 +27,20 @@ export function ApprovalPanel({
     id,
     children,
     footer,
+    className,
 }: {
     id?: string;
     children: ReactNode;
     footer?: ReactNode;
+    className?: string;
 }) {
     return (
         <section
             id={id}
-            className="scroll-mt-20 overflow-hidden rounded-md border border-border bg-card"
+            className={cn(
+                'scroll-mt-20 overflow-hidden rounded-md border border-border bg-card',
+                className,
+            )}
         >
             <p className="section-label border-b border-border px-4 py-2.5">
                 Persetujuan

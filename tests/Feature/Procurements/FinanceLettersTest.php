@@ -87,7 +87,9 @@ class FinanceLettersTest extends TestCase
         $this->assertStringContainsString('Rp 112.000.000 (Seratus Dua Belas Juta Rupiah) sudah termasuk PPN', $letter);
         $this->assertStringContainsString('BANK BRI', $letter);
         $this->assertStringContainsString('0587.01.000012.30.6', $letter);
-        $this->assertStringContainsString('( NAMA DIREKTUR )', $letter);
+        // Signed by the partner's director, printed in capitals.
+        $this->assertStringContainsString('<span style="text-transform: uppercase;">Andi Saputra</span>', $letter);
+        $this->assertStringNotContainsString('NAMA DIREKTUR', $letter);
         // Plain text for Word: no live fields and nothing left unfilled.
         $this->assertStringNotContainsString('data-field', $letter);
         $this->assertStringNotContainsString('{{', $letter);
@@ -184,6 +186,38 @@ class FinanceLettersTest extends TestCase
         $this->assertSame('berita-acara-serah-terima', FinanceLetters::codeFor($row));
     }
 
+    public function test_every_letter_names_the_director_or_leaves_a_line_for_it(): void
+    {
+        $steps = [
+            'Permohonan Pembayaran',
+            'Surat Jalan / Delivery Order',
+            'Surat Pernyataan Garansi Barang',
+            'Asli Berita Acara Pemeriksaan Barang',
+        ];
+
+        foreach ($steps as $step) {
+            $letter = $this->download($step)->assertOk()->streamedContent();
+
+            $this->assertStringContainsString('Andi Saputra', $letter, $step);
+            $this->assertStringNotContainsString('NAMA DIREKTUR', $letter, $step);
+        }
+
+        $this->procurement = $this->procurementOf('SPK', 'jasa');
+        $this->procurement->update(['partner_director_name' => null]);
+
+        $letter = $this->download('Asli Surat Penyerahan Pekerjaan')->assertOk()->streamedContent();
+
+        // Not known yet: a line to write the name on, not a dash.
+        $this->assertStringContainsString('<span style="text-transform: uppercase;">.........................</span>', $letter);
+        $this->assertStringNotContainsString('NAMA DIREKTUR', $letter);
+
+        $this->procurement = $this->procurementOf('SPPL', 'barang');
+
+        $letter = $this->download('Asli atau Copy Surat Serah Terima Pekerjaan (untuk pekerjaan jasa / barang dan jasa)')->assertOk()->streamedContent();
+
+        $this->assertSame(2, substr_count($letter, 'Andi Saputra'));
+    }
+
     public function test_only_a_letter_step_of_this_procurement_downloads_one(): void
     {
         $this->actingAs($this->finance)
@@ -230,6 +264,8 @@ class FinanceLettersTest extends TestCase
             'bank_name' => 'BANK BRI',
             'bank_account_number' => '0587.01.000012.30.6',
             'bank_account_holder' => 'CV. BINTANG MAS',
+            'partner_name' => 'CV. BINTANG MAS',
+            'partner_director_name' => 'Andi Saputra',
             'finance_submitted_at' => now(),
         ]);
 
