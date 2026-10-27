@@ -109,7 +109,7 @@ export default function AuthShowcaseLayout({
                             PLN Nusantara Power
                         </p>
                         <p className="text-base font-semibold">
-                            Sistem Management Pengadaan UP Kendari
+                            SIM-SCM UP Kendari
                         </p>
                     </div>
                 </div>
@@ -166,7 +166,7 @@ export default function AuthShowcaseLayout({
                             <AppLogoIcon className="h-9" />
                         </span>
                         <p className="text-sm leading-tight font-semibold">
-                            Sistem Management Pengadaan
+                            SIM-SCM
                             <span className="block text-[0.6875rem] font-medium tracking-[0.06em] text-muted-foreground uppercase">
                                 UP Kendari
                             </span>

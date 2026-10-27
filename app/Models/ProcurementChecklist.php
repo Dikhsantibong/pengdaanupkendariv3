@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\FinanceSection;
 use App\Enums\ProcurementStage;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Collection;
@@ -56,6 +57,20 @@ class ProcurementChecklist extends Model
     public function files(): HasMany
     {
         return $this->hasMany(ProcurementChecklistFile::class)->oldest('id');
+    }
+
+    /**
+     * The Keuangan tab of the step (Penyerahan or Pembayaran), or null for a
+     * step of another stage.
+     */
+    public function financeSection(): ?FinanceSection
+    {
+        if ($this->stage !== ProcurementStage::Keuangan) {
+            return null;
+        }
+
+        // A Keuangan step without a tab shows under Pembayaran.
+        return $this->checklistItem->section ?? FinanceSection::Pembayaran;
     }
 
     /**

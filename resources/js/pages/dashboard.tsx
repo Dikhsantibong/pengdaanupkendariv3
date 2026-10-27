@@ -80,6 +80,8 @@ type DashboardTasks = {
     finance: TaskList | null;
     approvals: TaskList | null;
     executionApprovals: TaskList | null;
+    handoverApprovals: TaskList | null;
+    paymentApprovals: TaskList | null;
     assignments: TaskList | null;
     planning: TaskList;
     execution: TaskList;
@@ -126,7 +128,7 @@ export default function Dashboard(props: DashboardProps) {
 
             <div className="flex flex-col gap-5 p-4 md:p-6">
                 <PageHeader
-                    eyebrow="Sistem Management Pengadaan UP Kendari"
+                    eyebrow="SIM-SCM UP Kendari"
                     title={`Selamat datang, ${auth.user.name}`}
                     description={PROFILE_DESCRIPTIONS[profile]}
                     actions={
@@ -445,10 +447,12 @@ function TaskInbox({
             list: tasks.finance,
             emptyText: 'Tidak ada tagihan yang menunggu pembayaran.',
             itemHref: (item) =>
-                procurements.show(item.id, { query: { tab: 'penyerahan' } })
+                procurements.show(item.id, { query: { tab: 'pembayaran' } })
                     .url,
             dateLabel: (item) =>
-                item.date ? `Disetujui ${formatDateTime(item.date)}` : null,
+                item.date
+                    ? `Penyerahan disetujui ${formatDateTime(item.date)}`
+                    : null,
             allHref: menus.finance ? finance.index().url : null,
             tone: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
         });
@@ -483,6 +487,40 @@ function TaskInbox({
                 item.date ? `Diajukan ${formatDateTime(item.date)}` : null,
             allHref: menus.approvals ? approvals.index().url : null,
             tone: 'bg-violet-500/10 text-violet-700 dark:text-violet-400',
+        });
+    }
+
+    if (tasks.handoverApprovals !== null) {
+        cards.push({
+            key: 'handoverApprovals',
+            title: 'Penyerahan Menunggu Persetujuan Anda',
+            icon: ClipboardCheck,
+            list: tasks.handoverApprovals,
+            emptyText: 'Tidak ada penyerahan yang menunggu persetujuan.',
+            itemHref: (item) =>
+                procurements.show(item.id, { query: { tab: 'penyerahan' } })
+                    .url,
+            dateLabel: (item) =>
+                item.date ? `Diajukan ${formatDateTime(item.date)}` : null,
+            allHref: menus.approvals ? approvals.index().url : null,
+            tone: 'bg-sky-500/10 text-sky-700 dark:text-sky-400',
+        });
+    }
+
+    if (tasks.paymentApprovals !== null) {
+        cards.push({
+            key: 'paymentApprovals',
+            title: 'Pembayaran Menunggu Persetujuan Anda',
+            icon: ClipboardCheck,
+            list: tasks.paymentApprovals,
+            emptyText: 'Tidak ada pembayaran yang menunggu persetujuan.',
+            itemHref: (item) =>
+                procurements.show(item.id, { query: { tab: 'pembayaran' } })
+                    .url,
+            dateLabel: (item) =>
+                item.date ? `Diajukan ${formatDateTime(item.date)}` : null,
+            allHref: menus.approvals ? approvals.index().url : null,
+            tone: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
         });
     }
 

@@ -18,7 +18,9 @@ use App\Http\Controllers\Procurements\DocumentArchiveDownloadController;
 use App\Http\Controllers\Procurements\DocumentController;
 use App\Http\Controllers\Procurements\ExecutionApprovalController;
 use App\Http\Controllers\Procurements\FinanceController;
+use App\Http\Controllers\Procurements\HandoverApprovalController;
 use App\Http\Controllers\Procurements\PartnerCandidateController;
+use App\Http\Controllers\Procurements\PaymentApprovalController;
 use App\Http\Controllers\Procurements\PicAssignmentController;
 use App\Http\Controllers\Procurements\PlanningIdentityController;
 use App\Http\Controllers\Procurements\ProposalController;
@@ -51,11 +53,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('approval', [ApprovalController::class, 'update'])->name('approval.update');
         Route::delete('approval', [ApprovalController::class, 'destroy'])->name('approval.destroy');
         Route::post('completion', [CompletionController::class, 'store'])->name('completion.store');
-        // The executor submits the execution; TL Pengadaan's approval hands
-        // it to Keuangan, who records the payment.
+        // The executor submits the execution; TL Pengadaan's approval opens
+        // Penyerahan.
         Route::post('execution-approval', [ExecutionApprovalController::class, 'store'])->name('execution-approval.store');
         Route::put('execution-approval', [ExecutionApprovalController::class, 'update'])->name('execution-approval.update');
-        Route::post('keuangan/lunas', [FinanceController::class, 'complete'])->name('finance.complete');
+        // Penyerahan: the executor submits, TL Pengadaan approves it on to
+        // Pembayaran.
+        Route::post('handover-approval', [HandoverApprovalController::class, 'store'])->name('handover-approval.store');
+        Route::put('handover-approval', [HandoverApprovalController::class, 'update'])->name('handover-approval.update');
+        // Pembayaran: Keuangan submits, TL Keuangan then the Asman approve;
+        // the last approval records the payment and closes the job.
+        Route::post('payment-approval', [PaymentApprovalController::class, 'store'])->name('payment-approval.store');
+        Route::put('payment-approval', [PaymentApprovalController::class, 'update'])->name('payment-approval.update');
         // Contract amendments, on the Amandemen tab.
         Route::post('amandemen', [AmendmentController::class, 'store'])->name('amendments.store');
         Route::put('amandemen/{amendment}', [AmendmentController::class, 'update'])->name('amendments.update');
@@ -122,8 +131,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('can:menu.planning')->name('planning.index');
     Route::get('execution', [ExecutionController::class, 'index'])
         ->middleware('can:menu.execution')->name('execution.index');
-    Route::get('keuangan', [FinanceController::class, 'index'])
+    Route::get('penyerahan', [FinanceController::class, 'handover'])
+        ->middleware('can:menu.handover')->name('handover.index');
+    Route::get('pembayaran', [FinanceController::class, 'index'])
         ->middleware('can:menu.finance')->name('finance.index');
+    // The Keuangan menu became Pembayaran; old links still arrive.
+    Route::redirect('keuangan', 'pembayaran');
     Route::get('approvals', [ApprovalQueueController::class, 'index'])
         ->middleware('can:open-approvals')->name('approvals.index');
     Route::get('monitoring', [MonitoringController::class, 'index'])

@@ -6,7 +6,7 @@ import {
     Layers,
     MonitorPlay,
 } from 'lucide-react';
-import AppLogoIcon from '@/components/app-logo-icon';
+import AppMark, { AppLogoFull } from '@/components/app-mark';
 import { Button } from '@/components/ui/button';
 import { dashboard, login } from '@/routes';
 import publicMonitoring from '@/routes/public-monitoring';
@@ -45,13 +45,11 @@ export default function Welcome() {
                 <header className="border-b border-border bg-card">
                     <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
                         <div className="flex items-center gap-3">
-                            <span className="flex size-9 items-center justify-center rounded-md bg-white p-1">
-                                <AppLogoIcon className="h-7" />
+                            <span className="flex size-9 items-center justify-center rounded-md bg-white p-0.5 ring-1 ring-border">
+                                <AppMark />
                             </span>
                             <div className="leading-tight">
-                                <p className="text-sm font-semibold">
-                                    Management Pengadaan
-                                </p>
+                                <p className="text-sm font-semibold">SIM-SCM</p>
                                 <p className="text-[0.6875rem] font-medium tracking-[0.06em] text-muted-foreground uppercase">
                                     UP Kendari
                                 </p>
@@ -71,6 +69,7 @@ export default function Welcome() {
 
                 <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center gap-10 px-6 py-16">
                     <div className="max-w-3xl space-y-4">
+                        <AppLogoFull className="h-16 sm:h-20" />
                         <p className="section-label">
                             PLN Nusantara Power &middot; Unit Pembangkitan
                             Kendari

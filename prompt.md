@@ -773,6 +773,8 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 
 ## 3. Tahap Keuangan
 
+> **Revisi terbaru (27 Okt 2026):** Penyerahan dikerjakan PIC Pelaksana dan disetujui TL Pengadaan. Pembayaran diajukan staf Keuangan, lalu disetujui TL Keuangan dan Asman Business Support; persetujuan Asman mencatat lunas dan menutup pengadaan. Tombol "Pembayaran Lunas & Tutup Pengadaan" di bawah sudah diganti. Rincian lengkap ada di bagian *Alur Penyerahan & Pembayaran dengan Persetujuan*.
+
 > **Revisi (Penyerahan & Pembayaran = unggah dokumen):**
 > - Setiap item checklist Penyerahan dan Pembayaran kini **wajib unggah berkas** (PDF/JPG/PNG, bisa beberapa sekaligus), bukan sekadar centang.
 > - Item baru bisa dicentang setelah ada berkas.
@@ -915,8 +917,8 @@ Seluruh susunan di atas adalah data, bukan kode, dan dapat diubah kapan saja:
 
 ## Keuangan (`keuangan`)
 
-- Memproses pembayaran pengadaan yang diserahkan PIC Pelaksana: melengkapi dokumen tagihan, mencatat pembayaran, lalu menutup pengadaan.
-- Melihat pengadaan yang sudah diserahkan ke Keuangan. Dapat juga mengusulkan pekerjaan untuk bidangnya.
+- **Revisi (Penyerahan & Pembayaran dengan persetujuan):** staf Keuangan melengkapi berkas **Pembayaran** setelah TL Pengadaan menyetujui Penyerahan, lalu mengajukannya ke TL Keuangan (atasan staf) dan Asman Business Support. Persetujuan Asman mencatat lunas dan menutup pengadaan. Lihat bagian *Alur Penyerahan & Pembayaran dengan Persetujuan*.
+- Melihat **seluruh pengadaan** (baca saja, hak "Lihat seluruh pengadaan"), tetapi tidak lagi mengusulkan pekerjaan maupun membuka menu Usulan.
 - Akun bawaan: Nova Sang Jaya (TL Keuangan, sekaligus TL atasan staf keuangan), Muhammad Jaya Junaid, Inggrid Novela Pitaloka.
 
 ## Pengusul (`pengusul`)
@@ -2352,6 +2354,76 @@ Pengamanan:
 - **Penyetuju perencanaan:** TL ICC menunjuk PIC Perencana dan menyetujui perencanaan; TL Pengadaan menunjuk PIC Pelaksana dan menyetujui pelaksanaan. Bila akun salah satunya tidak ada, Administrator yang mengisinya.
 - **Penanda:** semua data demo memakai catatan "Data demo (DemoProcurementSeeder)." Menjalankan ulang seeder menghapus data demo sebelumnya (hanya yang bertanda itu), lalu membuat ulang.
 - **Menjalankan:** `php artisan db:seed --class=DemoProcurementSeeder`, setelah `php artisan migrate --seed`. Test: `DemoProcurementSeederTest`.
+
+---
+
+# Alur Penyerahan & Pembayaran dengan Persetujuan
+
+> Menggantikan tombol lama "Pembayaran Lunas & Tutup Pengadaan" oleh Keuangan.
+
+**Alur**
+
+| Tahap | Dikerjakan | Persetujuan | Bila dikembalikan |
+|---|---|---|---|
+| Penyerahan | PIC Pelaksana (atau TL Pengadaan) mengunggah berkas tab Penyerahan, lalu PIC Pelaksana **Ajukan ke TL Pengadaan** | TL Pengadaan (hak baru *Setujui / kembalikan penyerahan*, bawaan TL Pengadaan) | Catatan wajib, kembali ke PIC Pelaksana (revisi bertambah) |
+| Pembayaran | Staf Keuangan mengunggah berkas tab Pembayaran, lalu **Ajukan Pembayaran** | TL atasan pengaju (TL Keuangan), lalu Asman bidang TL tersebut (Asman Business Support) | Catatan wajib, kembali ke staf Keuangan |
+
+- Persetujuan pelaksanaan oleh TL Pengadaan kini membuka **Penyerahan**. Keuangan belum diberi tahu pada saat itu; notifikasi "Tagihan menunggu pembayaran" dikirim setelah Penyerahan disetujui.
+- **Persetujuan Asman** = Pembayaran Lunas. Pengadaan otomatis ditutup (status Selesai), dan notifikasi dikirim ke pengusul, TL, Asman bidang, PIC Pelaksana, serta TL Pengadaan / ICC.
+- **Penentuan penyetuju pembayaran:**
+  - TL dan bidang Asman ditentukan saat pengajuan dan disimpan di `payment_team_leader_id` / `payment_work_director_id`.
+  - Pengaju tanpa TL, atau dengan TL yang juga Asman bidang itu, langsung ke Asman.
+  - Akun tanpa bidang tidak bisa mengajukan; muncul pesan agar menghubungi Administrator.
+  - Tidak ada yang memutuskan pengajuannya sendiri. Administrator dapat mewakili.
+- **Checklist terkunci** selama ditinjau dan setelah disetujui. Berkas Penyerahan hanya bisa diubah pihak pelaksanaan; berkas Pembayaran hanya oleh Keuangan.
+- **Kolom kanan Persetujuan** kini berisi 5 tahap: Perencanaan, Pelaksanaan, Penyerahan, Pembayaran (dengan Ajukan / Setujui / Kembalikan), lalu Riwayat Approval. Riwayat mencatat Penyerahan / Pembayaran Diajukan, Disetujui, dan Dikembalikan.
+- **Menu:**
+  - **Penyerahan** (`/penyerahan`, hak *Menu Penyerahan*, bawaan TL Pengadaan, TL ICC, PIC Pelaksana).
+  - **Pembayaran** (`/pembayaran`, dulu menu Keuangan; tautan `/keuangan` dialihkan).
+  - Keduanya memakai papan yang sama (`components/finance-board.tsx`): 4 angka ringkas; tab *Perlu Diproses* / *Sudah Disetujui (Dibayar)*; daftar ringkas 15 per halaman dengan pencarian; status berwarna dan progres berkas per baris.
+  - Baris memakai *container query*: di area sempit (tablet, sidebar disematkan) nama tampil penuh di baris pertama, di area lebar menjadi kolom tabel.
+- **Menu Approval:** antrean baru **Penyerahan** (pemegang hak setujui penyerahan) dan **Pembayaran** (TL Keuangan / Asman yang terlibat, `App\Support\PaymentQueue`). Dashboard mendapat kartu "Penyerahan / Pembayaran Menunggu Persetujuan Anda".
+- **Hak akses Keuangan:**
+  - Tidak lagi *Usulkan pekerjaan* dan *Menu Usulan Pekerjaan*.
+  - Mendapat *Lihat seluruh pengadaan* (baca saja; dashboard tetap dashboard Keuangan).
+  - Semua tetap dapat diatur ulang di Hak Akses.
+- **Data lama** (migrasi `add_handover_and_payment_approvals`):
+  - Pengadaan yang sudah di Keuangan dianggap Penyerahan disetujui, sehingga staf tinggal mengajukan pembayaran.
+  - Yang sudah lunas dianggap Pembayaran disetujui.
+- **Test:**
+  - `FinanceStageTest`: alur lengkap, pengembalian, penyetuju, langsung ke Asman, antrean Approval.
+  - `FinanceUploadTest`: berkas Penyerahan milik pelaksana.
+  - `EndToEndFlowTest`: usulan sampai lunas.
+  - `ApprovalQueueTest`, `RoleDashboardTest`, `TeamLeaderApprovalTest`.
+
+---
+
+# Halaman Approval Disederhanakan
+
+- **Tujuan:** halaman Approval hanya untuk meninjau lalu memutuskan, jadi tampilannya dibuat ringkas.
+- **Header:** satu kalimat, "Pilih pengajuan, periksa berkasnya, lalu Setujui atau Kembalikan".
+- **Antrean dan pencarian:**
+  - Tab antrean (Perencanaan, Pelaksanaan, Penyerahan, Pembayaran, Amandemen, DO) beserta jumlah yang menunggu, dan tab Menunggu Keputusan / Riwayat Keputusan.
+  - Filter lengkap diganti satu kotak pencarian (nomor atau nama).
+- **Daftar kartu ringkas** (15 per halaman): nama pekerjaan; nomor dan bidang serta mitra; pengaju dan waktu; nilai; label "Revisi ke-n". Satu tombol **Tinjau & Putuskan** (atau **Lihat** bila bukan keputusan Anda).
+- **Panel tinjauan** (panel samping, layar penuh di tablet / ponsel):
+  1. Ringkasan dan catatan revisi sebelumnya.
+  2. **Periksa berkas:** pratinjau PDF / gambar langsung di panel, beralih per berkas.
+     - Perencanaan / Pelaksanaan: unggahan dokumen tervalidasi tahap itu, atau draf bila belum diunggah.
+     - Penyerahan / Pembayaran: berkas checklist tab tersebut.
+  3. **Putuskan:** tombol utama Setujui (label sesuai tahap, mis. "Setujui & Teruskan ke Pembayaran", "Setujui: Lunas & Tutup Pengadaan") dan "Kembalikan untuk Revisi" (catatan wajib). Keputusan memakai rute yang sama dengan kartu Persetujuan di detail pengadaan.
+- Amandemen dan DO tetap dibuka di tab masing-masing karena isiannya lebih panjang.
+- **Teknis:** prop `reviews` (dibangun di `ApprovalQueueController::review()` / `papers()`); komponen `components/approval-review.tsx` (`ReviewList`, panel tinjauan). **Test:** `ApprovalQueueTest::test_each_submission_carries_what_the_reviewer_reads_before_deciding`.
+
+---
+
+# Logo & Nama Aplikasi SIM-SCM UP KENDARI
+
+- Nama aplikasi: **SIM-SCM UP KENDARI**. Dipakai pada `APP_NAME` (judul tab browser), sidebar, header halaman depan, halaman masuk, halaman error, dan dashboard.
+- **Logo** dari `public/logo/app-logo.png`. Berkas asli membawa latar kotak-kotak abu-putih sebagai piksel (tidak transparan), sehingga dibuat dua turunan berlatar transparan. Centang putih di perisai dipertahankan, dan berkas asli tidak diubah.
+  - `public/logo/app-logo-clean.png`: logo lengkap, dipakai di konten halaman depan (`welcome.tsx`), tinggi 64 px di ponsel dan 80 px di desktop, rata kiri sejajar judul.
+  - `public/logo/app-logo-mark.png`: ikon saja (dokumen, perisai, lengkung). Dipakai di kotak putih sidebar dan header halaman depan, di samping teks "SIM-SCM / UP KENDARI".
+- Komponen: `components/app-mark.tsx` (`AppMark`, `AppLogoFull`) dan `components/app-logo.tsx`. Logo PLN (`AppLogoIcon`) tetap dipakai di dokumen dan halaman masuk.
 
 ---
 

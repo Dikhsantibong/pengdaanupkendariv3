@@ -1,12 +1,13 @@
 import { Head, router } from '@inertiajs/react';
-import { ShieldCheck } from 'lucide-react';
+import { Search, ShieldCheck } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { ApprovalRequestTable } from '@/components/approval-request-table';
 import type { ApprovalRequestRow } from '@/components/approval-request-table';
+import { ReviewList } from '@/components/approval-review';
+import type { Review } from '@/components/approval-review';
 import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
-import { ProcurementFilterBar } from '@/components/procurement-filter-bar';
-import { ProcurementTable } from '@/components/procurement-table';
-import type { ProcurementColumn } from '@/components/procurement-table';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import approvals from '@/routes/approvals';
@@ -17,7 +18,7 @@ import type {
     ProcurementRow,
 } from '@/types';
 
-type ProcurementQueueKey = 'planning' | 'execution';
+type ProcurementQueueKey = 'planning' | 'execution' | 'handover' | 'payment';
 
 /** Amendments and Delivery Orders: requests, not procurements. */
 type RequestQueueKey = 'amendment' | 'delivery-order';
@@ -62,21 +63,16 @@ type Queue = {
     waiting: number;
 };
 
-/** What each queue shows, and who decides it. */
+/** Who decides each queue, and what an empty one says. */
 const queueCopy: Record<
     ProcurementQueueKey,
     {
         decider: string;
-        columns: Record<QueueView, ProcurementColumn[]>;
         empty: Record<QueueView, [string, string]>;
     }
 > = {
     planning: {
         decider: 'TL ICC',
-        columns: {
-            waiting: ['unit', 'hpe', 'planner', 'planningProgress', 'status'],
-            decided: ['unit', 'hpe', 'planner', 'approval', 'status'],
-        },
         empty: {
             waiting: [
                 'Tidak ada antrean persetujuan perencanaan',
@@ -90,10 +86,6 @@ const queueCopy: Record<
     },
     execution: {
         decider: 'TL Pengadaan',
-        columns: {
-            waiting: ['unit', 'hpe', 'executor', 'executionProgress', 'status'],
-            decided: ['unit', 'hpe', 'executor', 'executionApproval', 'status'],
-        },
         empty: {
             waiting: [
                 'Tidak ada antrean persetujuan pelaksanaan',
@@ -105,6 +97,32 @@ const queueCopy: Record<
             ],
         },
     },
+    handover: {
+        decider: 'TL Pengadaan',
+        empty: {
+            waiting: [
+                'Tidak ada antrean persetujuan penyerahan',
+                'Berkas penyerahan yang diajukan PIC Pelaksana akan tampil di sini.',
+            ],
+            decided: [
+                'Belum ada keputusan penyerahan',
+                'Penyerahan yang disetujui atau dikembalikan akan tampil di sini.',
+            ],
+        },
+    },
+    payment: {
+        decider: 'TL Keuangan dan Asman',
+        empty: {
+            waiting: [
+                'Tidak ada pembayaran yang menunggu Anda',
+                'Pembayaran yang diajukan Keuangan untuk persetujuan TL Keuangan / Asman akan tampil di sini.',
+            ],
+            decided: [
+                'Belum ada pembayaran yang Anda putuskan',
+                'Pembayaran yang Anda setujui atau kembalikan akan tampil di sini.',
+            ],
+        },
+    },
 };
 
 export default function ApprovalIndex({
@@ -112,20 +130,24 @@ export default function ApprovalIndex({
     queue,
     view,
     procurements: page,
+    reviews = {},
     requests = null,
     filters,
-    options,
 }: {
     queues: Queue[];
     queue: QueueKey | null;
     view: QueueView;
     procurements: Paginated<ProcurementRow> | null;
+    /** What to read before deciding, keyed by procurement. */
+    reviews?: Record<number, Review>;
     /** The amendment or DO queue's page, when that queue is open. */
     requests?: Paginated<ApprovalRequestRow> | null;
     filters: ProcurementFilters;
     options: FilterOptions;
 }) {
     const url = approvals.index().url;
+    const [search, setSearch] = useState(filters.search ?? '');
+    const isFirstRender = useRef(true);
     const persist: Record<string, string> = {
         ...(queue ? { queue } : {}),
         view,
@@ -144,6 +166,31 @@ export default function ApprovalIndex({
         router.get(url, query, { preserveScroll: true, replace: true });
     };
 
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+
+            return;
+        }
+
+        const timeout = setTimeout(
+            () =>
+                router.get(
+                    url,
+                    { ...persist, ...(search ? { search } : {}) },
+                    {
+                        preserveState: true,
+                        preserveScroll: true,
+                        replace: true,
+                    },
+                ),
+            350,
+        );
+
+        return () => clearTimeout(timeout);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [search]);
+
     return (
         <>
             <Head title="Approval" />
@@ -151,8 +198,8 @@ export default function ApprovalIndex({
             <div className="flex flex-col gap-4 p-4 md:p-6">
                 <PageHeader
                     eyebrow="Persetujuan"
-                    title="Antrean Approval"
-                    description="Hanya antrean yang menjadi keputusan Anda yang ditampilkan: perencanaan untuk TL ICC, pelaksanaan untuk TL Pengadaan, serta amandemen dan Delivery Order untuk TL, Asman, Rendan, dan Laksdan yang terlibat."
+                    title="Approval"
+                    description="Pilih pengajuan, periksa berkasnya, lalu Setujui atau Kembalikan."
                 />
 
                 {queue === null ||
@@ -249,18 +296,24 @@ export default function ApprovalIndex({
                               )
                             : page && (
                                   <>
-                                      <ProcurementFilterBar
-                                          url={url}
-                                          filters={filters}
-                                          options={options}
-                                          persist={persist}
-                                      />
+                                      <div className="relative max-w-sm">
+                                          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                                          <Input
+                                              value={search}
+                                              onChange={(event) =>
+                                                  setSearch(event.target.value)
+                                              }
+                                              placeholder="Cari nomor atau nama pekerjaan"
+                                              className="h-9 pl-9"
+                                              aria-label="Cari pengajuan"
+                                          />
+                                      </div>
 
-                                      <ProcurementTable
+                                      <ReviewList
+                                          queue={queue}
                                           page={page}
-                                          columns={
-                                              queueCopy[queue].columns[view]
-                                          }
+                                          reviews={reviews}
+                                          decided={view === 'decided'}
                                           emptyTitle={
                                               queueCopy[queue].empty[view][0]
                                           }

@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Enums\FinanceSection;
+use App\Enums\PaymentApprovalState;
 use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
@@ -45,6 +47,12 @@ class DashboardTasks
                 : null,
             'executionApprovals' => $user->hasPermission(Permission::ReviewExecution)
                 ? self::executionApprovals($user)
+                : null,
+            'handoverApprovals' => $user->hasPermission(Permission::ReviewHandover)
+                ? self::handoverApprovals($user)
+                : null,
+            'paymentApprovals' => PaymentQueue::involves($user)
+                ? self::paymentApprovals($user)
                 : null,
             'assignments' => $user->hasPermission(Permission::AssignPlanner) || $user->hasPermission(Permission::AssignExecutor)
                 ? self::assignments($user)
@@ -91,6 +99,44 @@ class DashboardTasks
             .($procurement->executor->name ?? 'PIC Pelaksana')
             .($procurement->execution_revision > 0 ? ' · revisi ke-'.$procurement->execution_revision : ''),
             fn (Procurement $procurement): ?string => $procurement->execution_submitted_at?->toDateTimeString());
+    }
+
+    /**
+     * Hand-overs submitted by the execution PIC and waiting for TL Pengadaan.
+     *
+     * @return array{total: int, items: array<int, array{id: int, number: string, name: string, note: string, date: string|null}>}
+     */
+    protected static function handoverApprovals(User $user): array
+    {
+        $query = Procurement::query()
+            ->visibleTo($user)
+            ->where('handover_approval_state', PlanningApprovalState::MenungguPersetujuan->value)
+            ->whereNull('payment_completed_at')
+            ->with('executor')
+            ->oldest('handover_submitted_at');
+
+        return self::collect($query, fn (Procurement $procurement): string => 'Diajukan oleh '
+            .($procurement->executor->name ?? 'PIC Pelaksana')
+            .($procurement->handover_revision > 0 ? ' · revisi ke-'.$procurement->handover_revision : ''),
+            fn (Procurement $procurement): ?string => $procurement->handover_submitted_at?->toDateTimeString());
+    }
+
+    /**
+     * Payments waiting on the user as TL Keuangan or as the Asman.
+     *
+     * @return array{total: int, items: array<int, array{id: int, number: string, name: string, note: string, date: string|null}>}
+     */
+    protected static function paymentApprovals(User $user): array
+    {
+        $query = PaymentQueue::awaiting($user)
+            ->with('paymentSubmitter')
+            ->oldest('payment_submitted_at');
+
+        return self::collect($query, fn (Procurement $procurement): string => 'Diajukan oleh '
+            .($procurement->paymentSubmitter->name ?? 'Keuangan')
+            .($procurement->payment_approval_state === PaymentApprovalState::MenungguAsman ? ' · disetujui TL' : '')
+            .($procurement->payment_revision > 0 ? ' · revisi ke-'.$procurement->payment_revision : ''),
+            fn (Procurement $procurement): ?string => $procurement->payment_submitted_at?->toDateTimeString());
     }
 
     /**
@@ -232,8 +278,11 @@ class DashboardTasks
             ->inProgress()
             ->where('executor_id', $user->id)
             ->where('planning_approval_state', PlanningApprovalState::Disetujui->value)
-            // Once handed to Keuangan, the job is no longer the executor's.
-            ->whereNull('finance_submitted_at')
+            // The executor files the hand-over too; once TL Pengadaan
+            // approves it, the job is Keuangan's.
+            ->where(fn (Builder $mine) => $mine
+                ->whereNull('finance_submitted_at')
+                ->orWhere('handover_approval_state', '!=', PlanningApprovalState::Disetujui->value))
             ->withCount([
                 'checklists as open_execution_steps' => fn (Builder $checklists) => $checklists
                     ->where('stage', ProcurementStage::Pelaksanaan->value)
@@ -246,6 +295,11 @@ class DashboardTasks
             $open = (int) $procurement->getAttribute('open_execution_steps');
 
             return match (true) {
+                $procurement->finance_submitted_at !== null => match ($procurement->handover_approval_state) {
+                    PlanningApprovalState::MenungguPersetujuan => 'Penyerahan menunggu approval TL Pengadaan',
+                    PlanningApprovalState::Ditolak => 'Penyerahan dikembalikan: '.($procurement->handover_review_note ?? 'perlu diperbaiki'),
+                    default => 'Lengkapi berkas Penyerahan, lalu ajukan ke TL Pengadaan',
+                },
                 $procurement->execution_approval_state === PlanningApprovalState::MenungguPersetujuan => 'Menunggu approval TL Pengadaan',
                 $procurement->execution_approval_state === PlanningApprovalState::Ditolak => 'Dikembalikan: '.($procurement->execution_review_note ?? 'perlu diperbaiki'),
                 $open > 0 => "{$open} tahapan pelaksanaan belum selesai",
@@ -255,7 +309,7 @@ class DashboardTasks
     }
 
     /**
-     * Executed jobs handed to Keuangan and still waiting to be paid.
+     * Jobs whose hand-over TL Pengadaan approved, still waiting to be paid.
      *
      * @return array{total: int, items: array<int, array{id: int, number: string, name: string, note: string, date: string|null}>}
      */
@@ -264,21 +318,22 @@ class DashboardTasks
         $query = Procurement::query()
             ->visibleTo($user)
             ->whereNotNull('finance_submitted_at')
+            ->where('handover_approval_state', PlanningApprovalState::Disetujui->value)
             ->whereNull('payment_completed_at')
-            ->withCount([
-                'checklists as open_finance_steps' => fn (Builder $checklists) => $checklists
-                    ->where('stage', ProcurementStage::Keuangan->value)
-                    ->where('is_completed', false),
-            ])
-            ->oldest('finance_submitted_at');
+            ->with('checklists.checklistItem')
+            ->oldest('handover_reviewed_at');
 
         return self::collect($query, function (Procurement $procurement): string {
-            $open = (int) $procurement->getAttribute('open_finance_steps');
+            $open = $procurement->pendingFinanceChecklists(FinanceSection::Pembayaran)->count();
 
-            return $open > 0
-                ? "{$open} tahapan keuangan belum selesai"
-                : 'Siap dicatat lunas';
-        }, fn (Procurement $procurement): ?string => $procurement->finance_submitted_at?->toDateTimeString());
+            return match (true) {
+                $procurement->payment_approval_state === PaymentApprovalState::MenungguTl => 'Menunggu persetujuan TL Keuangan',
+                $procurement->payment_approval_state === PaymentApprovalState::MenungguAsman => 'Menunggu persetujuan Asman',
+                $procurement->payment_approval_state === PaymentApprovalState::Dikembalikan => 'Dikembalikan: '.($procurement->payment_review_note ?? 'perlu diperbaiki'),
+                $open > 0 => "{$open} berkas pembayaran belum lengkap",
+                default => 'Siap diajukan',
+            };
+        }, fn (Procurement $procurement): ?string => $procurement->handover_reviewed_at?->toDateTimeString());
     }
 
     /**

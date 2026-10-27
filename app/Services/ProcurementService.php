@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\ActivityType;
 use App\Enums\FinanceSection;
+use App\Enums\PaymentApprovalState;
 use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
@@ -27,6 +28,7 @@ use Database\Seeders\FinanceStageSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class ProcurementService
@@ -818,7 +820,7 @@ class ProcurementService
                 $reviewer,
                 $approved ? ActivityType::PelaksanaanDisetujui : ActivityType::PelaksanaanDitolak,
                 Str::limit($approved
-                    ? 'Pelaksanaan disetujui TL Pengadaan dan diteruskan ke Penyerahan dan Pembayaran (Keuangan).'
+                    ? 'Pelaksanaan disetujui TL Pengadaan dan diteruskan ke Penyerahan.'
                     : 'Pelaksanaan dikembalikan ke PIC Pelaksana untuk diperbaiki.'.($note !== null ? " Catatan: {$note}" : ''), 250),
             );
 
@@ -835,7 +837,8 @@ class ProcurementService
             $procurement->executor?->notify(new ProcurementMilestone(
                 $procurement,
                 'Pelaksanaan disetujui',
-                "Pelaksanaan {$procurement->name} disetujui dan diteruskan ke Keuangan.",
+                "Pelaksanaan {$procurement->name} disetujui. Lengkapi berkas Penyerahan, lalu ajukan ke TL Pengadaan.",
+                'penyerahan',
             ));
 
             return $this->handToFinance($procurement, $reviewer);
@@ -843,7 +846,8 @@ class ProcurementService
     }
 
     /**
-     * Hand the approved execution to Keuangan for payment.
+     * Open Penyerahan and Pembayaran on the approved execution: the
+     * execution side files the hand-over papers first.
      */
     protected function handToFinance(Procurement $procurement, User $actor): Procurement
     {
@@ -854,15 +858,244 @@ class ProcurementService
         $procurement->finance_submitted_by = $actor->id;
         $procurement->save();
 
-        $message = "Pengadaan {$procurement->number} - {$procurement->name} diserahkan ke Keuangan untuk dibayar.";
-
-        User::query()->active()->get()
-            ->filter(fn (User $user): bool => $user->hasPermission(Permission::ProcessPayment))
-            ->each(fn (User $user) => $user->notify(new ProcurementMilestone($procurement, 'Tagihan menunggu pembayaran', $message)));
-
-        $this->notifyProposers($procurement, 'Diserahkan ke Keuangan', $message);
+        $this->notifyProposers(
+            $procurement,
+            'Pelaksanaan selesai',
+            "Pelaksanaan {$procurement->number} - {$procurement->name} disetujui; berkas penyerahan sedang disiapkan PIC Pelaksana.",
+        );
 
         return $procurement;
+    }
+
+    /**
+     * The execution PIC submits the hand-over papers to TL Pengadaan.
+     */
+    public function submitHandover(Procurement $procurement, User $actor): Procurement
+    {
+        return DB::transaction(function () use ($procurement, $actor): Procurement {
+            $resubmitted = $procurement->handover_approval_state === PlanningApprovalState::Ditolak;
+
+            $procurement->handover_approval_state = PlanningApprovalState::MenungguPersetujuan;
+            $procurement->handover_submitted_at = now();
+            $procurement->handover_submitted_by = $actor->id;
+            $procurement->handover_revision = $procurement->handover_revision + ($resubmitted ? 1 : 0);
+            $procurement->save();
+
+            $this->recordActivity(
+                $procurement,
+                $actor,
+                ActivityType::PenyerahanDiajukan,
+                $resubmitted
+                    ? 'Penyerahan diajukan ulang ke TL Pengadaan setelah revisi.'
+                    : 'Berkas penyerahan diajukan ke TL Pengadaan.',
+            );
+
+            $message = "Penyerahan {$procurement->number} - {$procurement->name} diajukan PIC Pelaksana untuk disetujui.";
+
+            User::query()->active()->get()
+                ->filter(fn (User $user): bool => $user->id !== $actor->id && $user->hasPermission(Permission::ReviewHandover))
+                ->each(fn (User $user) => $user->notify(new ProcurementMilestone($procurement, 'Penyerahan menunggu persetujuan', $message, 'penyerahan')));
+
+            return $procurement;
+        });
+    }
+
+    /**
+     * TL Pengadaan approves the hand-over, opening the payment to Keuangan,
+     * or returns it to the execution PIC with a note.
+     */
+    public function reviewHandover(Procurement $procurement, User $reviewer, bool $approved, ?string $note = null): Procurement
+    {
+        return DB::transaction(function () use ($procurement, $reviewer, $approved, $note): Procurement {
+            $procurement->handover_approval_state = $approved
+                ? PlanningApprovalState::Disetujui
+                : PlanningApprovalState::Ditolak;
+            $procurement->handover_reviewed_at = now();
+            $procurement->handover_reviewed_by = $reviewer->id;
+            $procurement->handover_review_note = $note;
+            $procurement->save();
+
+            $this->recordActivity(
+                $procurement,
+                $reviewer,
+                $approved ? ActivityType::PenyerahanDisetujui : ActivityType::PenyerahanDikembalikan,
+                Str::limit($approved
+                    ? 'Penyerahan disetujui TL Pengadaan dan diteruskan ke Pembayaran (Keuangan).'
+                    : 'Penyerahan dikembalikan ke PIC Pelaksana untuk diperbaiki.'.($note !== null ? " Catatan: {$note}" : ''), 250),
+            );
+
+            if (! $approved) {
+                $procurement->executor?->notify(new ProcurementMilestone(
+                    $procurement,
+                    'Penyerahan dikembalikan',
+                    "Penyerahan {$procurement->name} dikembalikan untuk diperbaiki.".($note !== null ? " Catatan: {$note}" : ''),
+                    'penyerahan',
+                ));
+
+                return $procurement;
+            }
+
+            $procurement->executor?->notify(new ProcurementMilestone(
+                $procurement,
+                'Penyerahan disetujui',
+                "Penyerahan {$procurement->name} disetujui dan diteruskan ke Keuangan.",
+                'penyerahan',
+            ));
+
+            // The papers of the payment may have been added since.
+            $this->syncChecklists($procurement);
+
+            $message = "Pengadaan {$procurement->number} - {$procurement->name} siap dibayar: lengkapi berkas pembayaran lalu ajukan.";
+
+            User::query()->active()->get()
+                ->filter(fn (User $user): bool => $user->hasPermission(Permission::ProcessPayment))
+                ->each(fn (User $user) => $user->notify(new ProcurementMilestone($procurement, 'Tagihan menunggu pembayaran', $message, 'pembayaran')));
+
+            $this->notifyProposers($procurement, 'Diserahkan ke Keuangan', "Pengadaan {$procurement->number} - {$procurement->name} diserahkan ke Keuangan untuk dibayar.");
+
+            return $procurement;
+        });
+    }
+
+    /**
+     * A Keuangan staff member submits the payment: first to their TL, then
+     * to the Asman of that TL's division. Without a TL, or with a TL who is
+     * that Asman, it goes straight to the Asman.
+     *
+     * @throws ValidationException when nobody can decide it
+     */
+    public function submitPayment(Procurement $procurement, User $actor): Procurement
+    {
+        $teamLeader = $actor->teamLeader()->first();
+        $teamLeader = $teamLeader !== null && $teamLeader->is_active && $teamLeader->id !== $actor->id ? $teamLeader : null;
+        $division = $teamLeader->work_director_id ?? $actor->work_director_id;
+
+        if ($division === null) {
+            throw ValidationException::withMessages([
+                'payment' => 'Akun Anda dan TL atasan belum terhubung ke bidang (Direksi Pekerjaan), sehingga Asman yang menyetujui pembayaran tidak diketahui. Hubungi Administrator.',
+            ]);
+        }
+
+        // A TL who is the division's Asman decides once, as the Asman.
+        if ($teamLeader !== null && $teamLeader->work_director_id === $division && $teamLeader->hasPermission(Permission::ApproveProposal)) {
+            $teamLeader = null;
+        }
+
+        return DB::transaction(function () use ($procurement, $actor, $teamLeader, $division): Procurement {
+            $resubmitted = $procurement->payment_approval_state === PaymentApprovalState::Dikembalikan;
+
+            $procurement->payment_approval_state = $teamLeader !== null
+                ? PaymentApprovalState::MenungguTl
+                : PaymentApprovalState::MenungguAsman;
+            $procurement->payment_submitted_at = now();
+            $procurement->payment_submitted_by = $actor->id;
+            $procurement->payment_team_leader_id = $teamLeader?->id;
+            $procurement->payment_work_director_id = $division;
+            $procurement->payment_tl_reviewed_at = null;
+            $procurement->payment_tl_reviewed_by = null;
+            $procurement->payment_revision = $procurement->payment_revision + ($resubmitted ? 1 : 0);
+            $procurement->save();
+
+            $this->recordActivity(
+                $procurement,
+                $actor,
+                ActivityType::PembayaranDiajukan,
+                ($resubmitted ? 'Pembayaran diajukan ulang setelah revisi' : 'Berkas pembayaran diajukan')
+                    .($teamLeader !== null ? " ke TL Keuangan ({$teamLeader->name})." : ' ke Asman.'),
+            );
+
+            $this->notifyPaymentDeciders($procurement);
+
+            return $procurement;
+        });
+    }
+
+    /**
+     * The TL, then the Asman, approve the payment or return it to Keuangan
+     * with a note. The Asman's approval records the payment and closes the
+     * job.
+     */
+    public function decidePayment(Procurement $procurement, User $reviewer, bool $approved, ?string $note = null): Procurement
+    {
+        return DB::transaction(function () use ($procurement, $reviewer, $approved, $note): Procurement {
+            if (! $approved) {
+                $procurement->payment_approval_state = PaymentApprovalState::Dikembalikan;
+                $procurement->payment_reviewed_at = now();
+                $procurement->payment_reviewed_by = $reviewer->id;
+                $procurement->payment_review_note = $note;
+                $procurement->save();
+
+                $this->recordActivity(
+                    $procurement,
+                    $reviewer,
+                    ActivityType::PembayaranDikembalikan,
+                    Str::limit('Pembayaran dikembalikan ke Keuangan untuk diperbaiki.'.($note !== null ? " Catatan: {$note}" : ''), 250),
+                );
+
+                $procurement->paymentSubmitter?->notify(new ProcurementMilestone(
+                    $procurement,
+                    'Pembayaran dikembalikan',
+                    "Pembayaran {$procurement->name} dikembalikan untuk diperbaiki.".($note !== null ? " Catatan: {$note}" : ''),
+                    'pembayaran',
+                ));
+
+                return $procurement;
+            }
+
+            if ($procurement->payment_approval_state === PaymentApprovalState::MenungguTl) {
+                $procurement->payment_approval_state = PaymentApprovalState::MenungguAsman;
+                $procurement->payment_tl_reviewed_at = now();
+                $procurement->payment_tl_reviewed_by = $reviewer->id;
+                $procurement->payment_review_note = $note;
+                $procurement->save();
+
+                $this->recordActivity(
+                    $procurement,
+                    $reviewer,
+                    ActivityType::PembayaranDisetujuiTl,
+                    Str::limit('Pembayaran disetujui TL Keuangan dan diteruskan ke Asman.'.($note !== null ? " Catatan: {$note}" : ''), 250),
+                );
+
+                $this->notifyPaymentDeciders($procurement);
+
+                return $procurement;
+            }
+
+            $procurement->payment_approval_state = PaymentApprovalState::Disetujui;
+            $procurement->payment_reviewed_at = now();
+            $procurement->payment_reviewed_by = $reviewer->id;
+            $procurement->payment_review_note = $note;
+            $procurement->save();
+
+            $procurement->paymentSubmitter?->notify(new ProcurementMilestone(
+                $procurement,
+                'Pembayaran disetujui',
+                "Pembayaran {$procurement->name} disetujui Asman; pengadaan ditutup.",
+                'pembayaran',
+            ));
+
+            return $this->completePayment($procurement, $reviewer);
+        });
+    }
+
+    /**
+     * Tell whoever decides the payment next that it waits on them: the TL,
+     * or the Asman of the division.
+     */
+    protected function notifyPaymentDeciders(Procurement $procurement): void
+    {
+        $message = "Pembayaran {$procurement->number} - {$procurement->name} menunggu persetujuan Anda.";
+
+        $deciders = $procurement->payment_approval_state === PaymentApprovalState::MenungguTl
+            ? collect([$procurement->paymentTeamLeader()->first()])
+            : User::query()->active()
+                ->where('work_director_id', $procurement->payment_work_director_id)
+                ->get()
+                ->filter(fn (User $user): bool => $user->hasPermission(Permission::ApproveProposal));
+
+        $deciders
+            ->filter(fn (?User $user): bool => $user !== null && $user->id !== $procurement->payment_submitted_by)
+            ->each(fn (User $user) => $user->notify(new ProcurementMilestone($procurement, 'Pembayaran menunggu persetujuan', $message, 'pembayaran')));
     }
 
     /**

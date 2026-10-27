@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Procurements;
 
+use App\Enums\FinanceSection;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Enums\ProposalState;
@@ -28,8 +29,10 @@ use Tests\TestCase;
  * The whole journey of one job with the real master data and templates:
  * a staff member proposes it, their TL and then the Asman approve it,
  * TL ICC appoints the planner and approves the planning, TL Pengadaan
- * appoints the executor and approves the execution, Keuangan pays the
- * partner and the job is closed.
+ * appoints the executor and approves the execution, the executor files the
+ * hand-over for TL Pengadaan, Keuangan files the payment for TL Keuangan and
+ * the Asman Business Support, whose approval pays the partner and closes
+ * the job.
  */
 class EndToEndFlowTest extends TestCase
 {
@@ -57,7 +60,15 @@ class EndToEndFlowTest extends TestCase
         $icc = User::factory()->teamLeaderIcc()->create();
         $planner = User::factory()->planner()->create();
         $executor = User::factory()->executor()->create();
-        $finance = User::factory()->create(['role' => UserRole::Keuangan, 'name' => 'Nova Sang Jaya']);
+        $businessSupport = WorkDirector::query()->firstOrCreate(['name' => 'Asman Business Support']);
+        $financeLead = User::factory()->create(['role' => UserRole::Keuangan, 'name' => 'Nova Sang Jaya', 'work_director_id' => $businessSupport->id]);
+        $finance = User::factory()->create([
+            'role' => UserRole::Keuangan,
+            'name' => 'Muhammad Jaya Junaid',
+            'work_director_id' => $businessSupport->id,
+            'team_leader_id' => $financeLead->id,
+        ]);
+        $businessSupportAsman = User::factory()->workDirector($businessSupport)->create(['name' => 'Asman Business Support']);
 
         // 1. A staff member proposes the work; its TOR is drafted from the template.
         $this->actingAs($proposer)
@@ -231,20 +242,49 @@ class EndToEndFlowTest extends TestCase
         $this->assertTrue($procurement->refresh()->isInFinance());
         $this->assertSame('CV Teknik Pendingin', $procurement->partner_name);
 
-        // 9. Keuangan files the invoice papers, records the payment and closes it.
+        // 9. The executor files the hand-over; TL Pengadaan approves it on
+        // to Pembayaran.
         $this->actingAs($finance)
             ->get(route('finance.index'))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->has('waiting', 1));
+            ->assertInertia(fn ($page) => $page->where('counts.waiting', 0));
+
+        $this->completeStage($procurement, ProcurementStage::Keuangan, $executor, FinanceSection::Penyerahan);
+
+        $this->actingAs($executor)
+            ->post(route('procurements.handover-approval.store', $procurement))
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($teamLeader)
+            ->put(route('procurements.handover-approval.update', $procurement), ['approved' => true])
+            ->assertSessionHasNoErrors();
+
+        $this->assertTrue($procurement->refresh()->isInPayment());
+
+        // 10. Keuangan files the payment papers; TL Keuangan, then the Asman
+        // Business Support approve it, which records the payment and closes it.
+        $this->actingAs($finance)
+            ->get(route('finance.index'))
+            ->assertInertia(fn ($page) => $page->where('counts.waiting', 1)->has('rows.data', 1));
 
         $this->actingAs($finance)
-            ->post(route('procurements.finance.complete', $procurement))
+            ->post(route('procurements.payment-approval.store', $procurement))
             ->assertForbidden();
 
-        $this->completeStage($procurement, ProcurementStage::Keuangan, $finance);
+        $this->completeStage($procurement, ProcurementStage::Keuangan, $finance, FinanceSection::Pembayaran);
 
         $this->actingAs($finance)
-            ->post(route('procurements.finance.complete', $procurement))
+            ->post(route('procurements.payment-approval.store', $procurement))
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($financeLead)
+            ->put(route('procurements.payment-approval.update', $procurement), ['approved' => true])
+            ->assertSessionHasNoErrors();
+
+        $this->assertFalse($procurement->refresh()->isPaid());
+
+        $this->actingAs($businessSupportAsman)
+            ->put(route('procurements.payment-approval.update', $procurement), ['approved' => true])
             ->assertSessionHasNoErrors();
 
         $procurement->refresh();
@@ -257,7 +297,7 @@ class EndToEndFlowTest extends TestCase
         $this->assertGreaterThanOrEqual(3, $proposer->notifications()->count());
 
         // Everyone involved can still follow it.
-        foreach ([$proposer, $teamLeaderOfProposer, $director, $planner, $executor, $finance] as $user) {
+        foreach ([$proposer, $teamLeaderOfProposer, $director, $planner, $executor, $finance, $financeLead, $businessSupportAsman] as $user) {
             $this->actingAs($user)->get(route('procurements.show', $procurement))->assertOk();
         }
     }
@@ -265,12 +305,13 @@ class EndToEndFlowTest extends TestCase
     /**
      * File every document of each step of a stage, fill its data and tick it.
      */
-    protected function completeStage(Procurement $procurement, ProcurementStage $stage, User $pic): void
+    protected function completeStage(Procurement $procurement, ProcurementStage $stage, User $pic, ?FinanceSection $section = null): void
     {
         $checklists = $procurement->checklists()
             ->where('stage', $stage)
             ->with('checklistItem.documentTypes')
-            ->get();
+            ->get()
+            ->filter(fn (ProcurementChecklist $checklist): bool => $section === null || $checklist->financeSection() === $section);
 
         $this->assertNotEmpty($checklists, "Tahap {$stage->value} tidak punya checklist.");
 

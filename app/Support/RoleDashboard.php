@@ -47,11 +47,12 @@ class RoleDashboard
      * Which dashboard a user gets.
      *
      * Overseeing every procurement earns the management dashboard whatever
-     * the role is called; otherwise the role decides.
+     * the role is called; otherwise the role decides. Keuangan keeps its own
+     * payment dashboard although it sees every job.
      */
     public static function profile(User $user): string
     {
-        if ($user->hasPermission(Permission::ViewAllProcurements)) {
+        if ($user->role !== UserRole::Keuangan && $user->hasPermission(Permission::ViewAllProcurements)) {
             return 'manajemen';
         }
 
@@ -205,7 +206,7 @@ class RoleDashboard
             self::card('review', 'Menunggu Approval TL Pengadaan', $running()
                 ->where('execution_approval_state', PlanningApprovalState::MenungguPersetujuan->value)
                 ->count(), 'Sudah diajukan, menunggu keputusan', 'violet'),
-            self::card('finance', 'Di Keuangan', $mine()->whereNotNull('finance_submitted_at')->whereNull('payment_completed_at')->count(), 'Menunggu pembayaran', 'amber'),
+            self::card('finance', 'Penyerahan & Pembayaran', $mine()->whereNotNull('finance_submitted_at')->whereNull('payment_completed_at')->count(), 'Pelaksanaan disetujui, belum lunas', 'amber'),
             self::card('done', 'Selesai', $mine()->whereNotNull('completed_at')->count(), 'Sudah dibayar dan ditutup', 'primary'),
         ], $mine()->whereNull('completed_at')
             ->orderByRaw('target_completion_date is null')
@@ -220,18 +221,22 @@ class RoleDashboard
      */
     protected static function finance(callable $visible): array
     {
-        $waiting = fn (): Builder => $visible()->whereNotNull('finance_submitted_at')->whereNull('payment_completed_at');
+        // Its to pay: the hand-over TL Pengadaan approved, not yet paid.
+        $waiting = fn (): Builder => $visible()
+            ->whereNotNull('finance_submitted_at')
+            ->where('handover_approval_state', PlanningApprovalState::Disetujui->value)
+            ->whereNull('payment_completed_at');
         $paid = fn (): Builder => $visible()->whereNotNull('payment_completed_at');
 
         $waitingValue = (float) $waiting()->get(['value_after_negotiation', 'hpe_value'])
             ->sum(fn (Procurement $procurement): float => (float) ($procurement->value_after_negotiation ?? $procurement->hpe_value));
 
         return [[
-            self::card('waiting', 'Menunggu Pembayaran', $waiting()->count(), 'Pelaksanaan disetujui TL Pengadaan', 'amber'),
+            self::card('waiting', 'Menunggu Pembayaran', $waiting()->count(), 'Penyerahan disetujui TL Pengadaan', 'amber'),
             self::card('value', 'Nilai Tagihan Menunggu', $waitingValue, 'Nilai setelah nego (atau HPE)', 'primary', 'currency'),
             self::card('month', 'Dibayar Bulan Ini', $paid()->where('payment_completed_at', '>=', now()->startOfMonth())->count(), now()->translatedFormat('F Y'), 'emerald'),
             self::card('paid', 'Total Sudah Dibayar', $paid()->count(), 'Seluruh pengadaan lunas', 'sky'),
-        ], $waiting()->oldest('finance_submitted_at'), 'Tagihan Menunggu Pembayaran'];
+        ], $waiting()->oldest('handover_reviewed_at'), 'Tagihan Menunggu Pembayaran'];
     }
 
     /**
@@ -321,7 +326,12 @@ class RoleDashboard
         return match (true) {
             $procurement->completed_at !== null => 'Selesai',
             $procurement->payment_completed_at !== null => 'Sudah dibayar',
-            $procurement->finance_submitted_at !== null => 'Menunggu pembayaran Keuangan',
+            $procurement->finance_submitted_at !== null => match (true) {
+                $procurement->handover_approval_state === PlanningApprovalState::MenungguPersetujuan => 'Penyerahan menunggu TL Pengadaan',
+                $procurement->handover_approval_state !== PlanningApprovalState::Disetujui => 'Proses penyerahan (PIC Pelaksana)',
+                $procurement->payment_approval_state->isAwaiting() => 'Pembayaran menunggu persetujuan',
+                default => 'Menunggu pembayaran Keuangan',
+            },
             $procurement->planning_approval_state === PlanningApprovalState::Disetujui => match (true) {
                 $procurement->executor_id === null => 'Menunggu penunjukan PIC Pelaksana oleh TL Pengadaan',
                 $procurement->execution_approval_state === PlanningApprovalState::MenungguPersetujuan => 'Pelaksanaan menunggu approval TL Pengadaan',

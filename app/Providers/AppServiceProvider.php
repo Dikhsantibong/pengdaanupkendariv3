@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\ProgressStatusResolver;
 use App\Support\ContractRequestQueue;
 use App\Support\Impersonation;
+use App\Support\PaymentQueue;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Date;
@@ -119,7 +120,8 @@ class AppServiceProvider extends ServiceProvider
         // Delivery Orders (TL, Asman, Rendan, Laksdan), whose decisions are
         // queued there too.
         Gate::define('open-approvals', fn (User $user): bool => $user->hasPermission(Permission::MenuApprovals)
-            || ContractRequestQueue::involves($user));
+            || ContractRequestQueue::involves($user)
+            || PaymentQueue::involves($user));
 
         // Users and access rights stay with the administrator alone: anyone
         // able to change them could raise their own role.

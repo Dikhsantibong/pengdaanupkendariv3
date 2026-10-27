@@ -15,6 +15,7 @@ import {
     Hash,
     Inbox,
     Landmark,
+    PackageCheck,
     KeyRound,
     LayoutDashboard,
     ListChecks,
@@ -51,6 +52,7 @@ import approvals from '@/routes/approvals';
 import documents from '@/routes/documents';
 import execution from '@/routes/execution';
 import finance from '@/routes/finance';
+import handover from '@/routes/handover';
 import masterData from '@/routes/master-data';
 import monitoring from '@/routes/monitoring';
 import picAssignments from '@/routes/pic-assignments';
@@ -136,10 +138,19 @@ export function AppSidebar() {
                           },
                       ]
                     : []),
+                ...(menus.handover
+                    ? [
+                          {
+                              title: 'Penyerahan',
+                              href: handover.index(),
+                              icon: PackageCheck,
+                          },
+                      ]
+                    : []),
                 ...(menus.finance
                     ? [
                           {
-                              title: 'Keuangan',
+                              title: 'Pembayaran',
                               href: finance.index(),
                               icon: Landmark,
                           },

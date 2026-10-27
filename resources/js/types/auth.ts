@@ -35,6 +35,7 @@ export type AuthPermissions = {
         proposals: boolean;
         planning: boolean;
         execution: boolean;
+        handover: boolean;
         finance: boolean;
         approvals: boolean;
         documents: boolean;

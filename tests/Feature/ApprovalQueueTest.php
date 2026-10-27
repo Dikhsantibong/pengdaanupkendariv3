@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Enums\PlanningApprovalState;
+use App\Enums\ProcurementStage;
+use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -56,6 +58,44 @@ class ApprovalQueueTest extends TestCase
                 ->where('procurements.data.0.id', $this->planningWaiting->id));
     }
 
+    public function test_each_submission_carries_what_the_reviewer_reads_before_deciding(): void
+    {
+        $type = DocumentType::factory()->create(['stage' => ProcurementStage::Pelaksanaan, 'name' => 'Kontrak']);
+        $document = $this->executionWaiting->documents()->create([
+            'document_type_id' => $type->id,
+            'title' => 'Kontrak',
+            'file_name' => 'kontrak.pdf',
+            'template_version' => 0,
+            'rendered_body' => '',
+            'generated_at' => now(),
+        ]);
+        $document->signedUploads()->create([
+            'path' => 'signed/kontrak-ttd.pdf',
+            'file_name' => 'kontrak-ttd.pdf',
+            'mime' => 'application/pdf',
+        ]);
+        $this->executionWaiting->forceFill(['execution_revision' => 1, 'execution_review_note' => 'Lengkapi jaminan.'])->save();
+
+        $id = $this->executionWaiting->id;
+
+        $this->actingAs(User::factory()->teamLeaderPengadaan()->create())
+            ->get(route('approvals.index', ['queue' => 'execution']))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where("reviews.{$id}.can_decide", true)
+                ->where("reviews.{$id}.revision", 1)
+                ->where("reviews.{$id}.note", 'Lengkapi jaminan.')
+                ->has("reviews.{$id}.papers", 1)
+                ->where("reviews.{$id}.papers.0.name", 'Kontrak · kontrak-ttd.pdf')
+                ->where("reviews.{$id}.papers.0.is_image", false));
+
+        // Seen in the decided list, it is no longer theirs to decide.
+        $this->executionWaiting->forceFill(['execution_approval_state' => PlanningApprovalState::Ditolak, 'execution_reviewed_at' => now()])->save();
+
+        $this->actingAs(User::factory()->teamLeaderPengadaan()->create())
+            ->get(route('approvals.index', ['queue' => 'execution', 'view' => 'decided']))
+            ->assertInertia(fn (Assert $page) => $page->where("reviews.{$id}.can_decide", false));
+    }
+
     public function test_tl_pengadaan_sees_the_execution_queue_and_the_contract_requests(): void
     {
         $this->actingAs(User::factory()->teamLeaderPengadaan()->create())
@@ -64,7 +104,7 @@ class ApprovalQueueTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where('queue', 'execution')
                 // Not the planning queue; amendments and DOs are issued by Laksdan.
-                ->where('queues', fn ($queues): bool => collect($queues)->pluck('key')->all() === ['execution', 'amendment', 'delivery-order'])
+                ->where('queues', fn ($queues): bool => collect($queues)->pluck('key')->all() === ['execution', 'handover', 'amendment', 'delivery-order'])
                 ->has('procurements.data', 1)
                 ->where('procurements.data.0.id', $this->executionWaiting->id));
     }
@@ -76,7 +116,8 @@ class ApprovalQueueTest extends TestCase
         $this->actingAs($admin)
             ->get(route('approvals.index', ['queue' => 'execution']))
             ->assertInertia(fn (Assert $page) => $page
-                ->has('queues', 4)
+                // Perencanaan, Pelaksanaan, Penyerahan, Pembayaran, Amandemen, DO.
+                ->has('queues', 6)
                 ->where('queue', 'execution')
                 ->where('procurements.data.0.id', $this->executionWaiting->id));
     }

@@ -13,7 +13,13 @@ import { cn } from '@/lib/utils';
 
 export type ApprovalHistoryRow = {
     id: number;
-    stage: 'Usulan' | 'Perencanaan' | 'Pelaksanaan' | 'Keuangan';
+    stage:
+        | 'Usulan'
+        | 'Perencanaan'
+        | 'Pelaksanaan'
+        | 'Penyerahan'
+        | 'Pembayaran'
+        | 'Keuangan';
     step: string;
     outcome:
         | 'dibuat'

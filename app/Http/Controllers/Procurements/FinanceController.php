@@ -2,37 +2,67 @@
 
 namespace App\Http\Controllers\Procurements;
 
+use App\Enums\FinanceSection;
+use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Http\Controllers\Controller;
 use App\Models\Procurement;
+use App\Models\ProcurementChecklist;
 use App\Models\User;
-use App\Services\ProcurementService;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * The Keuangan stage: executed jobs approved by TL Pengadaan arrive here,
- * their invoice papers are checked, the partner paid and the procurement
- * closed.
+ * The two boards after the execution:
+ *
+ * - Penyerahan: jobs whose execution TL Pengadaan approved, where the
+ *   execution PIC files the hand-over papers and submits them to TL
+ *   Pengadaan.
+ * - Pembayaran: jobs whose hand-over TL Pengadaan approved, where Keuangan
+ *   files the payment papers and submits them to TL Keuangan and the Asman,
+ *   whose approval records the payment.
  */
 class FinanceController extends Controller
 {
-    public function __construct(protected ProcurementService $procurements) {}
-
     /**
-     * The jobs waiting for payment, and those paid recently.
+     * The Pembayaran board: jobs to pay, and those paid recently.
      */
     public function index(Request $request): Response
     {
+        return $this->board(
+            $request,
+            FinanceSection::Pembayaran,
+            fn (Builder $query) => $query->where('handover_approval_state', PlanningApprovalState::Disetujui->value),
+        );
+    }
+
+    /**
+     * The Penyerahan board: hand-overs to file or decide, and those approved
+     * on to Pembayaran recently.
+     */
+    public function handover(Request $request): Response
+    {
+        return $this->board($request, FinanceSection::Penyerahan, fn (Builder $query) => $query);
+    }
+
+    /**
+     * One board: the jobs still in its stage (oldest first), and the latest
+     * that went through it.
+     *
+     * @param  callable(Builder<Procurement>): Builder<Procurement>  $scope
+     */
+    protected function board(Request $request, FinanceSection $section, callable $scope): Response
+    {
         /** @var User $user */
         $user = $request->user();
+        $payment = $section === FinanceSection::Pembayaran;
 
-        $base = fn () => Procurement::query()
+        $base = fn () => $scope(Procurement::query()
             ->visibleTo($user)
             ->whereNotNull('finance_submitted_at')
-            ->with(['workDirector', 'executor', 'financeSubmitter', 'paymentCompleter', 'checklists.checklistItem']);
+            ->with(['workDirector', 'executor', 'financeSubmitter', 'paymentCompleter', 'handoverReviewer', 'checklists.checklistItem']));
 
         $search = $request->string('search')->trim()->value();
         $filter = fn ($query) => $search === ''
@@ -42,33 +72,45 @@ class FinanceController extends Controller
                 ->orWhere('number', 'like', "%{$search}%")
                 ->orWhere('partner_name', 'like', "%{$search}%"));
 
-        $waiting = $filter($base()->whereNull('payment_completed_at'))->oldest('finance_submitted_at')->get();
-        $paid = $filter($base()->whereNotNull('payment_completed_at'))->latest('payment_completed_at')->limit(30)->get();
+        $waiting = fn () => $payment
+            ? $filter($base()->whereNull('payment_completed_at'))->oldest('handover_reviewed_at')->oldest('id')
+            : $filter($base()->where('handover_approval_state', '!=', PlanningApprovalState::Disetujui->value)->whereNull('completed_at'))
+                ->oldest('finance_submitted_at')->oldest('id');
+        $done = fn () => $payment
+            ? $filter($base()->whereNotNull('payment_completed_at'))->latest('payment_completed_at')->latest('id')
+            : $filter($base()->where('handover_approval_state', PlanningApprovalState::Disetujui->value))->latest('handover_reviewed_at')->latest('id');
 
-        return Inertia::render('finance/index', [
-            'waiting' => $waiting->map(fn (Procurement $procurement): array => $this->row($procurement))->values()->all(),
-            'paid' => $paid->map(fn (Procurement $procurement): array => $this->row($procurement))->values()->all(),
+        // One list at a time, a page at a time: a long board stays short.
+        $view = $request->string('view')->value() === 'done' ? 'done' : 'waiting';
+        $rows = ($view === 'done' ? $done() : $waiting())
+            ->paginate(15)
+            ->withQueryString()
+            ->through(fn (Procurement $procurement): array => $this->row($procurement, $section));
+
+        $open = $waiting()->get();
+
+        return Inertia::render($payment ? 'finance/index' : 'handover/index', [
+            'section' => $section->value,
+            'view' => $view,
+            'rows' => $rows,
+            'counts' => [
+                'waiting' => $open->count(),
+                'done' => $done()->count(),
+            ],
             'summary' => [
-                'waiting' => $waiting->count(),
-                'waitingValue' => $waiting->sum(fn (Procurement $procurement): float => $this->payableValue($procurement)),
-                'paidThisMonth' => $base()->where('payment_completed_at', '>=', now()->startOfMonth())->count(),
+                'waiting' => $open->count(),
+                // The decisions waiting on someone, apart from the papers still being filed.
+                'awaitingDecision' => $open->filter(fn (Procurement $procurement): bool => $payment
+                    ? $procurement->payment_approval_state->isAwaiting()
+                    : $procurement->isHandoverAwaitingApproval())->count(),
+                'waitingValue' => $open->sum(fn (Procurement $procurement): float => $this->payableValue($procurement)),
+                'paidThisMonth' => $payment
+                    ? $base()->where('payment_completed_at', '>=', now()->startOfMonth())->count()
+                    : $base()->where('handover_approval_state', PlanningApprovalState::Disetujui->value)
+                        ->where('handover_reviewed_at', '>=', now()->startOfMonth())->count(),
             ],
             'filters' => ['search' => $search === '' ? null : $search],
         ]);
-    }
-
-    /**
-     * Record the payment and close the job.
-     */
-    public function complete(Request $request, Procurement $procurement): RedirectResponse
-    {
-        $this->authorize('completePayment', $procurement);
-
-        $this->procurements->completePayment($procurement, $request->user());
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => "Pembayaran {$procurement->name} selesai, pengadaan ditutup."]);
-
-        return back();
     }
 
     /**
@@ -80,14 +122,18 @@ class FinanceController extends Controller
     }
 
     /**
-     * One job on the Keuangan board.
+     * One job on a board, with the steps of that board's tab.
      *
      * @return array<string, mixed>
      */
-    protected function row(Procurement $procurement): array
+    protected function row(Procurement $procurement, FinanceSection $section): array
     {
-        $steps = $procurement->checklists->where('stage', ProcurementStage::Keuangan);
+        $steps = $procurement->checklists
+            ->where('stage', ProcurementStage::Keuangan)
+            ->filter(fn (ProcurementChecklist $checklist): bool => $checklist->financeSection() === $section);
         $done = $steps->where('is_completed', true)->count();
+        $payment = $section === FinanceSection::Pembayaran;
+        $state = $payment ? $procurement->payment_approval_state : $procurement->handover_approval_state;
 
         return [
             'id' => $procurement->id,
@@ -97,10 +143,19 @@ class FinanceController extends Controller
             'division' => $procurement->workDirector->name,
             'executor' => $procurement->executor?->name,
             'value' => $this->payableValue($procurement),
-            'submitted_at' => $procurement->finance_submitted_at?->toIso8601String(),
-            'submitted_by' => $procurement->financeSubmitter?->name,
-            'paid_at' => $procurement->payment_completed_at?->toIso8601String(),
-            'paid_by' => $procurement->paymentCompleter?->name,
+            // When it arrived on this board.
+            'submitted_at' => ($payment ? $procurement->handover_reviewed_at : $procurement->finance_submitted_at)?->toIso8601String(),
+            'submitted_by' => ($payment ? $procurement->handoverReviewer : $procurement->financeSubmitter)?->name,
+            // When it left it: paid, or the hand-over approved.
+            'paid_at' => ($payment ? $procurement->payment_completed_at : $procurement->handover_reviewed_at)?->toIso8601String(),
+            'paid_by' => ($payment ? $procurement->paymentCompleter : $procurement->handoverReviewer)?->name,
+            'state' => $state->value,
+            'state_label' => $payment ? $procurement->payment_approval_state->label() : match ($procurement->handover_approval_state) {
+                PlanningApprovalState::BelumDiajukan => 'Belum Diajukan',
+                PlanningApprovalState::MenungguPersetujuan => 'Menunggu TL Pengadaan',
+                PlanningApprovalState::Disetujui => 'Disetujui',
+                PlanningApprovalState::Ditolak => 'Dikembalikan',
+            },
             'steps_done' => $done,
             'steps_total' => $steps->count(),
         ];

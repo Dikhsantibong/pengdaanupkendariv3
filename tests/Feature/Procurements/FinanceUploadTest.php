@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Procurements;
 
+use App\Enums\FinanceSection;
 use App\Enums\ProcurementStage;
 use App\Enums\UserRole;
 use App\Models\ContractNumberFormat;
@@ -20,8 +21,9 @@ use Tests\TestCase;
 use ZipArchive;
 
 /**
- * Every Penyerahan and Pembayaran requirement is an upload: Keuangan files
- * the paper on the step itself before it can be ticked.
+ * Every Penyerahan and Pembayaran requirement is an upload, filed on the
+ * step itself before it can be ticked: Penyerahan by the execution side,
+ * Pembayaran by Keuangan once the hand-over is approved.
  */
 class FinanceUploadTest extends TestCase
 {
@@ -49,6 +51,8 @@ class FinanceUploadTest extends TestCase
             'contract_number_format_id' => ContractNumberFormat::query()->where('code', 'SPK')->value('id'),
             'work_category' => 'jasa',
             'finance_submitted_at' => now(),
+            // TL Pengadaan approved the hand-over: Pembayaran is open.
+            'handover_approval_state' => 'disetujui',
         ]);
 
         app(ProcurementService::class)->syncChecklists($this->procurement);
@@ -118,6 +122,31 @@ class FinanceUploadTest extends TestCase
         $this->assertSame(0, $step->files()->count());
     }
 
+    public function test_the_handover_papers_are_the_executors(): void
+    {
+        $executor = User::factory()->executor()->create();
+        $this->procurement->forceFill(['executor_id' => $executor->id, 'handover_approval_state' => 'belum_diajukan'])->save();
+        $step = $this->requiredStep(FinanceSection::Penyerahan);
+        $file = ['files' => [UploadedFile::fake()->create('bast.pdf', 20, 'application/pdf')]];
+
+        $this->actingAs($this->finance)
+            ->post(route('procurements.checklists.files.store', [$this->procurement, $step]), $file)
+            ->assertForbidden();
+
+        $this->actingAs($executor)
+            ->post(route('procurements.checklists.files.store', [$this->procurement, $step]), $file)
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(1, $step->files()->count());
+
+        // Once approved, the papers are final.
+        $this->procurement->forceFill(['handover_approval_state' => 'disetujui'])->save();
+
+        $this->actingAs($executor)
+            ->post(route('procurements.checklists.files.store', [$this->procurement, $step]), $file)
+            ->assertForbidden();
+    }
+
     public function test_the_papers_travel_in_the_zip(): void
     {
         $step = $this->requiredStep();
@@ -138,11 +167,11 @@ class FinanceUploadTest extends TestCase
         $this->assertTrue($names->contains(fn (string $name): bool => str_starts_with($name, '4. Keuangan/') && str_ends_with($name, 'kwitansi.pdf')));
     }
 
-    protected function requiredStep(): ProcurementChecklist
+    protected function requiredStep(FinanceSection $section = FinanceSection::Pembayaran): ProcurementChecklist
     {
         return $this->procurement->checklists()
             ->where('stage', ProcurementStage::Keuangan->value)
-            ->whereHas('checklistItem', fn ($item) => $item->where('is_optional', false))
+            ->whereHas('checklistItem', fn ($item) => $item->where('is_optional', false)->where('section', $section->value))
             ->with('checklistItem')
             ->firstOrFail();
     }

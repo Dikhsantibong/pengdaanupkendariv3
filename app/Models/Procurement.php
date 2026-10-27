@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\CsmsRiskLevel;
+use App\Enums\FinanceSection;
+use App\Enums\PaymentApprovalState;
 use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
@@ -57,6 +59,24 @@ use Illuminate\Support\Collection;
  * @property int|null $finance_submitted_by
  * @property CarbonImmutable|null $payment_completed_at
  * @property int|null $payment_completed_by
+ * @property PlanningApprovalState $handover_approval_state
+ * @property CarbonImmutable|null $handover_submitted_at
+ * @property int|null $handover_submitted_by
+ * @property CarbonImmutable|null $handover_reviewed_at
+ * @property int|null $handover_reviewed_by
+ * @property string|null $handover_review_note
+ * @property int $handover_revision
+ * @property PaymentApprovalState $payment_approval_state
+ * @property CarbonImmutable|null $payment_submitted_at
+ * @property int|null $payment_submitted_by
+ * @property int|null $payment_team_leader_id
+ * @property int|null $payment_work_director_id
+ * @property CarbonImmutable|null $payment_tl_reviewed_at
+ * @property int|null $payment_tl_reviewed_by
+ * @property CarbonImmutable|null $payment_reviewed_at
+ * @property int|null $payment_reviewed_by
+ * @property string|null $payment_review_note
+ * @property int $payment_revision
  * @property string|null $proposal_review_note
  * @property string|null $manager_memo_number
  * @property string|null $pr_po_number
@@ -161,6 +181,10 @@ class Procurement extends Model
         'proposal_state' => 'disetujui',
         'execution_approval_state' => 'belum_diajukan',
         'execution_revision' => 0,
+        'handover_approval_state' => 'belum_diajukan',
+        'handover_revision' => 0,
+        'payment_approval_state' => 'belum_diajukan',
+        'payment_revision' => 0,
     ];
 
     /**
@@ -413,6 +437,122 @@ class Procurement extends Model
     public function paymentCompleter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'payment_completed_by')->withTrashed();
+    }
+
+    /**
+     * Who submitted the hand-over papers.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function handoverSubmitter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'handover_submitted_by')->withTrashed();
+    }
+
+    /**
+     * Who approved or returned the hand-over.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function handoverReviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'handover_reviewed_by')->withTrashed();
+    }
+
+    /**
+     * The Keuangan staff member who submitted the payment.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function paymentSubmitter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'payment_submitted_by')->withTrashed();
+    }
+
+    /**
+     * The TL who decides the payment first (the submitter's TL).
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function paymentTeamLeader(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'payment_team_leader_id')->withTrashed();
+    }
+
+    /**
+     * The division whose Asman decides the payment last.
+     *
+     * @return BelongsTo<WorkDirector, $this>
+     */
+    public function paymentWorkDirector(): BelongsTo
+    {
+        return $this->belongsTo(WorkDirector::class, 'payment_work_director_id')->withTrashed();
+    }
+
+    /**
+     * Who approved the payment at the TL level.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function paymentTeamLeaderReviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'payment_tl_reviewed_by')->withTrashed();
+    }
+
+    /**
+     * Who approved the payment last (the Asman), or returned it.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function paymentReviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'payment_reviewed_by')->withTrashed();
+    }
+
+    /**
+     * Whether the job is in Penyerahan: execution approved, the hand-over
+     * papers not yet approved by TL Pengadaan.
+     */
+    public function isInHandover(): bool
+    {
+        return $this->isInFinance() && $this->handover_approval_state !== PlanningApprovalState::Disetujui;
+    }
+
+    /**
+     * Whether the hand-over papers wait for TL Pengadaan's decision.
+     */
+    public function isHandoverAwaitingApproval(): bool
+    {
+        return $this->handover_approval_state === PlanningApprovalState::MenungguPersetujuan;
+    }
+
+    /**
+     * Whether TL Pengadaan approved the hand-over, opening the payment.
+     */
+    public function isHandoverApproved(): bool
+    {
+        return $this->handover_approval_state === PlanningApprovalState::Disetujui;
+    }
+
+    /**
+     * Whether the job is in Pembayaran: hand-over approved, not yet paid.
+     */
+    public function isInPayment(): bool
+    {
+        return $this->isInFinance() && $this->isHandoverApproved();
+    }
+
+    /**
+     * The mandatory steps of one Keuangan tab still outstanding. A step
+     * without a tab belongs to Pembayaran.
+     *
+     * @return Collection<int, ProcurementChecklist>
+     */
+    public function pendingFinanceChecklists(FinanceSection $section): Collection
+    {
+        return $this->pendingRequiredChecklists(ProcurementStage::Keuangan)
+            ->filter(fn (ProcurementChecklist $checklist): bool => ($checklist->checklistItem->section ?? FinanceSection::Pembayaran) === $section)
+            ->values();
     }
 
     /**
@@ -768,7 +908,14 @@ class Procurement extends Model
         $paysPartners = $user->hasPermission(Permission::ProcessPayment);
 
         return $query->where(function (Builder $builder) use ($user, $leadsDivision, $paysPartners): void {
-            $builder->where('planner_id', $user->id)
+            // Whoever decides a payment sees the job it is for.
+            $builder->where($builder->qualifyColumn('payment_team_leader_id'), $user->id);
+
+            if ($leadsDivision) {
+                $builder->orWhere($builder->qualifyColumn('payment_work_director_id'), $user->work_director_id);
+            }
+
+            $builder->orWhere('planner_id', $user->id)
                 ->orWhere('executor_id', $user->id)
                 ->orWhere('created_by', $user->id)
                 // A team leader follows the work their staff proposed.
@@ -781,9 +928,9 @@ class Procurement extends Model
                 $builder->orWhere($builder->qualifyColumn('work_director_id'), $user->work_director_id);
             }
 
-            // Keuangan sees every job handed to it.
+            // Keuangan sees every job whose payment is theirs to make.
             if ($paysPartners) {
-                $builder->orWhereNotNull($builder->qualifyColumn('finance_submitted_at'));
+                $builder->orWhere($builder->qualifyColumn('handover_approval_state'), PlanningApprovalState::Disetujui->value);
             }
         });
     }
@@ -927,6 +1074,15 @@ class Procurement extends Model
             'completed_at' => 'datetime',
             'finance_submitted_at' => 'datetime',
             'payment_completed_at' => 'datetime',
+            'handover_approval_state' => PlanningApprovalState::class,
+            'handover_submitted_at' => 'datetime',
+            'handover_reviewed_at' => 'datetime',
+            'handover_revision' => 'integer',
+            'payment_approval_state' => PaymentApprovalState::class,
+            'payment_submitted_at' => 'datetime',
+            'payment_tl_reviewed_at' => 'datetime',
+            'payment_reviewed_at' => 'datetime',
+            'payment_revision' => 'integer',
             'proposal_tl_reviewed_at' => 'datetime',
             'target_completion_date' => 'date',
             'proposal_memo_date' => 'date',

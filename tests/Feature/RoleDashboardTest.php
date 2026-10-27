@@ -147,8 +147,14 @@ class RoleDashboardTest extends TestCase
         Procurement::factory()->executedBy($executor)->planningApproved()->create();
         Procurement::factory()->executedBy($executor)->planningApproved()->create([
             'finance_submitted_at' => now(),
+            'handover_approval_state' => 'disetujui',
             'hpe_value' => 10_000_000,
             'value_after_negotiation' => 9_000_000,
+        ]);
+        // Still in Penyerahan: not Keuangan's to pay yet.
+        Procurement::factory()->executedBy($executor)->planningApproved()->create([
+            'finance_submitted_at' => now(),
+            'value_after_negotiation' => 5_000_000,
         ]);
 
         $this->actingAs($executor)
@@ -157,7 +163,7 @@ class RoleDashboardTest extends TestCase
                 ->where('profile', 'pelaksana')
                 ->where('role.cards', fn ($cards) => collect($cards)->pluck('value', 'key')->only(['running', 'finance'])->all() === [
                     'running' => 1,
-                    'finance' => 1,
+                    'finance' => 2,
                 ]));
 
         $this->actingAs(User::factory()->role(UserRole::Keuangan)->create())

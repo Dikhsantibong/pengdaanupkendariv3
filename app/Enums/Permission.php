@@ -33,6 +33,7 @@ enum Permission: string
     case AssignExecutor = 'procurement.assign-pic';
     case ReviewPlanning = 'procurement.review-planning';
     case ReviewExecution = 'procurement.review-execution';
+    case ReviewHandover = 'procurement.review-handover';
     case CompleteProcurement = 'procurement.complete';
     case ProcessPayment = 'procurement.process-payment';
     case ViewAllProcurements = 'procurement.view-all';
@@ -41,6 +42,8 @@ enum Permission: string
     case MenuProposals = 'menu.proposals';
     case MenuPlanning = 'menu.planning';
     case MenuExecution = 'menu.execution';
+    case MenuHandover = 'menu.handover';
+    /** The Pembayaran menu, once called Keuangan: the value is kept. */
     case MenuFinance = 'menu.finance';
     case MenuApprovals = 'menu.approvals';
     case MenuDocuments = 'menu.documents';
@@ -63,6 +66,7 @@ enum Permission: string
             self::AssignExecutor => 'Tunjuk PIC pelaksana',
             self::ReviewPlanning => 'Setujui / tolak perencanaan',
             self::ReviewExecution => 'Setujui / tolak pelaksanaan',
+            self::ReviewHandover => 'Setujui / kembalikan penyerahan',
             self::CompleteProcurement => 'Nyatakan pengadaan selesai',
             self::ProcessPayment => 'Proses pembayaran (Keuangan)',
             self::ViewAllProcurements => 'Lihat seluruh pengadaan',
@@ -71,7 +75,8 @@ enum Permission: string
             self::MenuProposals => 'Menu Usulan Pekerjaan',
             self::MenuPlanning => 'Menu Perencanaan',
             self::MenuExecution => 'Menu Pelaksanaan',
-            self::MenuFinance => 'Menu Keuangan',
+            self::MenuHandover => 'Menu Penyerahan',
+            self::MenuFinance => 'Menu Pembayaran',
             self::MenuApprovals => 'Menu Approval',
             self::MenuDocuments => 'Menu Arsip Dokumen',
             self::MenuMonitoring => 'Menu Monitoring',
@@ -94,16 +99,18 @@ enum Permission: string
             self::AssignPlanner => 'Membuka menu Penunjukan PIC dan menunjuk atau mengganti PIC Perencana pada usulan yang sudah disetujui Asman.',
             self::AssignExecutor => 'Membuka menu Penunjukan PIC dan menunjuk atau mengganti PIC Pelaksana setelah perencanaan disetujui.',
             self::ReviewPlanning => 'Menyetujui, menolak, atau membuka kembali penolakan perencanaan. Tidak berlaku untuk perencanaan yang diajukan oleh dirinya sendiri.',
-            self::ReviewExecution => 'Menyetujui atau menolak pelaksanaan yang diajukan PIC Pelaksana. Pelaksanaan yang disetujui diteruskan ke Penyerahan dan Pembayaran (Keuangan).',
+            self::ReviewExecution => 'Menyetujui atau menolak pelaksanaan yang diajukan PIC Pelaksana. Pelaksanaan yang disetujui diteruskan ke Penyerahan.',
+            self::ReviewHandover => 'Menyetujui atau mengembalikan berkas penyerahan yang diajukan PIC Pelaksana. Penyerahan yang disetujui diteruskan ke Pembayaran (Keuangan).',
             self::CompleteProcurement => 'Menutup pengadaan yang sudah selesai.',
-            self::ProcessPayment => 'Memverifikasi dokumen tagihan, mencatat pembayaran, lalu menutup pengadaan yang sudah diserahkan ke Keuangan, serta melihat pengadaan tersebut.',
+            self::ProcessPayment => 'Melengkapi berkas pembayaran pengadaan yang penyerahannya sudah disetujui, lalu mengajukannya ke TL atasan (TL Keuangan) dan Asman bidang (Asman Business Support). Persetujuan Asman mencatat pembayaran lunas dan menutup pengadaan.',
             self::ViewAllProcurements => 'Melihat seluruh pengadaan, bukan hanya yang ditugaskan atau dibuat sendiri.',
             self::ManageVendorAssessments => 'Membuat, mengisi, dan mengirim formulir penilaian kinerja penyedia.',
             self::ManageMasterData => 'Mengubah seluruh data master.',
             self::MenuProposals => 'Menampilkan dan membuka halaman Usulan Pekerjaan (usulan sendiri dan antrean persetujuan).',
             self::MenuPlanning => 'Menampilkan dan membuka papan Perencanaan.',
             self::MenuExecution => 'Menampilkan dan membuka papan Pelaksanaan.',
-            self::MenuFinance => 'Menampilkan dan membuka papan Keuangan (antrean pembayaran).',
+            self::MenuHandover => 'Menampilkan dan membuka papan Penyerahan (berkas penyerahan yang dikerjakan PIC Pelaksana).',
+            self::MenuFinance => 'Menampilkan dan membuka papan Pembayaran (antrean pembayaran Keuangan).',
             self::MenuApprovals => 'Menampilkan dan membuka antrean Approval.',
             self::MenuDocuments => 'Menampilkan dan membuka Arsip Dokumen.',
             self::MenuMonitoring => 'Menampilkan dan membuka Monitoring.',
@@ -127,6 +134,7 @@ enum Permission: string
             self::AssignExecutor,
             self::ReviewPlanning,
             self::ReviewExecution,
+            self::ReviewHandover,
             self::CompleteProcurement,
             self::ProcessPayment,
             self::ViewAllProcurements => 'Pengadaan',
@@ -135,6 +143,7 @@ enum Permission: string
             self::MenuProposals,
             self::MenuPlanning,
             self::MenuExecution,
+            self::MenuHandover,
             self::MenuFinance,
             self::MenuApprovals,
             self::MenuDocuments,
@@ -160,21 +169,24 @@ enum Permission: string
             self::DeleteProcurement,
             self::AssignExecutor,
             self::ReviewExecution,
+            self::ReviewHandover,
             self::CompleteProcurement => [UserRole::TeamLeaderPengadaan],
             self::AssignPlanner,
             self::ReviewPlanning => [UserRole::TeamLeaderIcc],
-            self::ProposeWork => [UserRole::Pengusul, UserRole::DireksiPekerjaan, UserRole::Keuangan],
+            // Keuangan pays; it does not propose work.
+            self::ProposeWork => [UserRole::Pengusul, UserRole::DireksiPekerjaan],
             self::ProcessPayment => [UserRole::Keuangan],
             self::MenuFinance => [UserRole::Keuangan, UserRole::TeamLeaderPengadaan, UserRole::TeamLeaderIcc],
             self::ApproveProposal => [UserRole::DireksiPekerjaan],
+            self::MenuHandover => [UserRole::TeamLeaderPengadaan, UserRole::TeamLeaderIcc, UserRole::PicPelaksana],
             self::MenuProposals => [
                 UserRole::Pengusul,
                 UserRole::DireksiPekerjaan,
-                UserRole::Keuangan,
                 UserRole::TeamLeaderPengadaan,
                 UserRole::TeamLeaderIcc,
             ],
-            self::ViewAllProcurements => [UserRole::TeamLeaderPengadaan, UserRole::TeamLeaderIcc],
+            // Keuangan follows every job on to the payments it will make.
+            self::ViewAllProcurements => [UserRole::TeamLeaderPengadaan, UserRole::TeamLeaderIcc, UserRole::Keuangan],
             self::ManageVendorAssessments,
             self::ManageMasterData => [],
             // Every menu was open to everyone before it became a right.

@@ -215,7 +215,9 @@ class TeamLeaderApprovalTest extends TestCase
         $this->assertSame($tl->id, $staff->team_leader_id);
         $this->assertNull($tl->team_leader_id);
         $this->assertSame('keuangan', $finance->role->value);
-        $this->assertTrue($finance->can('create', Procurement::class));
+        // Keuangan pays: it no longer proposes work.
+        $this->assertFalse($finance->can('create', Procurement::class));
+        $this->assertSame($finance->teamLeader?->email, 'nova.sang.jaya@upkendari.go.id');
     }
 
     /**

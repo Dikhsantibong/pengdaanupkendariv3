@@ -149,9 +149,7 @@ export default function ErrorPage({
                             <AppLogoIcon className="h-7" />
                         </span>
                         <div className="leading-tight">
-                            <p className="text-sm font-semibold">
-                                Management Pengadaan
-                            </p>
+                            <p className="text-sm font-semibold">SIM-SCM</p>
                             <p className="text-[0.6875rem] font-medium tracking-[0.06em] text-muted-foreground uppercase">
                                 UP Kendari
                             </p>

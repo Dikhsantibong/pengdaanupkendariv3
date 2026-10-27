@@ -25,10 +25,22 @@ class ChecklistController extends Controller
     protected const ABILITIES = [
         'perencanaan' => 'updatePlanningChecklist',
         'pelaksanaan' => 'updateExecutionChecklist',
-        'keuangan' => 'updateFinanceChecklist',
+        // Per tab: Penyerahan is the execution side's, Pembayaran Keuangan's.
+        'keuangan' => 'updateFinanceStep',
     ];
 
     public function __construct(protected ProcurementService $procurements) {}
+
+    /**
+     * Authorise work on one step: by its stage, and for a Keuangan step by
+     * its tab.
+     */
+    protected function authorizeStep(Procurement $procurement, ProcurementChecklist $checklist): void
+    {
+        $ability = self::ABILITIES[$checklist->stage->value];
+
+        $this->authorize($ability, $ability === 'updateFinanceStep' ? [$procurement, $checklist] : $procurement);
+    }
 
     /**
      * Save the data a checklist step asks for.
@@ -43,7 +55,7 @@ class ChecklistController extends Controller
     ): RedirectResponse {
         abort_unless($checklist->procurement_id === $procurement->id, 404);
 
-        $this->authorize(self::ABILITIES[$checklist->stage->value], $procurement);
+        $this->authorizeStep($procurement, $checklist);
 
         $kind = $checklist->checklistItem->inputFor($procurement);
 
@@ -91,7 +103,7 @@ class ChecklistController extends Controller
     ): RedirectResponse {
         abort_unless($checklist->procurement_id === $procurement->id, 404);
 
-        $this->authorize(self::ABILITIES[$checklist->stage->value], $procurement);
+        $this->authorizeStep($procurement, $checklist);
 
         $isCompleted = $request->boolean('is_completed');
 

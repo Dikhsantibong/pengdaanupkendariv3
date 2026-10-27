@@ -4,6 +4,8 @@ namespace App\Policies;
 
 use App\Enums\AmendmentState;
 use App\Enums\DeliveryOrderState;
+use App\Enums\FinanceSection;
+use App\Enums\PaymentApprovalState;
 use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
@@ -40,7 +42,8 @@ class ProcurementPolicy
             || $procurement->created_by === $user->id
             || $this->leadsProposerOf($user, $procurement)
             || $this->leadsDivisionOf($user, $procurement)
-            || ($procurement->finance_submitted_at !== null && $user->hasPermission(Permission::ProcessPayment));
+            || ($procurement->isHandoverApproved() && $user->hasPermission(Permission::ProcessPayment))
+            || $this->decidesPaymentOf($user, $procurement, any: true);
     }
 
     /**
@@ -571,21 +574,122 @@ class ProcurementPolicy
     }
 
     /**
-     * Determine whether the user may work through the Keuangan steps.
+     * Determine whether the user may work through either Keuangan tab.
      */
     public function updateFinanceChecklist(User $user, Procurement $procurement): bool
     {
+        return $this->updateHandoverChecklist($user, $procurement)
+            || $this->updatePaymentChecklist($user, $procurement);
+    }
+
+    /**
+     * Determine whether the user may work on one Keuangan step: a Penyerahan
+     * step is the execution side's, a Pembayaran step Keuangan's.
+     */
+    public function updateFinanceStep(User $user, Procurement $procurement, ProcurementChecklist $checklist): bool
+    {
+        return $checklist->financeSection() === FinanceSection::Penyerahan
+            ? $this->updateHandoverChecklist($user, $procurement)
+            : $this->updatePaymentChecklist($user, $procurement);
+    }
+
+    /**
+     * Determine whether the user may file the hand-over papers: who works on
+     * the execution, once it is approved, until the hand-over is submitted
+     * (or while it is back for revision).
+     */
+    public function updateHandoverChecklist(User $user, Procurement $procurement): bool
+    {
         return $procurement->isInFinance()
+            && in_array($procurement->handover_approval_state, [PlanningApprovalState::BelumDiajukan, PlanningApprovalState::Ditolak], true)
+            && $this->worksOnExecution($user, $procurement);
+    }
+
+    /**
+     * Determine whether the user may submit the hand-over to TL Pengadaan:
+     * the execution PIC, like the execution itself, once every mandatory
+     * Penyerahan step is done.
+     */
+    public function submitHandover(User $user, Procurement $procurement): bool
+    {
+        return $this->updateHandoverChecklist($user, $procurement)
+            && $procurement->executor_id === $user->id
+            && $procurement->pendingFinanceChecklists(FinanceSection::Penyerahan)->isEmpty();
+    }
+
+    /**
+     * Determine whether the user may approve or return the hand-over.
+     * Approving opens the payment to Keuangan.
+     */
+    public function reviewHandover(User $user, Procurement $procurement): bool
+    {
+        return $user->hasPermission(Permission::ReviewHandover)
+            && $this->view($user, $procurement)
+            && $procurement->isInFinance()
+            && $procurement->isHandoverAwaitingApproval();
+    }
+
+    /**
+     * Determine whether the user may file the payment papers: Keuangan, once
+     * TL Pengadaan approved the hand-over, until the payment is submitted
+     * (or while it is back for revision).
+     */
+    public function updatePaymentChecklist(User $user, Procurement $procurement): bool
+    {
+        return $procurement->isInPayment()
+            && $procurement->payment_approval_state->isOpen()
             && $user->hasPermission(Permission::ProcessPayment);
     }
 
     /**
-     * Determine whether the user may record the payment and close the job.
+     * Determine whether the user may submit the payment to their TL, once
+     * every mandatory Pembayaran step is done.
      */
-    public function completePayment(User $user, Procurement $procurement): bool
+    public function submitPayment(User $user, Procurement $procurement): bool
     {
-        return $this->updateFinanceChecklist($user, $procurement)
-            && $procurement->pendingRequiredChecklists(ProcurementStage::Keuangan)->isEmpty();
+        return $this->updatePaymentChecklist($user, $procurement)
+            && $procurement->pendingFinanceChecklists(FinanceSection::Pembayaran)->isEmpty();
+    }
+
+    /**
+     * Determine whether the user may approve or return the payment at the
+     * step it waits on: the submitter's TL, then the Asman of the division.
+     * Nobody decides a payment they submitted; the administrator may stand
+     * in for either.
+     */
+    public function decidePayment(User $user, Procurement $procurement): bool
+    {
+        return $procurement->isInPayment()
+            && $procurement->payment_approval_state->isAwaiting()
+            && $procurement->payment_submitted_by !== $user->id
+            && $this->decidesPaymentOf($user, $procurement);
+    }
+
+    /**
+     * Whether the user decides the payment at the step it waits on, or, with
+     * $any, at either step of a payment submitted at all.
+     */
+    protected function decidesPaymentOf(User $user, Procurement $procurement, bool $any = false): bool
+    {
+        $state = $procurement->payment_approval_state;
+
+        if ($state === PaymentApprovalState::BelumDiajukan) {
+            return false;
+        }
+
+        $asTeamLeader = $procurement->payment_team_leader_id !== null
+            && $procurement->payment_team_leader_id === $user->id;
+        $asDirector = $procurement->payment_work_director_id !== null
+            && $user->work_director_id === $procurement->payment_work_director_id
+            && $user->hasPermission(Permission::ApproveProposal);
+
+        if ($any) {
+            return $asTeamLeader || $asDirector;
+        }
+
+        return $user->isAdministrator()
+            || ($state === PaymentApprovalState::MenungguTl && $asTeamLeader)
+            || ($state === PaymentApprovalState::MenungguAsman && $asDirector);
     }
 
     /**

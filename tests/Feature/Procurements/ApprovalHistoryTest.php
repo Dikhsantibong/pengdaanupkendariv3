@@ -124,7 +124,7 @@ class ApprovalHistoryTest extends TestCase
         foreach (ActivityType::cases() as $type) {
             in_array($type, $routine, true)
                 ? $this->assertNull($type->approvalStage(), $type->value)
-                : $this->assertContains($type->approvalStage(), ['Usulan', 'Perencanaan', 'Pelaksanaan', 'Keuangan'], $type->value);
+                : $this->assertContains($type->approvalStage(), ['Usulan', 'Perencanaan', 'Pelaksanaan', 'Penyerahan', 'Pembayaran', 'Keuangan'], $type->value);
         }
     }
 }

@@ -164,6 +164,7 @@ class ChecklistFileController extends Controller
         abort_unless($checklist->procurement_id === $procurement->id, 404);
         abort_unless($checklist->needsOwnUpload(), 404);
 
-        $this->authorize('updateFinanceChecklist', $procurement);
+        // Penyerahan files are the execution side's, Pembayaran files Keuangan's.
+        $this->authorize('updateFinanceStep', [$procurement, $checklist]);
     }
 }

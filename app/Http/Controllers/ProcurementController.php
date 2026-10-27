@@ -9,6 +9,7 @@ use App\Enums\AmendmentState;
 use App\Enums\DeliveryOrderState;
 use App\Enums\FinanceSection;
 use App\Enums\Permission;
+use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Enums\StatusCategory;
 use App\Http\Requests\Procurements\StoreProcurementRequest;
@@ -215,6 +216,13 @@ class ProcurementController extends Controller
             'creator',
             'financeSubmitter',
             'paymentCompleter',
+            'handoverSubmitter',
+            'handoverReviewer',
+            'paymentSubmitter',
+            'paymentTeamLeader',
+            'paymentWorkDirector',
+            'paymentTeamLeaderReviewer',
+            'paymentReviewer',
             'checklists.checklistItem.documentTypes.selectionMethods',
             'selectionMethod',
             'checklists.completedBy',
@@ -307,6 +315,45 @@ class ProcurementController extends Controller
                     'pending_finance' => $procurement->pendingRequiredChecklists(ProcurementStage::Keuangan)
                         ->map(fn ($checklist): string => $checklist->checklistItem->name)
                         ->all(),
+                    // Penyerahan: the execution PIC submits, TL Pengadaan decides.
+                    'handover_approval' => [
+                        'state' => $procurement->handover_approval_state->value,
+                        'label' => match ($procurement->handover_approval_state) {
+                            PlanningApprovalState::BelumDiajukan => 'Belum Diajukan',
+                            PlanningApprovalState::MenungguPersetujuan => 'Menunggu Persetujuan TL Pengadaan',
+                            PlanningApprovalState::Disetujui => 'Disetujui TL Pengadaan',
+                            PlanningApprovalState::Ditolak => 'Dikembalikan',
+                        },
+                        'submitted_at' => $procurement->handover_submitted_at?->toDateTimeString(),
+                        'submitted_by' => $procurement->handoverSubmitter?->name,
+                        'reviewed_at' => $procurement->handover_reviewed_at?->toDateTimeString(),
+                        'reviewer' => $procurement->handoverReviewer?->name,
+                        'note' => $procurement->handover_review_note,
+                        'revision' => $procurement->handover_revision,
+                        'pending' => $procurement->pendingFinanceChecklists(FinanceSection::Penyerahan)
+                            ->map(fn ($checklist): string => $checklist->checklistItem->name)
+                            ->values()
+                            ->all(),
+                    ],
+                    // Pembayaran: Keuangan submits, TL Keuangan then the Asman decide.
+                    'payment_approval' => [
+                        'state' => $procurement->payment_approval_state->value,
+                        'label' => $procurement->payment_approval_state->label(),
+                        'submitted_at' => $procurement->payment_submitted_at?->toDateTimeString(),
+                        'submitted_by' => $procurement->paymentSubmitter?->name,
+                        'team_leader' => $procurement->paymentTeamLeader?->name,
+                        'division' => $procurement->paymentWorkDirector?->name,
+                        'tl_reviewed_at' => $procurement->payment_tl_reviewed_at?->toDateTimeString(),
+                        'tl_reviewer' => $procurement->paymentTeamLeaderReviewer?->name,
+                        'reviewed_at' => $procurement->payment_reviewed_at?->toDateTimeString(),
+                        'reviewer' => $procurement->paymentReviewer?->name,
+                        'note' => $procurement->payment_review_note,
+                        'revision' => $procurement->payment_revision,
+                        'pending' => $procurement->pendingFinanceChecklists(FinanceSection::Pembayaran)
+                            ->map(fn ($checklist): string => $checklist->checklistItem->name)
+                            ->values()
+                            ->all(),
+                    ],
                     // The Penyerahan and Pembayaran requirements follow the
                     // contract, so they wait for what decides which contract.
                     // Per tab: the contract the requirements were read from,
@@ -415,10 +462,14 @@ class ProcurementController extends Controller
                 'updatePlanningIdentity' => $user->can('updatePlanningIdentity', $procurement),
                 'updatePlanningChecklist' => $user->can('updatePlanningChecklist', $procurement),
                 'updateExecutionChecklist' => $user->can('updateExecutionChecklist', $procurement),
-                'updateFinanceChecklist' => $user->can('updateFinanceChecklist', $procurement),
+                'updateHandoverChecklist' => $user->can('updateHandoverChecklist', $procurement),
+                'updatePaymentChecklist' => $user->can('updatePaymentChecklist', $procurement),
                 'submitExecution' => $user->can('submitExecution', $procurement),
                 'reviewExecution' => $user->can('reviewExecution', $procurement),
-                'completePayment' => $user->can('completePayment', $procurement),
+                'submitHandover' => $user->can('submitHandover', $procurement),
+                'reviewHandover' => $user->can('reviewHandover', $procurement),
+                'submitPayment' => $user->can('submitPayment', $procurement),
+                'decidePayment' => $user->can('decidePayment', $procurement),
                 'submitPlanning' => $user->can('submitPlanning', $procurement),
                 'reviewPlanning' => $user->can('reviewPlanning', $procurement),
                 'revertPlanningRejection' => $user->can('revertPlanningRejection', $procurement),

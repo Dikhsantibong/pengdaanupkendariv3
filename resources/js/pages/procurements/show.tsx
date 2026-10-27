@@ -33,6 +33,8 @@ import type { DeliveryOrders } from '@/components/procurement/delivery-order-tab
 import {
     ExecutionApproval,
     FinanceStatus,
+    HandoverApproval,
+    PaymentApproval,
 } from '@/components/procurement/finance-card';
 import type { FinanceDetail } from '@/components/procurement/finance-card';
 import { IdentityPanel } from '@/components/procurement/identity-panel';
@@ -137,10 +139,14 @@ type ShowProps = {
         updatePlanningIdentity: boolean;
         updatePlanningChecklist: boolean;
         updateExecutionChecklist: boolean;
-        updateFinanceChecklist: boolean;
+        updateHandoverChecklist: boolean;
+        updatePaymentChecklist: boolean;
         submitExecution: boolean;
         reviewExecution: boolean;
-        completePayment: boolean;
+        submitHandover: boolean;
+        reviewHandover: boolean;
+        submitPayment: boolean;
+        decidePayment: boolean;
         submitPlanning: boolean;
         reviewPlanning: boolean;
         revertPlanningRejection: boolean;
@@ -179,7 +185,10 @@ export default function ShowProcurement({
             usulan: detail.proposal_documents ? 'usulan' : 'perencanaan',
             perencanaan: 'perencanaan',
             pelaksanaan: 'pelaksanaan',
-            keuangan: 'penyerahan',
+            keuangan:
+                detail.finance.handover_approval.state === 'disetujui'
+                    ? 'pembayaran'
+                    : 'penyerahan',
             selesai: detail.finance.paid_at ? 'pembayaran' : 'pelaksanaan',
         }[procurement.current_stage];
 
@@ -271,9 +280,9 @@ export default function ShowProcurement({
     const handedOver = detail.finance.submitted_at !== null;
     const paid = detail.finance.paid_at !== null;
     const handoverRows = financeRows('penyerahan');
-    const handoverDone = handoverRows
-        .filter((row) => !row.is_optional)
-        .every((row) => row.is_completed);
+    const handover = detail.finance.handover_approval;
+    const payment = detail.finance.payment_approval;
+    const handoverDone = handover.state === 'disetujui';
     const stage = procurement.current_stage;
 
     // The stages in their order, each with where it stands.
@@ -331,24 +340,33 @@ export default function ShowProcurement({
             value: 'penyerahan',
             label: 'Penyerahan',
             state: !handedOver ? 'locked' : handoverDone ? 'done' : 'current',
-            summary: !handedOver ? 'Terkunci' : progressOf(handoverRows),
+            summary: !handedOver
+                ? 'Terkunci'
+                : handoverDone
+                  ? 'Disetujui TL Pengadaan'
+                  : handover.state === 'menunggu_persetujuan'
+                    ? 'Menunggu TL Pengadaan'
+                    : handover.state === 'ditolak'
+                      ? 'Dikembalikan'
+                      : progressOf(handoverRows),
+            attention: can.submitHandover || can.reviewHandover,
         },
         {
             value: 'pembayaran',
             label: 'Pembayaran',
-            state: !handedOver
-                ? 'locked'
-                : paid
-                  ? 'done'
-                  : handoverDone
-                    ? 'current'
-                    : 'todo',
-            summary: !handedOver
+            state: !handoverDone ? 'locked' : paid ? 'done' : 'current',
+            summary: !handoverDone
                 ? 'Terkunci'
                 : paid
                   ? 'Lunas'
-                  : progressOf(financeRows('pembayaran')),
-            attention: can.completePayment && !paid,
+                  : payment.state === 'menunggu_tl'
+                    ? 'Menunggu TL Keuangan'
+                    : payment.state === 'menunggu_asman'
+                      ? 'Menunggu Asman'
+                      : payment.state === 'dikembalikan'
+                        ? 'Dikembalikan'
+                        : progressOf(financeRows('pembayaran')),
+            attention: can.submitPayment || can.decidePayment,
         },
     ];
 
@@ -383,7 +401,7 @@ export default function ShowProcurement({
             : handedOver
               ? {
                     state: 'done',
-                    summary: `Disetujui, diserahkan ke Keuangan ${formatDateTime(detail.finance.submitted_at)}`,
+                    summary: `Disetujui, diteruskan ke Penyerahan ${formatDateTime(detail.finance.submitted_at)}`,
                 }
               : execution.state === 'menunggu_persetujuan'
                 ? {
@@ -401,6 +419,65 @@ export default function ShowProcurement({
                               : 'Belum diajukan',
                     };
 
+    const handoverApproval: { state: ApprovalStageState; summary: string } =
+        !handedOver
+            ? {
+                  state: 'locked',
+                  summary: 'Terbuka setelah pelaksanaan disetujui',
+              }
+            : handoverDone
+              ? {
+                    state: 'done',
+                    summary: `Disetujui ${formatDateTime(handover.reviewed_at)}${handover.reviewer ? ` · ${handover.reviewer}` : ''}`,
+                }
+              : handover.state === 'menunggu_persetujuan'
+                ? {
+                      state: 'waiting',
+                      summary: 'Menunggu persetujuan TL Pengadaan',
+                  }
+                : handover.state === 'ditolak'
+                  ? { state: 'returned', summary: 'Dikembalikan untuk revisi' }
+                  : {
+                        state: 'active',
+                        summary: can.submitHandover
+                            ? 'Siap diajukan ke TL Pengadaan'
+                            : handover.pending.length > 0
+                              ? `Belum diajukan · ${handover.pending.length} berkas belum lengkap`
+                              : 'Belum diajukan',
+                    };
+
+    const paymentApproval: { state: ApprovalStageState; summary: string } =
+        !handoverDone
+            ? {
+                  state: 'locked',
+                  summary: 'Terbuka setelah penyerahan disetujui',
+              }
+            : paid
+              ? {
+                    state: 'done',
+                    summary: `Lunas ${formatDateTime(detail.finance.paid_at)}`,
+                }
+              : payment.state === 'menunggu_tl'
+                ? {
+                      state: 'waiting',
+                      summary: `Menunggu TL Keuangan${payment.team_leader ? ` · ${payment.team_leader}` : ''}`,
+                  }
+                : payment.state === 'menunggu_asman'
+                  ? { state: 'waiting', summary: 'Menunggu persetujuan Asman' }
+                  : payment.state === 'dikembalikan'
+                    ? {
+                          state: 'returned',
+                          summary: 'Dikembalikan untuk revisi',
+                      }
+                    : {
+                          state: 'active',
+                          summary: can.submitPayment
+                              ? 'Siap diajukan'
+                              : payment.pending.length > 0
+                                ? `Belum diajukan · ${payment.pending.length} berkas belum lengkap`
+                                : 'Belum diajukan',
+                      };
+
     // The approval the user can act on now, for the shortcut on a phone,
     // where the side column sits below the long tables.
     const approvalTask = can.submitPlanning
@@ -411,7 +488,15 @@ export default function ShowProcurement({
             ? 'Pelaksanaan siap diajukan ke TL Pengadaan.'
             : can.reviewExecution
               ? 'Pelaksanaan menunggu persetujuan Anda.'
-              : null;
+              : can.submitHandover
+                ? 'Penyerahan siap diajukan ke TL Pengadaan.'
+                : can.reviewHandover
+                  ? 'Penyerahan menunggu persetujuan Anda.'
+                  : can.submitPayment
+                    ? 'Pembayaran siap diajukan.'
+                    : can.decidePayment
+                      ? 'Pembayaran menunggu persetujuan Anda.'
+                      : null;
 
     const requirementsNotice =
         detail.finance.requirements_waiting_for.length > 0 ? (
@@ -459,12 +544,24 @@ export default function ShowProcurement({
             </p>
         );
 
-    const financeLockedReason =
+    const handoverLockedReason =
+        detail.finance.submitted_at === null
+            ? 'Tahap ini terbuka setelah pelaksanaan disetujui TL Pengadaan.'
+            : handover.state === 'menunggu_persetujuan'
+              ? 'Checklist terkunci selama penyerahan ditinjau TL Pengadaan.'
+              : handoverDone
+                ? 'Checklist terkunci karena penyerahan sudah disetujui TL Pengadaan.'
+                : 'Hanya PIC Pelaksana atau TL Pengadaan yang dapat mengubah checklist ini.';
+
+    const paymentLockedReason =
         detail.finance.paid_at !== null
-            ? 'Checklist terkunci karena pembayaran sudah dicatat.'
-            : detail.finance.submitted_at === null
-              ? 'Tahap ini terbuka setelah pelaksanaan disetujui TL Pengadaan.'
-              : 'Hanya Keuangan yang dapat mengubah checklist ini.';
+            ? 'Checklist terkunci karena pembayaran sudah lunas.'
+            : !handoverDone
+              ? 'Tahap ini terbuka setelah penyerahan disetujui TL Pengadaan.'
+              : payment.state === 'menunggu_tl' ||
+                  payment.state === 'menunggu_asman'
+                ? 'Checklist terkunci selama pembayaran ditinjau.'
+                : 'Hanya Keuangan yang dapat mengubah checklist ini.';
 
     // Whoever has the Edit Identitas button changes the data there; the
     // inline pickers are only for the planning PIC, who has no such form.
@@ -802,13 +899,13 @@ export default function ShowProcurement({
                                 <ChecklistSteps
                                     procurementId={procurement.id}
                                     description="Kelengkapan dokumen penyerahan barang / pekerjaan sesuai pasal penyerahan pada kontrak (SPK, Surat Perjanjian, atau Lampiran Surat Pesanan). Klik sebuah langkah untuk mengunduh template surat dan mengunggah berkasnya."
-                                    doneMessage="Semua kelengkapan penyerahan sudah lengkap. Lanjutkan ke tab Pembayaran."
+                                    doneMessage="Semua kelengkapan penyerahan sudah lengkap. Ajukan ke TL Pengadaan di kolom Persetujuan."
                                     rows={financeRows('penyerahan')}
-                                    editable={can.updateFinanceChecklist}
+                                    editable={can.updateHandoverChecklist}
                                     canManageDocuments={
-                                        can.updateFinanceChecklist
+                                        can.updateHandoverChecklist
                                     }
-                                    lockedReason={financeLockedReason}
+                                    lockedReason={handoverLockedReason}
                                 />
                             </TabsContent>
 
@@ -816,24 +913,19 @@ export default function ShowProcurement({
                                 value="pembayaran"
                                 className="space-y-3"
                             >
-                                <FinanceStatus
-                                    procurementId={procurement.id}
-                                    finance={detail.finance}
-                                    canComplete={can.completePayment}
-                                    pendingAction={pendingAction('keuangan')}
-                                />
+                                <FinanceStatus finance={detail.finance} />
                                 {requirementsNotice}
                                 {requirementsSource('pembayaran')}
                                 <ChecklistSteps
                                     procurementId={procurement.id}
                                     description="Kelengkapan dokumen permintaan pembayaran sesuai pasal cara pembayaran pada kontrak, diperiksa Keuangan sebelum pengadaan ditutup. Klik sebuah langkah untuk mengunduh template surat dan mengunggah berkasnya."
-                                    doneMessage="Semua kelengkapan pembayaran sudah lengkap. Keuangan dapat mencatat Pembayaran Lunas & Tutup Pengadaan."
+                                    doneMessage="Semua kelengkapan pembayaran sudah lengkap. Ajukan pembayaran di kolom Persetujuan."
                                     rows={financeRows('pembayaran')}
-                                    editable={can.updateFinanceChecklist}
+                                    editable={can.updatePaymentChecklist}
                                     canManageDocuments={
-                                        can.updateFinanceChecklist
+                                        can.updatePaymentChecklist
                                     }
-                                    lockedReason={financeLockedReason}
+                                    lockedReason={paymentLockedReason}
                                 />
                             </TabsContent>
 
@@ -929,6 +1021,50 @@ export default function ShowProcurement({
                                         planningApproved={planningApproved}
                                         pendingAction={pendingAction(
                                             'pelaksanaan',
+                                        )}
+                                    />
+                                )}
+                            </ApprovalStage>
+
+                            <ApprovalStage
+                                title="Penyerahan"
+                                state={handoverApproval.state}
+                                summary={handoverApproval.summary}
+                                defaultOpen={
+                                    handoverApproval.state !== 'done' &&
+                                    handoverApproval.state !== 'locked'
+                                }
+                            >
+                                {handedOver && !handoverDone && (
+                                    <HandoverApproval
+                                        procurementId={procurement.id}
+                                        finance={detail.finance}
+                                        canSubmit={can.submitHandover}
+                                        canReview={can.reviewHandover}
+                                        pendingAction={pendingAction(
+                                            'keuangan',
+                                        )}
+                                    />
+                                )}
+                            </ApprovalStage>
+
+                            <ApprovalStage
+                                title="Pembayaran"
+                                state={paymentApproval.state}
+                                summary={paymentApproval.summary}
+                                defaultOpen={
+                                    paymentApproval.state !== 'done' &&
+                                    paymentApproval.state !== 'locked'
+                                }
+                            >
+                                {handoverDone && !paid && (
+                                    <PaymentApproval
+                                        procurementId={procurement.id}
+                                        finance={detail.finance}
+                                        canSubmit={can.submitPayment}
+                                        canDecide={can.decidePayment}
+                                        pendingAction={pendingAction(
+                                            'keuangan',
                                         )}
                                     />
                                 )}
