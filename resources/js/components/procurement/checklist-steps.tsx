@@ -467,6 +467,7 @@ export function ChecklistSteps({
                             row={openRow}
                             editable={editable}
                             canManageDocuments={canManageDocuments}
+                            lockedReason={lockedReason}
                             partnerCandidates={partnerCandidates}
                             candidatesEditable={candidatesEditable}
                             directAppointment={directAppointment}
@@ -1012,6 +1013,7 @@ function StepDetails({
     row,
     editable,
     canManageDocuments,
+    lockedReason,
     partnerCandidates,
     candidatesEditable,
     directAppointment,
@@ -1025,6 +1027,8 @@ function StepDetails({
     row: ChecklistRow;
     editable: boolean;
     canManageDocuments: boolean;
+    /** Why the step cannot be worked on here, shown in place of the upload. */
+    lockedReason?: string;
     partnerCandidates: PartnerCandidate[];
     candidatesEditable: boolean;
     directAppointment: boolean;
@@ -1055,6 +1059,18 @@ function StepDetails({
             </SheetHeader>
 
             <div className="flex-1 space-y-5 overflow-y-auto p-4">
+                {/* Read-only here: say why, so a missing upload is not a puzzle. */}
+                {!editable && lockedReason && (
+                    <p className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-foreground">
+                        <Lock className="mt-0.5 size-3.5 shrink-0 text-amber-600" />
+                        <span>
+                            <span className="font-semibold">
+                                Tidak dapat mengunggah di sini.{' '}
+                            </span>
+                            {lockedReason}
+                        </span>
+                    </p>
+                )}
                 {requirements.length > 0 && (
                     <div className="rounded-md border border-border bg-muted/30 p-3">
                         <p className="mb-2 text-xs font-semibold">

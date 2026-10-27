@@ -2376,6 +2376,10 @@ Pengamanan:
   - Akun tanpa bidang tidak bisa mengajukan; muncul pesan agar menghubungi Administrator.
   - Tidak ada yang memutuskan pengajuannya sendiri. Administrator dapat mewakili.
 - **Checklist terkunci** selama ditinjau dan setelah disetujui. Berkas Penyerahan hanya bisa diubah pihak pelaksanaan; berkas Pembayaran hanya oleh Keuangan.
+- **Siapa yang bisa mengunggah:**
+  - Penyerahan: PIC Pelaksana pengadaan itu atau TL Pengadaan, selama belum diajukan atau saat dikembalikan.
+  - Pembayaran: akun yang memegang hak *Proses pembayaran* (Keuangan).
+  - Akun lain (mis. TL Pengadaan di tab Pembayaran) hanya melihat dan mengunduh template. Panel langkah kini menampilkan kotak "Tidak dapat mengunggah di sini" beserta alasannya, sehingga tombol unggah yang tidak ada tidak membingungkan.
 - **Kolom kanan Persetujuan** kini berisi 5 tahap: Perencanaan, Pelaksanaan, Penyerahan, Pembayaran (dengan Ajukan / Setujui / Kembalikan), lalu Riwayat Approval. Riwayat mencatat Penyerahan / Pembayaran Diajukan, Disetujui, dan Dikembalikan.
 - **Menu:**
   - **Penyerahan** (`/penyerahan`, hak *Menu Penyerahan*, bawaan TL Pengadaan, TL ICC, PIC Pelaksana).
@@ -2387,6 +2391,14 @@ Pengamanan:
   - Tidak lagi *Usulkan pekerjaan* dan *Menu Usulan Pekerjaan*.
   - Mendapat *Lihat seluruh pengadaan* (baca saja; dashboard tetap dashboard Keuangan).
   - Semua tetap dapat diatur ulang di Hak Akses.
+- **Penyerahan adalah tahap tersendiri**, bukan bagian Keuangan:
+  - Terbuka saat status **Terkontrak** (pelaksanaan disetujui TL Pengadaan).
+  - PIC Pelaksana mengunggah berkas, lalu mengajukan ke TL Pengadaan.
+  - Persetujuan TL Pengadaan membuka tahap Pembayaran; sebelum itu Pembayaran **terkunci**.
+  - Label tahap menjadi "Penyerahan" lalu "Pembayaran".
+  - ZIP arsip memakai folder `4. Penyerahan/` dan `5. Pembayaran/`.
+  - Papan Monitoring menganggap Penyerahan selesai hanya bila sudah disetujui TL Pengadaan.
+- **Perbaikan data (migrasi `reopen_incomplete_handovers_of_running_jobs`):** pengadaan Terkontrak yang belum lunas, pembayarannya belum diajukan, dan berkas Penyerahan wajibnya belum lengkap dikembalikan ke Penyerahan *Belum Diajukan*. Yang berkasnya lengkap tetap disetujui. **Test:** `ReopenIncompleteHandoverTest`.
 - **Data lama** (migrasi `add_handover_and_payment_approvals`):
   - Pengadaan yang sudah di Keuangan dianggap Penyerahan disetujui, sehingga staf tinggal mengajukan pembayaran.
   - Yang sudah lunas dianggap Pembayaran disetujui.
@@ -2419,7 +2431,7 @@ Pengamanan:
 
 # Logo & Nama Aplikasi SIM-SCM UP KENDARI
 
-- Nama aplikasi: **SIM-SCM UP KENDARI**. Dipakai pada `APP_NAME` (judul tab browser), sidebar, header halaman depan, halaman masuk, halaman error, dan dashboard.
+- Nama aplikasi: **SIM-SCM UP KENDARI**, kepanjangan **Sistem Informasi Monitoring Supply Chain Management**. Kepanjangan ini tampil sebagai judul halaman depan dan di bawah nama pada halaman masuk. Dipakai pada `APP_NAME` (judul tab browser), sidebar, header halaman depan, halaman masuk, halaman error, dan dashboard.
 - **Logo** dari `public/logo/app-logo.png`. Berkas asli membawa latar kotak-kotak abu-putih sebagai piksel (tidak transparan), sehingga dibuat dua turunan berlatar transparan. Centang putih di perisai dipertahankan, dan berkas asli tidak diubah.
   - `public/logo/app-logo-clean.png`: logo lengkap, dipakai di konten halaman depan (`welcome.tsx`), tinggi 64 px di ponsel dan 80 px di desktop, rata kiri sejajar judul.
   - `public/logo/app-logo-mark.png`: ikon saja (dokumen, perisai, lengkung). Dipakai di kotak putih sidebar dan header halaman depan, di samping teks "SIM-SCM / UP KENDARI".

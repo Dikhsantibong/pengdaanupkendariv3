@@ -75,7 +75,7 @@ export default function Welcome() {
                             Kendari
                         </p>
                         <h1 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
-                            Sistem Management Pengadaan Barang dan Jasa
+                            Sistem Informasi Monitoring Supply Chain Management
                         </h1>
                         <p className="max-w-2xl text-muted-foreground">
                             Memusatkan perencanaan, pelaksanaan, monitoring, dan

@@ -111,6 +111,9 @@ export default function AuthShowcaseLayout({
                         <p className="text-base font-semibold">
                             SIM-SCM UP Kendari
                         </p>
+                        <p className="text-xs text-sidebar-foreground/70">
+                            Sistem Informasi Monitoring Supply Chain Management
+                        </p>
                     </div>
                 </div>
 

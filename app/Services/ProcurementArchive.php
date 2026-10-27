@@ -17,7 +17,8 @@ use ZipArchive;
  *   1. Usulan/       files sent with the work proposal
  *   2. Perencanaan/  planning documents
  *   3. Pelaksanaan/  execution documents
- *   4. Keuangan/     invoice and payment papers
+ *   4. Penyerahan/   hand-over papers
+ *   5. Pembayaran/   invoice and payment papers
  *
  * Inside a stage, each document has a folder holding its generated PDF
  * (with the latest data) and every signed or uploaded scan.
@@ -32,7 +33,18 @@ class ProcurementArchive
     protected const FOLDERS = [
         'perencanaan' => '2. Perencanaan',
         'pelaksanaan' => '3. Pelaksanaan',
-        'keuangan' => '4. Keuangan',
+        // Generated Keuangan documents go with the payment.
+        'keuangan' => '5. Pembayaran',
+    ];
+
+    /**
+     * The folder of a Keuangan step's papers, by its tab.
+     *
+     * @var array<string, string>
+     */
+    protected const FINANCE_FOLDERS = [
+        'penyerahan' => '4. Penyerahan',
+        'pembayaran' => '5. Pembayaran',
     ];
 
     public function __construct(
@@ -84,7 +96,7 @@ class ProcurementArchive
             foreach ($checklist->files as $file) {
                 if (Storage::disk('local')->exists($file->path)) {
                     $zip->addFromString(
-                        $this->unique($used, self::FOLDERS[$checklist->stage->value].'/'
+                        $this->unique($used, (self::FINANCE_FOLDERS[$checklist->financeSection()->value ?? ''] ?? self::FOLDERS[$checklist->stage->value]).'/'
                             .$this->clean(Str::limit($checklist->checklistItem->name, 80, '')).'/'.$this->clean($file->file_name)),
                         (string) Storage::disk('local')->get($file->path),
                     );
@@ -169,7 +181,7 @@ class ProcurementArchive
             'Diunduh    : '.now()->translatedFormat('d F Y H:i'),
             'Jumlah file: '.$files,
             '',
-            'Folder per tahap: 1. Usulan, 2. Perencanaan, 3. Pelaksanaan, 4. Keuangan.',
+            'Folder per tahap: 1. Usulan, 2. Perencanaan, 3. Pelaksanaan, 4. Penyerahan, 5. Pembayaran.',
             'Dokumen yang digenerate disertakan sebagai PDF dengan data terbaru;',
             'berkas berawalan "TTD - " adalah hasil tanda tangan yang diunggah.',
         ]);

@@ -164,7 +164,7 @@ class FinanceUploadTest extends TestCase
         $zip->close();
         @unlink($path);
 
-        $this->assertTrue($names->contains(fn (string $name): bool => str_starts_with($name, '4. Keuangan/') && str_ends_with($name, 'kwitansi.pdf')));
+        $this->assertTrue($names->contains(fn (string $name): bool => str_starts_with($name, '5. Pembayaran/') && str_ends_with($name, 'kwitansi.pdf')));
     }
 
     protected function requiredStep(FinanceSection $section = FinanceSection::Pembayaran): ProcurementChecklist

@@ -34,7 +34,7 @@ class RoleDashboard
         'usulan' => 'Usulan',
         'perencanaan' => 'Perencanaan',
         'pelaksanaan' => 'Pelaksanaan',
-        'keuangan' => 'Keuangan',
+        'keuangan' => 'Penyerahan & Pembayaran',
         'selesai' => 'Selesai',
     ];
 

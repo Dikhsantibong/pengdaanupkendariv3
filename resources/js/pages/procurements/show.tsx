@@ -550,8 +550,8 @@ export default function ShowProcurement({
             : handover.state === 'menunggu_persetujuan'
               ? 'Checklist terkunci selama penyerahan ditinjau TL Pengadaan.'
               : handoverDone
-                ? 'Checklist terkunci karena penyerahan sudah disetujui TL Pengadaan.'
-                : 'Hanya PIC Pelaksana atau TL Pengadaan yang dapat mengubah checklist ini.';
+                ? 'Penyerahan sudah disetujui TL Pengadaan, sehingga berkasnya terkunci dan hanya dapat dilihat.'
+                : 'Berkas Penyerahan diunggah oleh PIC Pelaksana pengadaan ini atau TL Pengadaan.';
 
     const paymentLockedReason =
         detail.finance.paid_at !== null
@@ -561,7 +561,7 @@ export default function ShowProcurement({
               : payment.state === 'menunggu_tl' ||
                   payment.state === 'menunggu_asman'
                 ? 'Checklist terkunci selama pembayaran ditinjau.'
-                : 'Hanya Keuangan yang dapat mengubah checklist ini.';
+                : 'Berkas Pembayaran diunggah oleh akun Keuangan (staf Keuangan), lalu diajukan ke TL Keuangan dan Asman. Akun Anda hanya dapat melihat dan mengunduh template.';
 
     // Whoever has the Edit Identitas button changes the data there; the
     // inline pickers are only for the planning PIC, who has no such form.

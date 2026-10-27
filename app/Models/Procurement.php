@@ -580,7 +580,8 @@ class Procurement extends Model
     {
         [$key, $label] = match (true) {
             $this->completed_at !== null => ['selesai', 'Selesai'],
-            $this->finance_submitted_at !== null => ['keuangan', 'Keuangan'],
+            // Penyerahan, then Pembayaran: one key, the tab follows the approval.
+            $this->finance_submitted_at !== null => ['keuangan', $this->isHandoverApproved() ? 'Pembayaran' : 'Penyerahan'],
             $this->isPlanningApproved() => ['pelaksanaan', 'Pelaksanaan'],
             $this->isProposalApproved() => ['perencanaan', 'Perencanaan'],
             default => ['usulan', 'Usulan'],

@@ -499,9 +499,8 @@ class MonitoringController extends Controller
         $handoverData = $stageSteps(ProcurementStage::Keuangan, FinanceSection::Penyerahan);
         $paymentData = $stageSteps(ProcurementStage::Keuangan, FinanceSection::Pembayaran);
 
-        $handoverDone = $handedOver && (
-            $paid || ($handoverData['required_total'] > 0 && $handoverData['required_completed'] >= $handoverData['required_total'])
-        );
+        // Done once TL Pengadaan approved it: that is what opens Pembayaran.
+        $handoverDone = $handedOver && ($paid || $procurement->isHandoverApproved());
 
         $journey = $resolver->journey($procurement);
         $journeyStepsCount = count($journey['steps']);
@@ -613,7 +612,8 @@ class MonitoringController extends Controller
                         : ($handoverDone ? 'done' : 'current'),
                     'summary' => match (true) {
                         ! $handedOver => 'Menunggu Terkontrak',
-                        $handoverDone => 'Berkas Lengkap',
+                        $handoverDone => 'Disetujui TL Pengadaan',
+                        $procurement->isHandoverAwaitingApproval() => 'Menunggu TL Pengadaan',
                         $handoverData['required_total'] > 0 => "{$handoverData['required_completed']}/{$handoverData['required_total']} berkas",
                         default => 'Proses Penyerahan',
                     },
@@ -628,12 +628,12 @@ class MonitoringController extends Controller
                 [
                     'key' => 'pembayaran',
                     'label' => 'Pembayaran',
-                    'state' => ! $handedOver
-                        ? 'locked'
-                        : ($paid ? 'done' : ($handoverDone ? 'current' : 'todo')),
+                    // Locked until TL Pengadaan approves the hand-over.
+                    'state' => $paid ? 'done' : ($handoverDone ? 'current' : 'locked'),
                     'summary' => match (true) {
                         $paid => 'Lunas / Selesai',
-                        ! $handedOver => 'Menunggu Penyerahan',
+                        ! $handoverDone => 'Menunggu Penyerahan',
+                        $procurement->payment_approval_state->isAwaiting() => $procurement->payment_approval_state->label(),
                         $paymentData['required_total'] > 0 => "{$paymentData['required_completed']}/{$paymentData['required_total']} berkas",
                         default => 'Proses Pembayaran',
                     },
