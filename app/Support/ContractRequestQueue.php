@@ -9,6 +9,7 @@ use App\Enums\UserRole;
 use App\Models\ProcurementAmendment;
 use App\Models\ProcurementDeliveryOrder;
 use App\Models\User;
+use App\Services\ProcurementService;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -158,6 +159,38 @@ class ContractRequestQueue
                 ->where('created_by', '!=', $user->id)
                 ->whereHas('procurement', fn (Builder $procurement) => $procurement->where('work_director_id', $user->work_director_id)));
         }
+
+        // A division without a Direksi Pekerjaan account: the requester's TL
+        // decides at that level too.
+        $left = self::leftToTeamLeader($query->getModel() instanceof ProcurementAmendment
+            ? ProcurementAmendment::query()
+            : ProcurementDeliveryOrder::query(), $user, $atDirector);
+
+        if ($left !== []) {
+            $query->orWhereIn($query->getModel()->qualifyColumn('id'), $left);
+        }
+    }
+
+    /**
+     * The requests of the TL's staff waiting at the Direksi Pekerjaan level
+     * in a division that has no Direksi Pekerjaan account of its own.
+     *
+     * @param  Builder<ProcurementAmendment>|Builder<ProcurementDeliveryOrder>  $requests
+     * @return array<int, int>
+     */
+    protected static function leftToTeamLeader(Builder $requests, User $user, string $atDirector): array
+    {
+        $service = app(ProcurementService::class);
+
+        return $requests
+            ->where('state', $atDirector)
+            ->whereIn('created_by', User::query()->select('id')->where('team_leader_id', $user->id))
+            ->with('procurement')
+            ->get()
+            ->filter(fn (ProcurementAmendment|ProcurementDeliveryOrder $request): bool => ! $service->divisionHasApprover($request->procurement, $user, $request->created_by))
+            ->map(fn (ProcurementAmendment|ProcurementDeliveryOrder $request): int => $request->id)
+            ->values()
+            ->all();
     }
 
     /**

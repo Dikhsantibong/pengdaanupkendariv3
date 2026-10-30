@@ -135,7 +135,7 @@ class ContractApprovalQueueTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where('view', 'decided')
                 ->where('requests.data.0.id', $amendment->id)
-                ->where('requests.data.0.state_label', 'Menunggu Persetujuan Asman'));
+                ->where('requests.data.0.state_label', 'Menunggu Persetujuan Direksi Pekerjaan'));
     }
 
     public function test_someone_with_no_part_in_them_still_has_no_approval_menu(): void

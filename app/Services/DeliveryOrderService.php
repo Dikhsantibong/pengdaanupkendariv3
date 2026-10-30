@@ -219,15 +219,23 @@ class DeliveryOrderService
     public function decide(ProcurementDeliveryOrder $order, User $reviewer, bool $approved, ?string $note = null): ProcurementDeliveryOrder
     {
         $atTeamLeader = $order->state === DeliveryOrderState::MenungguPersetujuanTl;
-        $who = $atTeamLeader ? 'TL' : 'Asman';
+        // A TL whose division has no other Direksi Pekerjaan account decides
+        // last (K3 KAM, Lingkungan): nobody else is there to wait on.
+        $final = $atTeamLeader && $approved && $this->teamLeaderDecidesLast($order, $reviewer);
+        $who = match (true) {
+            $final => 'TL (Direksi Pekerjaan bidang)',
+            $atTeamLeader => 'TL',
+            default => 'Asman',
+        };
 
         $order->forceFill([
             ...($atTeamLeader
                 ? ['tl_reviewed_at' => now(), 'tl_reviewed_by' => $reviewer->id]
                 : ['director_reviewed_at' => now(), 'director_reviewed_by' => $reviewer->id]),
+            ...($final ? ['director_reviewed_at' => now(), 'director_reviewed_by' => $reviewer->id] : []),
             'state' => match (true) {
                 ! $approved => DeliveryOrderState::Dikembalikan,
-                $atTeamLeader => DeliveryOrderState::MenungguPersetujuanAsman,
+                $atTeamLeader && ! $final => DeliveryOrderState::MenungguPersetujuanAsman,
                 default => DeliveryOrderState::DiRendan,
             },
             'review_note' => $note,
@@ -235,14 +243,14 @@ class DeliveryOrderService
 
         $this->log($order, $reviewer, match (true) {
             ! $approved => ActivityType::DoDikembalikan,
-            $atTeamLeader => ActivityType::DoDisetujuiTl,
+            $atTeamLeader && ! $final => ActivityType::DoDisetujuiTl,
             default => ActivityType::DoDisetujuiAsman,
         }, Str::limit($approved
-            ? "Permohonan DO ke-{$order->sequence} disetujui {$who}".($atTeamLeader ? '.' : ' dan diteruskan ke Rendan.')
+            ? "Permohonan DO ke-{$order->sequence} disetujui {$who}".($atTeamLeader && ! $final ? '.' : ' dan diteruskan ke Rendan.')
             : "Permohonan DO ke-{$order->sequence} dikembalikan oleh {$who}.".($note !== null ? " Catatan: {$note}" : ''), 250));
 
         if ($approved) {
-            $this->notify($order, $this->nextRecipients($order), $atTeamLeader ? 'Permohonan DO menunggu persetujuan' : 'Isi Nota Dinas DO');
+            $this->notify($order, $this->nextRecipients($order), $atTeamLeader && ! $final ? 'Permohonan DO menunggu persetujuan' : 'Isi Nota Dinas DO');
         } else {
             $this->notify($order, [$order->creator], 'Permohonan DO dikembalikan', $note);
         }
@@ -321,6 +329,37 @@ class DeliveryOrderService
     }
 
     /**
+     * Whether the TL's approval is the last one: their division has no other
+     * Direksi Pekerjaan account.
+     */
+    public function teamLeaderDecidesLast(ProcurementDeliveryOrder $order, User $teamLeader): bool
+    {
+        return ! $this->procurements->divisionHasApprover($order->procurement, $teamLeader, $order->created_by);
+    }
+
+    /**
+     * Who decides at the Direksi Pekerjaan level: the division's Asman, or,
+     * when the division has none, the requester's TL.
+     *
+     * @return Collection<int, User>
+     */
+    public function asmanLevelDeciders(ProcurementDeliveryOrder $order): Collection
+    {
+        $directors = User::query()->active()
+            ->where('work_director_id', $order->procurement->work_director_id)
+            ->whereKeyNot($order->created_by)
+            ->get()
+            ->filter(fn (User $user): bool => $user->hasPermission(Permission::ApproveProposal))
+            ->values();
+
+        $leader = $order->creator?->teamLeader;
+
+        return $directors->isEmpty() && $leader !== null && $leader->is_active
+            ? new Collection([$leader])
+            : $directors;
+    }
+
+    /**
      * The next free DO number: one sequence across every KHS contract.
      */
     public function nextNumber(ContractNumberFormat $format): string
@@ -353,12 +392,7 @@ class DeliveryOrderService
 
         return match ($order->state) {
             DeliveryOrderState::MenungguPersetujuanTl => [$this->teamLeaderOf($order)],
-            DeliveryOrderState::MenungguPersetujuanAsman => User::query()->active()
-                ->where('work_director_id', $procurement->work_director_id)
-                ->get()
-                ->filter(fn (User $user): bool => $user->hasPermission(Permission::ApproveProposal))
-                ->values()
-                ->all(),
+            DeliveryOrderState::MenungguPersetujuanAsman => $this->asmanLevelDeciders($order)->all(),
             // The planning PIC, or TL ICC when none is appointed.
             DeliveryOrderState::DiRendan => $procurement->planner !== null
                 ? [$procurement->planner]

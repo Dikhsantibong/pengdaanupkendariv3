@@ -148,15 +148,17 @@ class ProcurementService
     }
 
     /**
-     * Whether the proposal's division has an active Direksi Pekerjaan account
-     * able to decide it, other than the given user and the proposer.
+     * Whether the procurement's division has an active Direksi Pekerjaan
+     * account able to decide a request, other than the given user and the
+     * requester (the proposer of the work unless another is named, as for an
+     * amendment or a DO).
      */
-    public function divisionHasApprover(Procurement $procurement, ?User $except = null): bool
+    public function divisionHasApprover(Procurement $procurement, ?User $except = null, ?int $requesterId = null): bool
     {
         return User::query()
             ->active()
             ->where('work_director_id', $procurement->work_director_id)
-            ->whereKeyNot(array_filter([$except?->id, $procurement->created_by]))
+            ->whereKeyNot(array_filter([$except?->id, $requesterId ?? $procurement->created_by]))
             ->get()
             ->contains(fn (User $user): bool => $user->hasPermission(Permission::ApproveProposal));
     }

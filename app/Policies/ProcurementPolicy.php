@@ -475,9 +475,12 @@ class ProcurementPolicy
             return false;
         }
 
+        $service = app(AmendmentService::class);
+
         return $amendment->state === AmendmentState::MenungguPersetujuanTl
-            ? app(AmendmentService::class)->teamLeaderOf($amendment)?->is($user) === true
-            : $this->leadsDivisionOf($user, $procurement);
+            ? $service->teamLeaderOf($amendment)?->is($user) === true
+            // The Asman, or the requester's TL when the division has none.
+            : $service->asmanLevelDeciders($amendment)->contains(fn (User $decider): bool => $decider->is($user));
     }
 
     /**
@@ -531,9 +534,12 @@ class ProcurementPolicy
             return false;
         }
 
+        $service = app(DeliveryOrderService::class);
+
         return $order->state === DeliveryOrderState::MenungguPersetujuanTl
-            ? app(DeliveryOrderService::class)->teamLeaderOf($order)?->is($user) === true
-            : $this->leadsDivisionOf($user, $procurement);
+            ? $service->teamLeaderOf($order)?->is($user) === true
+            // The Asman, or the requester's TL when the division has none.
+            : $service->asmanLevelDeciders($order)->contains(fn (User $decider): bool => $decider->is($user));
     }
 
     /**

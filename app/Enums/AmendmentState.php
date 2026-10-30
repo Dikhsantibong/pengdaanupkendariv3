@@ -27,7 +27,8 @@ enum AmendmentState: string
         return match ($this) {
             self::Draft => 'Draft',
             self::MenungguPersetujuanTl => 'Menunggu Persetujuan TL',
-            self::MenungguPersetujuanAsman => 'Menunggu Persetujuan Asman',
+            // The Asman, or the TL leading K3 KAM / Lingkungan.
+            self::MenungguPersetujuanAsman => 'Menunggu Persetujuan Direksi Pekerjaan',
             self::MenungguTlPengadaan => 'Di Laksdan (Penerbitan Amandemen)',
             self::Disetujui => 'Amandemen Terbit',
             self::Dikembalikan => 'Dikembalikan',

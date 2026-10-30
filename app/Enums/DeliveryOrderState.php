@@ -27,7 +27,8 @@ enum DeliveryOrderState: string
         return match ($this) {
             self::Draft => 'Draft Pengusul',
             self::MenungguPersetujuanTl => 'Menunggu Persetujuan TL',
-            self::MenungguPersetujuanAsman => 'Menunggu Persetujuan Asman',
+            // The Asman, or the TL leading K3 KAM / Lingkungan.
+            self::MenungguPersetujuanAsman => 'Menunggu Persetujuan Direksi Pekerjaan',
             self::DiRendan => 'Di Rendan (Nota Dinas DO)',
             self::DiLaksdan => 'Di Laksdan (Penerbitan DO)',
             self::Terbit => 'DO Terbit',

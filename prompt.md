@@ -545,6 +545,12 @@ Pekerjaan dapat berawal dari bidang pengguna:
    > - Label status "Menunggu Persetujuan Asman" diganti **"Menunggu Persetujuan Direksi Pekerjaan"** (untuk K3/Lingkungan, penyetujunya TL).
    > - Panel keputusan memberi tahu TL bila persetujuannya langsung meneruskan usulan ke perencanaan.
    > - **Test:** `TeamLeaderApprovalTest` (K3 & Lingkungan, bidang tanpa akun Asman, usulan yang terlanjur menunggu).
+   > - **Berlaku juga untuk Amandemen dan DO:**
+   >   - Pengajuan staf K3/Lingkungan langsung ke TL (sebagai Direksi Pekerjaan) dan cukup sekali disetujui. Amandemen diteruskan ke Laksdan dengan nomor Amd, DO ke Rendan.
+   >   - Bila TL bukan Direksi Pekerjaan dan bidang tak punya akun Asman, persetujuan TL menjadi akhir.
+   >   - Permohonan yang terlanjur menunggu di level Direksi Pekerjaan bisa diputuskan TL pengusul dan tampil di antrean Approval-nya (`AmendmentService` / `DeliveryOrderService::teamLeaderDecidesLast()` dan `asmanLevelDeciders()`, `ContractRequestQueue`).
+   >   - Label "Menunggu Persetujuan Asman" menjadi "Menunggu Persetujuan Direksi Pekerjaan".
+   >   - **Test:** `AmendmentTest`, `DeliveryOrderTest`.
 3. Usulan yang **dikembalikan** (oleh TL maupun Asman) dapat diperbaiki pengusul (ubah data, tambah/hapus lampiran) lalu **Ajukan Ulang**; pengajuan ulang mulai lagi dari TL.
 4. Usulan yang **disetujui Asman** langsung masuk perencanaan untuk **penunjukan PIC Perencana** oleh TL Pengadaan: muncul di Penunjukan PIC, Perencanaan, Monitoring Publik, dan TL Pengadaan/TL ICC mendapat notifikasi. Sebelum disetujui, usulan tidak tampil di perencanaan dan PIC tidak dapat ditunjuk.
 5. Direksi Pekerjaan yang mengusulkan untuk bidangnya sendiri langsung berstatus disetujui. Direksi Pekerjaan tidak dapat menyetujui usulan bidang lain maupun usulannya sendiri.

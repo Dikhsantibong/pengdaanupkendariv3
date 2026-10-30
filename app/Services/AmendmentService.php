@@ -22,6 +22,7 @@ use DOMElement;
 use DOMNode;
 use DOMXPath;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -204,13 +205,17 @@ class AmendmentService
         $level = $amendment->state;
         $atTeamLeader = $level === AmendmentState::MenungguPersetujuanTl;
 
+        // A TL whose division has no other Direksi Pekerjaan account decides
+        // last (K3 KAM, Lingkungan): nobody else is there to wait on.
+        $final = $atTeamLeader && $approved && $this->teamLeaderDecidesLast($amendment, $reviewer);
+
         $next = match (true) {
             ! $approved => AmendmentState::Dikembalikan,
-            $atTeamLeader => AmendmentState::MenungguPersetujuanAsman,
+            $atTeamLeader && ! $final => AmendmentState::MenungguPersetujuanAsman,
             default => AmendmentState::MenungguTlPengadaan,
         };
 
-        DB::transaction(function () use ($amendment, $reviewer, $atTeamLeader, $next, $note): void {
+        DB::transaction(function () use ($amendment, $reviewer, $atTeamLeader, $final, $next, $note): void {
             if ($next === AmendmentState::MenungguTlPengadaan && blank($amendment->number)) {
                 $format = ContractNumberFormat::forAmendments();
 
@@ -226,24 +231,30 @@ class AmendmentService
                 ...($atTeamLeader
                     ? ['tl_reviewed_at' => now(), 'tl_reviewed_by' => $reviewer->id]
                     : ['director_reviewed_at' => now(), 'director_reviewed_by' => $reviewer->id]),
+                // Deciding last, the TL stands for the Direksi Pekerjaan too.
+                ...($final ? ['director_reviewed_at' => now(), 'director_reviewed_by' => $reviewer->id] : []),
                 'state' => $next,
                 'review_note' => $note,
                 'amendment_date' => $amendment->amendment_date ?? ($next === AmendmentState::MenungguTlPengadaan ? now()->toDateString() : null),
             ])->save();
         });
 
-        $who = $atTeamLeader ? 'TL' : 'Asman';
+        $who = match (true) {
+            $final => 'TL (Direksi Pekerjaan bidang)',
+            $atTeamLeader => 'TL',
+            default => 'Asman',
+        };
 
         $this->procurements->recordActivity(
             $procurement,
             $reviewer,
             match (true) {
                 ! $approved => ActivityType::AmandemenDikembalikan,
-                $atTeamLeader => ActivityType::AmandemenDisetujuiTl,
+                $atTeamLeader && ! $final => ActivityType::AmandemenDisetujuiTl,
                 default => ActivityType::AmandemenDisetujuiAsman,
             },
             Str::limit($approved
-                ? "Amandemen {$amendment->roman()} disetujui {$who}".($atTeamLeader ? '.' : " dan diteruskan ke Laksdan dengan nomor {$amendment->number}.")
+                ? "Amandemen {$amendment->roman()} disetujui {$who}".($atTeamLeader && ! $final ? '.' : " dan diteruskan ke Laksdan dengan nomor {$amendment->number}.")
                 : "Amandemen {$amendment->roman()} dikembalikan oleh {$who}.".($note !== null ? " Catatan: {$note}" : ''), 250),
             ['amendment_id' => $amendment->id],
         );
@@ -494,6 +505,37 @@ class AmendmentService
     }
 
     /**
+     * Whether the TL's approval is the last one: their division has no other
+     * Direksi Pekerjaan account.
+     */
+    public function teamLeaderDecidesLast(ProcurementAmendment $amendment, User $teamLeader): bool
+    {
+        return ! $this->procurements->divisionHasApprover($amendment->procurement, $teamLeader, $amendment->created_by);
+    }
+
+    /**
+     * Who decides at the Direksi Pekerjaan level: the division's Asman, or,
+     * when the division has none, the requester's TL.
+     *
+     * @return Collection<int, User>
+     */
+    public function asmanLevelDeciders(ProcurementAmendment $amendment): Collection
+    {
+        $directors = User::query()->active()
+            ->where('work_director_id', $amendment->procurement->work_director_id)
+            ->whereKeyNot($amendment->created_by)
+            ->get()
+            ->filter(fn (User $user): bool => $user->hasPermission(Permission::ApproveProposal))
+            ->values();
+
+        $leader = $amendment->creator?->teamLeader;
+
+        return $directors->isEmpty() && $leader !== null && $leader->is_active
+            ? new Collection([$leader])
+            : $directors;
+    }
+
+    /**
      * Tell whoever decides next.
      */
     protected function notifyNext(ProcurementAmendment $amendment): void
@@ -510,10 +552,7 @@ class AmendmentService
 
         $recipients = match ($amendment->state) {
             AmendmentState::MenungguPersetujuanTl => collect([$this->teamLeaderOf($amendment)]),
-            AmendmentState::MenungguPersetujuanAsman => User::query()->active()
-                ->where('work_director_id', $procurement->work_director_id)
-                ->get()
-                ->filter(fn (User $user): bool => $user->hasPermission(Permission::ApproveProposal)),
+            AmendmentState::MenungguPersetujuanAsman => $this->asmanLevelDeciders($amendment),
             // Laksdan: the execution PIC, or TL Pengadaan when none is appointed.
             AmendmentState::MenungguTlPengadaan => $procurement->executor !== null
                 ? collect([$procurement->executor])

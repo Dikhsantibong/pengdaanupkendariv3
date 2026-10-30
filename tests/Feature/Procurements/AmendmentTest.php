@@ -4,6 +4,7 @@ namespace Tests\Feature\Procurements;
 
 use App\Enums\AmendmentState;
 use App\Enums\PlanningApprovalState;
+use App\Enums\UserRole;
 use App\Models\ContractNumberFormat;
 use App\Models\DocumentType;
 use App\Models\Procurement;
@@ -336,6 +337,62 @@ class AmendmentTest extends TestCase
     /**
      * Draw the contract of the procurement.
      */
+    public function test_in_k3_and_lingkungan_the_team_leader_approves_once(): void
+    {
+        // As in K3 KAM and Lingkungan: the TL is the division's Direksi
+        // Pekerjaan, with no Asman above.
+        $this->director->forceFill(['is_active' => false])->save();
+        $this->teamLeader->forceFill(['role' => UserRole::DireksiPekerjaan])->save();
+        $this->drawContract();
+
+        $amendment = $this->readyAmendment();
+        $this->actingAs($this->proposer)->post(route('procurements.amendments.submit', [$this->procurement, $amendment]));
+
+        // Not asked twice: straight to the TL as the division's approver.
+        $this->assertSame(AmendmentState::MenungguPersetujuanAsman, $amendment->refresh()->state);
+        $this->decide($this->teamLeader, $amendment, true)->assertSessionHasNoErrors();
+
+        $this->assertSame(AmendmentState::MenungguTlPengadaan, $amendment->refresh()->state);
+        $this->assertNotNull($amendment->number);
+    }
+
+    public function test_a_team_leader_of_a_division_without_an_asman_account_approves_once(): void
+    {
+        // The TL holds no approval right and no Asman account is active.
+        $this->director->forceFill(['is_active' => false])->save();
+        $this->drawContract();
+
+        $amendment = $this->readyAmendment();
+        $this->actingAs($this->proposer)->post(route('procurements.amendments.submit', [$this->procurement, $amendment]));
+        $this->assertSame(AmendmentState::MenungguPersetujuanTl, $amendment->refresh()->state);
+
+        $this->decide($this->teamLeader, $amendment, true)->assertSessionHasNoErrors();
+
+        // On to Laksdan, not left waiting on an Asman who is not there.
+        $amendment->refresh();
+        $this->assertSame(AmendmentState::MenungguTlPengadaan, $amendment->state);
+        $this->assertSame($this->teamLeader->id, $amendment->director_reviewed_by);
+    }
+
+    public function test_an_amendment_already_waiting_on_a_missing_asman_is_decided_by_the_team_leader(): void
+    {
+        $this->drawContract();
+        $amendment = $this->readyAmendment();
+        $amendment->forceFill(['state' => AmendmentState::MenungguPersetujuanAsman, 'submitted_at' => now()])->save();
+
+        // With an Asman account, the TL does not decide that level.
+        $this->decide($this->teamLeader, $amendment, true)->assertForbidden();
+
+        $this->director->forceFill(['is_active' => false])->save();
+
+        $this->actingAs($this->teamLeader)
+            ->get(route('approvals.index', ['queue' => 'amendment']))
+            ->assertInertia(fn (Assert $page) => $page->where('requests.data.0.id', $amendment->id));
+
+        $this->decide($this->teamLeader, $amendment, true)->assertSessionHasNoErrors();
+        $this->assertSame(AmendmentState::MenungguTlPengadaan, $amendment->refresh()->state);
+    }
+
     protected function drawContract(?string $body = null): void
     {
         $type = DocumentType::query()->where('code', 'spk')->firstOrFail();

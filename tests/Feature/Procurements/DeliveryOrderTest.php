@@ -3,6 +3,7 @@
 namespace Tests\Feature\Procurements;
 
 use App\Enums\DeliveryOrderState;
+use App\Enums\UserRole;
 use App\Models\ContractNumberFormat;
 use App\Models\ContractType;
 use App\Models\DocumentType;
@@ -230,6 +231,47 @@ class DeliveryOrderTest extends TestCase
      *
      * @param  array<string, mixed>  $attributes
      */
+    public function test_in_k3_and_lingkungan_the_team_leader_approves_a_do_once(): void
+    {
+        // The TL leads the division (K3 KAM, Lingkungan); no Asman above.
+        $this->director->forceFill(['is_active' => false])->save();
+        $this->teamLeader->forceFill(['role' => UserRole::DireksiPekerjaan])->save();
+        $this->priceList();
+        $order = $this->request();
+
+        $this->actingAs($this->proposer)->post(route('procurements.delivery-orders.submit', [$this->procurement, $order]));
+        $this->assertSame(DeliveryOrderState::MenungguPersetujuanAsman, $order->refresh()->state);
+
+        $this->decide($this->teamLeader, $order);
+        $this->assertSame(DeliveryOrderState::DiRendan, $order->refresh()->state);
+    }
+
+    public function test_a_do_of_a_division_without_an_asman_account_goes_on_after_the_team_leader(): void
+    {
+        $this->director->forceFill(['is_active' => false])->save();
+        $this->priceList();
+        $order = $this->request();
+
+        $this->actingAs($this->proposer)->post(route('procurements.delivery-orders.submit', [$this->procurement, $order]));
+        $this->assertSame(DeliveryOrderState::MenungguPersetujuanTl, $order->refresh()->state);
+
+        $this->decide($this->teamLeader, $order);
+
+        // On to Rendan, not left waiting on an Asman who is not there.
+        $this->assertSame(DeliveryOrderState::DiRendan, $order->refresh()->state);
+
+        // One already waiting at the Asman level is the TL's to decide.
+        $waiting = $this->request();
+        $waiting->forceFill(['state' => DeliveryOrderState::MenungguPersetujuanAsman, 'submitted_at' => now()])->save();
+
+        $this->actingAs($this->teamLeader)
+            ->get(route('approvals.index', ['queue' => 'delivery-order']))
+            ->assertInertia(fn (Assert $page) => $page->where('requests.data.0.id', $waiting->id));
+
+        $this->decide($this->teamLeader, $waiting);
+        $this->assertSame(DeliveryOrderState::DiRendan, $waiting->refresh()->state);
+    }
+
     protected function khsContract(array $attributes = []): Procurement
     {
         $procurement = Procurement::factory()
