@@ -182,7 +182,7 @@ class ProcurementController extends Controller
     {
         return [
             'enabled' => ! $user->hasPermission(Permission::CreateProcurement)
-                && $user->hasPermission(Permission::ProposeWork),
+                && $user->mayProposeWork(),
             'workDirectorId' => $user->work_director_id,
             'division' => $user->workDirector?->name,
         ];

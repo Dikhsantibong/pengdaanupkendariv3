@@ -121,7 +121,7 @@ class ProcurementPolicy
     public function create(User $user): bool
     {
         return $user->hasPermission(Permission::CreateProcurement)
-            || $user->hasPermission(Permission::ProposeWork);
+            || $user->mayProposeWork();
     }
 
     /**

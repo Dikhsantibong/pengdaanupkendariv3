@@ -109,7 +109,7 @@ trait ProcurementValidationRules
 
         return $user instanceof User
             && ! $user->hasPermission(Permission::CreateProcurement)
-            && $user->hasPermission(Permission::ProposeWork);
+            && $user->mayProposeWork();
     }
 
     /**

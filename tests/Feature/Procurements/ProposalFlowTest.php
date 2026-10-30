@@ -312,7 +312,9 @@ class ProposalFlowTest extends TestCase
 
     public function test_a_director_proposing_for_their_division_is_approved_at_once(): void
     {
+        // Only a Direksi Pekerjaan who leads a team (TL K3, TL Lingkungan) proposes.
         $director = User::factory()->workDirector($this->division)->create();
+        User::factory()->proposer($this->division)->create(['team_leader_id' => $director->id]);
 
         $this->actingAs($director)
             ->post(route('procurements.store'), $this->payload())

@@ -5,6 +5,7 @@ namespace App\Http\Requests\Procurements;
 use App\Concerns\ProcurementValidationRules;
 use App\Enums\Permission;
 use App\Enums\UserRole;
+use App\Models\Procurement;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -12,6 +13,14 @@ use Illuminate\Validation\Rule;
 class StoreProcurementRequest extends FormRequest
 {
     use ProcurementValidationRules;
+
+    /**
+     * Turn away someone who may not register or propose work before validating.
+     */
+    public function authorize(): bool
+    {
+        return $this->user()?->can('create', Procurement::class) ?? false;
+    }
 
     /**
      * Prepare the data for validation.

@@ -57,7 +57,7 @@ class HandleInertiaRequests extends Middleware
                     // May only propose work: the create screen is the proposal form.
                     'proposeOnly' => $user !== null
                         && ! $user->hasPermission(Permission::CreateProcurement)
-                        && $user->hasPermission(Permission::ProposeWork),
+                        && $user->mayProposeWork(),
                     'assignPic' => $user !== null && Gate::forUser($user)->allows('assign-pic'),
                     'manageVendorAssessments' => $user !== null && Gate::forUser($user)->allows('manage-vendor-assessments'),
                     // Which menus to show, keyed by the right's name.

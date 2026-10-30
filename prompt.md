@@ -2536,6 +2536,17 @@ Pengamanan:
 
 ---
 
+# Usulan Pekerjaan oleh Direksi Pekerjaan
+
+- **Aturan:** Direksi Pekerjaan (Asman Operasi, Engineering, Pemeliharaan, Business Support) **tidak dapat** mengusulkan pekerjaan. Pengecualian: **TL K3 KAM** dan **TL Lingkungan**, yang berperan Direksi Pekerjaan sekaligus memimpin tim staf.
+- **Pembeda berbasis data:** Direksi Pekerjaan boleh mengusulkan hanya bila ia punya staf (ada user dengan `team_leader_id` = dirinya). Bila kelak Asman diberi staf, ia otomatis bisa mengusulkan; bila TL K3/Lingkungan tidak lagi punya staf, haknya hilang. Hak `procurement.propose` per peran tetap dapat diatur di Hak Akses.
+- **Kode:** `User::mayProposeWork()` (hak `ProposeWork` + syarat di atas) dipakai di `ProcurementPolicy::create`, flag `proposeOnly` (`HandleInertiaRequests`), `ProcurementController::proposalContext`, `ProcurementValidationRules::isProposalRequest`, dan `ProcurementService::create`. Menu/tombol "Usulkan Pekerjaan" tersembunyi untuk Asman.
+- **`StoreProcurementRequest::authorize()`** kini memeriksa izin `create`, sehingga yang tidak berhak langsung mendapat 403 sebelum validasi.
+- Persetujuan usulan, amandemen, dan DO oleh Asman tidak berubah.
+- **Test:** `TeamLeaderApprovalTest::test_only_the_k3_and_lingkungan_team_leaders_may_propose_among_the_direksi_pekerjaan`; `ProposalFlowTest::test_a_director_proposing_for_their_division_is_approved_at_once` disesuaikan (direksi yang memimpin tim).
+
+---
+
 # Teknologi
 
 Sesuai dengan `claude.md`.

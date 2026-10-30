@@ -50,7 +50,7 @@ class ProcurementService
             // Someone who may only propose raises a proposal for their own
             // division; it waits for that division's Direksi Pekerjaan.
             $isProposal = ! $author->hasPermission(Permission::CreateProcurement)
-                && $author->hasPermission(Permission::ProposeWork);
+                && $author->mayProposeWork();
 
             if ($isProposal) {
                 $plannerId = null;

@@ -129,6 +129,16 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * Whether the user may propose work: a Direksi Pekerjaan (Asman) only when
+     * they also lead a team, as TL K3 and TL Lingkungan do.
+     */
+    public function mayProposeWork(): bool
+    {
+        return $this->hasPermission(Permission::ProposeWork)
+            && ($this->role !== UserRole::DireksiPekerjaan || $this->leadsTeam());
+    }
+
+    /**
      * Determine whether the user oversees every procurement.
      */
     public function isSupervisor(): bool

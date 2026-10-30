@@ -18,6 +18,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 /**
@@ -211,41 +212,45 @@ class TeamLeaderApprovalTest extends TestCase
         }
     }
 
-    public function test_the_k3_team_leader_finds_the_staff_proposal_in_the_approval_menu(): void
+    public function test_the_k3_and_lingkungan_team_leaders_find_the_staff_proposal_in_the_approval_menu(): void
     {
-        $division = WorkDirector::factory()->create(['name' => 'Team Leader K3']);
-        $teamLeader = User::factory()->workDirector($division)->create(['name' => 'Musriadi']);
-        $staff = User::factory()->proposer($division)->create(['team_leader_id' => $teamLeader->id]);
         // The two proposal papers, previewed in the review panel.
         DocumentType::factory()->create(['code' => 'tor', 'name' => 'TOR (Term of Reference)']);
         DocumentType::factory()->create(['code' => 'nota-dinas-usulan', 'name' => 'Nota Dinas Usulan', 'upload_only' => true]);
 
-        $procurement = $this->propose($staff, $division);
+        foreach (['Team Leader K3' => 'Musriadi', 'Team Leader Lingkungan' => 'Sadri'] as $name => $leaderName) {
+            $division = WorkDirector::factory()->create(['name' => $name]);
+            $teamLeader = User::factory()->workDirector($division)->create(['name' => $leaderName]);
+            $staff = User::factory()->proposer($division)->create(['team_leader_id' => $teamLeader->id]);
 
-        $this->actingAs($teamLeader)
-            ->get(route('approvals.index'))
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                // The proposals come first.
-                ->where('queue', 'proposal')
-                ->where('queues.0.key', 'proposal')
-                ->where('queues.0.waiting', 1)
-                ->where('procurements.data.0.id', $procurement->id)
-                ->where("reviews.{$procurement->id}.can_decide", true)
-                ->where("reviews.{$procurement->id}.approve_is_final", true)
-                ->has("reviews.{$procurement->id}.papers", 2));
+            $procurement = $this->propose($staff, $division);
 
-        // Decided from the Approval menu, it goes back there.
-        $this->actingAs($teamLeader)
-            ->from(route('approvals.index'))
-            ->post(route('proposals.decide', $procurement), ['decision' => 'approve', 'from' => 'approvals'])
-            ->assertRedirect(route('approvals.index'));
+            $this->actingAs($teamLeader)
+                ->get(route('approvals.index'))
+                ->assertOk()
+                ->assertInertia(fn ($page) => $page
+                    // The proposals come first, only their own division's.
+                    ->where('queue', 'proposal')
+                    ->where('queues.0.key', 'proposal')
+                    ->where('queues.0.waiting', 1)
+                    ->has('procurements.data', 1)
+                    ->where('procurements.data.0.id', $procurement->id)
+                    ->where("reviews.{$procurement->id}.can_decide", true)
+                    ->where("reviews.{$procurement->id}.approve_is_final", true)
+                    ->has("reviews.{$procurement->id}.papers", 2));
 
-        $this->assertTrue($procurement->refresh()->isProposalApproved());
+            // Decided from the Approval menu, it goes back there.
+            $this->actingAs($teamLeader)
+                ->from(route('approvals.index'))
+                ->post(route('proposals.decide', $procurement), ['decision' => 'approve', 'from' => 'approvals'])
+                ->assertRedirect(route('approvals.index'));
 
-        $this->actingAs($teamLeader)
-            ->get(route('approvals.index', ['queue' => 'proposal', 'view' => 'decided']))
-            ->assertInertia(fn ($page) => $page->where('procurements.data.0.id', $procurement->id));
+            $this->assertTrue($procurement->refresh()->isProposalApproved(), $name);
+
+            $this->actingAs($teamLeader)
+                ->get(route('approvals.index', ['queue' => 'proposal', 'view' => 'decided']))
+                ->assertInertia(fn ($page) => $page->where('procurements.data.0.id', $procurement->id));
+        }
     }
 
     public function test_a_team_leader_of_a_division_without_an_asman_account_approves_once(): void
@@ -337,12 +342,56 @@ class TeamLeaderApprovalTest extends TestCase
         $this->assertSame($finance->teamLeader?->email, 'nova.sang.jaya@upkendari.go.id');
     }
 
+    public function test_only_the_k3_and_lingkungan_team_leaders_may_propose_among_the_direksi_pekerjaan(): void
+    {
+        // An Asman without a team may not propose: no form, no store.
+        $this->assertFalse($this->asman->can('create', Procurement::class));
+
+        $this->actingAs($this->asman)->get(route('procurements.create'))->assertForbidden();
+        $this->actingAs($this->asman)
+            ->post(route('procurements.store'), $this->proposalPayload($this->asman))
+            ->assertForbidden();
+        $this->assertSame(0, Procurement::query()->count());
+
+        $this->actingAs($this->asman)->get(route('dashboard'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('auth.permissions.createProcurement', false)
+                ->where('auth.permissions.proposeOnly', false));
+
+        // TL K3 KAM and TL Lingkungan lead a team: they still propose.
+        foreach (['Team Leader K3', 'Team Leader Lingkungan'] as $name) {
+            $division = WorkDirector::factory()->create(['name' => $name]);
+            $teamLeader = User::factory()->workDirector($division)->create();
+            User::factory()->proposer($division)->create(['team_leader_id' => $teamLeader->id]);
+
+            $this->assertTrue($teamLeader->can('create', Procurement::class));
+            $this->assertTrue($this->propose($teamLeader, $division)->isProposalApproved());
+        }
+
+        // An ordinary proposer is unaffected.
+        $this->assertTrue($this->staff->can('create', Procurement::class));
+    }
+
     /**
      * Raise a proposal as the given user.
      */
     protected function propose(User $proposer, ?WorkDirector $division = null): Procurement
     {
-        $this->actingAs($proposer)->post(route('procurements.store'), [
+        $this->actingAs($proposer)
+            ->post(route('procurements.store'), $this->proposalPayload($proposer, $division))
+            ->assertSessionHasNoErrors();
+
+        return Procurement::query()->latest('id')->firstOrFail();
+    }
+
+    /**
+     * A complete proposal form, as the given user would send it.
+     *
+     * @return array<string, mixed>
+     */
+    protected function proposalPayload(User $proposer, ?WorkDirector $division = null): array
+    {
+        return [
             'name' => 'Usulan '.$proposer->name,
             'work_director_id' => ($division ?? $this->division)->id,
             'budget_source_id' => BudgetSource::factory()->create()->id,
@@ -356,8 +405,6 @@ class TeamLeaderApprovalTest extends TestCase
             'tor_file' => UploadedFile::fake()->create('tor-ttd.pdf', 80, 'application/pdf'),
             'memo_file' => UploadedFile::fake()->create('nota-dinas.pdf', 40, 'application/pdf'),
             'progress_status_id' => ProgressStatus::factory()->asDefault()->create()->id,
-        ])->assertSessionHasNoErrors();
-
-        return Procurement::query()->latest('id')->firstOrFail();
+        ];
     }
 }
