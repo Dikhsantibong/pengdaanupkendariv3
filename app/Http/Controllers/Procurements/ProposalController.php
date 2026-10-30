@@ -12,8 +12,8 @@ use App\Models\ProcurementAttachment;
 use App\Models\User;
 use App\Services\ProcurementService;
 use App\Support\ProposalDocuments;
+use App\Support\ProposalQueue;
 use App\Support\UploadedFileType;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -43,7 +43,7 @@ class ProposalController extends Controller
         $canApprove = $leadsDivision || $leadsTeam || $user->role === UserRole::Administrator;
 
         $awaiting = $canApprove
-            ? $this->awaitingDecisionBy(Procurement::query(), $user)
+            ? ProposalQueue::awaiting($user)
                 ->with(['creator', 'workDirector', 'targetUnits', 'targetUnit'])
                 ->withCount('attachments')
                 ->oldest('proposal_submitted_at')
@@ -51,10 +51,7 @@ class ProposalController extends Controller
             : collect();
 
         $decided = $canApprove
-            ? Procurement::query()
-                ->where(fn (Builder $query) => $query
-                    ->where('proposal_reviewed_by', $user->id)
-                    ->orWhere('proposal_tl_reviewed_by', $user->id))
+            ? ProposalQueue::decided($user)
                 ->with(['creator', 'workDirector', 'targetUnits', 'targetUnit'])
                 ->withCount('attachments')
                 ->latest('proposal_reviewed_at')
@@ -172,12 +169,17 @@ class ProposalController extends Controller
 
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => $approved
-                ? "Usulan {$procurement->name} disetujui dan diteruskan ke perencanaan."
-                : "Usulan {$procurement->name} dikembalikan ke pengusul.",
+            'message' => match (true) {
+                ! $approved => "Usulan {$procurement->name} dikembalikan ke pengusul.",
+                $procurement->isProposalApproved() => "Usulan {$procurement->name} disetujui dan diteruskan ke perencanaan.",
+                default => "Usulan {$procurement->name} disetujui dan diteruskan ke Direksi Pekerjaan (Asman).",
+            },
         ]);
 
-        return to_route('proposals.index');
+        // Decided from the Approval menu: back to its queue.
+        return $request->input('from') === 'approvals'
+            ? back()
+            : to_route('proposals.index');
     }
 
     /**
@@ -249,42 +251,6 @@ class ProposalController extends Controller
             UploadedFileType::headers($attachment->mime),
             UploadedFileType::disposition($attachment->mime, $attachment->isPreviewable()),
         );
-    }
-
-    /**
-     * Limit a query to the proposals waiting on the user's decision.
-     *
-     * A team leader decides their staff's proposals first; the Direksi
-     * Pekerjaan then decides those of their division. The administrator sees
-     * both queues.
-     *
-     * @param  Builder<Procurement>  $query
-     * @return Builder<Procurement>
-     */
-    protected function awaitingDecisionBy(Builder $query, User $user): Builder
-    {
-        // An incomplete proposal is still with its proposer.
-        $query->whereNotNull('proposal_completed_at');
-
-        if ($user->role === UserRole::Administrator) {
-            return $query->whereIn('proposal_state', [
-                ProposalState::MenungguPersetujuanTl->value,
-                ProposalState::MenungguPersetujuan->value,
-            ]);
-        }
-
-        return $query
-            ->where('created_by', '!=', $user->id)
-            ->where(fn (Builder $levels) => $levels
-                ->where(fn (Builder $team) => $team
-                    ->where('proposal_state', ProposalState::MenungguPersetujuanTl->value)
-                    ->whereIn('created_by', User::query()->select('id')->where('team_leader_id', $user->id)))
-                ->when($user->hasPermission(Permission::ApproveProposal), fn (Builder $levels) => $levels
-                    ->orWhere(fn (Builder $division) => $division
-                        ->where('proposal_state', ProposalState::MenungguPersetujuan->value)
-                        ->where('work_director_id', $user->work_director_id ?? 0)))
-                // A division without a Direksi Pekerjaan account: its TL decides.
-                ->orWhereIn('id', $this->procurements->proposalsLeftToTeamLeader($user)));
     }
 
     /**

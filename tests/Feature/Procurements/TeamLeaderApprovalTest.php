@@ -5,6 +5,7 @@ namespace Tests\Feature\Procurements;
 use App\Enums\ActivityType;
 use App\Enums\ProposalState;
 use App\Models\BudgetSource;
+use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProgressStatus;
 use App\Models\TargetUnit;
@@ -208,6 +209,43 @@ class TeamLeaderApprovalTest extends TestCase
                 'type' => ActivityType::UsulanDisetujui->value,
             ]);
         }
+    }
+
+    public function test_the_k3_team_leader_finds_the_staff_proposal_in_the_approval_menu(): void
+    {
+        $division = WorkDirector::factory()->create(['name' => 'Team Leader K3']);
+        $teamLeader = User::factory()->workDirector($division)->create(['name' => 'Musriadi']);
+        $staff = User::factory()->proposer($division)->create(['team_leader_id' => $teamLeader->id]);
+        // The two proposal papers, previewed in the review panel.
+        DocumentType::factory()->create(['code' => 'tor', 'name' => 'TOR (Term of Reference)']);
+        DocumentType::factory()->create(['code' => 'nota-dinas-usulan', 'name' => 'Nota Dinas Usulan', 'upload_only' => true]);
+
+        $procurement = $this->propose($staff, $division);
+
+        $this->actingAs($teamLeader)
+            ->get(route('approvals.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                // The proposals come first.
+                ->where('queue', 'proposal')
+                ->where('queues.0.key', 'proposal')
+                ->where('queues.0.waiting', 1)
+                ->where('procurements.data.0.id', $procurement->id)
+                ->where("reviews.{$procurement->id}.can_decide", true)
+                ->where("reviews.{$procurement->id}.approve_is_final", true)
+                ->has("reviews.{$procurement->id}.papers", 2));
+
+        // Decided from the Approval menu, it goes back there.
+        $this->actingAs($teamLeader)
+            ->from(route('approvals.index'))
+            ->post(route('proposals.decide', $procurement), ['decision' => 'approve', 'from' => 'approvals'])
+            ->assertRedirect(route('approvals.index'));
+
+        $this->assertTrue($procurement->refresh()->isProposalApproved());
+
+        $this->actingAs($teamLeader)
+            ->get(route('approvals.index', ['queue' => 'proposal', 'view' => 'decided']))
+            ->assertInertia(fn ($page) => $page->where('procurements.data.0.id', $procurement->id));
     }
 
     public function test_a_team_leader_of_a_division_without_an_asman_account_approves_once(): void

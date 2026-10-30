@@ -23,9 +23,11 @@ import {
 import { formatCurrency, formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import procurements from '@/routes/procurements';
+import proposals from '@/routes/proposals';
 import type { Paginated, ProcurementRow } from '@/types';
 
-export type ReviewQueue = 'planning' | 'execution' | 'handover' | 'payment';
+export type ReviewQueue =
+    'proposal' | 'planning' | 'execution' | 'handover' | 'payment';
 
 /** What the reviewer reads before deciding one submission. */
 export type Review = {
@@ -37,6 +39,9 @@ export type Review = {
     partner_name: string | null;
     payment_state: string | null;
     tl_reviewer: string | null;
+    /** A proposal: where it waits, and whether this decision is the last. */
+    proposal_state?: string | null;
+    approve_is_final?: boolean;
     can_decide: boolean;
     papers: { name: string; url: string; is_image: boolean }[];
 };
@@ -50,8 +55,21 @@ const QUEUE: Record<
         submitter: string;
         approve: (review: Review) => string;
         url: (id: number) => string;
+        /** A proposal is decided with its own route and words. */
+        proposal?: boolean;
     }
 > = {
+    proposal: {
+        stage: 'Usulan Pekerjaan',
+        tab: 'usulan',
+        submitter: 'Pengusul',
+        approve: (review) =>
+            review.approve_is_final
+                ? 'Setujui & Masuk Perencanaan'
+                : 'Setujui & Teruskan ke Direksi Pekerjaan',
+        url: (id) => proposals.decide(id).url,
+        proposal: true,
+    },
     planning: {
         stage: 'Perencanaan',
         tab: 'perencanaan',
@@ -220,6 +238,21 @@ function ReviewSheet({
     });
 
     const decide = (approved: boolean) => {
+        if (words.proposal) {
+            // The proposal route takes a decision word, and comes back here.
+            form.transform((data) => ({
+                decision: approved ? 'approve' : 'return',
+                note: data.note,
+                from: 'approvals',
+            }));
+            form.post(words.url(row.id), {
+                preserveScroll: true,
+                onSuccess: onClose,
+            });
+
+            return;
+        }
+
         form.transform((data) => ({ ...data, approved }));
         form.put(words.url(row.id), {
             preserveScroll: true,
@@ -327,14 +360,18 @@ function ReviewSheet({
                         )}
                         <Link
                             href={
-                                procurements.show(row.id, {
-                                    query: { tab: words.tab },
-                                }).url
+                                words.proposal
+                                    ? proposals.show(row.id).url
+                                    : procurements.show(row.id, {
+                                          query: { tab: words.tab },
+                                      }).url
                             }
                             className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
                         >
                             <ExternalLink className="size-3.5" />
-                            Buka detail pengadaan
+                            {words.proposal
+                                ? 'Buka halaman usulan'
+                                : 'Buka detail pengadaan'}
                         </Link>
                     </aside>
 

@@ -59,7 +59,7 @@ class ContractApprovalQueueTest extends TestCase
         $amendment = $this->amendment('menunggu_persetujuan_tl');
 
         $this->actingAs($this->teamLeader)
-            ->get(route('approvals.index'))
+            ->get(route('approvals.index', ['queue' => 'amendment']))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('auth.permissions.menus.approvals', true)
@@ -93,7 +93,8 @@ class ContractApprovalQueueTest extends TestCase
                 ->where('queue', 'delivery-order')
                 ->where('requests.data', fn ($rows): bool => collect($rows)->pluck('id')->all() === [$order->id])
                 ->where('requests.data.0.title', 'DO ke-1')
-                ->where('queues', fn ($queues): bool => collect($queues)->pluck('waiting', 'key')->all() === ['amendment' => 1, 'delivery-order' => 1]));
+                // Their own proposal queue (empty) first, then the requests.
+                ->where('queues', fn ($queues): bool => collect($queues)->pluck('waiting', 'key')->all() === ['proposal' => 0, 'amendment' => 1, 'delivery-order' => 1]));
     }
 
     public function test_rendan_and_laksdan_find_the_steps_on_their_side(): void

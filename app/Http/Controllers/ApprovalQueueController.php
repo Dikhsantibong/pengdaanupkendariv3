@@ -6,6 +6,7 @@ use App\Enums\FinanceSection;
 use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
+use App\Enums\ProposalState;
 use App\Http\Resources\ProcurementResource;
 use App\Models\Procurement;
 use App\Models\ProcurementAmendment;
@@ -14,10 +15,13 @@ use App\Models\ProcurementChecklistFile;
 use App\Models\ProcurementDeliveryOrder;
 use App\Models\ProcurementDocument;
 use App\Models\User;
+use App\Services\ProcurementService;
 use App\Support\ContractRequestQueue;
 use App\Support\MasterDataOptions;
 use App\Support\PaymentQueue;
 use App\Support\ProcurementFilters;
+use App\Support\ProposalDocuments;
+use App\Support\ProposalQueue;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -44,6 +48,12 @@ class ApprovalQueueController extends Controller
     protected const PAYMENT_QUEUE = 'payment';
 
     /**
+     * The work proposal queue, open to the proposer's TL and the division's
+     * Direksi Pekerjaan: see ProposalQueue.
+     */
+    protected const PROPOSAL_QUEUE = 'proposal';
+
+    /**
      * The queues of contract requests, open to whoever takes part in them
      * (TL, Asman, Rendan, Laksdan): their steps are not one right but the
      * people around the job, see ContractRequestQueue.
@@ -66,10 +76,14 @@ class ApprovalQueueController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        $queues = array_keys(array_filter(
-            self::QUEUES,
-            fn (array $queue): bool => $user->hasPermission($queue['permission']),
-        ));
+        // The proposals come first: the journey starts there.
+        $queues = [
+            ...(ProposalQueue::involves($user) ? [self::PROPOSAL_QUEUE] : []),
+            ...array_keys(array_filter(
+                self::QUEUES,
+                fn (array $queue): bool => $user->hasPermission($queue['permission']),
+            )),
+        ];
 
         if (PaymentQueue::involves($user)) {
             $queues[] = self::PAYMENT_QUEUE;
@@ -106,6 +120,7 @@ class ApprovalQueueController extends Controller
                     'checklists.checklistItem', 'checklists.files',
                     'documents.documentType', 'documents.signedUploads',
                     'handoverSubmitter', 'paymentSubmitter', 'paymentTeamLeaderReviewer',
+                    'creator', 'attachments', 'documents.documentType', 'documents.signedUploads',
                 ])
                 ->paginate(15)
                 ->withQueryString();
@@ -140,6 +155,7 @@ class ApprovalQueueController extends Controller
     protected function review(User $user, string $queue, Procurement $procurement): array
     {
         [$submittedAt, $submittedBy, $revision, $note, $ability] = match ($queue) {
+            self::PROPOSAL_QUEUE => [$procurement->proposal_submitted_at, $procurement->creator?->name, 0, $procurement->proposal_review_note, 'approveProposal'],
             'planning' => [$procurement->planning_submitted_at, $procurement->planner?->name, $procurement->planning_revision, $procurement->planning_review_note, 'reviewPlanning'],
             'execution' => [$procurement->execution_submitted_at, $procurement->executor?->name, $procurement->execution_revision, $procurement->execution_review_note, 'reviewExecution'],
             'handover' => [$procurement->handover_submitted_at, $procurement->handoverSubmitter?->name, $procurement->handover_revision, $procurement->handover_review_note, 'reviewHandover'],
@@ -155,6 +171,11 @@ class ApprovalQueueController extends Controller
             'partner_name' => $procurement->partner_name,
             'payment_state' => $queue === self::PAYMENT_QUEUE ? $procurement->payment_approval_state->value : null,
             'tl_reviewer' => $queue === self::PAYMENT_QUEUE ? $procurement->paymentTeamLeaderReviewer?->name : null,
+            // A proposal: whether this decision is the last (straight to planning).
+            'proposal_state' => $queue === self::PROPOSAL_QUEUE ? $procurement->proposal_state->value : null,
+            'approve_is_final' => $queue === self::PROPOSAL_QUEUE
+                && ($procurement->proposal_state === ProposalState::MenungguPersetujuan
+                    || app(ProcurementService::class)->teamLeaderApprovalIsFinal($procurement, $user)),
             'can_decide' => $user->can($ability, $procurement),
             'papers' => $this->papers($queue, $procurement),
         ];
@@ -169,6 +190,31 @@ class ApprovalQueueController extends Controller
      */
     protected function papers(string $queue, Procurement $procurement): array
     {
+        // A proposal: its TOR and Nota Dinas Usulan, then its supporting files.
+        if ($queue === self::PROPOSAL_QUEUE) {
+            $papers = collect(ProposalDocuments::payload($procurement))
+                ->flatMap(fn (array $document): array => $document['uploads'] === []
+                    ? ($document['preview_url'] === null ? [] : [[
+                        'name' => $document['type_name'].' (draf)',
+                        'url' => $document['preview_url'],
+                        'is_image' => false,
+                    ]])
+                    : array_map(fn (array $upload): array => [
+                        'name' => $document['type_name'].' · '.$upload['file_name'],
+                        'url' => $upload['url'],
+                        'is_image' => $upload['is_image'],
+                    ], $document['uploads']));
+
+            return $papers
+                ->concat(array_map(fn (array $file): array => [
+                    'name' => 'Pendukung · '.$file['file_name'],
+                    'url' => $file['url'],
+                    'is_image' => $file['is_image'],
+                ], ProposalDocuments::supporting($procurement)))
+                ->values()
+                ->all();
+        }
+
         if (in_array($queue, ['handover', self::PAYMENT_QUEUE], true)) {
             $section = $queue === 'handover' ? FinanceSection::Penyerahan : FinanceSection::Pembayaran;
 
@@ -218,7 +264,7 @@ class ApprovalQueueController extends Controller
     {
         return ['queues' => array_map(fn (string $key): array => [
             'key' => $key,
-            'label' => self::QUEUES[$key]['label'] ?? self::REQUEST_QUEUES[$key] ?? 'Pembayaran',
+            'label' => self::QUEUES[$key]['label'] ?? self::REQUEST_QUEUES[$key] ?? ($key === self::PROPOSAL_QUEUE ? 'Usulan Pekerjaan' : 'Pembayaran'),
             'waiting' => match ($key) {
                 'amendment' => ContractRequestQueue::amendmentsAwaiting($user)->count(),
                 'delivery-order' => ContractRequestQueue::deliveryOrdersAwaiting($user)->count(),
@@ -293,6 +339,12 @@ class ApprovalQueueController extends Controller
      */
     protected function queueQuery(User $user, string $queue, string $view): Builder
     {
+        if ($queue === self::PROPOSAL_QUEUE) {
+            return $view === 'waiting'
+                ? ProposalQueue::awaiting($user)->oldest('proposal_submitted_at')->orderBy('id')
+                : ProposalQueue::decided($user)->latest('proposal_reviewed_at')->latest('proposal_tl_reviewed_at')->latest('id');
+        }
+
         if ($queue === self::PAYMENT_QUEUE) {
             return $view === 'waiting'
                 ? PaymentQueue::awaiting($user)->orderBy('payment_submitted_at')->orderBy('id')

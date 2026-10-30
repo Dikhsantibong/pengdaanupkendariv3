@@ -116,8 +116,8 @@ class ApprovalQueueTest extends TestCase
         $this->actingAs($admin)
             ->get(route('approvals.index', ['queue' => 'execution']))
             ->assertInertia(fn (Assert $page) => $page
-                // Perencanaan, Pelaksanaan, Penyerahan, Pembayaran, Amandemen, DO.
-                ->has('queues', 6)
+                // Usulan, Perencanaan, Pelaksanaan, Penyerahan, Pembayaran, Amandemen, DO.
+                ->has('queues', 7)
                 ->where('queue', 'execution')
                 ->where('procurements.data.0.id', $this->executionWaiting->id));
     }

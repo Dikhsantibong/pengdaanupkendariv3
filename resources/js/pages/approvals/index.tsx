@@ -18,7 +18,8 @@ import type {
     ProcurementRow,
 } from '@/types';
 
-type ProcurementQueueKey = 'planning' | 'execution' | 'handover' | 'payment';
+type ProcurementQueueKey =
+    'proposal' | 'planning' | 'execution' | 'handover' | 'payment';
 
 /** Amendments and Delivery Orders: requests, not procurements. */
 type RequestQueueKey = 'amendment' | 'delivery-order';
@@ -71,6 +72,19 @@ const queueCopy: Record<
         empty: Record<QueueView, [string, string]>;
     }
 > = {
+    proposal: {
+        decider: 'TL pengusul dan Direksi Pekerjaan',
+        empty: {
+            waiting: [
+                'Tidak ada usulan pekerjaan yang menunggu Anda',
+                'Usulan staf yang perlu persetujuan TL atau Direksi Pekerjaan bidang Anda akan tampil di sini.',
+            ],
+            decided: [
+                'Belum ada usulan yang Anda putuskan',
+                'Usulan yang Anda setujui atau kembalikan akan tampil di sini.',
+            ],
+        },
+    },
     planning: {
         decider: 'TL ICC',
         empty: {

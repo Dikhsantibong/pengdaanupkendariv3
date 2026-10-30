@@ -8,10 +8,8 @@ use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Enums\ProposalState;
-use App\Enums\UserRole;
 use App\Models\Procurement;
 use App\Models\User;
-use App\Services\ProcurementService;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -184,26 +182,8 @@ class DashboardTasks
      */
     protected static function proposalsToApprove(User $user): array
     {
-        $levels = [ProposalState::MenungguPersetujuanTl->value, ProposalState::MenungguPersetujuan->value];
-
-        $query = Procurement::query()
-            ->whereIn('proposal_state', $levels)
-            // An incomplete proposal is still with its proposer.
-            ->whereNotNull('proposal_completed_at')
-            ->when($user->role !== UserRole::Administrator, fn (Builder $query) => $query
-                ->where('created_by', '!=', $user->id)
-                ->where(fn (Builder $waiting) => $waiting
-                    // The team leader decides first ...
-                    ->where(fn (Builder $team) => $team
-                        ->where('proposal_state', ProposalState::MenungguPersetujuanTl->value)
-                        ->whereIn('created_by', User::query()->select('id')->where('team_leader_id', $user->id)))
-                    // ... then the division's Direksi Pekerjaan.
-                    ->when($user->hasPermission(Permission::ApproveProposal), fn (Builder $waiting) => $waiting
-                        ->orWhere(fn (Builder $division) => $division
-                            ->where('proposal_state', ProposalState::MenungguPersetujuan->value)
-                            ->where('work_director_id', $user->work_director_id ?? 0)))
-                    // A division without a Direksi Pekerjaan account: its TL decides.
-                    ->orWhereIn('id', app(ProcurementService::class)->proposalsLeftToTeamLeader($user))))
+        // The same rule as the Usulan and Approval menus.
+        $query = ProposalQueue::awaiting($user)
             ->with('creator')
             ->oldest('proposal_submitted_at');
 

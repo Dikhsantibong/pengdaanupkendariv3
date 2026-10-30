@@ -2442,6 +2442,12 @@ Pengamanan:
     - Di tablet / ponsel, daftar berkas menjadi deretan tombol di atas pratinjau.
   3. **Putuskan:** tombol utama Setujui (label sesuai tahap, mis. "Setujui & Teruskan ke Pembayaran", "Setujui: Lunas & Tutup Pengadaan") dan "Kembalikan untuk Revisi" (catatan wajib). Keputusan memakai rute yang sama dengan kartu Persetujuan di detail pengadaan.
 - Amandemen dan DO tetap dibuka di tab masing-masing karena isiannya lebih panjang.
+- **Antrean Usulan Pekerjaan di menu Approval** (tab pertama):
+  - Berisi usulan yang menunggu keputusan pengguna: TL pengusul; Direksi Pekerjaan bidang, termasuk TL K3 KAM / TL Lingkungan; serta TL di bidang tanpa akun Asman.
+  - Panel tinjauan menampilkan TOR, Nota Dinas Usulan, dan dokumen pendukung. Label tombol: "Setujui & Masuk Perencanaan" atau "Setujui & Teruskan ke Direksi Pekerjaan".
+  - Setelah memutuskan dari menu Approval, pengguna kembali ke menu Approval.
+  - Aturan antrean disatukan di `App\Support\ProposalQueue` dan dipakai menu Usulan, menu Approval, dashboard, serta gerbang menu Approval. Dengan begitu Direksi Pekerjaan / TL tetap menemukan usulan meski menu "Usulan Pekerjaan" tidak tampil di sidebarnya.
+  - **Test:** `TeamLeaderApprovalTest::test_the_k3_team_leader_finds_the_staff_proposal_in_the_approval_menu`.
 - **Teknis:** prop `reviews` (dibangun di `ApprovalQueueController::review()` / `papers()`); komponen `components/approval-review.tsx` (`ReviewList`, panel tinjauan). **Test:** `ApprovalQueueTest::test_each_submission_carries_what_the_reviewer_reads_before_deciding`.
 
 ---
