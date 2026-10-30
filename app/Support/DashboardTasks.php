@@ -11,6 +11,7 @@ use App\Enums\ProposalState;
 use App\Enums\UserRole;
 use App\Models\Procurement;
 use App\Models\User;
+use App\Services\ProcurementService;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -200,14 +201,16 @@ class DashboardTasks
                     ->when($user->hasPermission(Permission::ApproveProposal), fn (Builder $waiting) => $waiting
                         ->orWhere(fn (Builder $division) => $division
                             ->where('proposal_state', ProposalState::MenungguPersetujuan->value)
-                            ->where('work_director_id', $user->work_director_id ?? 0)))))
+                            ->where('work_director_id', $user->work_director_id ?? 0)))
+                    // A division without a Direksi Pekerjaan account: its TL decides.
+                    ->orWhereIn('id', app(ProcurementService::class)->proposalsLeftToTeamLeader($user))))
             ->with('creator')
             ->oldest('proposal_submitted_at');
 
         return self::collect(
             $query,
             fn (Procurement $procurement): string => 'Diusulkan oleh '.($procurement->creator->name ?? '-')
-                .($procurement->proposal_state === ProposalState::MenungguPersetujuanTl ? ' · persetujuan TL' : ' · persetujuan Asman'),
+                .($procurement->proposal_state === ProposalState::MenungguPersetujuanTl ? ' · persetujuan TL' : ' · persetujuan Direksi Pekerjaan'),
             fn (Procurement $procurement): ?string => $procurement->proposal_submitted_at?->toDateTimeString(),
         );
     }
@@ -237,7 +240,7 @@ class DashboardTasks
                 $procurement->proposal_state === ProposalState::Dikembalikan => 'Dikembalikan: '.($procurement->proposal_review_note ?? 'perlu diperbaiki'),
                 $procurement->isProposalHeld() => 'Belum lengkap, belum diteruskan ke TL / Asman',
                 $procurement->proposal_state === ProposalState::MenungguPersetujuanTl => 'Menunggu persetujuan TL',
-                default => 'Menunggu persetujuan Asman',
+                default => 'Menunggu persetujuan Direksi Pekerjaan',
             },
             fn (Procurement $procurement): ?string => $procurement->proposal_submitted_at?->toDateTimeString(),
         );

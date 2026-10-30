@@ -66,7 +66,7 @@ export function StateBadge({
 
     const label = {
         menunggu_persetujuan_tl: 'Menunggu Persetujuan TL',
-        menunggu_persetujuan: 'Menunggu Persetujuan Asman',
+        menunggu_persetujuan: 'Menunggu Persetujuan Direksi Pekerjaan',
         dikembalikan: 'Dikembalikan',
         disetujui: 'Disetujui',
     }[row.state];

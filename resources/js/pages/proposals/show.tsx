@@ -209,9 +209,12 @@ function DocumentViewer({
 function DecisionPanel({
     proposalId,
     atTeamLeader,
+    finalAtTeamLeader,
 }: {
     proposalId: number;
     atTeamLeader: boolean;
+    /** The TL's approval sends it straight to planning. */
+    finalAtTeamLeader: boolean;
 }) {
     const [returning, setReturning] = useState(false);
     const form = useForm<{ decision: 'approve' | 'return'; note: string }>({
@@ -253,7 +256,9 @@ function DecisionPanel({
                     </Button>
                     <p className="text-xs text-muted-foreground">
                         {atTeamLeader
-                            ? 'Usulan yang Anda setujui diteruskan ke Asman bidang untuk persetujuan akhir.'
+                            ? finalAtTeamLeader
+                                ? 'Anda Direksi Pekerjaan bidang ini: usulan yang Anda setujui langsung masuk perencanaan untuk penunjukan PIC Perencana.'
+                                : 'Usulan yang Anda setujui diteruskan ke Asman bidang untuk persetujuan akhir.'
                             : 'Usulan yang disetujui langsung masuk perencanaan untuk penunjukan PIC Perencana.'}
                     </p>
                 </div>
@@ -305,6 +310,7 @@ export default function ProposalShow({
     proposal: Proposal;
     can: {
         approve: boolean;
+        approveIsFinal: boolean;
         revise: boolean;
         editDocuments: boolean;
         openProcurement: boolean;
@@ -365,7 +371,8 @@ export default function ProposalShow({
             'Persetujuan TL',
             proposal.tl_reviewed_by
                 ? `${proposal.tl_reviewed_by} · ${formatDateTime(proposal.tl_reviewed_at)}`
-                : (proposal.team_leader ?? 'Tanpa TL (langsung ke Asman)'),
+                : (proposal.team_leader ??
+                  'Tanpa TL (langsung ke Direksi Pekerjaan)'),
         ],
         [
             'Pengusul',
@@ -432,6 +439,7 @@ export default function ProposalShow({
                                 atTeamLeader={
                                     proposal.state === 'menunggu_persetujuan_tl'
                                 }
+                                finalAtTeamLeader={can.approveIsFinal}
                             />
                         )}
 

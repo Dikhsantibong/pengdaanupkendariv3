@@ -182,6 +182,85 @@ class TeamLeaderApprovalTest extends TestCase
         $this->assertTrue($procurement->refresh()->isProposalApproved());
     }
 
+    public function test_the_k3_and_lingkungan_team_leader_approval_goes_straight_to_planning(): void
+    {
+        foreach (['Team Leader K3', 'Team Leader Lingkungan'] as $name) {
+            $division = WorkDirector::factory()->create(['name' => $name]);
+            $teamLeader = User::factory()->workDirector($division)->create();
+            $staff = User::factory()->proposer($division)->create(['team_leader_id' => $teamLeader->id]);
+
+            $procurement = $this->propose($staff, $division);
+
+            // Shown to the TL as the last decision.
+            $this->actingAs($teamLeader)
+                ->get(route('proposals.index'))
+                ->assertInertia(fn ($page) => $page->where('awaiting.0.id', $procurement->id));
+
+            $this->actingAs($teamLeader)
+                ->post(route('proposals.decide', $procurement), ['decision' => 'approve'])
+                ->assertRedirect();
+
+            $procurement->refresh();
+            $this->assertTrue($procurement->isProposalApproved(), $name);
+            $this->assertSame($teamLeader->id, $procurement->proposal_reviewed_by);
+            $this->assertDatabaseHas('procurement_activities', [
+                'procurement_id' => $procurement->id,
+                'type' => ActivityType::UsulanDisetujui->value,
+            ]);
+        }
+    }
+
+    public function test_a_team_leader_of_a_division_without_an_asman_account_approves_once(): void
+    {
+        // The TL holds no approval right and the division has no Asman account.
+        $division = WorkDirector::factory()->create(['name' => 'Team Leader Lingkungan']);
+        $teamLeader = User::factory()->proposer($division)->create(['position' => 'TL Lingkungan']);
+        $staff = User::factory()->proposer($division)->create(['team_leader_id' => $teamLeader->id]);
+
+        $procurement = $this->propose($staff, $division);
+        $this->assertSame(ProposalState::MenungguPersetujuanTl, $procurement->proposal_state);
+
+        $this->actingAs($teamLeader)
+            ->get(route('proposals.show', $procurement))
+            ->assertInertia(fn ($page) => $page->where('can.approve', true)->where('can.approveIsFinal', true));
+
+        $this->actingAs($teamLeader)
+            ->post(route('proposals.decide', $procurement), ['decision' => 'approve'])
+            ->assertRedirect();
+
+        // Not left waiting on an Asman who is not there.
+        $this->assertTrue($procurement->refresh()->isProposalApproved());
+    }
+
+    public function test_a_proposal_already_waiting_on_a_missing_asman_is_decided_by_its_team_leader(): void
+    {
+        $division = WorkDirector::factory()->create(['name' => 'Team Leader K3']);
+        $teamLeader = User::factory()->proposer($division)->create(['position' => 'TL K3 KAM']);
+        $staff = User::factory()->proposer($division)->create(['team_leader_id' => $teamLeader->id]);
+
+        $procurement = $this->propose($staff, $division);
+        // Forwarded before the rule, to an Asman level nobody holds.
+        $procurement->forceFill(['proposal_state' => ProposalState::MenungguPersetujuan])->save();
+
+        $this->actingAs($teamLeader)
+            ->get(route('proposals.index'))
+            ->assertInertia(fn ($page) => $page->where('awaiting.0.id', $procurement->id));
+
+        $this->actingAs($teamLeader)
+            ->post(route('proposals.decide', $procurement), ['decision' => 'approve'])
+            ->assertRedirect();
+
+        $this->assertTrue($procurement->refresh()->isProposalApproved());
+
+        // Where an Asman account exists, the TL still does not decide its level.
+        $other = $this->propose($this->staff);
+        $other->forceFill(['proposal_state' => ProposalState::MenungguPersetujuan])->save();
+
+        $this->actingAs($this->teamLeader)
+            ->post(route('proposals.decide', $other), ['decision' => 'approve'])
+            ->assertForbidden();
+    }
+
     public function test_an_administrator_sets_the_team_leader_but_never_the_user_themselves(): void
     {
         $administrator = User::factory()->administrator()->create();

@@ -346,7 +346,7 @@ class RoleDashboard
             $procurement->proposal_state === ProposalState::Dikembalikan => 'Usulan dikembalikan, perlu diperbaiki',
             $procurement->isProposalHeld() => 'Usulan belum lengkap, belum diteruskan ke TL / Asman',
             $procurement->proposal_state === ProposalState::MenungguPersetujuanTl => 'Menunggu persetujuan TL',
-            default => 'Menunggu persetujuan Asman',
+            default => 'Menunggu persetujuan Direksi Pekerjaan',
         };
     }
 

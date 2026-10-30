@@ -20,6 +20,7 @@ use App\Models\ProcurementDeliveryOrder;
 use App\Models\User;
 use App\Services\AmendmentService;
 use App\Services\DeliveryOrderService;
+use App\Services\ProcurementService;
 use App\Support\ProposalDocuments;
 
 class ProcurementPolicy
@@ -94,9 +95,15 @@ class ProcurementPolicy
             return false;
         }
 
-        return $level === ProposalState::MenungguPersetujuanTl
-            ? $this->leadsProposerOf($user, $procurement)
-            : $this->leadsDivisionOf($user, $procurement);
+        if ($level === ProposalState::MenungguPersetujuanTl) {
+            return $this->leadsProposerOf($user, $procurement);
+        }
+
+        // A division with no Direksi Pekerjaan account of its own: its TL
+        // decides, so a proposal never waits on an Asman who is not there.
+        return $this->leadsDivisionOf($user, $procurement)
+            || ($this->leadsProposerOf($user, $procurement)
+                && ! app(ProcurementService::class)->divisionHasApprover($procurement, $user));
     }
 
     /**

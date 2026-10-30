@@ -25,7 +25,8 @@ enum ProposalState: string
     {
         return match ($this) {
             self::MenungguPersetujuanTl => 'Menunggu Persetujuan TL',
-            self::MenungguPersetujuan => 'Menunggu Persetujuan Asman',
+            // The Asman, or the TL leading K3 KAM / Lingkungan.
+            self::MenungguPersetujuan => 'Menunggu Persetujuan Direksi Pekerjaan',
             self::Dikembalikan => 'Dikembalikan ke Pengusul',
             self::Disetujui => 'Disetujui Direksi Pekerjaan',
         };

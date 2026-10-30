@@ -136,6 +136,49 @@ class ProcurementService
     }
 
     /**
+     * Whether a team leader's approval of a proposal is the last one: the TL
+     * leads the division (K3 KAM, Lingkungan), or the division has no other
+     * Direksi Pekerjaan account to pass it to. Either way the proposal goes
+     * straight to planning instead of waiting on an Asman who is not there.
+     */
+    public function teamLeaderApprovalIsFinal(Procurement $procurement, User $teamLeader): bool
+    {
+        return $this->leadsDivision($teamLeader, $procurement)
+            || ! $this->divisionHasApprover($procurement, $teamLeader);
+    }
+
+    /**
+     * Whether the proposal's division has an active Direksi Pekerjaan account
+     * able to decide it, other than the given user and the proposer.
+     */
+    public function divisionHasApprover(Procurement $procurement, ?User $except = null): bool
+    {
+        return User::query()
+            ->active()
+            ->where('work_director_id', $procurement->work_director_id)
+            ->whereKeyNot(array_filter([$except?->id, $procurement->created_by]))
+            ->get()
+            ->contains(fn (User $user): bool => $user->hasPermission(Permission::ApproveProposal));
+    }
+
+    /**
+     * Proposals of the TL's staff waiting at the Direksi Pekerjaan level in a
+     * division that has no Direksi Pekerjaan account: theirs to decide.
+     *
+     * @return array<int, int>
+     */
+    public function proposalsLeftToTeamLeader(User $teamLeader): array
+    {
+        return Procurement::query()
+            ->where('proposal_state', ProposalState::MenungguPersetujuan->value)
+            ->whereNotNull('proposal_completed_at')
+            ->whereIn('created_by', User::query()->select('id')->where('team_leader_id', $teamLeader->id))
+            ->get()
+            ->reject(fn (Procurement $procurement): bool => $this->divisionHasApprover($procurement, $teamLeader))
+            ->modelKeys();
+    }
+
+    /**
      * Whether the user is the Direksi Pekerjaan of the procurement's division.
      */
     protected function leadsDivision(User $user, Procurement $procurement): bool
@@ -696,7 +739,7 @@ class ProcurementService
             $procurement->proposal_state = ProposalState::Dikembalikan;
             // Handed on again only once it is complete after the revision.
             $procurement->proposal_completed_at = null;
-        } elseif ($atTeamLeader && ! $this->leadsDivision($reviewer, $procurement)) {
+        } elseif ($atTeamLeader && ! $this->teamLeaderApprovalIsFinal($procurement, $reviewer)) {
             $procurement->proposal_state = ProposalState::MenungguPersetujuan;
         } else {
             $procurement->proposal_state = ProposalState::Disetujui;
@@ -724,6 +767,7 @@ class ProcurementService
             match (true) {
                 ! $approved => 'Usulan pekerjaan dikembalikan ke pengusul.'.($note !== null ? " Catatan: {$note}" : ''),
                 $forwarded => 'Usulan pekerjaan disetujui TL dan diteruskan ke Direksi Pekerjaan (Asman).',
+                $atTeamLeader => 'Usulan pekerjaan disetujui TL (Direksi Pekerjaan bidang) dan diteruskan ke perencanaan.',
                 default => 'Usulan pekerjaan disetujui Direksi Pekerjaan dan diteruskan ke perencanaan.',
             },
         );

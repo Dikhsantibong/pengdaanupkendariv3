@@ -141,6 +141,10 @@ class ProposalController extends Controller
             ],
             'can' => [
                 'approve' => $request->user()->can('approveProposal', $procurement),
+                // The TL's approval ends the round (K3 KAM, Lingkungan, or a
+                // division with no Asman account): straight to planning.
+                'approveIsFinal' => $procurement->proposal_state === ProposalState::MenungguPersetujuanTl
+                    && $this->procurements->teamLeaderApprovalIsFinal($procurement, $request->user()),
                 'revise' => $request->user()->can('reviseProposal', $procurement),
                 'editDocuments' => $request->user()->can('editDocument', $procurement),
                 'openProcurement' => $procurement->isProposalApproved(),
@@ -278,7 +282,9 @@ class ProposalController extends Controller
                 ->when($user->hasPermission(Permission::ApproveProposal), fn (Builder $levels) => $levels
                     ->orWhere(fn (Builder $division) => $division
                         ->where('proposal_state', ProposalState::MenungguPersetujuan->value)
-                        ->where('work_director_id', $user->work_director_id ?? 0))));
+                        ->where('work_director_id', $user->work_director_id ?? 0)))
+                // A division without a Direksi Pekerjaan account: its TL decides.
+                ->orWhereIn('id', $this->procurements->proposalsLeftToTeamLeader($user)));
     }
 
     /**
