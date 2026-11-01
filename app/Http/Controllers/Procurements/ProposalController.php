@@ -38,6 +38,20 @@ class ProposalController extends Controller
         /** @var User $user */
         $user = $request->user();
 
+        // Whoever oversees every proposal (the administrator by default)
+        // follows all proposers on one screen.
+        if ($user->hasPermission(Permission::ViewAllProposals)) {
+            return Inertia::render('proposals/index', [
+                'canApprove' => true,
+                'canPropose' => $user->can('create', Procurement::class),
+                'division' => null,
+                'awaiting' => [],
+                'decided' => [],
+                'mine' => [],
+                'overview' => $this->overview($request),
+            ]);
+        }
+
         $leadsDivision = $user->hasPermission(Permission::ApproveProposal);
         $leadsTeam = $user->leadsTeam();
         $canApprove = $leadsDivision || $leadsTeam || $user->role === UserRole::Administrator;
@@ -76,6 +90,63 @@ class ProposalController extends Controller
             'decided' => $decided->map(fn (Procurement $procurement): array => $this->row($procurement))->values()->all(),
             'mine' => $mine->map(fn (Procurement $procurement): array => $this->row($procurement))->values()->all(),
         ]);
+    }
+
+    /**
+     * Every proposer's proposals in three tabs: those waiting on a decision,
+     * every proposal raised, and every decision taken.
+     *
+     * @return array{tab: string, search: string|null, counts: array<string, int>, rows: mixed}
+     */
+    protected function overview(Request $request): array
+    {
+        $tabs = ['waiting', 'history', 'decisions'];
+        $tab = in_array($request->query('tab'), $tabs, true) ? (string) $request->query('tab') : 'waiting';
+        $search = $request->string('search')->trim()->value() ?: null;
+
+        $queries = [
+            'waiting' => fn () => Procurement::query()
+                ->whereNotNull('proposal_submitted_at')
+                ->whereIn('proposal_state', [
+                    ProposalState::MenungguPersetujuanTl->value,
+                    ProposalState::MenungguPersetujuan->value,
+                ]),
+            'history' => fn () => Procurement::query()->whereNotNull('proposal_submitted_at'),
+            'decisions' => fn () => Procurement::query()
+                ->whereNotNull('proposal_submitted_at')
+                ->where(fn ($query) => $query
+                    ->whereNotNull('proposal_reviewed_at')
+                    ->orWhereNotNull('proposal_tl_reviewed_at')),
+        ];
+
+        $rows = $queries[$tab]()
+            ->when($search !== null, fn ($query) => $query->where(fn ($match) => $match
+                ->where('name', 'like', "%{$search}%")
+                ->orWhere('number', 'like', "%{$search}%")
+                ->orWhere('prk_number', 'like', "%{$search}%")
+                ->orWhereHas('creator', fn ($creator) => $creator->where('name', 'like', "%{$search}%"))))
+            ->with(['creator', 'workDirector', 'targetUnits', 'targetUnit', 'proposalReviewer', 'proposalTeamLeaderReviewer'])
+            ->withCount('attachments')
+            ->when($tab === 'waiting', fn ($query) => $query->oldest('proposal_submitted_at'))
+            ->when($tab === 'history', fn ($query) => $query->latest('proposal_submitted_at'))
+            // The latest decision first, at whichever level it was taken.
+            ->when($tab === 'decisions', fn ($query) => $query->orderByRaw('COALESCE(proposal_reviewed_at, proposal_tl_reviewed_at) DESC'))
+            ->orderByDesc('id')
+            ->paginate(15)
+            ->withQueryString()
+            ->through(fn (Procurement $procurement): array => [
+                ...$this->row($procurement),
+                'tl_reviewer' => $procurement->proposalTeamLeaderReviewer?->name,
+                'tl_reviewed_at' => $procurement->proposal_tl_reviewed_at?->toIso8601String(),
+                'reviewer' => $procurement->proposalReviewer?->name,
+            ]);
+
+        return [
+            'tab' => $tab,
+            'search' => $search,
+            'counts' => array_map(fn (\Closure $query): int => $query()->count(), $queries),
+            'rows' => $rows,
+        ];
     }
 
     /**

@@ -2547,6 +2547,21 @@ Pengamanan:
 
 ---
 
+# Usulan Pekerjaan: Tampilan Seluruh Pengusul (Super Admin)
+
+- **Siapa:** pemegang hak baru **"Lihat seluruh usulan"** (`proposal.view-all`, grup Pengadaan). Bawaan: hanya Super Admin (Administrator). Hak ini dapat diberikan ke peran lain di **Hak Akses**; peran tersebut juga perlu "Menu Usulan Pekerjaan" agar menunya tampil.
+- **Halaman:** menu **Usulan Pekerjaan** (`/usulan`) berganti tampilan untuk pemegang hak ini: tiga tab dengan jumlah per tab, kolom cari (nama pekerjaan, nomor, PRK, nama pengusul), dan tabel berhalaman (15 baris).
+  - **Menunggu Persetujuan:** semua usulan yang menunggu TL atau Direksi Pekerjaan, termasuk yang "Belum Lengkap"; yang terlama di atas.
+  - **Riwayat Usulan:** semua usulan yang pernah diajukan, terbaru di atas.
+  - **Riwayat Keputusan:** semua usulan yang sudah diputuskan TL dan/atau Direksi Pekerjaan, dengan nama dan waktu keputusan di tiap tingkat serta catatan pengembalian.
+- Klik baris membuka halaman tinjau usulan seperti biasa.
+- **Peran lain tidak berubah:** Asman, TL, pengusul, dan peran lain tetap melihat "Menunggu Persetujuan Anda", "Usulan Saya", dan "Riwayat Keputusan Anda" seperti sebelumnya. Prop `overview` hanya dikirim ke pemegang hak.
+- Tanpa migrasi: Administrator selalu memegang semua hak.
+- **Kode:** `Permission::ViewAllProposals`, `ProposalController::overview()`, `ProposalOverviewView` di `pages/proposals/index.tsx`.
+- **Test:** `ProposalFlowTest::test_the_administrator_follows_every_proposer_in_three_tabs`, `test_other_roles_keep_their_own_proposal_page`, `test_seeing_every_proposal_can_be_given_to_another_role`.
+
+---
+
 # Teknologi
 
 Sesuai dengan `claude.md`.

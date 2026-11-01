@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import {
     CheckCircle2,
     ChevronRight,
@@ -7,14 +7,27 @@ import {
     Inbox,
     Paperclip,
     RotateCcw,
+    Search,
 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { DataPagination } from '@/components/data-pagination';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import procurements from '@/routes/procurements';
 import proposals from '@/routes/proposals';
+import type { Paginated } from '@/types';
 
 export type ProposalRow = {
     id: number;
@@ -195,6 +208,268 @@ function Section({
     );
 }
 
+/** A row of the overview: the decisions taken at both levels. */
+type OverviewRow = ProposalRow & {
+    tl_reviewer: string | null;
+    tl_reviewed_at: string | null;
+    reviewer: string | null;
+};
+
+type OverviewTab = 'waiting' | 'history' | 'decisions';
+
+export type ProposalOverview = {
+    tab: OverviewTab;
+    search: string | null;
+    counts: Record<OverviewTab, number>;
+    rows: Paginated<OverviewRow>;
+};
+
+const OVERVIEW_TABS: {
+    key: OverviewTab;
+    label: string;
+    icon: typeof Inbox;
+    empty: string;
+}[] = [
+    {
+        key: 'waiting',
+        label: 'Menunggu Persetujuan',
+        icon: Clock,
+        empty: 'Tidak ada usulan yang menunggu persetujuan TL atau Direksi Pekerjaan.',
+    },
+    {
+        key: 'history',
+        label: 'Riwayat Usulan',
+        icon: Inbox,
+        empty: 'Belum ada usulan pekerjaan yang diajukan.',
+    },
+    {
+        key: 'decisions',
+        label: 'Riwayat Keputusan',
+        icon: RotateCcw,
+        empty: 'Belum ada usulan yang diputuskan.',
+    },
+];
+
+/** Who decided, and when, at one level. */
+function Decision({
+    level,
+    name,
+    at,
+}: {
+    level: string;
+    name: string | null;
+    at: string | null;
+}) {
+    if (!name) {
+        return null;
+    }
+
+    return (
+        <div className="whitespace-nowrap">
+            <span className="text-xs text-muted-foreground">{level}: </span>
+            <span className="font-medium">{name}</span>
+            {at && (
+                <span className="tabular block text-xs text-muted-foreground">
+                    {formatDateTime(at)}
+                </span>
+            )}
+        </div>
+    );
+}
+
+/**
+ * Every proposer's proposals for whoever oversees them all: those waiting,
+ * every proposal raised, and every decision taken.
+ */
+function ProposalOverviewView({ overview }: { overview: ProposalOverview }) {
+    const { tab, counts, rows } = overview;
+    const [search, setSearch] = useState(overview.search ?? '');
+    const isFirstRender = useRef(true);
+    const indexUrl = proposals.index().url;
+
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+
+            return;
+        }
+
+        const timeout = setTimeout(() => {
+            router.get(
+                indexUrl,
+                { ...(search ? { search } : {}), tab },
+                { preserveState: true, preserveScroll: true, replace: true },
+            );
+        }, 350);
+
+        return () => clearTimeout(timeout);
+    }, [search, indexUrl, tab]);
+
+    const openTab = (next: OverviewTab) =>
+        router.get(
+            indexUrl,
+            { ...(search ? { search } : {}), tab: next },
+            { preserveScroll: true, replace: true },
+        );
+
+    const current =
+        OVERVIEW_TABS.find((item) => item.key === tab) ?? OVERVIEW_TABS[0];
+    const showsDecisions = tab === 'decisions';
+
+    return (
+        <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div
+                    role="tablist"
+                    className="inline-flex flex-wrap self-start rounded-md border border-border bg-muted/50 p-0.5"
+                >
+                    {OVERVIEW_TABS.map(({ key, label, icon: Icon }) => (
+                        <button
+                            key={key}
+                            type="button"
+                            role="tab"
+                            aria-selected={key === tab}
+                            onClick={() => openTab(key)}
+                            className={cn(
+                                'inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-medium transition-colors',
+                                key === tab
+                                    ? 'bg-primary text-primary-foreground shadow-sm'
+                                    : 'text-muted-foreground hover:bg-primary/10 hover:text-primary',
+                            )}
+                        >
+                            <Icon className="size-4" />
+                            {label}
+                            <span
+                                className={cn(
+                                    'tabular rounded-full px-1.5 text-xs',
+                                    key === tab
+                                        ? 'bg-primary-foreground/20 text-primary-foreground'
+                                        : 'bg-primary/10 text-primary',
+                                )}
+                            >
+                                {counts[key]}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+
+                <div className="relative w-full sm:max-w-xs">
+                    <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        placeholder="Cari pekerjaan, PRK, atau pengusul"
+                        className="pl-8"
+                        aria-label="Cari usulan"
+                    />
+                </div>
+            </div>
+
+            <div className="overflow-hidden rounded-lg border border-border bg-card">
+                {rows.data.length === 0 ? (
+                    <div className="flex items-center justify-center gap-3 px-5 py-10 text-sm text-muted-foreground">
+                        <CheckCircle2 className="size-5 text-emerald-600" />
+                        {search
+                            ? 'Tidak ada usulan yang cocok.'
+                            : current.empty}
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Pekerjaan</TableHead>
+                                    <TableHead>Pengusul</TableHead>
+                                    <TableHead>Diajukan</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    {showsDecisions && (
+                                        <TableHead>Keputusan</TableHead>
+                                    )}
+                                    <TableHead className="w-8" />
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {rows.data.map((row) => (
+                                    <TableRow
+                                        key={row.id}
+                                        className="cursor-pointer"
+                                        onClick={() =>
+                                            router.visit(
+                                                proposals.show(row.id).url,
+                                            )
+                                        }
+                                    >
+                                        <TableCell className="max-w-[28rem]">
+                                            <Link
+                                                href={
+                                                    proposals.show(row.id).url
+                                                }
+                                                className="line-clamp-2 font-medium text-foreground hover:text-primary"
+                                                onClick={(event) =>
+                                                    event.stopPropagation()
+                                                }
+                                            >
+                                                {row.name}
+                                            </Link>
+                                            <span className="block truncate text-xs text-muted-foreground">
+                                                {row.division ?? '-'}
+                                                {row.prk_number
+                                                    ? ` · PRK ${row.prk_number}`
+                                                    : ''}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="whitespace-nowrap">
+                                            <span className="font-medium">
+                                                {row.proposer ?? '-'}
+                                            </span>
+                                            {row.proposer_position && (
+                                                <span className="block text-xs text-muted-foreground">
+                                                    {row.proposer_position}
+                                                </span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="tabular whitespace-nowrap">
+                                            {formatDateTime(row.submitted_at)}
+                                        </TableCell>
+                                        <TableCell>
+                                            <StateBadge row={row} />
+                                            {row.state === 'dikembalikan' &&
+                                                row.review_note && (
+                                                    <span className="mt-1 line-clamp-2 block max-w-[16rem] text-xs text-muted-foreground">
+                                                        Catatan:{' '}
+                                                        {row.review_note}
+                                                    </span>
+                                                )}
+                                        </TableCell>
+                                        {showsDecisions && (
+                                            <TableCell className="space-y-1">
+                                                <Decision
+                                                    level="TL"
+                                                    name={row.tl_reviewer}
+                                                    at={row.tl_reviewed_at}
+                                                />
+                                                <Decision
+                                                    level="Direksi Pekerjaan"
+                                                    name={row.reviewer}
+                                                    at={row.reviewed_at}
+                                                />
+                                            </TableCell>
+                                        )}
+                                        <TableCell>
+                                            <ChevronRight className="size-4 text-muted-foreground" />
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
+                <DataPagination page={rows} />
+            </div>
+        </div>
+    );
+}
+
 export default function ProposalIndex({
     canApprove,
     canPropose,
@@ -202,6 +477,7 @@ export default function ProposalIndex({
     awaiting,
     decided,
     mine,
+    overview,
 }: {
     canApprove: boolean;
     canPropose: boolean;
@@ -209,6 +485,8 @@ export default function ProposalIndex({
     awaiting: ProposalRow[];
     decided: ProposalRow[];
     mine: ProposalRow[];
+    /** Present only for whoever oversees every proposal. */
+    overview?: ProposalOverview;
 }) {
     return (
         <>
@@ -221,9 +499,11 @@ export default function ProposalIndex({
                     }
                     title="Usulan Pekerjaan"
                     description={
-                        canApprove
-                            ? 'Tinjau usulan pekerjaan yang menunggu keputusan Anda. Usulan staf disetujui TL lebih dulu, lalu Asman bidang, kemudian masuk perencanaan untuk penunjukan PIC.'
-                            : 'Pantau usulan pekerjaan Anda. Usulan disetujui TL Anda, lalu Asman bidang, kemudian masuk perencanaan untuk penunjukan PIC Perencana.'
+                        overview
+                            ? 'Pantau usulan pekerjaan dari seluruh pengusul: yang menunggu persetujuan, riwayat usulan, dan riwayat keputusan TL serta Direksi Pekerjaan.'
+                            : canApprove
+                              ? 'Tinjau usulan pekerjaan yang menunggu keputusan Anda. Usulan staf disetujui TL lebih dulu, lalu Asman bidang, kemudian masuk perencanaan untuk penunjukan PIC.'
+                              : 'Pantau usulan pekerjaan Anda. Usulan disetujui TL Anda, lalu Asman bidang, kemudian masuk perencanaan untuk penunjukan PIC Perencana.'
                     }
                     actions={
                         canPropose ? (
@@ -237,7 +517,9 @@ export default function ProposalIndex({
                     }
                 />
 
-                {canApprove && (
+                {overview && <ProposalOverviewView overview={overview} />}
+
+                {!overview && canApprove && (
                     <Section
                         title="Menunggu Persetujuan Anda"
                         icon={Clock}
@@ -259,7 +541,7 @@ export default function ProposalIndex({
                     </Section>
                 )}
 
-                {(canPropose || mine.length > 0) && (
+                {!overview && (canPropose || mine.length > 0) && (
                     <Section
                         title="Usulan Saya"
                         icon={Inbox}
@@ -280,7 +562,7 @@ export default function ProposalIndex({
                     </Section>
                 )}
 
-                {canApprove && decided.length > 0 && (
+                {!overview && canApprove && decided.length > 0 && (
                     <Section title="Riwayat Keputusan Anda" icon={RotateCcw}>
                         <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
                             {decided.map((row) => (

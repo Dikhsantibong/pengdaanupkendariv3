@@ -3,7 +3,9 @@
 namespace Tests\Feature\Procurements;
 
 use App\Enums\ActivityType;
+use App\Enums\Permission;
 use App\Enums\ProposalState;
+use App\Enums\UserRole;
 use App\Models\BudgetSource;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
@@ -19,6 +21,8 @@ use App\Support\ProposalDocuments;
 use Database\Seeders\DivisionUserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -330,6 +334,91 @@ class ProposalFlowTest extends TestCase
             ->assertRedirect();
 
         $this->assertSame(ProposalState::Disetujui, Procurement::query()->firstOrFail()->proposal_state);
+    }
+
+    public function test_the_administrator_follows_every_proposer_in_three_tabs(): void
+    {
+        $waiting = $this->proposal();
+        $returned = $this->proposal();
+        $director = User::factory()->workDirector($this->division)->create(['name' => 'Asman Penilai']);
+
+        $this->actingAs($director)
+            ->post(route('proposals.decide', $returned), ['decision' => 'return', 'note' => 'Lengkapi RAB.'])
+            ->assertRedirect();
+
+        $administrator = User::factory()->administrator()->create();
+
+        $this->actingAs($administrator)
+            ->get(route('proposals.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('proposals/index')
+                ->where('overview.tab', 'waiting')
+                ->where('overview.counts', ['waiting' => 1, 'history' => 2, 'decisions' => 1])
+                ->has('overview.rows.data', 1)
+                ->where('overview.rows.data.0.id', $waiting->id));
+
+        $this->actingAs($administrator)
+            ->get(route('proposals.index', ['tab' => 'history']))
+            ->assertInertia(fn ($page) => $page->has('overview.rows.data', 2));
+
+        $this->actingAs($administrator)
+            ->get(route('proposals.index', ['tab' => 'decisions']))
+            ->assertInertia(fn ($page) => $page
+                ->has('overview.rows.data', 1)
+                ->where('overview.rows.data.0.id', $returned->id)
+                ->where('overview.rows.data.0.reviewer', 'Asman Penilai')
+                ->where('overview.rows.data.0.review_note', 'Lengkapi RAB.'));
+
+        // The search narrows any tab.
+        $this->actingAs($administrator)
+            ->get(route('proposals.index', ['tab' => 'history', 'search' => 'tidak-ada-yang-cocok']))
+            ->assertInertia(fn ($page) => $page
+                ->where('overview.search', 'tidak-ada-yang-cocok')
+                ->has('overview.rows.data', 0));
+    }
+
+    public function test_other_roles_keep_their_own_proposal_page(): void
+    {
+        $this->proposal();
+
+        // The Asman, a proposer and a TL see only their own lists.
+        $director = User::factory()->workDirector($this->division)->create();
+        $proposer = User::factory()->proposer($this->division)->create();
+
+        foreach ([$director, $proposer, User::factory()->teamLeaderPengadaan()->create()] as $user) {
+            $this->actingAs($user)
+                ->get(route('proposals.index'))
+                ->assertOk()
+                ->assertInertia(fn ($page) => $page
+                    ->component('proposals/index')
+                    ->missing('overview')
+                    ->has('awaiting')
+                    ->has('mine'));
+        }
+
+        $this->actingAs($director)
+            ->get(route('proposals.index'))
+            ->assertInertia(fn ($page) => $page->has('awaiting', 1));
+    }
+
+    public function test_seeing_every_proposal_can_be_given_to_another_role(): void
+    {
+        $this->proposal();
+
+        DB::table('role_permissions')->insert([
+            'role' => UserRole::TeamLeaderPengadaan->value,
+            'permission' => Permission::ViewAllProposals->value,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        Cache::forget('access-rights.grants');
+
+        $this->actingAs(User::factory()->teamLeaderPengadaan()->create())
+            ->get(route('proposals.index', ['tab' => 'history']))
+            ->assertInertia(fn ($page) => $page
+                ->where('overview.tab', 'history')
+                ->has('overview.rows.data', 1));
     }
 
     public function test_the_dashboard_lists_the_proposals_waiting_on_the_director(): void

@@ -37,6 +37,7 @@ enum Permission: string
     case CompleteProcurement = 'procurement.complete';
     case ProcessPayment = 'procurement.process-payment';
     case ViewAllProcurements = 'procurement.view-all';
+    case ViewAllProposals = 'proposal.view-all';
     case ManageVendorAssessments = 'vendor-assessments.manage';
     case ManageMasterData = 'master-data.manage';
     case MenuProposals = 'menu.proposals';
@@ -70,6 +71,7 @@ enum Permission: string
             self::CompleteProcurement => 'Nyatakan pengadaan selesai',
             self::ProcessPayment => 'Proses pembayaran (Keuangan)',
             self::ViewAllProcurements => 'Lihat seluruh pengadaan',
+            self::ViewAllProposals => 'Lihat seluruh usulan',
             self::ManageVendorAssessments => 'Kelola penilaian penyedia',
             self::ManageMasterData => 'Kelola data master',
             self::MenuProposals => 'Menu Usulan Pekerjaan',
@@ -104,6 +106,7 @@ enum Permission: string
             self::CompleteProcurement => 'Menutup pengadaan yang sudah selesai.',
             self::ProcessPayment => 'Melengkapi berkas pembayaran pengadaan yang penyerahannya sudah disetujui, lalu mengajukannya ke TL atasan (TL Keuangan) dan Asman bidang (Asman Business Support). Persetujuan Asman mencatat pembayaran lunas dan menutup pengadaan.',
             self::ViewAllProcurements => 'Melihat seluruh pengadaan, bukan hanya yang ditugaskan atau dibuat sendiri.',
+            self::ViewAllProposals => 'Di halaman Usulan Pekerjaan: melihat usulan yang menunggu persetujuan, riwayat usulan, dan riwayat keputusan dari seluruh pengusul (perlu Menu Usulan Pekerjaan).',
             self::ManageVendorAssessments => 'Membuat, mengisi, dan mengirim formulir penilaian kinerja penyedia.',
             self::ManageMasterData => 'Mengubah seluruh data master.',
             self::MenuProposals => 'Menampilkan dan membuka halaman Usulan Pekerjaan (usulan sendiri dan antrean persetujuan).',
@@ -137,7 +140,8 @@ enum Permission: string
             self::ReviewHandover,
             self::CompleteProcurement,
             self::ProcessPayment,
-            self::ViewAllProcurements => 'Pengadaan',
+            self::ViewAllProcurements,
+            self::ViewAllProposals => 'Pengadaan',
             self::ManageVendorAssessments => 'Penilaian Penyedia',
             self::ManageMasterData => 'Administrasi',
             self::MenuProposals,
@@ -189,6 +193,8 @@ enum Permission: string
             self::ViewAllProcurements => [UserRole::TeamLeaderPengadaan, UserRole::TeamLeaderIcc, UserRole::Keuangan],
             self::ManageVendorAssessments,
             self::ManageMasterData => [],
+            // The administrator only, until given to other roles.
+            self::ViewAllProposals => [],
             // Every menu was open to everyone before it became a right.
             self::MenuPlanning,
             self::MenuExecution,
