@@ -1,56 +1,66 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import {
-    BadgeCheck,
-    Ban,
-    CalendarClock,
     ChevronRight,
-    CircleDashed,
-    CircleDot,
     ClipboardCheck,
     FilePlus2,
-    FolderKanban,
     Inbox,
     Landmark,
     ListChecks,
     PartyPopper,
     RotateCcw,
+    UserCircle2,
     UserPlus,
-    Wallet,
     Wrench,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { Children, cloneElement, isValidElement, useState } from 'react';
+import type { ReactElement, ReactNode } from 'react';
+import { AreaChart } from '@/components/charts/area-chart';
+import { CATEGORICAL, VIZ } from '@/components/charts/chart-kit';
+import { GaugeChart } from '@/components/charts/gauge-chart';
+import { GroupedColumnChart } from '@/components/charts/grouped-column-chart';
+import { PairedBars, RankingBars } from '@/components/charts/ranking-bars';
+import { RingChart } from '@/components/charts/ring-chart';
+import type { RingSlice } from '@/components/charts/ring-chart';
+import {
+    ActivityTimeline,
+    DashboardFilterBar,
+    KpiGrid,
+    Panel,
+    queryOf,
+    RecentProcurementTable,
+    SectionError,
+    STAGE_COLORS,
+    StagePipeline,
+    UpcomingList,
+    visitDashboard,
+} from '@/components/dashboard/analytics';
+import type {
+    Analytics,
+    Breakdown,
+    DashboardFilterState,
+    FilterOptions,
+    TablePage,
+    TableQuery,
+} from '@/components/dashboard/analytics';
 import {
     FigureCards,
     PROFILE_DESCRIPTIONS,
     RoleJobs,
-    StageFlow,
 } from '@/components/dashboard/role-dashboard';
 import type {
     RoleDashboardData,
     RoleProfile,
-    StageCount,
 } from '@/components/dashboard/role-dashboard';
-import { EmptyState } from '@/components/empty-state';
-import { NotificationPanel } from '@/components/notification-panel';
 import { PageHeader } from '@/components/page-header';
-import { StatCard } from '@/components/stat-card';
-import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import {
     formatCompactCurrency,
     formatCurrency,
     formatDate,
     formatDateTime,
+    formatNumber,
 } from '@/lib/format';
-import type { Feed } from '@/lib/notification-feed';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import approvals from '@/routes/approvals';
@@ -60,9 +70,7 @@ import picAssignments from '@/routes/pic-assignments';
 import planning from '@/routes/planning';
 import procurements from '@/routes/procurements';
 import proposals from '@/routes/proposals';
-import type { Auth, ProcurementRow } from '@/types';
-
-type Breakdown = { label: string; total: number };
+import type { Auth } from '@/types';
 
 type TaskItem = {
     id: number;
@@ -87,20 +95,7 @@ type DashboardTasks = {
     execution: TaskList;
 };
 
-type ManagementData = {
-    stages: StageCount[];
-    byStatus: Breakdown[];
-    byWorkDirector: Breakdown[];
-    byTargetUnit: Breakdown[];
-    byProcurementMethod: Breakdown[];
-    byBudgetSource: Breakdown[];
-    byPlanner: Breakdown[];
-    byExecutor: Breakdown[];
-    recent: ProcurementRow[];
-    upcoming: ProcurementRow[];
-};
-
-type DashboardProps = Partial<ManagementData> & {
+type DashboardProps = {
     profile: RoleProfile;
     role?: RoleDashboardData;
     summary: {
@@ -114,13 +109,30 @@ type DashboardProps = Partial<ManagementData> & {
         totalHpe: number;
     };
     tasks: DashboardTasks;
-    /** Unread notifications, shown on top until read. */
-    notifications: Feed;
+    account: { role: string; division: string | null };
+    filters: DashboardFilterState;
+    filterOptions: FilterOptions;
+    analytics: Analytics;
+    table: TablePage;
+    tableQuery: TableQuery;
 };
 
 export default function Dashboard(props: DashboardProps) {
     const { auth } = usePage<{ auth: Auth }>().props;
-    const { profile, role, tasks, summary, notifications } = props;
+    const {
+        profile,
+        role,
+        tasks,
+        summary,
+        account,
+        filters,
+        filterOptions,
+        analytics,
+        table,
+        tableQuery,
+    } = props;
+    const [loading, setLoading] = useState(false);
+    const isManagement = profile === 'manajemen' || role === undefined;
 
     return (
         <>
@@ -128,58 +140,585 @@ export default function Dashboard(props: DashboardProps) {
 
             <div className="flex flex-col gap-5 p-4 md:p-6">
                 <PageHeader
-                    eyebrow="SIM-SCM UP Kendari"
+                    eyebrow="SIM-SCM UP Kendari · Dashboard Pengadaan"
                     title={`Selamat datang, ${auth.user.name}`}
                     description={PROFILE_DESCRIPTIONS[profile]}
                     actions={
-                        auth.permissions.createProcurement ? (
-                            <Button asChild>
-                                <Link href={procurements.create()}>
-                                    <FilePlus2 className="size-4" />
-                                    {auth.permissions.proposeOnly
-                                        ? 'Buat Usulan Pekerjaan'
-                                        : 'Buat Pengadaan'}
-                                </Link>
-                            </Button>
-                        ) : undefined
+                        <>
+                            <span className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs">
+                                <UserCircle2 className="size-4 text-muted-foreground" />
+                                <span className="leading-tight">
+                                    <span className="block font-semibold text-foreground">
+                                        {account.role}
+                                    </span>
+                                    {account.division && (
+                                        <span className="block text-muted-foreground">
+                                            {account.division}
+                                        </span>
+                                    )}
+                                </span>
+                            </span>
+                            {auth.permissions.createProcurement && (
+                                <Button asChild>
+                                    <Link href={procurements.create()}>
+                                        <FilePlus2 className="size-4" />
+                                        {auth.permissions.proposeOnly
+                                            ? 'Buat Usulan Pekerjaan'
+                                            : 'Buat Pengadaan'}
+                                    </Link>
+                                </Button>
+                            )}
+                        </>
                     }
                 />
 
-                <NotificationPanel initial={notifications} />
+                <DashboardFilterBar
+                    filters={filters}
+                    options={filterOptions}
+                    tableQuery={tableQuery}
+                    loading={loading}
+                    setLoading={setLoading}
+                />
 
-                <TaskInbox tasks={tasks} menus={auth.permissions.menus} />
-
-                {profile === 'manajemen' || role === undefined ? (
-                    <ManagementDashboard
-                        summary={summary}
-                        data={props as ManagementData}
-                        canSeeApprovals={auth.permissions.viewAllProcurements}
+                <div
+                    className={cn(
+                        'flex flex-col gap-5 transition-opacity',
+                        loading && 'pointer-events-none opacity-60',
+                    )}
+                    aria-busy={loading}
+                >
+                    <AnalyticsSections
+                        analytics={analytics}
+                        filters={filters}
+                        filterOptions={filterOptions}
+                        tableQuery={tableQuery}
+                        table={table}
+                        setLoading={setLoading}
+                        canOpenApprovals={auth.permissions.menus.approvals}
+                        // Under the headline figures: the role's own
+                        // figures, then what waits on the user, in one line.
+                        afterKpis={
+                            <>
+                                {!isManagement && role !== undefined && (
+                                    <FigureCards cards={role.cards} />
+                                )}
+                                <TaskInbox
+                                    tasks={tasks}
+                                    menus={auth.permissions.menus}
+                                />
+                                {(isManagement || profile === 'perencana') &&
+                                    summary.needsRevision > 0 && (
+                                        <RevisionNotice
+                                            count={summary.needsRevision}
+                                        />
+                                    )}
+                            </>
+                        }
+                        beforeTable={
+                            !isManagement && role !== undefined ? (
+                                <RoleJobsSection
+                                    profile={profile}
+                                    role={role}
+                                    menus={auth.permissions.menus}
+                                />
+                            ) : undefined
+                        }
                     />
-                ) : (
-                    <RoleView
-                        profile={profile}
-                        role={role}
-                        summary={summary}
-                        menus={auth.permissions.menus}
-                    />
-                )}
+                </div>
             </div>
         </>
     );
 }
 
 /**
- * The dashboard of a role that works on its own share of the procurements.
+ * Up to five named slices; the rest folded into "Lainnya".
  */
-function RoleView({
+function categoricalSlices(rows: Breakdown[]): RingSlice[] {
+    const sorted = [...rows].sort((a, b) => b.total - a.total);
+    const head = sorted.slice(0, 4);
+    const rest = sorted.slice(4);
+    const slices = head.map((row, index) => ({
+        key: row.label,
+        label: row.label,
+        value: row.total,
+        color: CATEGORICAL[index],
+    }));
+
+    if (rest.length === 1) {
+        slices.push({
+            key: rest[0].label,
+            label: rest[0].label,
+            value: rest[0].total,
+            color: CATEGORICAL[4],
+        });
+    } else if (rest.length > 1) {
+        slices.push({
+            key: 'lainnya',
+            label: `Lainnya (${rest.length})`,
+            value: rest.reduce((sum, row) => sum + row.total, 0),
+            color: CATEGORICAL[4],
+        });
+    }
+
+    return slices;
+}
+
+/**
+ * Every chart and list the profile shows, in order of importance.
+ */
+function AnalyticsSections({
+    analytics,
+    filters,
+    filterOptions,
+    tableQuery,
+    table,
+    setLoading,
+    canOpenApprovals,
+    afterKpis,
+    beforeTable,
+}: {
+    analytics: Analytics;
+    filters: DashboardFilterState;
+    filterOptions: FilterOptions;
+    tableQuery: TableQuery;
+    table: TablePage;
+    setLoading: (loading: boolean) => void;
+    canOpenApprovals: boolean;
+    afterKpis?: ReactNode;
+    beforeTable?: ReactNode;
+}) {
+    const shows = (section: string) => analytics.sections.includes(section);
+    const hasSideColumn = shows('upcoming') || shows('statuses');
+    const filterStage = (stage: string | null) =>
+        visitDashboard(
+            queryOf(filters, tableQuery, { stage, table_page: null }),
+            setLoading,
+        );
+
+    /** A section's content, or its error state when it failed. */
+    const render = <T,>(
+        value: T | null | undefined,
+        content: (value: T) => ReactNode,
+    ) =>
+        value === null || value === undefined ? (
+            <SectionError />
+        ) : (
+            content(value)
+        );
+
+    return (
+        <>
+            {shows('kpis') &&
+                (analytics.kpis ? (
+                    <KpiGrid
+                        kpis={analytics.kpis}
+                        canOpenApprovals={canOpenApprovals}
+                    />
+                ) : (
+                    <SectionError />
+                ))}
+
+            {afterKpis}
+
+            {shows('stages') &&
+                (analytics.stages ? (
+                    <StagePipeline
+                        stages={analytics.stages}
+                        activeStage={filters.stage}
+                        onSelect={filterStage}
+                    />
+                ) : (
+                    <SectionError />
+                ))}
+
+            <FilledGrid>
+                {shows('trend') && (
+                    <Panel
+                        title="Tren Pengadaan"
+                        description="Jumlah pengadaan per bulan didaftarkan, menurut statusnya saat ini."
+                        span={2}
+                    >
+                        {render(analytics.trend, (trend) => (
+                            <GroupedColumnChart
+                                labels={trend.months.map(
+                                    (month) => month.label,
+                                )}
+                                series={[
+                                    {
+                                        key: 'total',
+                                        label: 'Total',
+                                        color: VIZ.blue,
+                                        values: trend.total,
+                                    },
+                                    {
+                                        key: 'running',
+                                        label: 'Berjalan',
+                                        color: VIZ.yellow,
+                                        values: trend.running,
+                                    },
+                                    {
+                                        key: 'completed',
+                                        label: 'Selesai',
+                                        color: VIZ.green,
+                                        values: trend.completed,
+                                    },
+                                    {
+                                        key: 'cancelled',
+                                        label: 'Dibatalkan',
+                                        color: VIZ.red,
+                                        values: trend.cancelled,
+                                    },
+                                ]}
+                                emptyText="Belum ada pengadaan yang didaftarkan pada periode ini."
+                            />
+                        ))}
+                    </Panel>
+                )}
+
+                {shows('stages') && (
+                    <Panel
+                        title="Status Pengadaan"
+                        description="Sebaran pengadaan per tahap. Klik untuk menyaring."
+                    >
+                        {render(analytics.stages, (stages) => (
+                            <RingChart
+                                slices={stages.map((stage) => ({
+                                    key: stage.key,
+                                    label: stage.label,
+                                    value: stage.total,
+                                    color: STAGE_COLORS[stage.key],
+                                }))}
+                                centerLabel="Pengadaan"
+                                onSelect={(stage) =>
+                                    filterStage(
+                                        filters.stage === stage ? null : stage,
+                                    )
+                                }
+                            />
+                        ))}
+                    </Panel>
+                )}
+
+                {shows('budget') && (
+                    <Panel
+                        title="Perkembangan Nilai Pengadaan"
+                        description="Nilai HPE pengadaan per bulan didaftarkan. HPE adalah perkiraan, bukan realisasi pembayaran."
+                        span={2}
+                    >
+                        {render(analytics.budget, (budget) => (
+                            <div className="space-y-2">
+                                <AreaChart
+                                    labels={budget.months.map(
+                                        (month) => month.label,
+                                    )}
+                                    series={[
+                                        {
+                                            key: 'hpe',
+                                            label: 'Nilai HPE',
+                                            color: VIZ.blue,
+                                            values: budget.hpe,
+                                        },
+                                        {
+                                            key: 'running',
+                                            label: 'Nilai berjalan',
+                                            color: VIZ.yellow,
+                                            values: budget.running,
+                                        },
+                                        {
+                                            key: 'completed',
+                                            label: 'Nilai selesai',
+                                            color: VIZ.green,
+                                            values: budget.completed,
+                                        },
+                                    ]}
+                                    format={(value) => formatCurrency(value)}
+                                    axisFormat={(value) =>
+                                        formatCompactCurrency(value)
+                                    }
+                                    emptyText="Belum ada nilai HPE pada periode ini."
+                                />
+                                {budget.target === null && (
+                                    <p className="text-xs text-muted-foreground">
+                                        Target anggaran belum tersedia di
+                                        database, sehingga tidak ditampilkan.
+                                    </p>
+                                )}
+                            </div>
+                        ))}
+                    </Panel>
+                )}
+
+                {shows('methods') && (
+                    <Panel
+                        title="Metode Pengadaan"
+                        description="Jumlah pengadaan per metode."
+                    >
+                        {render(analytics.methods, (methods) => (
+                            <RingChart
+                                slices={categoricalSlices(methods)}
+                                centerLabel="Pengadaan"
+                            />
+                        ))}
+                    </Panel>
+                )}
+
+                {shows('progress') && (
+                    <Panel
+                        title="Progres Pengadaan"
+                        description="Rata-rata posisi pengadaan aktif pada alur, dari usulan (0%) sampai selesai (100%)."
+                    >
+                        {render(analytics.progress, (progress) =>
+                            progress.active === 0 ? (
+                                <SectionEmpty />
+                            ) : (
+                                <div className="space-y-4">
+                                    <GaugeChart
+                                        percent={progress.percent}
+                                        label="Progres keseluruhan"
+                                    />
+                                    <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-border bg-border text-sm">
+                                        {[
+                                            {
+                                                label: 'Penyusunan Surat Pesanan',
+                                                value: formatNumber(
+                                                    progress.purchaseOrder,
+                                                ),
+                                            },
+                                            {
+                                                label: 'Terkontrak',
+                                                value: formatNumber(
+                                                    progress.contracted,
+                                                ),
+                                            },
+                                            {
+                                                label: 'Dalam Pelaksanaan',
+                                                value: formatNumber(
+                                                    progress.inExecution,
+                                                ),
+                                            },
+                                            {
+                                                label: 'Penyelesaian',
+                                                value: `${progress.completion.toLocaleString('id-ID', { maximumFractionDigits: 1 })}%`,
+                                            },
+                                        ].map((item) => (
+                                            <div
+                                                key={item.label}
+                                                className="bg-card px-3 py-2"
+                                            >
+                                                <dt className="text-[0.6875rem] text-muted-foreground">
+                                                    {item.label}
+                                                </dt>
+                                                <dd className="tabular text-base font-semibold text-foreground">
+                                                    {item.value}
+                                                </dd>
+                                            </div>
+                                        ))}
+                                    </dl>
+                                </div>
+                            ),
+                        )}
+                    </Panel>
+                )}
+
+                {shows('directorates') && (
+                    <Panel
+                        title="Peringkat Direksi Pekerjaan"
+                        description="Jumlah pengadaan per bidang, terbanyak di atas."
+                    >
+                        {render(analytics.directorates, (rows) => (
+                            <RankingBars rows={rows} color={VIZ.blue} />
+                        ))}
+                    </Panel>
+                )}
+
+                {shows('units') && (
+                    <Panel
+                        title="Unit Tujuan"
+                        description="Pengadaan untuk beberapa unit dihitung di setiap unit."
+                    >
+                        {render(analytics.units, (rows) => (
+                            <RankingBars rows={rows} color={VIZ.navy} />
+                        ))}
+                    </Panel>
+                )}
+
+                {shows('budgetSources') && (
+                    <Panel
+                        title="Sumber Anggaran"
+                        description="Jumlah pengadaan per sumber anggaran."
+                    >
+                        {render(analytics.budgetSources, (rows) => (
+                            <RingChart
+                                slices={categoricalSlices(rows)}
+                                centerLabel="Pengadaan"
+                            />
+                        ))}
+                    </Panel>
+                )}
+
+                {shows('pics') && (
+                    <Panel
+                        title="Distribusi PIC"
+                        description="Jumlah penugasan per PIC. Bukan ukuran kinerja."
+                        span={2}
+                    >
+                        {render(analytics.pics, (rows) => (
+                            <PairedBars
+                                rows={rows}
+                                emptyText="Belum ada PIC yang ditunjuk pada pengadaan sesuai filter."
+                            />
+                        ))}
+                    </Panel>
+                )}
+            </FilledGrid>
+
+            {beforeTable}
+
+            <RecentProcurementTable
+                page={table}
+                filters={filters}
+                options={filterOptions}
+                tableQuery={tableQuery}
+                setLoading={setLoading}
+            />
+
+            {(shows('activities') || hasSideColumn) && (
+                <div
+                    className={cn(
+                        'grid gap-4',
+                        shows('activities') &&
+                            hasSideColumn &&
+                            'xl:grid-cols-3',
+                    )}
+                >
+                    {shows('activities') && (
+                        <Panel
+                            title="Aktivitas Terbaru"
+                            description="Pengajuan, persetujuan, penunjukan PIC, dokumen, dan penyelesaian."
+                            className={cn(hasSideColumn && 'xl:col-span-2')}
+                            // Beside the side column, the timeline takes
+                            // that column's height and scrolls within it.
+                            bodyClassName={cn(
+                                hasSideColumn &&
+                                    'xl:relative xl:min-h-80 xl:p-0',
+                            )}
+                        >
+                            <div
+                                className={cn(
+                                    hasSideColumn &&
+                                        'xl:absolute xl:inset-0 xl:overflow-y-auto xl:p-4',
+                                )}
+                            >
+                                {render(analytics.activities, (activities) => (
+                                    <ActivityTimeline activities={activities} />
+                                ))}
+                            </div>
+                        </Panel>
+                    )}
+
+                    {hasSideColumn && (
+                        <div className="flex min-w-0 flex-col gap-4">
+                            {shows('upcoming') && (
+                                <Panel
+                                    title="Jadwal Pengadaan"
+                                    description="Pengadaan berjalan dengan target penyelesaian terdekat."
+                                >
+                                    {render(analytics.upcoming, (rows) => (
+                                        <UpcomingList rows={rows} />
+                                    ))}
+                                </Panel>
+                            )}
+
+                            {shows('statuses') && (
+                                <Panel
+                                    title="Rincian Status Progres"
+                                    description="Jumlah pengadaan per status progres di Data Master."
+                                >
+                                    {render(analytics.statuses, (rows) => (
+                                        <RankingBars
+                                            rows={rows}
+                                            color={VIZ.sky}
+                                            limit={8}
+                                        />
+                                    ))}
+                                </Panel>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+        </>
+    );
+}
+
+/** How many of the three columns a chart panel takes. */
+type Span = 1 | 2 | 3;
+
+const SPAN_CLASS: Record<Span, string> = {
+    1: '',
+    2: 'xl:col-span-2',
+    3: 'xl:col-span-3',
+};
+
+/**
+ * Three columns of chart panels in which the last panel of every row
+ * widens to fill it, so a role showing fewer charts is left with no holes.
+ * Each panel gives its width with `span`.
+ */
+function FilledGrid({ children }: { children: ReactNode }) {
+    const items = Children.toArray(children).filter(isValidElement) as Array<
+        ReactElement<{ span?: Span; className?: string }>
+    >;
+
+    const spans = items.map((item) => item.props.span ?? 1);
+    let used = 0;
+
+    spans.forEach((span, index) => {
+        if (used + span > 3) {
+            // The row before is short: its last panel takes the rest.
+            spans[index - 1] = (spans[index - 1] + 3 - used) as Span;
+            used = 0;
+        }
+
+        used = (used + span) % 3;
+    });
+
+    if (used > 0 && spans.length > 0) {
+        spans[spans.length - 1] = (spans[spans.length - 1] + 3 - used) as Span;
+    }
+
+    return (
+        <div className="grid gap-4 xl:grid-cols-3">
+            {items.map((item, index) =>
+                cloneElement(item, {
+                    className: cn(
+                        item.props.className,
+                        SPAN_CLASS[spans[index]],
+                    ),
+                }),
+            )}
+        </div>
+    );
+}
+
+function SectionEmpty() {
+    return (
+        <p className="py-8 text-center text-sm text-muted-foreground">
+            Belum ada pengadaan aktif sesuai filter.
+        </p>
+    );
+}
+
+/**
+ * The jobs a role works on, listed the way that role needs them.
+ */
+function RoleJobsSection({
     profile,
     role,
-    summary,
     menus,
 }: {
     profile: RoleProfile;
     role: RoleDashboardData;
-    summary: DashboardProps['summary'];
     menus: Auth['permissions']['menus'];
 }) {
     // Where "Lihat semua" leads for each role's list.
@@ -194,29 +733,12 @@ function RoleView({
     };
 
     return (
-        <>
-            <FigureCards cards={role.cards} />
-
-            {profile === 'perencana' && summary.needsRevision > 0 && (
-                <RevisionNotice count={summary.needsRevision} />
-            )}
-
-            <StageFlow
-                stages={role.stages}
-                title={
-                    profile === 'pengusul'
-                        ? 'Posisi Usulan Saya'
-                        : 'Posisi Pengadaan Anda'
-                }
-            />
-
-            <RoleJobs
-                title={role.jobsTitle}
-                jobs={role.jobs}
-                allHref={allHref[profile]}
-                showDivision={profile !== 'pengusul' && profile !== 'direksi'}
-            />
-        </>
+        <RoleJobs
+            title={role.jobsTitle}
+            jobs={role.jobs}
+            allHref={allHref[profile]}
+            showDivision={profile !== 'pengusul' && profile !== 'direksi'}
+        />
     );
 }
 
@@ -240,150 +762,6 @@ function RevisionNotice({ count }: { count: number }) {
                 </p>
             </div>
         </Link>
-    );
-}
-
-/**
- * The overview of every procurement, for those who oversee them all.
- */
-function ManagementDashboard({
-    summary,
-    data,
-    canSeeApprovals,
-}: {
-    summary: DashboardProps['summary'];
-    data: ManagementData;
-    canSeeApprovals: boolean;
-}) {
-    const {
-        stages,
-        byStatus,
-        byWorkDirector,
-        byTargetUnit,
-        byProcurementMethod,
-        byBudgetSource,
-        byPlanner,
-        byExecutor,
-        recent,
-        upcoming,
-    } = data;
-
-    return (
-        <>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <StatCard
-                    label="Total Pengadaan"
-                    value={summary.total}
-                    icon={FolderKanban}
-                    accent
-                />
-                <StatCard
-                    label="Pengadaan Berjalan"
-                    value={summary.running}
-                    icon={CircleDot}
-                    hint={`${summary.pending} pending · ${summary.cancelled} batal`}
-                />
-                <StatCard
-                    label="Pengadaan Selesai"
-                    value={summary.completed}
-                    icon={BadgeCheck}
-                />
-                <StatCard
-                    label="Menunggu Approval"
-                    value={summary.awaitingApproval}
-                    icon={CircleDashed}
-                    hint={
-                        summary.awaitingApproval > 0
-                            ? 'Perlu tindakan TL ICC'
-                            : 'Tidak ada antrean'
-                    }
-                />
-            </div>
-
-            {summary.needsRevision > 0 && (
-                <RevisionNotice count={summary.needsRevision} />
-            )}
-
-            {stages && <StageFlow stages={stages} />}
-
-            <div className="grid gap-3 sm:grid-cols-2">
-                <StatCard
-                    label="Total Nilai HPE"
-                    value={formatCompactCurrency(summary.totalHpe)}
-                    hint={formatCurrency(summary.totalHpe)}
-                    icon={Wallet}
-                />
-                <StatCard
-                    label="Pengadaan Dibatalkan"
-                    value={summary.cancelled}
-                    icon={Ban}
-                />
-            </div>
-
-            <div className="grid gap-4 xl:grid-cols-3">
-                <BreakdownCard
-                    title="Progres Pengadaan"
-                    rows={byStatus}
-                    total={summary.total}
-                />
-                <BreakdownCard
-                    title="Berdasarkan Direksi Pekerjaan"
-                    rows={byWorkDirector}
-                    total={summary.total}
-                />
-                <BreakdownCard
-                    title="Berdasarkan Unit Tujuan"
-                    rows={byTargetUnit}
-                    total={summary.total}
-                />
-            </div>
-
-            <div className="grid gap-4 xl:grid-cols-2">
-                <BreakdownCard
-                    title="Berdasarkan Metode Pengadaan"
-                    rows={byProcurementMethod}
-                    total={summary.total}
-                />
-                <BreakdownCard
-                    title="Berdasarkan Sumber Anggaran"
-                    rows={byBudgetSource}
-                    total={summary.total}
-                />
-            </div>
-
-            <div className="grid gap-4 xl:grid-cols-2">
-                <BreakdownCard
-                    title="Berdasarkan PIC Perencana"
-                    rows={byPlanner}
-                    total={summary.total}
-                />
-                <BreakdownCard
-                    title="Berdasarkan PIC Pelaksana"
-                    rows={byExecutor}
-                    total={summary.total}
-                />
-            </div>
-
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-                <RecentTable rows={recent} />
-                <ScheduleCard rows={upcoming} />
-            </div>
-
-            {summary.awaitingApproval > 0 && canSeeApprovals && (
-                <Link
-                    href={approvals.index()}
-                    className="flex items-center justify-between rounded-md border border-l-2 border-border border-l-primary bg-card px-4 py-3 text-sm transition-colors hover:bg-accent/40"
-                >
-                    <span className="font-medium text-foreground">
-                        {summary.awaitingApproval} pengadaan menunggu
-                        persetujuan perencanaan
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                        Buka antrean approval →
-                    </span>
-                </Link>
-            )}
-        </>
     );
 }
 
@@ -573,280 +951,92 @@ function TaskInbox({
     }
 
     const pending = cards.reduce((sum, card) => sum + card.list.total, 0);
+    const waiting = cards.filter((card) => card.list.total > 0);
 
-    if (pending === 0) {
-        return (
-            <section className="flex items-center gap-3 rounded-md border border-border bg-card px-4 py-3">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
-                    <PartyPopper className="size-4" />
+    // One line under the headline figures: what waits on the user, each
+    // chip leading to where it is done.
+    return (
+        <section
+            aria-label="Perlu tindakan Anda"
+            className="rounded-md border border-border bg-card"
+        >
+            <header className="flex items-center gap-3 border-b border-border px-4 py-3">
+                <span
+                    className={cn(
+                        'flex size-9 shrink-0 items-center justify-center rounded-md',
+                        pending > 0
+                            ? 'bg-primary/10 text-primary'
+                            : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+                    )}
+                >
+                    {pending > 0 ? (
+                        <ListChecks className="size-5" />
+                    ) : (
+                        <PartyPopper className="size-5" />
+                    )}
                 </span>
                 <div>
-                    <p className="text-sm font-semibold text-foreground">
-                        Tidak ada tugas yang menunggu Anda
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                        Approval, penunjukan PIC, dan tugas pengadaan Anda akan
-                        muncul di sini.
+                    <h2 className="text-base font-semibold text-foreground">
+                        {pending > 0
+                            ? 'Perlu Tindakan Anda'
+                            : 'Tidak ada tugas yang menunggu Anda'}
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                        {pending > 0
+                            ? `${pending} tugas menunggu. Klik untuk membuka.`
+                            : 'Approval, penunjukan PIC, dan tugas pengadaan Anda akan muncul di sini.'}
                     </p>
                 </div>
-            </section>
-        );
-    }
+            </header>
 
-    return (
-        <section className="space-y-3">
-            <div className="flex items-baseline justify-between gap-3">
-                <h2 className="text-sm font-semibold text-foreground">
-                    Perlu Tindakan Anda
-                </h2>
-                <span className="tabular text-xs text-muted-foreground">
-                    {pending} tugas menunggu
-                </span>
-            </div>
-
-            <div
-                className={cn(
-                    'grid gap-4',
-                    cards.length > 1 && 'lg:grid-cols-2',
-                )}
-            >
-                {cards.map((card) => (
-                    <div
-                        key={card.key}
-                        className="flex flex-col overflow-hidden rounded-md border border-border bg-card"
-                    >
-                        <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-                            <div className="flex min-w-0 items-center gap-2.5">
+            {waiting.length > 0 && (
+                <ul className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+                    {waiting.map((card) => {
+                        const href =
+                            card.allHref ??
+                            (card.list.items[0] !== undefined
+                                ? card.itemHref(card.list.items[0])
+                                : null);
+                        const tile = (
+                            <>
                                 <span
                                     className={cn(
-                                        'flex size-7 shrink-0 items-center justify-center rounded-md',
+                                        'flex size-10 shrink-0 items-center justify-center rounded-md',
                                         card.tone,
                                     )}
                                 >
-                                    <card.icon className="size-4" />
+                                    <card.icon className="size-5" />
                                 </span>
-                                <h3 className="truncate text-sm font-semibold text-foreground">
+                                <span className="min-w-0 flex-1 text-sm leading-snug font-medium text-foreground">
                                     {card.title}
-                                </h3>
-                                <span
-                                    className={cn(
-                                        'tabular rounded-full px-2 py-0.5 text-xs font-semibold',
-                                        card.list.total > 0
-                                            ? card.tone
-                                            : 'bg-muted text-muted-foreground',
-                                    )}
-                                >
+                                </span>
+                                <span className="tabular shrink-0 text-2xl leading-none font-semibold text-foreground">
                                     {card.list.total}
                                 </span>
-                            </div>
-                            {card.allHref !== null && card.list.total > 0 && (
-                                <Link
-                                    href={card.allHref}
-                                    className="shrink-0 text-xs font-medium text-primary hover:underline"
-                                >
-                                    Lihat semua
-                                </Link>
-                            )}
-                        </header>
+                            </>
+                        );
+                        const className =
+                            'flex h-full items-center gap-3 rounded-md border border-border bg-background px-3.5 py-3';
 
-                        {card.list.items.length === 0 ? (
-                            <p className="px-4 py-6 text-center text-xs text-muted-foreground">
-                                {card.emptyText}
-                            </p>
-                        ) : (
-                            <ul className="divide-y divide-border">
-                                {card.list.items.map((item) => {
-                                    const date = card.dateLabel(item);
-
-                                    return (
-                                        <li key={item.id}>
-                                            <Link
-                                                href={card.itemHref(item)}
-                                                className="group flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-accent/40"
-                                            >
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="truncate text-sm font-medium text-foreground group-hover:text-primary">
-                                                        {item.name}
-                                                    </p>
-                                                    <p className="truncate text-xs text-muted-foreground">
-                                                        <span className="tabular">
-                                                            {item.number}
-                                                        </span>
-                                                        {' · '}
-                                                        {item.note}
-                                                    </p>
-                                                </div>
-                                                {date !== null && (
-                                                    <span className="tabular hidden shrink-0 text-xs text-muted-foreground sm:block">
-                                                        {date}
-                                                    </span>
-                                                )}
-                                                <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
-                                            </Link>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        )}
-
-                        {card.list.total > card.list.items.length && (
-                            <p className="mt-auto border-t border-border px-4 py-2 text-xs text-muted-foreground">
-                                +{card.list.total - card.list.items.length}{' '}
-                                lainnya
-                            </p>
-                        )}
-                    </div>
-                ))}
-            </div>
-        </section>
-    );
-}
-
-function BreakdownCard({
-    title,
-    rows,
-    total,
-}: {
-    title: string;
-    rows: Breakdown[];
-    total: number;
-}) {
-    return (
-        <section className="rounded-md border border-border bg-card">
-            <header className="border-b border-border px-4 py-3">
-                <h2 className="text-sm font-semibold text-foreground">
-                    {title}
-                </h2>
-            </header>
-
-            {rows.length === 0 ? (
-                <EmptyState title="Belum ada data" className="py-8" />
-            ) : (
-                <ul className="divide-y divide-border">
-                    {rows.slice(0, 8).map((row) => (
-                        <li key={row.label} className="px-4 py-2.5">
-                            <div className="flex items-center justify-between gap-3 text-sm">
-                                <span className="truncate text-foreground">
-                                    {row.label}
-                                </span>
-                                <span className="tabular font-semibold">
-                                    {row.total}
-                                </span>
-                            </div>
-                            <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-muted">
-                                <div
-                                    className="h-full bg-primary/70"
-                                    style={{
-                                        width: `${total > 0 ? (row.total / total) * 100 : 0}%`,
-                                    }}
-                                />
-                            </div>
-                        </li>
-                    ))}
-                </ul>
-            )}
-        </section>
-    );
-}
-
-function RecentTable({ rows }: { rows: ProcurementRow[] }) {
-    return (
-        <section className="overflow-hidden rounded-md border border-border bg-card">
-            <header className="flex items-center justify-between border-b border-border px-4 py-3">
-                <h2 className="text-sm font-semibold text-foreground">
-                    Pengadaan Terbaru
-                </h2>
-                <Link
-                    href={procurements.index()}
-                    className="text-xs font-medium text-primary hover:underline"
-                >
-                    Lihat semua
-                </Link>
-            </header>
-
-            {rows.length === 0 ? (
-                <EmptyState title="Belum ada pengadaan terdaftar" />
-            ) : (
-                <Table>
-                    <TableHeader className="bg-muted/60">
-                        <TableRow className="hover:bg-transparent">
-                            <TableHead>Pengadaan</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right">
-                                Nilai HPE
-                            </TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {rows.map((row) => (
-                            <TableRow key={row.id}>
-                                <TableCell>
+                        return (
+                            <li key={card.key}>
+                                {href !== null ? (
                                     <Link
-                                        href={procurements.show(row.id)}
-                                        className="block max-w-[18rem] truncate font-medium hover:text-primary hover:underline"
+                                        href={href}
+                                        className={cn(
+                                            className,
+                                            'group transition-colors hover:border-primary/50 hover:bg-accent/40',
+                                        )}
                                     >
-                                        {row.name}
+                                        {tile}
+                                        <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
                                     </Link>
-                                    <span className="tabular text-xs text-muted-foreground">
-                                        {row.number} · {row.target_unit}
-                                    </span>
-                                </TableCell>
-                                <TableCell>
-                                    <StatusBadge
-                                        label={row.status.name}
-                                        category={row.status.category}
-                                    />
-                                </TableCell>
-                                <TableCell className="tabular text-right font-medium whitespace-nowrap">
-                                    {formatCurrency(row.hpe_value)}
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            )}
-        </section>
-    );
-}
-
-function ScheduleCard({ rows }: { rows: ProcurementRow[] }) {
-    return (
-        <section className="rounded-md border border-border bg-card">
-            <header className="border-b border-border px-4 py-3">
-                <h2 className="text-sm font-semibold text-foreground">
-                    Jadwal Pengadaan
-                </h2>
-            </header>
-
-            {rows.length === 0 ? (
-                <EmptyState
-                    icon={CalendarClock}
-                    title="Belum ada target penyelesaian"
-                    description="Isi target penyelesaian pada data pengadaan agar tampil di sini."
-                />
-            ) : (
-                <ul className="divide-y divide-border">
-                    {rows.map((row) => (
-                        <li
-                            key={row.id}
-                            className="flex items-center justify-between gap-3 px-4 py-3"
-                        >
-                            <div className="min-w-0">
-                                <Link
-                                    href={procurements.show(row.id)}
-                                    className="block truncate text-sm font-medium hover:text-primary hover:underline"
-                                >
-                                    {row.name}
-                                </Link>
-                                <span className="tabular text-xs text-muted-foreground">
-                                    {row.number}
-                                </span>
-                            </div>
-                            <span className="tabular shrink-0 text-xs font-medium text-foreground">
-                                {formatDate(row.target_completion_date)}
-                            </span>
-                        </li>
-                    ))}
+                                ) : (
+                                    <span className={className}>{tile}</span>
+                                )}
+                            </li>
+                        );
+                    })}
                 </ul>
             )}
         </section>

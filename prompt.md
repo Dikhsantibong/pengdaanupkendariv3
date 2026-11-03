@@ -2562,6 +2562,92 @@ Pengamanan:
 
 ---
 
+# Alur Proses di Halaman Login
+
+Panel kiri halaman login (slide pertama, `layouts/auth/auth-showcase-layout.tsx`) disesuaikan dengan alur yang berlaku sekarang, yaitu 9 langkah dalam dua kolom:
+
+1. **Usulan Pekerjaan** (pengusul bidang): data, TOR bertanda tangan, dan Nota Dinas Usulan dilengkapi.
+2. **Persetujuan Usulan** (TL atasan → Direksi Pekerjaan).
+3. **Penunjukan PIC Perencana** (TL ICC).
+4. **Tahap Perencanaan** (PIC Perencana): Evaluasi Harga, Penawaran, HPE, UPB, RKS, Inisiasi SMART SCM.
+5. **Persetujuan Perencanaan** (TL ICC).
+6. **Penunjukan PIC Pelaksana** (TL Pengadaan).
+7. **Tahap Pelaksanaan** (PIC Pelaksana → TL Pengadaan), sampai status Terkontrak.
+8. **Penyerahan** (PIC Pelaksana → TL Pengadaan).
+9. **Pembayaran** (Keuangan → TL Keuangan → Asman Business Support), yang mencatat lunas dan menutup pengadaan.
+
+Catatan tambahan di bawahnya: pengadaan juga dapat dibuat langsung oleh TL Pengadaan tanpa tahap usulan. Judul slide menjadi "Dari usulan sampai pembayaran lunas…".
+
+- Keterangan tiap langkah hanya tampil di layar setinggi minimal 896 px, agar panel tidak perlu digulir di laptop 1366×768.
+- Hanya tampilan yang berubah. Data slide lain (rekapitulasi, tahapan dari Data Master, unit) tetap sama.
+
+---
+
+# Redesign Dashboard (Analitik Pengadaan)
+
+Dashboard dibangun ulang sebagai dashboard analitik bergaya korporat PLN. Datanya diambil dari database dan disesuaikan per role.
+
+**Susunan halaman (dari atas):**
+1. Header: sapaan, deskripsi, label akun (peran dan bidang), tombol Buat Pengadaan / Buat Usulan Pekerjaan.
+2. **Filter global:**
+   - Periode: Semua, 6 Bulan, 1 Tahun, Per Tahun, Rentang Tanggal.
+   - Direksi Pekerjaan, Unit Tujuan, PIC, Metode Pengadaan, Status Pengadaan (tahap), dan tombol Reset Filter.
+   - Semua KPI, grafik, tabel, dan aktivitas mengikuti filter yang sama, berdasarkan tanggal pengadaan didaftarkan.
+   - Filter tersimpan di URL dan dimuat ulang sebagian (partial reload) tanpa memuat ulang seluruh halaman.
+3. **6 KPI** (manajemen):
+   - Total Pengadaan, Berjalan, Selesai, Menunggu Approval (rincian usulan / perencanaan / pelaksanaan / penyerahan / pembayaran), Total Nilai HPE (Rupiah penuh), Dibatalkan.
+   - Total, Selesai, dan Nilai HPE menampilkan perubahan dibanding periode sebelumnya bila periode bertanggal dipilih.
+   - Role lain tetap memakai kartu angka role-nya sendiri.
+4. **Perlu Tindakan Anda**: kotak per jenis tugas (ikon, judul ukuran normal, jumlah besar), 5 kotak per baris di layar lebar, dan bisa diklik.
+   - Kartu daftar panjang dan panel "Notifikasi Belum Dibaca" dihapus dari dashboard.
+   - Notifikasi tetap ada di lonceng header.
+5. **Alur Tahapan:** Usulan → Perencanaan → Pelaksanaan → Penyerahan & Pembayaran → Selesai, plus Dibatalkan, lengkap dengan jumlah dan persentase. Klik tahap untuk menyaring dashboard.
+6. **Grafik:**
+   - Tren Pengadaan (kolom berkelompok per bulan: total, berjalan, selesai, batal).
+   - Status Pengadaan (donut per tahap).
+   - Perkembangan Nilai Pengadaan (area: nilai HPE, berjalan, selesai). HPE bukan realisasi bayar; target anggaran belum ada di database sehingga tidak ditampilkan.
+   - Metode Pengadaan (donut).
+   - Progres Pengadaan (gauge): rata-rata posisi alur, jumlah Penyusunan Surat Pesanan dan Terkontrak (dari `system_key` status), Dalam Pelaksanaan, dan persentase penyelesaian.
+   - Peringkat Direksi Pekerjaan, Unit Tujuan, Sumber Anggaran (donut), dan Distribusi PIC (jumlah penugasan, bukan ukuran kinerja).
+   - Setiap grafik punya tooltip, legend yang bisa diklik, kondisi kosong, dan kondisi gagal dimuat.
+7. **Tabel Pengadaan Terbaru:**
+   - Kolom: No, Nama, Nomor, Unit, Metode, PIC, Nilai HPE, Status, Tanggal, Aksi.
+   - Pencarian, sorting (nama, nomor, HPE, tanggal), filter status, dan paginasi 10 per halaman (`table_page`).
+8. **Aktivitas Terbaru** (timeline dari `procurement_activities`), dengan Jadwal Pengadaan dan Rincian Status Progres di kolom kanan.
+   - Tinggi kolom kanan sama dengan aktivitas; aktivitas bisa digulir di dalam kartunya.
+   - Baris grafik selalu terisi penuh (kartu terakhir melebar), tanpa ruang kosong.
+
+**Data per role** (`DashboardAnalyticsService::PROFILE_SECTIONS`):
+- Manajemen: semua bagian.
+- Direksi Pekerjaan: bidangnya.
+- Keuangan: pengadaan yang dibayarnya.
+- PIC Perencana / Pelaksana: penugasannya.
+- Pengusul: usulannya sendiri, yaitu tren, tahap, progres, dan aktivitas.
+- Perbandingan antar-bidang dan antar-PIC hanya untuk manajemen.
+
+**Teknis:**
+- `app/Services/DashboardAnalyticsService.php`, `app/Support/DashboardFilters.php`, dan `app/Support/DashboardStage.php`. Tahap dihitung dalam satu query SQL, dengan aturan yang sama seperti `Procurement::currentStage()`.
+- Grafik berupa SVG buatan sendiri di `resources/js/components/charts/` (chart-kit, grouped-column-chart, area-chart, ring-chart, gauge-chart, ranking-bars), tanpa library tambahan.
+- Bagian tampilan ada di `resources/js/components/dashboard/analytics.tsx`.
+- Palet `--viz-*` di `app.css`: biru #0878C9, navy #064477, kuning #F5C928 (khusus berjalan), hijau #237A50, merah #A83232, abu #8795A3, dengan versi dark mode.
+- Angka Nilai HPE menyesuaikan lebar kartu (container query), sehingga tidak keluar dari kartunya.
+- Tidak ada perubahan database.
+- **Test:** `DashboardAnalyticsTest`, `RoleDashboardTest`, `DashboardTasksTest`.
+
+---
+
+# Login: Passkey dan Lupa Kata Sandi Dinonaktifkan
+
+- Tombol **Sign in with a passkey** dan tautan **Lupa kata sandi?** tidak tampil di halaman login. Route-nya (`passkey.*`, `well-known.passkeys`, `password.request/email/reset/update`) membalas **404**.
+- Pengelolaan passkey di Pengaturan Keamanan dan opsi passkey di Konfirmasi Kata Sandi juga ikut tersembunyi.
+- **Mengaktifkan kembali:** isi `.env` lalu jalankan `php artisan optimize:clear`:
+  - `LOGIN_PASSKEYS_ENABLED=true`
+  - `LOGIN_PASSWORD_RESET_ENABLED=true`
+- Route tetap terdaftar, agar Wayfinder dan build frontend tidak rusak. Saklar dibaca dari `config('fortify.login_options')` lewat `App\Support\LoginOptions` dan middleware `EnsureLoginOptionEnabled`.
+- **Test:** `LoginOptionsTest`. `PasswordResetTest` dan `SecurityTest` menyalakan saklarnya untuk menguji fitur saat aktif.
+
+---
+
 # Teknologi
 
 Sesuai dengan `claude.md`.

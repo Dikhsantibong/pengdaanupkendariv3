@@ -68,6 +68,17 @@
     --color-status-berjalan-surface: var(--status-berjalan-surface);
     --color-status-selesai: var(--status-selesai);
     --color-status-selesai-surface: var(--status-selesai-surface);
+
+    /* Dashboard chart palette (PLN Nusantara Power). */
+    --color-viz-blue: var(--viz-blue);
+    --color-viz-navy: var(--viz-navy);
+    --color-viz-sky: var(--viz-sky);
+    --color-viz-pale: var(--viz-pale);
+    --color-viz-yellow: var(--viz-yellow);
+    --color-viz-green: var(--viz-green);
+    --color-viz-red: var(--viz-red);
+    --color-viz-grey: var(--viz-grey);
+    --color-viz-grid: var(--viz-grid);
 }
 
 :root {
@@ -123,6 +134,19 @@
     --status-berjalan-surface: oklch(0.95 0.08 95);
     --status-selesai: oklch(0.46 0.1 158);
     --status-selesai-surface: oklch(0.94 0.03 158);
+
+    /* Dashboard charts: blue for totals and money, banana yellow only for
+       running jobs, dark green for done, dark red for cancelled, grey for
+       proposals. */
+    --viz-blue: #0878c9;
+    --viz-navy: #064477;
+    --viz-sky: #6aaee3;
+    --viz-pale: #b8d8f1;
+    --viz-yellow: #f5c928;
+    --viz-green: #237a50;
+    --viz-red: #a83232;
+    --viz-grey: #8795a3;
+    --viz-grid: #dce6ef;
 }
 
 .dark {
@@ -170,6 +194,16 @@
     --status-berjalan-surface: oklch(0.32 0.055 82);
     --status-selesai: oklch(0.75 0.11 158);
     --status-selesai-surface: oklch(0.3 0.05 158);
+
+    --viz-blue: #4ea3e6;
+    --viz-navy: #9cc3e8;
+    --viz-sky: #2f78b4;
+    --viz-pale: #24527a;
+    --viz-yellow: #e9c84a;
+    --viz-green: #4fae7f;
+    --viz-red: #d46a6a;
+    --viz-grey: #9aa6b2;
+    --viz-grid: oklch(0.32 0.018 252);
 }
 
 @layer base {

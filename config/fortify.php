@@ -160,6 +160,22 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Login Options
+    |--------------------------------------------------------------------------
+    |
+    | Passkey sign-in and the forgotten password flow stay registered (so
+    | the generated front-end routes keep building) but are switched off:
+    | hidden on the login page and answering 404 until turned on in .env.
+    |
+    */
+
+    'login_options' => [
+        'passkeys' => (bool) env('LOGIN_PASSKEYS_ENABLED', false),
+        'password_reset' => (bool) env('LOGIN_PASSWORD_RESET_ENABLED', false),
+    ],
+
     'features' => [
         // Features::registration(),
         Features::resetPasswords(),

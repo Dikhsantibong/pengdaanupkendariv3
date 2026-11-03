@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureLoginOptionEnabled;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\RestrictImpersonatedSession;
@@ -20,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->encryptCookies(except: ['appearance', 'sidebar_docked']);
 
         $middleware->web(append: [
+            EnsureLoginOptionEnabled::class,
             HandleAppearance::class,
             RestrictImpersonatedSession::class,
             HandleInertiaRequests::class,

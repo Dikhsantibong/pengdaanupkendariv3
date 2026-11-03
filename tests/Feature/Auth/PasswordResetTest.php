@@ -18,6 +18,9 @@ class PasswordResetTest extends TestCase
         parent::setUp();
 
         $this->skipUnlessFortifyHas(Features::resetPasswords());
+
+        // The flow is switched off by default; these cover it switched on.
+        config(['fortify.login_options.password_reset' => true]);
     }
 
     public function test_reset_password_link_screen_can_be_rendered()

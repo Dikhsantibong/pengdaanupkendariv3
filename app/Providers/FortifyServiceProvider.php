@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Support\LoginOptions;
 use App\Support\PublicProcurementBoard;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -12,7 +13,6 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
-use Laravel\Fortify\Features;
 use Laravel\Fortify\Fortify;
 
 class FortifyServiceProvider extends ServiceProvider
@@ -50,7 +50,8 @@ class FortifyServiceProvider extends ServiceProvider
     private function configureViews(): void
     {
         Fortify::loginView(fn (Request $request) => Inertia::render('auth/login', [
-            'canResetPassword' => Features::enabled(Features::resetPasswords()),
+            'canResetPassword' => LoginOptions::passwordReset(),
+            'canUsePasskeys' => LoginOptions::passkeys(),
             'status' => $request->session()->get('status'),
             'showcase' => app(PublicProcurementBoard::class)->loginShowcase(),
         ]));
@@ -75,7 +76,9 @@ class FortifyServiceProvider extends ServiceProvider
 
         Fortify::twoFactorChallengeView(fn () => Inertia::render('auth/two-factor-challenge'));
 
-        Fortify::confirmPasswordView(fn () => Inertia::render('auth/confirm-password'));
+        Fortify::confirmPasswordView(fn () => Inertia::render('auth/confirm-password', [
+            'canUsePasskeys' => LoginOptions::passkeys(),
+        ]));
     }
 
     /**

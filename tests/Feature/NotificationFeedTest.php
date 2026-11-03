@@ -49,22 +49,26 @@ class NotificationFeedTest extends TestCase
             ->assertJsonPath('items.0.procurement_number', $this->procurement->number);
     }
 
-    public function test_the_dashboard_keeps_showing_them_until_read(): void
+    public function test_the_bell_keeps_showing_them_until_read(): void
     {
         $this->user->notify(new ProcurementMilestone($this->procurement, 'Penugasan PIC', 'Anda ditunjuk.'));
         $id = $this->user->unreadNotifications()->value('id');
 
         $this->actingAs($this->user)
-            ->get(route('dashboard'))
-            ->assertInertia(fn (Assert $page) => $page
-                ->where('notifications.total', 1)
-                ->where('notifications.items.0.id', $id)
-                ->where('notifications.items.0.url', route('procurements.show', $this->procurement)));
+            ->getJson(route('notifications.feed'))
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('items.0.id', $id)
+            ->assertJsonPath('items.0.url', route('procurements.show', $this->procurement));
 
-        // Still there on the next visit: opening the app does not read it.
+        // Still there after opening the dashboard, which no longer lists
+        // them (the header bell does): opening the app does not read it.
         $this->actingAs($this->user)
             ->get(route('dashboard'))
-            ->assertInertia(fn (Assert $page) => $page->where('notifications.total', 1));
+            ->assertInertia(fn (Assert $page) => $page->missing('notifications'));
+
+        $this->actingAs($this->user)
+            ->getJson(route('notifications.feed'))
+            ->assertJsonPath('total', 1);
 
         $this->actingAs($this->user)
             ->putJson(route('notifications.read', $id))
@@ -72,8 +76,9 @@ class NotificationFeedTest extends TestCase
             ->assertJsonPath('total', 0);
 
         $this->actingAs($this->user)
-            ->get(route('dashboard'))
-            ->assertInertia(fn (Assert $page) => $page->where('notifications.total', 0)->where('notifications.items', []));
+            ->getJson(route('notifications.feed'))
+            ->assertJsonPath('total', 0)
+            ->assertJsonPath('items', []);
     }
 
     public function test_only_ones_own_notification_can_be_marked_read(): void

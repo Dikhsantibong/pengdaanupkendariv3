@@ -24,6 +24,8 @@ class SecurityTest extends TestCase
         Features::passkeys([
             'confirmPassword' => true,
         ]);
+        // Passkeys are switched off by default; this covers them switched on.
+        config(['fortify.login_options.passkeys' => true]);
 
         $user = User::factory()->create();
 

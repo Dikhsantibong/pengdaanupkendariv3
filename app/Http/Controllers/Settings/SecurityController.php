@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\PasswordUpdateRequest;
 use App\Http\Requests\Settings\TwoFactorAuthenticationRequest;
+use App\Support\LoginOptions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
@@ -18,10 +19,13 @@ class SecurityController extends Controller
      */
     public function edit(TwoFactorAuthenticationRequest $request): Response
     {
+        // Passkeys follow the login option switch as well as the feature.
+        $canManagePasskeys = Features::canManagePasskeys() && LoginOptions::passkeys();
+
         $props = [
             'canManageTwoFactor' => Features::canManageTwoFactorAuthentication(),
-            'canManagePasskeys' => Features::canManagePasskeys(),
-            'passkeys' => Features::canManagePasskeys()
+            'canManagePasskeys' => $canManagePasskeys,
+            'passkeys' => $canManagePasskeys
                 ? $request->user()
                     ->passkeys()
                     ->select(['id', 'name', 'credential', 'created_at', 'last_used_at'])

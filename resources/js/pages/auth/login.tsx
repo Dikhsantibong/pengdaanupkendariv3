@@ -14,16 +14,22 @@ import { request } from '@/routes/password';
 type Props = {
     status?: string;
     canResetPassword: boolean;
+    /** Off unless LOGIN_PASSKEYS_ENABLED is set in .env. */
+    canUsePasskeys: boolean;
 };
 
 /* The showcase panel beside this form is rendered by AuthShowcaseLayout. */
 
-export default function Login({ status, canResetPassword }: Props) {
+export default function Login({
+    status,
+    canResetPassword,
+    canUsePasskeys,
+}: Props) {
     return (
         <>
             <Head title="Masuk" />
 
-            <PasskeyVerify />
+            {canUsePasskeys && <PasskeyVerify />}
 
             <Form
                 {...store.form()}

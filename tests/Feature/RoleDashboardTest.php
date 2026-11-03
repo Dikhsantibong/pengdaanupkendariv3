@@ -30,8 +30,10 @@ class RoleDashboardTest extends TestCase
                 ->assertInertia(fn (Assert $page) => $page
                     ->where('profile', 'manajemen')
                     ->where('summary.total', 2)
-                    ->has('byWorkDirector')
-                    ->has('byPlanner')
+                    // The comparisons now live in the analytics.
+                    ->where('analytics.kpis.total', 2)
+                    ->has('analytics.directorates')
+                    ->has('analytics.pics')
                     ->has('stages', 5)
                     ->missing('role'));
         }

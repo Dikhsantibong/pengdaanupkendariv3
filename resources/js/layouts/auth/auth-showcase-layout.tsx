@@ -34,43 +34,57 @@ const statusDot: Record<StatusCategory, string> = {
     selesai: 'bg-status-selesai',
 };
 
+/** The process as it runs today, split into two columns on the panel. */
 const flow = [
     {
         title: 'Usulan Pekerjaan',
-        actor: 'Pengusul',
-        detail: 'Usulan beserta TOR dan Nota Dinas disetujui TL lalu Asman bidang.',
+        actor: 'Pengusul bidang',
+        detail: 'Data usulan, TOR bertanda tangan, dan Nota Dinas Usulan dilengkapi sebelum diajukan.',
+    },
+    {
+        title: 'Persetujuan Usulan',
+        actor: 'TL atasan → Direksi Pekerjaan',
+        detail: 'Disetujui TL lalu Asman bidang, atau dikembalikan dengan catatan untuk diajukan ulang.',
     },
     {
         title: 'Penunjukan PIC Perencana',
         actor: 'TL ICC',
-        detail: 'Satu PIC bertanggung jawab menyusun seluruh dokumen perencanaan.',
+        detail: 'Satu PIC menyusun seluruh dokumen perencanaan.',
     },
     {
         title: 'Tahap Perencanaan',
         actor: 'PIC Perencana',
-        detail: 'Nota Dinas, TOR, Evaluasi Harga, HPE, UPB, RKS, hingga Smart SCM.',
+        detail: 'Evaluasi Harga, Penawaran, HPE, UPB, RKS, hingga Inisiasi SMART SCM.',
     },
     {
-        title: 'Persetujuan Dokumen',
+        title: 'Persetujuan Perencanaan',
         actor: 'TL ICC',
-        detail: 'Dokumen perencanaan disetujui atau dikembalikan dengan catatan.',
+        detail: 'Dokumen disetujui atau dikembalikan dengan catatan.',
     },
     {
         title: 'Penunjukan PIC Pelaksana',
         actor: 'TL Pengadaan',
-        detail: 'Pelaksanaan dibuka setelah dokumen perencanaan disetujui.',
+        detail: 'Dibuka setelah perencanaan disetujui.',
     },
     {
         title: 'Tahap Pelaksanaan',
-        actor: 'PIC Pelaksana',
-        detail: 'Evaluasi dokumen, HPS, berita acara, hingga kontrak; diajukan ke TL Pengadaan untuk disetujui.',
+        actor: 'PIC Pelaksana → TL Pengadaan',
+        detail: 'HPS, SMART SCM, berita acara, hingga kontrak; disetujui menjadi Terkontrak.',
     },
     {
-        title: 'Penyerahan & Pembayaran',
-        actor: 'Keuangan',
-        detail: 'Kelengkapan penyerahan dan tagihan diperiksa, pembayaran dicatat, pengadaan ditutup.',
+        title: 'Penyerahan',
+        actor: 'PIC Pelaksana → TL Pengadaan',
+        detail: 'Berkas penyerahan diunggah lalu disetujui TL Pengadaan.',
+    },
+    {
+        title: 'Pembayaran',
+        actor: 'Keuangan → TL Keuangan → Asman BS',
+        detail: 'Persetujuan Asman Business Support mencatat lunas dan menutup pengadaan.',
     },
 ];
+
+/** Steps shown in the first column; the rest continue in the second. */
+const FLOW_FIRST_COLUMN = 5;
 
 export default function AuthShowcaseLayout({
     children,
@@ -213,7 +227,7 @@ function buildSlides(showcase?: Showcase): Slide[] {
         {
             key: 'flow',
             eyebrow: 'Alur Proses Pengadaan',
-            title: 'Dari usulan sampai masa pemeliharaan, dalam satu jalur yang tercatat.',
+            title: 'Dari usulan sampai pembayaran lunas, dalam satu jalur yang tercatat.',
             content: <FlowSlide />,
         },
     ];
@@ -252,37 +266,65 @@ function buildSlides(showcase?: Showcase): Slide[] {
     return slides;
 }
 
+/**
+ * The process in two numbered columns. Step details only show on screens
+ * tall enough to hold them, so the panel never needs scrolling.
+ */
 function FlowSlide() {
-    return (
-        <ol className="max-w-2xl">
-            {flow.map((step, index) => (
-                <li key={step.title} className="flex gap-4">
-                    <div className="flex flex-col items-center">
-                        <span className="tabular flex size-7 shrink-0 items-center justify-center rounded-full border border-sidebar-border bg-sidebar-accent text-xs font-semibold">
-                            {index + 1}
-                        </span>
-                        {index < flow.length - 1 && (
-                            <span className="w-px flex-1 bg-sidebar-border" />
-                        )}
-                    </div>
+    const columns = [
+        flow.slice(0, FLOW_FIRST_COLUMN),
+        flow.slice(FLOW_FIRST_COLUMN),
+    ];
 
-                    <div
-                        className={cn(
-                            'min-w-0 pb-5',
-                            index === flow.length - 1 && 'pb-0',
-                        )}
-                    >
-                        <p className="text-sm font-semibold">{step.title}</p>
-                        <p className="text-[0.6875rem] font-medium tracking-[0.06em] text-sidebar-foreground/50 uppercase">
-                            {step.actor}
-                        </p>
-                        <p className="mt-0.5 text-sm text-sidebar-foreground/70">
-                            {step.detail}
-                        </p>
-                    </div>
-                </li>
-            ))}
-        </ol>
+    return (
+        <div className="max-w-3xl">
+            <div className="grid grid-cols-2 gap-x-8">
+                {columns.map((steps, column) => (
+                    <ol key={column} start={column * FLOW_FIRST_COLUMN + 1}>
+                        {steps.map((step, position) => {
+                            const number =
+                                column * FLOW_FIRST_COLUMN + position + 1;
+                            const isLast = position === steps.length - 1;
+
+                            return (
+                                <li key={step.title} className="flex gap-3">
+                                    <div className="flex flex-col items-center">
+                                        <span className="tabular flex size-6 shrink-0 items-center justify-center rounded-full border border-sidebar-border bg-sidebar-accent text-[0.6875rem] font-semibold">
+                                            {number}
+                                        </span>
+                                        {!isLast && (
+                                            <span className="w-px flex-1 bg-sidebar-border" />
+                                        )}
+                                    </div>
+
+                                    <div
+                                        className={cn(
+                                            'min-w-0 pb-3.5',
+                                            isLast && 'pb-0',
+                                        )}
+                                    >
+                                        <p className="text-sm leading-6 font-semibold">
+                                            {step.title}
+                                        </p>
+                                        <p className="text-[0.6875rem] font-medium tracking-[0.04em] text-sidebar-foreground/50 uppercase">
+                                            {step.actor}
+                                        </p>
+                                        <p className="mt-0.5 hidden text-xs leading-relaxed text-sidebar-foreground/70 [@media(min-height:56rem)]:block">
+                                            {step.detail}
+                                        </p>
+                                    </div>
+                                </li>
+                            );
+                        })}
+                    </ol>
+                ))}
+            </div>
+
+            <p className="mt-4 border-t border-sidebar-border pt-3 text-xs text-sidebar-foreground/60">
+                Pengadaan juga dapat dibuat langsung oleh TL Pengadaan tanpa
+                tahap usulan, lalu berlanjut dari Penunjukan PIC Perencana.
+            </p>
+        </div>
     );
 }
 
