@@ -99,6 +99,13 @@ class ProcurementPolicy
             return $this->leadsProposerOf($user, $procurement);
         }
 
+        // The TL who approved at their level does not decide again for the
+        // Direksi Pekerjaan when the division has another one to do so.
+        if ($procurement->proposal_tl_reviewed_by === $user->id
+            && app(ProcurementService::class)->divisionHasApprover($procurement, $user)) {
+            return false;
+        }
+
         // A division with no Direksi Pekerjaan account of its own: its TL
         // decides, so a proposal never waits on an Asman who is not there.
         return $this->leadsDivisionOf($user, $procurement)

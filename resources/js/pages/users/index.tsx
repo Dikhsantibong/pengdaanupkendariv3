@@ -1,5 +1,16 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { Pencil, Plus, Power, Search, Users } from 'lucide-react';
+import {
+    AlertTriangle,
+    Building2,
+    LayoutList,
+    Network,
+    Pencil,
+    Plus,
+    Power,
+    RotateCcw,
+    Search,
+    Users,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { EmptyState } from '@/components/empty-state';
 import InputError from '@/components/input-error';
@@ -31,6 +42,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import users from '@/routes/users';
 import type { EnumOption } from '@/types';
@@ -49,6 +61,9 @@ type ManagedUser = {
     work_director: string | null;
     team_leader_id: number | null;
     team_leader: string | null;
+    /** Where the account sits: direksi, tl, staf or lainnya. */
+    level: string;
+    team_size: number;
     is_active: boolean;
     planned_count: number;
     executed_count: number;
@@ -66,19 +81,41 @@ type UserFormValues = {
     password_confirmation: string;
 };
 
+type UserFilters = {
+    search: string | null;
+    role: string | null;
+    work_director_id: string | null;
+    level: string | null;
+    team_leader_id: number | null;
+    status: string | null;
+    missing_leader: boolean;
+    view: 'table' | 'structure';
+};
+
+const LEVEL_TONES: Record<string, string> = {
+    direksi: 'bg-primary/10 text-primary',
+    tl: 'bg-sky-500/10 text-sky-700 dark:text-sky-400',
+    staf: 'bg-muted text-muted-foreground',
+    lainnya: 'bg-muted text-muted-foreground',
+};
+
 export default function UserIndex({
     users: records,
     filters,
+    levels,
     roles,
     divisions,
     teamLeaders,
 }: {
     users: ManagedUser[];
-    filters: { search: string | null; role: string | null };
+    filters: UserFilters;
+    levels: EnumOption[];
     roles: EnumOption[];
     divisions: Array<{ value: number; label: string }>;
     teamLeaders: Array<{ value: number; label: string }>;
 }) {
+    const levelLabel = (level: string) =>
+        levels.find((option) => option.value === level)?.label ?? level;
     const [search, setSearch] = useState(filters.search ?? '');
     const [editing, setEditing] = useState<ManagedUser | null>(null);
     const [open, setOpen] = useState(false);
@@ -98,14 +135,26 @@ export default function UserIndex({
 
     const form = useForm<UserFormValues>({ ...defaults });
 
-    const visit = (overrides: Record<string, string | null>) => {
+    const visit = (
+        overrides: Partial<
+            Record<keyof UserFilters, string | number | boolean | null>
+        >,
+    ) => {
         const merged = { ...filters, ...overrides };
         const query: Record<string, string> = {};
 
         Object.entries(merged).forEach(([key, value]) => {
-            if (value !== null && value !== '') {
-                query[key] = value;
+            // Defaults stay out of the address.
+            if (
+                value === null ||
+                value === '' ||
+                value === false ||
+                (key === 'view' && value === 'table')
+            ) {
+                return;
             }
+
+            query[key] = value === true ? '1' : String(value);
         });
 
         router.get(users.index().url, query, {
@@ -114,6 +163,18 @@ export default function UserIndex({
             replace: true,
         });
     };
+
+    const isFiltered =
+        filters.search !== null ||
+        filters.role !== null ||
+        filters.work_director_id !== null ||
+        filters.level !== null ||
+        filters.team_leader_id !== null ||
+        filters.status !== null ||
+        filters.missing_leader;
+    const missingLeaders = records.filter(
+        (user) => user.level === 'staf' && user.team_leader_id === null,
+    ).length;
 
     useEffect(() => {
         if (isFirstRender.current) {
@@ -208,50 +269,189 @@ export default function UserIndex({
                     }
                 />
 
-                <div className="flex flex-col gap-3 rounded-md border border-border bg-card p-3 lg:flex-row lg:items-end">
-                    <div className="flex-1 space-y-1.5">
-                        <Label htmlFor="user-search" className="section-label">
-                            Cari
-                        </Label>
-                        <div className="relative">
-                            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                                id="user-search"
-                                value={search}
-                                onChange={(event) =>
-                                    setSearch(event.target.value)
-                                }
-                                placeholder="Nama atau alamat email"
-                                className="pl-9"
-                            />
+                <section
+                    aria-label="Filter pengguna"
+                    className="rounded-md border border-border bg-card p-3"
+                >
+                    <div className="flex flex-wrap items-end gap-3">
+                        <div className="w-full space-y-1.5 lg:w-auto lg:min-w-64 lg:flex-[2_1_auto]">
+                            <Label
+                                htmlFor="user-search"
+                                className="section-label"
+                            >
+                                Cari
+                            </Label>
+                            <div className="relative">
+                                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                                <Input
+                                    id="user-search"
+                                    value={search}
+                                    onChange={(event) =>
+                                        setSearch(event.target.value)
+                                    }
+                                    placeholder="Nama, email, atau jabatan"
+                                    className="pl-9"
+                                />
+                            </div>
                         </div>
+
+                        <FilterSelect
+                            label="Peran"
+                            value={filters.role}
+                            options={roles.map((role) => ({
+                                value: role.value,
+                                label: role.label,
+                            }))}
+                            onChange={(value) => visit({ role: value })}
+                        />
+                        <FilterSelect
+                            label="Bidang"
+                            value={filters.work_director_id}
+                            options={[
+                                ...divisions.map((division) => ({
+                                    value: String(division.value),
+                                    label: division.label,
+                                })),
+                                { value: NO_DIVISION, label: 'Tanpa bidang' },
+                            ]}
+                            onChange={(value) =>
+                                visit({ work_director_id: value })
+                            }
+                        />
+                        <FilterSelect
+                            label="Tingkat Jabatan"
+                            value={filters.level}
+                            options={levels.map((level) => ({
+                                value: level.value,
+                                label: level.label,
+                            }))}
+                            onChange={(value) => visit({ level: value })}
+                        />
+                        <FilterSelect
+                            label="TL / Atasan"
+                            value={
+                                filters.team_leader_id === null
+                                    ? null
+                                    : String(filters.team_leader_id)
+                            }
+                            options={teamLeaders.map((leader) => ({
+                                value: String(leader.value),
+                                label: leader.label,
+                            }))}
+                            onChange={(value) =>
+                                visit({
+                                    team_leader_id:
+                                        value === null ? null : Number(value),
+                                })
+                            }
+                        />
+                        <FilterSelect
+                            label="Status"
+                            value={filters.status}
+                            options={[
+                                { value: 'active', label: 'Aktif' },
+                                { value: 'inactive', label: 'Nonaktif' },
+                            ]}
+                            onChange={(value) => visit({ status: value })}
+                        />
+
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={!isFiltered}
+                            onClick={() => {
+                                setSearch('');
+                                visit({
+                                    search: null,
+                                    role: null,
+                                    work_director_id: null,
+                                    level: null,
+                                    team_leader_id: null,
+                                    status: null,
+                                    missing_leader: false,
+                                });
+                            }}
+                        >
+                            <RotateCcw className="size-3.5" />
+                            Reset Filter
+                        </Button>
                     </div>
 
-                    <div className="space-y-1.5 lg:w-64">
-                        <Label className="section-label">Peran</Label>
-                        <Select
-                            value={filters.role ?? ALL}
-                            onValueChange={(value) =>
-                                visit({ role: value === ALL ? null : value })
-                            }
+                    <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                            <span className="tabular">
+                                {records.length} pengguna
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    visit({
+                                        missing_leader: !filters.missing_leader,
+                                    })
+                                }
+                                aria-pressed={filters.missing_leader}
+                                className={cn(
+                                    'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 font-medium transition-colors',
+                                    filters.missing_leader
+                                        ? 'border-amber-500/60 bg-amber-500/10 text-amber-800 dark:text-amber-300'
+                                        : 'border-border hover:bg-muted',
+                                )}
+                            >
+                                <AlertTriangle className="size-3.5" />
+                                Staf tanpa TL
+                                {!filters.missing_leader &&
+                                    missingLeaders > 0 && (
+                                        <span className="tabular rounded-full bg-amber-500/15 px-1.5 text-amber-800 dark:text-amber-300">
+                                            {missingLeaders}
+                                        </span>
+                                    )}
+                            </button>
+                        </div>
+
+                        <div
+                            role="tablist"
+                            aria-label="Tampilan"
+                            className="inline-flex w-fit rounded-md border border-border p-0.5"
                         >
-                            <SelectTrigger className="w-full">
-                                <SelectValue placeholder="Semua" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value={ALL}>Semua</SelectItem>
-                                {roles.map((role) => (
-                                    <SelectItem
-                                        key={role.value}
-                                        value={role.value}
-                                    >
-                                        {role.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                            {(
+                                [
+                                    {
+                                        value: 'table',
+                                        label: 'Tabel',
+                                        icon: LayoutList,
+                                    },
+                                    {
+                                        value: 'structure',
+                                        label: 'Struktur Jabatan',
+                                        icon: Network,
+                                    },
+                                ] as const
+                            ).map((option) => (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={
+                                        filters.view === option.value
+                                    }
+                                    onClick={() =>
+                                        visit({ view: option.value })
+                                    }
+                                    className={cn(
+                                        'inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors',
+                                        filters.view === option.value
+                                            ? 'bg-primary text-primary-foreground'
+                                            : 'text-muted-foreground hover:bg-muted',
+                                    )}
+                                >
+                                    <option.icon className="size-3.5" />
+                                    {option.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                </section>
 
                 {records.length === 0 ? (
                     <div className="rounded-md border border-border bg-card">
@@ -261,6 +461,13 @@ export default function UserIndex({
                             description="Tidak ada pengguna yang cocok dengan filter saat ini."
                         />
                     </div>
+                ) : filters.view === 'structure' ? (
+                    <OrgStructure
+                        records={records}
+                        divisions={divisions}
+                        levelLabel={levelLabel}
+                        onEdit={openEdit}
+                    />
                 ) : (
                     <div className="overflow-hidden rounded-md border border-border bg-card">
                         <Table>
@@ -292,13 +499,30 @@ export default function UserIndex({
                                         <TableCell>{user.role_label}</TableCell>
                                         <TableCell>
                                             {user.position ?? '—'}
+                                            <span
+                                                className={cn(
+                                                    'mt-0.5 block w-fit rounded-sm px-1.5 py-px text-[0.6875rem] font-medium',
+                                                    LEVEL_TONES[user.level],
+                                                )}
+                                            >
+                                                {levelLabel(user.level)}
+                                                {user.team_size > 0 &&
+                                                    ` · ${user.team_size} staf`}
+                                            </span>
                                         </TableCell>
                                         <TableCell>
                                             {user.work_director ?? '—'}
-                                            {user.team_leader && (
+                                            {user.team_leader ? (
                                                 <span className="block text-xs text-muted-foreground">
                                                     TL: {user.team_leader}
                                                 </span>
+                                            ) : (
+                                                user.level === 'staf' && (
+                                                    <span className="mt-0.5 flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+                                                        <AlertTriangle className="size-3" />
+                                                        Belum ada TL
+                                                    </span>
+                                                )
                                             )}
                                         </TableCell>
                                         <TableCell className="tabular text-xs text-muted-foreground">
@@ -624,6 +848,291 @@ export default function UserIndex({
                 </DialogContent>
             </Dialog>
         </>
+    );
+}
+
+/**
+ * One filter dropdown with an "Semua" choice that clears it.
+ */
+function FilterSelect({
+    label,
+    value,
+    options,
+    onChange,
+}: {
+    label: string;
+    value: string | null;
+    options: Array<{ value: string; label: string }>;
+    onChange: (value: string | null) => void;
+}) {
+    return (
+        <div className="w-full space-y-1.5 sm:w-auto sm:min-w-40 sm:flex-[1_1_auto]">
+            <Label className="section-label">{label}</Label>
+            <Select
+                value={value ?? ALL}
+                onValueChange={(next) => onChange(next === ALL ? null : next)}
+            >
+                <SelectTrigger className="w-0 min-w-full">
+                    <SelectValue placeholder="Semua" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value={ALL}>Semua</SelectItem>
+                    {options.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
+    );
+}
+
+/**
+ * The accounts as the organisation: per division its Direksi Pekerjaan,
+ * each TL with the staff they lead, and the staff still without a TL.
+ */
+function OrgStructure({
+    records,
+    divisions,
+    levelLabel,
+    onEdit,
+}: {
+    records: ManagedUser[];
+    divisions: Array<{ value: number; label: string }>;
+    levelLabel: (level: string) => string;
+    onEdit: (user: ManagedUser) => void;
+}) {
+    const groups = [
+        ...divisions.map((division) => ({
+            key: String(division.value),
+            name: division.label,
+            members: records.filter(
+                (user) => user.work_director_id === division.value,
+            ),
+        })),
+        {
+            key: 'none',
+            name: 'Tanpa bidang',
+            members: records.filter((user) => user.work_director_id === null),
+        },
+    ].filter((group) => group.members.length > 0);
+
+    return (
+        <div className="grid gap-4 xl:grid-cols-2">
+            {groups.map((group) => {
+                const ids = new Set(group.members.map((user) => user.id));
+                const directors = group.members.filter(
+                    (user) => user.level === 'direksi',
+                );
+                const leaders = group.members.filter(
+                    (user) => user.level === 'tl',
+                );
+                const staffOf = (leaderId: number) =>
+                    group.members.filter(
+                        (user) =>
+                            user.team_leader_id === leaderId &&
+                            user.level !== 'tl',
+                    );
+                const placed = new Set([
+                    ...directors.map((user) => user.id),
+                    ...leaders.map((user) => user.id),
+                    ...leaders.flatMap((leader) =>
+                        staffOf(leader.id).map((user) => user.id),
+                    ),
+                ]);
+                const unplaced = group.members.filter(
+                    (user) => !placed.has(user.id),
+                );
+                const withoutLeader = unplaced.filter(
+                    (user) =>
+                        user.level === 'staf' &&
+                        (user.team_leader_id === null ||
+                            !ids.has(user.team_leader_id)),
+                );
+                const others = unplaced.filter(
+                    (user) => !withoutLeader.includes(user),
+                );
+
+                return (
+                    <section
+                        key={group.key}
+                        className="flex min-w-0 flex-col rounded-md border border-border bg-card"
+                    >
+                        <header className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+                            <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                                <Building2 className="size-4 text-primary" />
+                                {group.name}
+                            </h2>
+                            <span className="tabular text-xs text-muted-foreground">
+                                {group.members.length} akun
+                            </span>
+                        </header>
+
+                        <div className="space-y-3 p-4">
+                            {directors.length > 0 && (
+                                <div className="space-y-1.5">
+                                    <p className="section-label">
+                                        Direksi Pekerjaan
+                                    </p>
+                                    {directors.map((user) => (
+                                        <PersonRow
+                                            key={user.id}
+                                            user={user}
+                                            tone="direksi"
+                                            caption={levelLabel(user.level)}
+                                            onEdit={onEdit}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+
+                            {leaders.map((leader) => {
+                                const staff = staffOf(leader.id);
+
+                                return (
+                                    <div
+                                        key={leader.id}
+                                        className="rounded-md border border-border"
+                                    >
+                                        <div className="border-b border-border bg-muted/40 px-2 py-1.5">
+                                            <PersonRow
+                                                user={leader}
+                                                tone="tl"
+                                                caption={`${staff.length} staf`}
+                                                onEdit={onEdit}
+                                            />
+                                        </div>
+                                        {staff.length === 0 ? (
+                                            <p className="px-3 py-2 text-xs text-muted-foreground">
+                                                Belum ada staf.
+                                            </p>
+                                        ) : (
+                                            <ul className="space-y-0.5 py-1.5 pr-2 pl-6">
+                                                {staff.map((user) => (
+                                                    <li
+                                                        key={user.id}
+                                                        className="relative before:absolute before:top-1/2 before:-left-3 before:h-px before:w-2.5 before:bg-border"
+                                                    >
+                                                        <PersonRow
+                                                            user={user}
+                                                            tone="staf"
+                                                            onEdit={onEdit}
+                                                        />
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                );
+                            })}
+
+                            {withoutLeader.length > 0 && (
+                                <div className="rounded-md border border-amber-500/50 bg-amber-500/5">
+                                    <p className="flex items-center gap-1.5 border-b border-amber-500/30 px-3 py-1.5 text-xs font-semibold text-amber-800 dark:text-amber-300">
+                                        <AlertTriangle className="size-3.5 shrink-0" />
+                                        Staf tanpa TL ({withoutLeader.length}):
+                                        usulannya tidak lewat TL. Atur TL /
+                                        Atasan Langsung.
+                                    </p>
+                                    <ul className="space-y-0.5 p-1.5">
+                                        {withoutLeader.map((user) => (
+                                            <li key={user.id}>
+                                                <PersonRow
+                                                    user={user}
+                                                    tone="staf"
+                                                    onEdit={onEdit}
+                                                />
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            {others.length > 0 && (
+                                <div className="space-y-1.5">
+                                    <p className="section-label">Lainnya</p>
+                                    {others.map((user) => (
+                                        <PersonRow
+                                            key={user.id}
+                                            user={user}
+                                            tone="lainnya"
+                                            caption={
+                                                user.team_leader
+                                                    ? `TL: ${user.team_leader}`
+                                                    : user.role_label
+                                            }
+                                            onEdit={onEdit}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </section>
+                );
+            })}
+        </div>
+    );
+}
+
+/**
+ * One account in the structure; clicking it opens the edit form.
+ */
+function PersonRow({
+    user,
+    tone,
+    caption,
+    onEdit,
+}: {
+    user: ManagedUser;
+    tone: string;
+    caption?: string;
+    onEdit: (user: ManagedUser) => void;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={() => onEdit(user)}
+            title="Ubah pengguna"
+            className="group flex w-full items-center gap-2.5 rounded-sm px-1.5 py-1 text-left hover:bg-muted"
+        >
+            <span
+                className={cn(
+                    'flex size-7 shrink-0 items-center justify-center rounded-full text-[0.6875rem] font-semibold',
+                    LEVEL_TONES[tone],
+                )}
+            >
+                {user.name
+                    .split(' ')
+                    .slice(0, 2)
+                    .map((part) => part.charAt(0))
+                    .join('')
+                    .toUpperCase()}
+            </span>
+            <span className="min-w-0 flex-1">
+                <span
+                    className={cn(
+                        'block truncate text-sm font-medium text-foreground group-hover:text-primary',
+                        !user.is_active && 'text-muted-foreground line-through',
+                    )}
+                >
+                    {user.name}
+                </span>
+                <span className="block truncate text-xs text-muted-foreground">
+                    {user.position ?? user.role_label}
+                </span>
+            </span>
+            {caption && (
+                <span className="shrink-0 text-xs text-muted-foreground">
+                    {caption}
+                </span>
+            )}
+            {!user.is_active && (
+                <span className="shrink-0 rounded-sm bg-status-pending-surface px-1.5 py-px text-[0.6875rem] font-medium text-status-pending">
+                    Nonaktif
+                </span>
+            )}
+        </button>
     );
 }
 

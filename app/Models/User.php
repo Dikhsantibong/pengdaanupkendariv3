@@ -93,6 +93,44 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * The team leader a staff member's position points at: "Staf Energi
+     * Primer" answers to the active "TL Energi Primer" of the same division.
+     *
+     * Every staff proposal is decided by its TL before its Direksi Pekerjaan,
+     * so a staff account left without one is linked to it by position.
+     */
+    public function teamLeaderByPosition(): ?self
+    {
+        $position = trim((string) $this->position);
+
+        if ($this->work_director_id === null || ! str_starts_with(strtolower($position), 'staf ')) {
+            return null;
+        }
+
+        $team = trim(substr($position, 5));
+
+        return self::query()
+            ->active()
+            ->where('work_director_id', $this->work_director_id)
+            ->whereKeyNot($this->id ?? 0)
+            ->whereRaw('lower(trim(position)) = ?', [strtolower('tl '.$team)])
+            ->first();
+    }
+
+    /**
+     * Link a staff account left without a team leader to the TL its
+     * position names, whenever the account is saved.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (self $user): void {
+            if ($user->team_leader_id === null && $user->is_active !== false) {
+                $user->team_leader_id = $user->teamLeaderByPosition()?->id;
+            }
+        });
+    }
+
+    /**
      * The procurements this user plans.
      *
      * @return HasMany<Procurement, $this>

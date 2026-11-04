@@ -2673,6 +2673,47 @@ Bila token atau komponen inti berubah, perbarui juga `DESIGN.md`.
 
 ---
 
+# Persetujuan Berjenjang Usulan: Staf → TL → Direksi Pekerjaan
+
+**Aturan:**
+- Usulan staf **selalu** disetujui TL atasannya dulu, baru Direksi Pekerjaan (Asman) bidangnya. Contoh: Staf Energi Primer → TL Energi Primer → Asman Operasi.
+- **Pengecualian:** staf K3 KAM dan staf Lingkungan langsung ke TL K3 / TL Lingkungan, karena merekalah satu-satunya Direksi Pekerjaan di bidangnya. Cukup sekali persetujuan.
+
+**Perbaikan:**
+- Usulan baru berhenti di level TL selama bidangnya punya Direksi Pekerjaan lain, **walaupun TL itu diberi hak Direksi Pekerjaan**. Sebelumnya TL yang diberi role/hak Direksi Pekerjaan di bidang yang punya Asman dianggap pimpinan bidang, sehingga usulan stafnya langsung ke Asman.
+  - `ProcurementService::firstApprovalLevel()` dan `isSoleDivisionApprover()`.
+  - `teamLeaderApprovalIsFinal()` = bidang tidak punya Direksi Pekerjaan lain.
+- TL yang sudah menyetujui di level TL tidak bisa memutuskan lagi di level Direksi Pekerjaan, dan usulan itu tidak tampil di antreannya (`ProcurementPolicy::approveProposal`, `ProposalQueue::awaiting`).
+- **Atasan diisi dari jabatan:** akun staf yang kolom TL / Atasan Langsung-nya kosong otomatis ditautkan ke TL sesuai jabatan, misalnya "Staf Energi Primer" → akun aktif berjabatan "TL Energi Primer" di bidang yang sama.
+  - Berlaku saat akun disimpan (`User::booted`, `User::teamLeaderByPosition()`) dan saat staf mengusulkan.
+- **Migrasi `route_staff_proposals_through_their_team_leader`:**
+  - Menautkan staf yang belum punya TL berdasarkan jabatan.
+  - Mengembalikan usulan staf yang sedang menunggu Direksi Pekerjaan tetapi belum pernah diputuskan TL ke antrean **Menunggu Persetujuan TL**, dengan catatan riwayat "Usulan pekerjaan dialihkan ke TL … untuk disetujui lebih dulu sebelum Direksi Pekerjaan."
+  - Usulan yang sudah disetujui TL, usulan TL sendiri, dan usulan staf K3/Lingkungan tidak diubah.
+  - Notifikasi tidak dikirim ulang; TL melihatnya di menu Usulan Pekerjaan dan dashboard.
+- **Test:** `TeamLeaderApprovalTest` (TL dengan hak Direksi tetap level TL, staf tanpa TL ditautkan lewat jabatan, migrasi pengalihan).
+
+---
+
+# Manajemen Pengguna: Filter Lengkap dan Struktur Jabatan
+
+- **Filter:**
+  - Cari (nama, email, atau jabatan), Peran, Bidang (termasuk "Tanpa bidang"), dan Tingkat Jabatan (Direksi Pekerjaan/Asman, Team Leader, Staf, Lainnya).
+  - TL / Atasan: menampilkan TL itu beserta stafnya.
+  - Status (Aktif/Nonaktif).
+  - Tombol **Staf tanpa TL** dengan jumlahnya, dan Reset Filter.
+  - Semua filter tersimpan di URL.
+- **Tingkat jabatan:**
+  - Direksi Pekerjaan = role Direksi Pekerjaan yang jabatannya bukan "TL …".
+  - TL = jabatan berawalan "TL" atau punya staf. TL K3 / TL Lingkungan termasuk di sini.
+  - Staf = jabatan berawalan "Staf".
+- **Kolom tabel:** Jabatan menampilkan label tingkat dan jumlah staf. Kolom Bidang menandai **Belum ada TL** pada staf yang belum punya atasan.
+- **Tampilan Struktur Jabatan** (`?view=structure`): per bidang ditampilkan Direksi Pekerjaan, lalu setiap TL dengan daftar stafnya, kotak peringatan "Staf tanpa TL", dan kelompok Lainnya. Klik nama untuk membuka form Ubah.
+- **File:** `UserController::index` (`LEVELS`, `levelOf`, `whereLevel`), `resources/js/pages/users/index.tsx`.
+- **Test:** `UserManagementTest::test_the_list_filters_by_division_level_team_leader_and_status`.
+
+---
+
 # Teknologi
 
 Sesuai dengan `claude.md`.

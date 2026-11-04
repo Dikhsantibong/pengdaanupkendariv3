@@ -45,7 +45,11 @@ class ProposalQueue
                 ->when($user->hasPermission(Permission::ApproveProposal), fn (Builder $levels) => $levels
                     ->orWhere(fn (Builder $division) => $division
                         ->where('proposal_state', ProposalState::MenungguPersetujuan->value)
-                        ->where('work_director_id', $user->work_director_id ?? 0)))
+                        ->where('work_director_id', $user->work_director_id ?? 0)
+                        // Not again for the TL who approved it at their level.
+                        ->where(fn (Builder $reviewer) => $reviewer
+                            ->whereNull('proposal_tl_reviewed_by')
+                            ->orWhere('proposal_tl_reviewed_by', '!=', $user->id))))
                 // A division without a Direksi Pekerjaan account: its TL decides.
                 ->orWhereIn('id', app(ProcurementService::class)->proposalsLeftToTeamLeader($user)));
     }

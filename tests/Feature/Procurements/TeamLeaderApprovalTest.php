@@ -184,6 +184,108 @@ class TeamLeaderApprovalTest extends TestCase
         $this->assertTrue($procurement->refresh()->isProposalApproved());
     }
 
+    public function test_a_team_leader_with_the_direksi_right_still_approves_before_the_asman(): void
+    {
+        // TL Energi Primer given the Direksi Pekerjaan role in a division
+        // that has its own Asman: the staff proposal still goes TL → Asman.
+        $tlEnergy = User::factory()->workDirector($this->division)->create(['position' => 'TL Energi Primer']);
+        $staffEnergy = User::factory()->proposer($this->division)->create([
+            'position' => 'Staf Energi Primer',
+            'team_leader_id' => $tlEnergy->id,
+        ]);
+
+        $procurement = $this->propose($staffEnergy);
+
+        $this->assertSame(ProposalState::MenungguPersetujuanTl, $procurement->proposal_state);
+
+        $this->actingAs($tlEnergy)
+            ->post(route('proposals.decide', $procurement), ['decision' => 'approve'])
+            ->assertRedirect();
+
+        $procurement->refresh();
+        $this->assertSame(ProposalState::MenungguPersetujuan, $procurement->proposal_state);
+        $this->assertNull($procurement->proposal_reviewed_by);
+
+        // The TL does not decide a second time for the Asman.
+        $this->actingAs($tlEnergy)
+            ->get(route('proposals.index'))
+            ->assertInertia(fn ($page) => $page->has('awaiting', 0));
+
+        $this->actingAs($tlEnergy)
+            ->post(route('proposals.decide', $procurement), ['decision' => 'approve'])
+            ->assertForbidden();
+
+        $this->actingAs($this->asman)
+            ->post(route('proposals.decide', $procurement), ['decision' => 'approve'])
+            ->assertRedirect();
+
+        $this->assertTrue($procurement->refresh()->isProposalApproved());
+        $this->assertSame($this->asman->id, $procurement->proposal_reviewed_by);
+    }
+
+    public function test_a_staff_account_without_a_team_leader_is_linked_by_its_position(): void
+    {
+        Notification::fake();
+
+        $tlEnergy = User::factory()->proposer($this->division)->create(['position' => 'TL Energi Primer']);
+        $staffEnergy = User::factory()->proposer($this->division)->create(['position' => 'Staf Energi Primer']);
+
+        // Linked when the account is saved.
+        $this->assertSame($tlEnergy->id, $staffEnergy->refresh()->team_leader_id);
+
+        // An account linked before this rule (left empty) is linked when it proposes.
+        $staffEnergy->forceFill(['team_leader_id' => null])->saveQuietly();
+
+        $procurement = $this->propose($staffEnergy);
+
+        $this->assertSame(ProposalState::MenungguPersetujuanTl, $procurement->proposal_state);
+        $this->assertSame($tlEnergy->id, $staffEnergy->refresh()->team_leader_id);
+        Notification::assertSentTo($tlEnergy, ProposalSubmitted::class);
+        Notification::assertNotSentTo($this->asman, ProposalSubmitted::class);
+    }
+
+    public function test_proposals_that_skipped_the_team_leader_are_sent_back_to_it(): void
+    {
+        $tlEnergy = User::factory()->workDirector($this->division)->create(['position' => 'TL Energi Primer']);
+        $staffEnergy = User::factory()->proposer($this->division)->create(['position' => 'Staf Energi Primer']);
+        $staffEnergy->forceFill(['team_leader_id' => null])->saveQuietly();
+
+        $skipped = Procurement::factory()->create([
+            'work_director_id' => $this->division->id,
+            'created_by' => $staffEnergy->id,
+            'proposal_state' => ProposalState::MenungguPersetujuan,
+            'proposal_submitted_at' => now(),
+        ]);
+        // Already decided by its TL: stays with the Asman.
+        $decided = Procurement::factory()->create([
+            'work_director_id' => $this->division->id,
+            'created_by' => $this->staff->id,
+            'proposal_state' => ProposalState::MenungguPersetujuan,
+            'proposal_tl_reviewed_at' => now(),
+            'proposal_tl_reviewed_by' => $this->teamLeader->id,
+        ]);
+        // K3 staff: their TL is the division's sole Direksi Pekerjaan.
+        $k3 = WorkDirector::factory()->create(['name' => 'Team Leader K3']);
+        $tlK3 = User::factory()->workDirector($k3)->create(['position' => 'TL K3 KAM']);
+        $staffK3 = User::factory()->proposer($k3)->create(['position' => 'Staf K3 KAM', 'team_leader_id' => $tlK3->id]);
+        $k3Proposal = Procurement::factory()->create([
+            'work_director_id' => $k3->id,
+            'created_by' => $staffK3->id,
+            'proposal_state' => ProposalState::MenungguPersetujuan,
+        ]);
+
+        (require database_path('migrations/2026_11_04_063421_route_staff_proposals_through_their_team_leader.php'))->up();
+
+        $this->assertSame($tlEnergy->id, $staffEnergy->refresh()->team_leader_id);
+        $this->assertSame(ProposalState::MenungguPersetujuanTl, $skipped->refresh()->proposal_state);
+        $this->assertDatabaseHas('procurement_activities', [
+            'procurement_id' => $skipped->id,
+            'type' => ActivityType::UsulanDiajukan->value,
+        ]);
+        $this->assertSame(ProposalState::MenungguPersetujuan, $decided->refresh()->proposal_state);
+        $this->assertSame(ProposalState::MenungguPersetujuan, $k3Proposal->refresh()->proposal_state);
+    }
+
     public function test_the_k3_and_lingkungan_team_leader_approval_goes_straight_to_planning(): void
     {
         foreach (['Team Leader K3', 'Team Leader Lingkungan'] as $name) {

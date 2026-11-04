@@ -111,10 +111,13 @@ class ProcurementService
     /**
      * Where a fresh or resubmitted proposal waits first.
      *
-     * Staff with a team leader go to that TL, then to the Asman. A proposer
-     * without a TL — or whose TL is also the division's Direksi Pekerjaan,
-     * as for K3 KAM and Lingkungan — goes straight to the Asman. The Direksi
-     * Pekerjaan proposing for their own division needs no signature at all.
+     * Staff go to their team leader first, then to the Direksi Pekerjaan.
+     * Only where that TL is the division's Direksi Pekerjaan — the division
+     * has no other one, as for K3 KAM and Lingkungan — does a staff proposal
+     * go straight to the Direksi level, decided by that TL. A TL given the
+     * Direksi Pekerjaan right in a division with an Asman still decides at
+     * the TL level. A proposer without a TL goes straight to the Direksi
+     * Pekerjaan, who needs no signature for their own division's work.
      */
     protected function firstApprovalLevel(Procurement $procurement, User $proposer): ProposalState
     {
@@ -122,29 +125,46 @@ class ProcurementService
             return ProposalState::Disetujui;
         }
 
-        $leader = $proposer->teamLeader;
+        $leader = $proposer->teamLeader ?? $proposer->teamLeaderByPosition();
 
         if ($leader === null
             || ! $leader->is_active
             || $leader->trashed()
             || $leader->is($proposer)
-            || $this->leadsDivision($leader, $procurement)) {
+            || $this->isSoleDivisionApprover($leader, $procurement)) {
             return ProposalState::MenungguPersetujuan;
+        }
+
+        // A staff account linked by position from now on, so its TL's queue
+        // and notifications find it.
+        if ($proposer->team_leader_id === null) {
+            $proposer->forceFill(['team_leader_id' => $leader->id])->save();
+            $proposer->setRelation('teamLeader', $leader);
         }
 
         return ProposalState::MenungguPersetujuanTl;
     }
 
     /**
-     * Whether a team leader's approval of a proposal is the last one: the TL
-     * leads the division (K3 KAM, Lingkungan), or the division has no other
-     * Direksi Pekerjaan account to pass it to. Either way the proposal goes
-     * straight to planning instead of waiting on an Asman who is not there.
+     * Whether the user is the only Direksi Pekerjaan of the procurement's
+     * division (the TL of K3 KAM or Lingkungan), so their approval is the
+     * division's.
+     */
+    protected function isSoleDivisionApprover(User $user, Procurement $procurement): bool
+    {
+        return $this->leadsDivision($user, $procurement)
+            && ! $this->divisionHasApprover($procurement, $user);
+    }
+
+    /**
+     * Whether a team leader's approval of a proposal is the last one: the
+     * division has no Direksi Pekerjaan account other than that TL (K3 KAM,
+     * Lingkungan, or a division without an Asman account). Otherwise the
+     * Direksi Pekerjaan decides next, even when the TL holds that right too.
      */
     public function teamLeaderApprovalIsFinal(Procurement $procurement, User $teamLeader): bool
     {
-        return $this->leadsDivision($teamLeader, $procurement)
-            || ! $this->divisionHasApprover($procurement, $teamLeader);
+        return ! $this->divisionHasApprover($procurement, $teamLeader);
     }
 
     /**

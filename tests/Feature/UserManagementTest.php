@@ -133,4 +133,45 @@ class UserManagementTest extends TestCase
             ])
             ->assertSessionHasErrors('planner_id');
     }
+
+    public function test_the_list_filters_by_division_level_team_leader_and_status(): void
+    {
+        $administrator = User::factory()->administrator()->create(['name' => 'Admin']);
+        $operasi = WorkDirector::factory()->create(['name' => 'Asman Operasi']);
+        $engineering = WorkDirector::factory()->create(['name' => 'Asman Engineering']);
+
+        User::factory()->workDirector($operasi)->create(['name' => 'Asman Operasi', 'position' => 'Asman Operasi']);
+        $leader = User::factory()->proposer($operasi)->create(['name' => 'Budi Bahrun', 'position' => 'TL Energi Primer']);
+        User::factory()->proposer($operasi)->create(['name' => 'Dewa', 'position' => 'Staf Energi Primer', 'team_leader_id' => $leader->id]);
+        $loner = User::factory()->proposer($operasi)->create(['name' => 'Angga', 'position' => 'Staf Operasi']);
+        User::factory()->proposer($engineering)->create(['name' => 'Lama', 'position' => 'Staf CBM', 'is_active' => false]);
+
+        $names = fn (array $query): array => collect(
+            $this->actingAs($administrator)->get(route('users.index', $query))->viewData('page')['props']['users'],
+        )->pluck('name')->sort()->values()->all();
+
+        $this->assertSame(['Angga', 'Asman Operasi', 'Budi Bahrun', 'Dewa'], $names(['work_director_id' => $operasi->id]));
+        $this->assertSame(['Admin'], $names(['work_director_id' => 'none']));
+        $this->assertSame(['Asman Operasi'], $names(['level' => 'direksi']));
+        $this->assertSame(['Budi Bahrun'], $names(['level' => 'tl']));
+        $this->assertSame(['Angga', 'Dewa', 'Lama'], $names(['level' => 'staf']));
+        // A TL and the staff they lead.
+        $this->assertSame(['Budi Bahrun', 'Dewa'], $names(['team_leader_id' => $leader->id]));
+        $this->assertSame(['Lama'], $names(['status' => 'inactive']));
+        $this->assertSame(['Budi Bahrun', 'Dewa'], $names(['search' => 'energi primer']));
+
+        // "Angga" has no TL named "TL Operasi" to link to, so it stays unlinked.
+        $this->assertNull($loner->refresh()->team_leader_id);
+        $this->assertSame(['Angga'], $names(['missing_leader' => 1, 'status' => 'active']));
+
+        $this->actingAs($administrator)
+            ->get(route('users.index', ['view' => 'structure']))
+            ->assertInertia(fn ($page) => $page
+                ->where('filters.view', 'structure')
+                ->has('levels', 4)
+                ->where('users', fn ($users) => collect($users)->firstWhere('name', 'Budi Bahrun')['level'] === 'tl'
+                    && collect($users)->firstWhere('name', 'Budi Bahrun')['team_size'] === 1
+                    && collect($users)->firstWhere('name', 'Dewa')['level'] === 'staf'));
+
+    }
 }
