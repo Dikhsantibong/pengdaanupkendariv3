@@ -84,7 +84,7 @@ class VendorAssessmentService
      * invoice details a vendor sent through a request link.
      *
      * The details the header has no field for (termin, nilai tagihan and the
-     * BAPP/BASTP number) are kept in the internal notes.
+     * BASTP number) are kept in the internal notes.
      *
      * @return array<string, mixed>
      */
@@ -122,7 +122,7 @@ class VendorAssessmentService
             'notes' => implode("\n", [
                 'Termin: '.$request->term,
                 'Nilai tagihan: Rp '.number_format((float) $request->invoice_amount, 0, ',', '.'),
-                'No BAPP/BASTP: '.$request->bastp_number,
+                'No BASTP: '.$request->bastp_number,
                 ...($request->work_director_name ? ['Direksi Pekerjaan: '.$request->work_director_name] : []),
                 'Diisi oleh: '.$request->submitter_name
                     .($request->submitter_phone ? ' ('.$request->submitter_phone.')' : ''),

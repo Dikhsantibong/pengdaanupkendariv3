@@ -84,7 +84,7 @@ export function WorkDirectorSelect({
                         <SelectValue
                             placeholder={
                                 awaitsDate
-                                    ? 'Isi Tgl BAPP/BASTP terlebih dahulu'
+                                    ? 'Isi Tgl BASTP terlebih dahulu'
                                     : 'Pilih direksi pekerjaan'
                             }
                         />
@@ -108,8 +108,8 @@ export function WorkDirectorSelect({
             )}
             {awaitsDate ? (
                 <p className="text-xs text-muted-foreground">
-                    Isi Tgl BAPP/BASTP terlebih dahulu; nama yang tampil
-                    menyesuaikan tanggal tersebut.
+                    Isi Tgl BASTP terlebih dahulu; nama yang tampil menyesuaikan
+                    tanggal tersebut.
                 </p>
             ) : value !== '' && names.length > 0 && !isOffered ? (
                 <p className="text-xs text-amber-700 dark:text-amber-400">

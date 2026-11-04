@@ -1940,8 +1940,8 @@ Bagian **Request Penilaian Vendor** ada di halaman Penilaian Penyedia, di atas d
   - Tgl. Kontrak
   - Termin
   - Nilai tagihan
-  - No BAPP/BASTP
-  - Tgl BAPP/BASTP
+  - No BASTP
+  - Tgl BASTP
   - Denda (Ada / Tidak ada)
   - Nama pengisi
 - **Tampilan request:** rincian yang masuk tampil sebagai **Request baru**, lengkap dengan isiannya. Tombol **Buat Penilaian** membuka formulir penilaian yang sudah terisi:
@@ -1949,9 +1949,9 @@ Bagian **Request Penilaian Vendor** ada di halaman Penilaian Penyedia, di atas d
   - Pelaksana → Penyedia
   - No Kontrak/DO → No Kontrak
   - Tgl. Kontrak → Tanggal Kontrak
-  - Tgl BAPP/BASTP → Tanggal BASTP
+  - Tgl BASTP → Tanggal BASTP
   - Denda → Denda
-  - Termin, Nilai tagihan, No BAPP/BASTP dan nama pengisi → Catatan internal (tidak tercetak)
+  - Termin, Nilai tagihan, No BASTP dan nama pengisi → Catatan internal (tidak tercetak)
 - **Setelah penilaian dibuat:** request otomatis keluar dari daftar Request Penilaian Vendor dan penilaiannya ada di folder mitranya (datanya tetap tersimpan, tertaut ke penilaian lewat `vendor_assessment_id`). Daftar hanya berisi request yang menunggu diproses. Request yang salah atau ganda bisa dihapus dari daftar.
 - **Tanpa request:** pembuatan formulir penilaian berjalan seperti sebelumnya.
 - **Data:** tabel `vendor_assessment_requests`, model `VendorAssessmentRequest` (`formUrl()` memberi tautan tetap). Controller admin `VendorAssessmentRequestController` (hapus), controller publik `AssessmentRequestFormController`. Halaman publik: `assessment-signing/request`.
@@ -2114,14 +2114,14 @@ Bagian **Request Penilaian Vendor** ada di halaman Penilaian Penyedia, di atas d
 
 ## Direksi Pekerjaan pada Request Penilaian Vendor
 
-- **Field baru di form request publik** (`/permintaan-penilaian`): vendor wajib memilih **Direksi Pekerjaan**, letaknya tepat di bawah Tgl BAPP/BASTP.
+- **Field baru di form request publik** (`/permintaan-penilaian`): vendor wajib memilih **Direksi Pekerjaan**, letaknya tepat di bawah Tgl BASTP.
   - Pilihannya hanya nama (tanpa nomor HP), diambil dari daftar nama lembar **Direksi Pekerjaan** (Data Master → Lembar Penilai, kode `direksi-pekerjaan`).
   - Disimpan di `vendor_assessment_requests.work_director_name`.
   - Tampil di panel Request Penilaian Vendor.
   - Saat dibuat penilaian, nama ini masuk ke **Catatan internal** ("Direksi Pekerjaan: …"), seperti Termin dan Nilai Tagihan.
-- **Nama disaring menurut Tgl BAPP/BASTP:** tiap nama di **Pilihan Nama Penilai** bisa diberi tanggal **Tidak muncul s.d. BASTP**.
+- **Nama disaring menurut Tgl BASTP:** tiap nama di **Pilihan Nama Penilai** bisa diberi tanggal **Tidak muncul s.d. BASTP**.
   - Disimpan di JSON `assessment_forms.assessor_hidden_until`, dengan kunci nama tanpa nomor HP.
-  - Nama tidak ditawarkan bila Tgl BASTP ≤ tanggal itu. Selama Tgl BAPP/BASTP belum diisi, pilihan Direksi Pekerjaan **terkunci** ("Isi Tgl BAPP/BASTP terlebih dahulu"), supaya nama yang dibatasi tanggal tidak sempat tampil.
+  - Nama tidak ditawarkan bila Tgl BASTP ≤ tanggal itu. Selama Tgl BASTP belum diisi, pilihan Direksi Pekerjaan **terkunci** ("Isi Tgl BASTP terlebih dahulu"), supaya nama yang dibatasi tanggal tidak sempat tampil.
   - Isi awal dari migrasi: WINANDO PANDIANGAN s.d. 1 Jul 2026, TAUHID ALI s.d. 1 Agu 2026, TANWIR s.d. 1 Sep 2026.
   - Saringan yang sama berlaku di dropdown Nama Penilai lembar Direksi Pekerjaan dan halaman tanda tangan WhatsApp.
   - Validasi `App\Rules\OfferedWorkDirector`.
@@ -2645,6 +2645,31 @@ Dashboard dibangun ulang sebagai dashboard analitik bergaya korporat PLN. Datany
   - `LOGIN_PASSWORD_RESET_ENABLED=true`
 - Route tetap terdaftar, agar Wayfinder dan build frontend tidak rusak. Saklar dibaca dari `config('fortify.login_options')` lewat `App\Support\LoginOptions` dan middleware `EnsureLoginOptionEnabled`.
 - **Test:** `LoginOptionsTest`. `PasswordResetTest` dan `SecurityTest` menyalakan saklarnya untuk menguji fitur saat aktif.
+
+---
+
+# Panduan Sistem Desain (DESIGN.md)
+
+`DESIGN.md` di root proyek berisi panduan gaya komponen aplikasi agar bisa dipakai ulang di aplikasi lain:
+
+- prinsip desain;
+- tipografi;
+- palet warna (dasar, status, grafik);
+- radius, border, dan shadow;
+- token CSS lengkap, disalin langsung dari `resources/css/app.css`;
+- resep class Tailwind untuk tombol, field, select, tabs, tabel, badge, StatusBadge, PageHeader, Panel, StatCard, KPI card, tile tugas, notice, empty state, filter, paginasi, timeline, pipeline, grafik SVG, layout, dan aksesibilitas;
+- daftar periksa untuk aplikasi baru.
+
+Bila token atau komponen inti berubah, perbarui juga `DESIGN.md`.
+
+---
+
+# Label BASTP pada Request Penilaian Vendor
+
+- Kata "BAPP" dihapus dari isian rincian tagihan. Labelnya kini **No BASTP** dan **Tgl BASTP**.
+- Perubahan berlaku di form publik `/permintaan-penilaian`, petunjuk pilihan Direksi Pekerjaan ("Isi Tgl BASTP terlebih dahulu"), panel Request Penilaian Vendor, catatan internal penilaian ("No BASTP: …"), dan pesan validasi.
+- Kolom database (`bastp_number`, `bastp_date`) tidak berubah.
+- "Lampiran BAPP" (Berita Acara Pembukaan Penawaran) pada dokumen tender adalah dokumen lain dan tetap memakai namanya.
 
 ---
 

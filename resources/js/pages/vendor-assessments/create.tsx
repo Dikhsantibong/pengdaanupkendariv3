@@ -91,7 +91,7 @@ export default function CreateVendorAssessment({
                         <p className="rounded-md border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-200">
                             Data diisi dari rincian tagihan yang dikirim lewat
                             tautan permintaan. Termin, nilai tagihan dan No
-                            BAPP/BASTP disimpan pada Catatan.
+                            BASTP disimpan pada Catatan.
                         </p>
                     )}
 

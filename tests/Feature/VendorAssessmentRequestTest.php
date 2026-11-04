@@ -186,7 +186,7 @@ class VendorAssessmentRequestTest extends TestCase
                 ->where('defaults.vendor_assessment_request_id', $request->id)
                 ->where('defaults.notes', fn (string $notes) => str_contains($notes, 'Termin: Termin 1 (100%)')
                     && str_contains($notes, 'Nilai tagihan: Rp 15.000.000')
-                    && str_contains($notes, 'No BAPP/BASTP: BASTP/021/2026')));
+                    && str_contains($notes, 'No BASTP: BASTP/021/2026')));
 
         $this->actingAs($administrator)
             ->post(route('vendor-assessments.store'), [

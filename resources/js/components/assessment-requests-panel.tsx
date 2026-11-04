@@ -198,11 +198,8 @@ function RequestItem({ row }: { row: AssessmentRequestRow }) {
                     label="Nilai Tagihan"
                     value={formatCurrency(row.invoice_amount)}
                 />
-                <Detail label="No BAPP/BASTP" value={row.bastp_number} />
-                <Detail
-                    label="Tgl BAPP/BASTP"
-                    value={formatDate(row.bastp_date)}
-                />
+                <Detail label="No BASTP" value={row.bastp_number} />
+                <Detail label="Tgl BASTP" value={formatDate(row.bastp_date)} />
                 <Detail
                     label="Denda"
                     value={row.has_penalty ? 'Ada' : 'Tidak ada'}

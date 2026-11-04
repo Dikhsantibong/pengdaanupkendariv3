@@ -200,8 +200,8 @@ export default function AssessmentRequestForm({
                     </div>
 
                     <div className="grid gap-4 sm:grid-cols-2">
-                        {field('bastp_number', 'No BAPP/BASTP')}
-                        {field('bastp_date', 'Tgl BAPP/BASTP', {
+                        {field('bastp_number', 'No BASTP')}
+                        {field('bastp_date', 'Tgl BASTP', {
                             type: 'date',
                         })}
                     </div>
