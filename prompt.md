@@ -2816,6 +2816,14 @@ Administrator dapat menutup aplikasi sementara saat pemeliharaan, lewat menu **A
 
 ---
 
+# Tombol Kembali di Detail Penilaian Penyedia
+
+- Tombol **Kembali** di halaman detail penilaian (`/penilaian-penyedia/{id}`) kini membuka **halaman mitra itu** (`/penilaian-penyedia/mitra?nama=…`), yaitu daftar penilaian mitra beserta sertifikatnya, tempat penilaian tadi dibuka.
+- Sebelumnya tombol ini membuka tampilan folder semua mitra.
+- File: `resources/js/pages/vendor-assessments/show.tsx`.
+
+---
+
 # Teknologi
 
 Sesuai dengan `claude.md`.

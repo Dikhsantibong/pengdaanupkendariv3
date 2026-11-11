@@ -174,7 +174,9 @@ export default function ShowVendorAssessment({
         `Pekerjaan: ${assessment.project}`,
         `Penyedia: ${assessment.vendor_name}`,
         `Tanggal Kontrak: ${assessment.po_date ? formatDate(assessment.po_date) : '-'}`,
-        assessment.amendment_number ? `Amandemen: ${assessment.amendment_number}` : null,
+        assessment.amendment_number
+            ? `Amandemen: ${assessment.amendment_number}`
+            : null,
         `Tanggal BASTP: ${bastpFormatted}`,
         `Denda: ${assessment.has_penalty ? 'Ada' : 'Tidak Ada'}`,
         'Lembar: Rekapitulasi',
@@ -185,7 +187,9 @@ export default function ShowVendorAssessment({
         'Terima kasih.',
         'Tim Pengadaan',
         'PT PLN Nusantara Power UP Kendari',
-    ].filter(Boolean).join('\n');
+    ]
+        .filter(Boolean)
+        .join('\n');
 
     const panitiaWhatsappUrl = `https://wa.me/6285242687765?text=${encodeURIComponent(panitiaMessage)}`;
 
@@ -202,15 +206,26 @@ export default function ShowVendorAssessment({
                         <div className="flex flex-wrap items-center gap-2">
                             <Button
                                 variant="ghost"
+                                // Back to the partner's page listing its
+                                // assessments, where this one was opened.
                                 onClick={() =>
-                                    router.visit(vendorAssessments.index().url)
+                                    router.visit(
+                                        vendorAssessments.vendor({
+                                            query: {
+                                                nama: assessment.vendor_name,
+                                            },
+                                        }).url,
+                                    )
                                 }
                             >
                                 <ArrowLeft className="size-4" />
                                 Kembali
                             </Button>
                             <EditHeaderDialog assessment={assessment} />
-                            <Button asChild className="bg-green-600 hover:bg-green-700 text-white">
+                            <Button
+                                asChild
+                                className="bg-green-600 text-white hover:bg-green-700"
+                            >
                                 <a href={printAllUrl} target="_blank">
                                     <Printer className="size-4" />
                                     Cetak Semua
@@ -228,8 +243,13 @@ export default function ShowVendorAssessment({
                                     Unduh Semua Dokumen
                                 </a>
                             </Button>
-                            {forms.every(sheet => sheet.aspects.every(a => a.level !== null)) ? (
-                                <Button asChild className="bg-green-600 hover:bg-green-700 text-white">
+                            {forms.every((sheet) =>
+                                sheet.aspects.every((a) => a.level !== null),
+                            ) ? (
+                                <Button
+                                    asChild
+                                    className="bg-green-600 text-white hover:bg-green-700"
+                                >
                                     <a
                                         href={panitiaWhatsappUrl}
                                         target="_blank"
@@ -241,7 +261,7 @@ export default function ShowVendorAssessment({
                             ) : (
                                 <Button
                                     disabled
-                                    className="bg-green-600/50 text-white cursor-not-allowed"
+                                    className="cursor-not-allowed bg-green-600/50 text-white"
                                     title="Semua lembar penilaian harus terisi sebelum mengirim ke panitia"
                                 >
                                     <MessageCircle className="size-4" />
@@ -287,7 +307,10 @@ export default function ShowVendorAssessment({
                         }
                     />
                     {assessment.amendment_number && (
-                        <Field label="Amandemen" value={assessment.amendment_number} />
+                        <Field
+                            label="Amandemen"
+                            value={assessment.amendment_number}
+                        />
                     )}
 
                     <Field
@@ -296,13 +319,24 @@ export default function ShowVendorAssessment({
                     />
                     <Field
                         label="Tgl BASTP"
-                        value={assessment.bastp_date ? formatDate(assessment.bastp_date) : '—'}
+                        value={
+                            assessment.bastp_date
+                                ? formatDate(assessment.bastp_date)
+                                : '—'
+                        }
                     />
                     <Field label="No Formulir" value={assessment.form_number} />
-                    <Field label="No Revisi" value={assessment.revision_number} />
+                    <Field
+                        label="No Revisi"
+                        value={assessment.revision_number}
+                    />
                     <Field
                         label="Tgl Formulir"
-                        value={assessment.form_date ? formatDate(assessment.form_date) : '—'}
+                        value={
+                            assessment.form_date
+                                ? formatDate(assessment.form_date)
+                                : '—'
+                        }
                     />
                     <Field label="Tempat" value={assessment.place} />
                     <Field label="Catatan" value={assessment.notes || '—'} />
@@ -321,7 +355,7 @@ export default function ShowVendorAssessment({
                     onValueChange={setTab}
                     className="scroll-mt-4"
                 >
-                    <TabsList className="flex-wrap h-auto">
+                    <TabsList className="h-auto flex-wrap">
                         <TabsTrigger value="rekap">Akumulasi</TabsTrigger>
                         {forms.map((sheet) => (
                             <TabsTrigger key={sheet.id} value={sheet.code}>
@@ -331,10 +365,10 @@ export default function ShowVendorAssessment({
                     </TabsList>
 
                     <TabsContent value="rekap" className="mt-4">
-                        <RecapPanel 
+                        <RecapPanel
                             assessment={assessment}
-                            recap={recap} 
-                            printUrl={printUrl()} 
+                            recap={recap}
+                            printUrl={printUrl()}
                             akumulasiUrl={akumulasiUrl}
                         />
                     </TabsContent>
@@ -395,8 +429,12 @@ function SigningLinkPanel({
     });
     const defaultPreset = defaultPresets[0];
 
-    const [name, setName] = useState(invitation?.recipient_name ?? defaultPreset?.name ?? '');
-    const [phone, setPhone] = useState(invitation?.recipient_phone ?? defaultPreset?.phone ?? '');
+    const [name, setName] = useState(
+        invitation?.recipient_name ?? defaultPreset?.name ?? '',
+    );
+    const [phone, setPhone] = useState(
+        invitation?.recipient_phone ?? defaultPreset?.phone ?? '',
+    );
     const [copied, setCopied] = useState(false);
 
     const isFirstRender = useRef(true);
@@ -407,13 +445,19 @@ function SigningLinkPanel({
         }
         if (selectedAssessorName && selectedAssessorName !== '___unscored___') {
             // Try to parse the selected value directly (it may be "NAME (PHONE)" format)
-            const selectedMatch = selectedAssessorName.match(/^(.+?)\s*\(([^)]+)\)$/);
+            const selectedMatch = selectedAssessorName.match(
+                /^(.+?)\s*\(([^)]+)\)$/,
+            );
             if (selectedMatch) {
                 setName(selectedMatch[1].trim());
                 setPhone(selectedMatch[2].trim());
             } else {
                 // Fallback: try matching against parsed presets by name
-                const preset = defaultPresets.find(p => p.name.toLowerCase() === selectedAssessorName.toLowerCase());
+                const preset = defaultPresets.find(
+                    (p) =>
+                        p.name.toLowerCase() ===
+                        selectedAssessorName.toLowerCase(),
+                );
                 if (preset) {
                     setName(preset.name);
                     setPhone(preset.phone);
@@ -486,10 +530,10 @@ function SigningLinkPanel({
         return digits;
     };
 
-    const isDirty = invitation !== null && (
-        name.trim() !== (invitation.recipient_name ?? '') ||
-        normalizePhone(phone) !== (invitation.recipient_phone ?? '')
-    );
+    const isDirty =
+        invitation !== null &&
+        (name.trim() !== (invitation.recipient_name ?? '') ||
+            normalizePhone(phone) !== (invitation.recipient_phone ?? ''));
 
     // The message is written by the server, the same for every sheet.
     const whatsappUrl = invitation?.whatsapp_url ?? null;
@@ -497,8 +541,7 @@ function SigningLinkPanel({
     return (
         <div className="border-b border-border bg-muted/30 p-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
-
-                <div className="grid gap-1.5 w-full sm:w-auto">
+                <div className="grid w-full gap-1.5 sm:w-auto">
                     <Label
                         htmlFor={`recipient-name-${sheet.id}`}
                         className="text-xs"
@@ -514,7 +557,7 @@ function SigningLinkPanel({
                         autoComplete="off"
                     />
                 </div>
-                <div className="grid gap-1.5 w-full sm:w-auto">
+                <div className="grid w-full gap-1.5 sm:w-auto">
                     <Label
                         htmlFor={`recipient-phone-${sheet.id}`}
                         className="text-xs"
@@ -532,7 +575,10 @@ function SigningLinkPanel({
                     />
                 </div>
 
-                <Button variant={isDirty ? "default" : "outline"} onClick={issue}>
+                <Button
+                    variant={isDirty ? 'default' : 'outline'}
+                    onClick={issue}
+                >
                     <Link2 className="size-4" />
                     {invitation === null ? 'Buat Tautan' : 'Buat Tautan Baru'}
                 </Button>
@@ -549,10 +595,11 @@ function SigningLinkPanel({
                         </Button>
 
                         {whatsappUrl !== null && (
-                                <>
+                            <>
                                 {isDirty ? (
-                                    <span className="text-xs text-amber-600 font-medium ml-2">
-                                        Data penerima berubah, silakan klik Buat Tautan Baru
+                                    <span className="ml-2 text-xs font-medium text-amber-600">
+                                        Data penerima berubah, silakan klik Buat
+                                        Tautan Baru
                                     </span>
                                 ) : (
                                     <Button asChild>
@@ -612,7 +659,10 @@ function SheetPanel({
     printUrl: string;
 }) {
     const [assessorName, setAssessorName] = useState(
-        sheet.assessor_name ?? (sheet.assessor_options.length === 1 ? sheet.assessor_options[0] : '')
+        sheet.assessor_name ??
+            (sheet.assessor_options.length === 1
+                ? sheet.assessor_options[0]
+                : ''),
     );
     const [levels, setLevels] = useState<Record<number, number | null>>(
         Object.fromEntries(
@@ -692,7 +742,7 @@ function SheetPanel({
                                 </SelectContent>
                             </Select>
                         ) : sheet.assessor_options.length === 1 ? (
-                            <div className="flex h-9 w-56 items-center rounded-md border border-input bg-muted px-3 text-sm text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
+                            <div className="flex h-9 w-56 items-center overflow-hidden rounded-md border border-input bg-muted px-3 text-sm text-ellipsis whitespace-nowrap text-muted-foreground">
                                 {assessorName}
                             </div>
                         ) : (
@@ -721,7 +771,11 @@ function SheetPanel({
                 </div>
             </header>
 
-            <SigningLinkPanel assessment={assessment} sheet={sheet} selectedAssessorName={assessorName} />
+            <SigningLinkPanel
+                assessment={assessment}
+                sheet={sheet}
+                selectedAssessorName={assessorName}
+            />
 
             <Table>
                 <TableHeader className="bg-muted/60">
@@ -832,7 +886,9 @@ function RecapPanel({
         `Pekerjaan: ${assessment.project}`,
         `Penyedia: ${assessment.vendor_name}`,
         `Tanggal Kontrak: ${assessment.po_date ? formatDate(assessment.po_date) : '-'}`,
-        assessment.amendment_number ? `Amandemen: ${assessment.amendment_number}` : null,
+        assessment.amendment_number
+            ? `Amandemen: ${assessment.amendment_number}`
+            : null,
         `Tanggal BASTP: ${bastpFormatted}`,
         `Denda: ${assessment.has_penalty ? 'Ada' : 'Tidak Ada'}`,
         'Lembar : Akumulasi',
@@ -843,7 +899,9 @@ function RecapPanel({
         'Terima kasih.',
         'Tim Pengadaan',
         'PT PLN Nusantara Power UP Kendari',
-    ].filter(Boolean).join('\n');
+    ]
+        .filter(Boolean)
+        .join('\n');
 
     const akumulasiWhatsappUrl = `https://wa.me/628114091582?text=${encodeURIComponent(akumulasiMessage)}`;
 
@@ -867,7 +925,10 @@ function RecapPanel({
                             Cetak Sertifikat
                         </a>
                     </Button>
-                    <Button asChild className="bg-green-600 hover:bg-green-700 text-white">
+                    <Button
+                        asChild
+                        className="bg-green-600 text-white hover:bg-green-700"
+                    >
                         <a href={akumulasiWhatsappUrl} target="_blank">
                             <MessageCircle className="size-4" />
                             Kirim ke Pengadaan
@@ -977,14 +1038,19 @@ function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
                 <DialogHeader>
                     <DialogTitle>Edit Data Penilaian</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={submit} className="grid gap-4 py-4 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2">
+                <form
+                    onSubmit={submit}
+                    className="grid max-h-[calc(100vh-8rem)] gap-4 overflow-y-auto py-4 pr-2"
+                >
                     <div className="grid gap-4 md:grid-cols-2">
                         <div className="grid gap-2">
                             <Label htmlFor="project">Pekerjaan</Label>
                             <Input
                                 id="project"
                                 value={form.data.project}
-                                onChange={(e) => form.setData('project', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('project', e.target.value)
+                                }
                             />
                             <InputError message={form.errors.project} />
                         </div>
@@ -993,7 +1059,9 @@ function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
                             <Input
                                 id="vendor_name"
                                 value={form.data.vendor_name}
-                                onChange={(e) => form.setData('vendor_name', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('vendor_name', e.target.value)
+                                }
                             />
                             <InputError message={form.errors.vendor_name} />
                         </div>
@@ -1005,7 +1073,9 @@ function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
                             <Input
                                 id="po_number"
                                 value={form.data.po_number}
-                                onChange={(e) => form.setData('po_number', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('po_number', e.target.value)
+                                }
                             />
                             <InputError message={form.errors.po_number} />
                         </div>
@@ -1015,7 +1085,9 @@ function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
                                 id="po_date"
                                 type="date"
                                 value={form.data.po_date}
-                                onChange={(e) => form.setData('po_date', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('po_date', e.target.value)
+                                }
                                 className="tabular"
                             />
                             <InputError message={form.errors.po_date} />
@@ -1024,14 +1096,23 @@ function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
 
                     <div className="grid gap-4 md:grid-cols-2">
                         <div className="grid gap-2">
-                            <Label htmlFor="amendment_number">Nomor Amandemen</Label>
+                            <Label htmlFor="amendment_number">
+                                Nomor Amandemen
+                            </Label>
                             <Input
                                 id="amendment_number"
                                 value={form.data.amendment_number}
-                                onChange={(e) => form.setData('amendment_number', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'amendment_number',
+                                        e.target.value,
+                                    )
+                                }
                                 placeholder="Contoh: AMD-01, dll (opsional)"
                             />
-                            <InputError message={form.errors.amendment_number} />
+                            <InputError
+                                message={form.errors.amendment_number}
+                            />
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="bastp_date">Tgl BASTP</Label>
@@ -1039,25 +1120,31 @@ function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
                                 id="bastp_date"
                                 type="date"
                                 value={form.data.bastp_date}
-                                onChange={(e) => form.setData('bastp_date', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('bastp_date', e.target.value)
+                                }
                                 className="tabular"
                             />
                             <InputError message={form.errors.bastp_date} />
                         </div>
                     </div>
-                    
+
                     <div className="grid gap-2">
                         <Label htmlFor="has_penalty_edit">Denda</Label>
                         <Select
                             value={form.data.has_penalty ? 'ada' : 'tidak'}
-                            onValueChange={(v) => form.setData('has_penalty', v === 'ada')}
+                            onValueChange={(v) =>
+                                form.setData('has_penalty', v === 'ada')
+                            }
                         >
                             <SelectTrigger id="has_penalty_edit">
                                 <SelectValue placeholder="Pilih denda" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="ada">Ada Denda</SelectItem>
-                                <SelectItem value="tidak">Tidak Ada Denda</SelectItem>
+                                <SelectItem value="tidak">
+                                    Tidak Ada Denda
+                                </SelectItem>
                             </SelectContent>
                         </Select>
                         <InputError message={form.errors.has_penalty} />
@@ -1069,23 +1156,32 @@ function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
                             <Input
                                 id="form_number"
                                 value={form.data.form_number}
-                                onChange={(e) => form.setData('form_number', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('form_number', e.target.value)
+                                }
                                 className="tabular"
                             />
                             <InputError message={form.errors.form_number} />
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="revision_number">Nomor Revisi</Label>
+                            <Label htmlFor="revision_number">
+                                Nomor Revisi
+                            </Label>
                             <Input
                                 id="revision_number"
                                 value={form.data.revision_number}
-                                onChange={(e) => form.setData('revision_number', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData(
+                                        'revision_number',
+                                        e.target.value,
+                                    )
+                                }
                                 className="tabular"
                             />
                             <InputError message={form.errors.revision_number} />
                         </div>
                     </div>
-                    
+
                     <div className="grid gap-4 md:grid-cols-2">
                         <div className="grid gap-2">
                             <Label htmlFor="form_date">Tanggal Formulir</Label>
@@ -1093,17 +1189,23 @@ function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
                                 id="form_date"
                                 type="date"
                                 value={form.data.form_date}
-                                onChange={(e) => form.setData('form_date', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('form_date', e.target.value)
+                                }
                                 className="tabular"
                             />
                             <InputError message={form.errors.form_date} />
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="place">Tempat Penandatanganan</Label>
+                            <Label htmlFor="place">
+                                Tempat Penandatanganan
+                            </Label>
                             <Input
                                 id="place"
                                 value={form.data.place}
-                                onChange={(e) => form.setData('place', e.target.value)}
+                                onChange={(e) =>
+                                    form.setData('place', e.target.value)
+                                }
                             />
                             <InputError message={form.errors.place} />
                         </div>
@@ -1114,14 +1216,18 @@ function EditHeaderDialog({ assessment }: { assessment: Assessment }) {
                         <textarea
                             id="notes"
                             rows={3}
-                            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
                             value={form.data.notes}
-                            onChange={(e) => form.setData('notes', e.target.value)}
+                            onChange={(e) =>
+                                form.setData('notes', e.target.value)
+                            }
                         />
                         <InputError message={form.errors.notes} />
                     </div>
                     <div className="flex justify-end pt-4">
-                        <Button type="submit" disabled={form.processing}>Simpan</Button>
+                        <Button type="submit" disabled={form.processing}>
+                            Simpan
+                        </Button>
                     </div>
                 </form>
             </DialogContent>
