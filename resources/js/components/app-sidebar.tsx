@@ -31,6 +31,7 @@ import {
     UserSquare2,
     Wallet,
     Workflow,
+    Wrench,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
@@ -53,6 +54,7 @@ import documents from '@/routes/documents';
 import execution from '@/routes/execution';
 import finance from '@/routes/finance';
 import handover from '@/routes/handover';
+import maintenance from '@/routes/maintenance';
 import masterData from '@/routes/master-data';
 import monitoring from '@/routes/monitoring';
 import picAssignments from '@/routes/pic-assignments';
@@ -237,6 +239,11 @@ export function AppSidebar() {
                               title: 'Hak Akses',
                               href: accessRights.index(),
                               icon: KeyRound,
+                          },
+                          {
+                              title: 'Mode Pemeliharaan',
+                              href: maintenance.edit(),
+                              icon: Wrench,
                           },
                       ],
                   },

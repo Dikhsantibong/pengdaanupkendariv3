@@ -66,6 +66,7 @@ import { formatDateTime } from '@/lib/format';
 import { dashboard } from '@/routes';
 import procurements from '@/routes/procurements';
 import type {
+    AdjustableStage,
     ChecklistRow,
     PartnerCandidate,
     DocumentTypeOption,
@@ -73,6 +74,7 @@ import type {
     ProcurementRow,
     ProposalDocument,
     StatusOption,
+    StepSettings,
     SupportingDocument,
 } from '@/types';
 
@@ -108,6 +110,8 @@ type ShowProps = {
         pelaksanaan: ChecklistRow[];
         keuangan: ChecklistRow[];
     };
+    /** Adding and removing steps on this procurement alone. */
+    stepSettings: StepSettings;
     approvalHistory: ApprovalHistory;
     amendments: Amendment[];
     /** The contract's articles, while an amendment waits on Laksdan. */
@@ -161,6 +165,7 @@ export default function ShowProcurement({
     procurement,
     detail,
     checklists,
+    stepSettings,
     approvalHistory,
     amendments,
     amendmentArticles,
@@ -268,6 +273,13 @@ export default function ShowProcurement({
         };
 
     /** "5/8 langkah": the required steps of a checklist, done of all. */
+    const stepManagerFor = (stage: AdjustableStage) => ({
+        stage,
+        canManage: stepSettings.can[stage],
+        removed: stepSettings.removed[stage],
+        documentTypes: stepSettings.documentTypes,
+    });
+
     const progressOf = (rows: ChecklistRow[]): string => {
         const required = rows.filter((row) => !row.is_optional);
 
@@ -844,6 +856,7 @@ export default function ShowProcurement({
                                         can.updatePlanningIdentity
                                     }
                                     directAppointment={directAppointment}
+                                    stepManager={stepManagerFor('perencanaan')}
                                 />
                             </TabsContent>
 
@@ -874,6 +887,7 @@ export default function ShowProcurement({
                                     }
                                     rows={checklists.pelaksanaan}
                                     editable={can.updateExecutionChecklist}
+                                    stepManager={stepManagerFor('pelaksanaan')}
                                     partnerCandidates={partnerCandidates}
                                     canManageDocuments={
                                         can.manageExecutionDocuments
@@ -902,6 +916,7 @@ export default function ShowProcurement({
                                     doneMessage="Semua kelengkapan penyerahan sudah lengkap. Ajukan ke TL Pengadaan di kolom Persetujuan."
                                     rows={financeRows('penyerahan')}
                                     editable={can.updateHandoverChecklist}
+                                    stepManager={stepManagerFor('penyerahan')}
                                     canManageDocuments={
                                         can.updateHandoverChecklist
                                     }

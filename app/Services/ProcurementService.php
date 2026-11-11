@@ -411,8 +411,18 @@ class ProcurementService
         $own = ChecklistItem::query()
             ->active()
             ->where('procurement_id', $procurement->id)
+            ->where('is_custom', false)
             ->ordered()
             ->get();
+
+        // The steps added to this procurement by hand, and those removed
+        // from it by hand (see ProcurementStepService).
+        $custom = ChecklistItem::query()
+            ->active()
+            ->where('procurement_id', $procurement->id)
+            ->where('is_custom', true)
+            ->get();
+        $excluded = $procurement->stepExclusions()->pluck('checklist_item_id');
 
         $readSections = $own->map(fn (ChecklistItem $item): ?string => $item->section?->value)->filter()->unique();
 
@@ -432,7 +442,9 @@ class ProcurementService
             ->get()
             // A section read from the contract replaces the template's list.
             ->reject(fn (ChecklistItem $item): bool => $item->section !== null && $readSections->contains($item->section->value))
-            ->concat($own);
+            ->concat($own)
+            ->concat($custom)
+            ->reject(fn (ChecklistItem $item): bool => $excluded->contains($item->id));
 
         $existing = $procurement->checklists()->pluck('checklist_item_id')->all();
 
@@ -499,7 +511,11 @@ class ProcurementService
      */
     protected function storeContractRequirements(Procurement $procurement, array $read): void
     {
-        $existing = ChecklistItem::query()->where('procurement_id', $procurement->id)->get();
+        // Steps added by hand are not the contract's to switch off.
+        $existing = ChecklistItem::query()
+            ->where('procurement_id', $procurement->id)
+            ->where('is_custom', false)
+            ->get();
 
         foreach (FinanceSection::cases() as $section) {
             $current = $existing->filter(fn (ChecklistItem $item): bool => $item->section === $section);

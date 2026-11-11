@@ -1,17 +1,10 @@
 import { Head, Link, usePage } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
-import {
-    FolderBadge,
-    OpenPartnerBar,
-    PartnerFolderGrid,
-} from '@/components/partner-folder-grid';
-import type {
-    OpenPartner,
-    PartnerFolder,
-} from '@/components/partner-folder-grid';
+import { OpenPartnerBar } from '@/components/partner-folder-grid';
+import type { OpenPartner } from '@/components/partner-folder-grid';
 import { ProcurementFilterBar } from '@/components/procurement-filter-bar';
-import { ProcurementTable } from '@/components/procurement-table';
+import { ProcurementListTable } from '@/components/procurement-list-table';
 import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
 import procurements from '@/routes/procurements';
@@ -34,16 +27,14 @@ function queryOf(values: Record<string, string | number | null | undefined>) {
 }
 
 export default function ProcurementIndex({
-    folders,
     partner,
     procurements: page,
     filters,
     options,
 }: {
-    /** One folder per partner, while none is open. */
-    folders: Paginated<PartnerFolder> | null;
+    /** A partner opened from a link elsewhere (?mitra=). */
     partner: OpenPartner | null;
-    /** The open folder's work, or every match while searching. */
+    /** Every procurement matching the filters, newest first. */
     procurements: Paginated<ProcurementRow>;
     filters: ProcurementFilters;
     options: FilterOptions;
@@ -52,8 +43,6 @@ export default function ProcurementIndex({
     const persist: Record<string, string> = partner
         ? { mitra: partner.key }
         : {};
-    // A search looks across every folder at once.
-    const isSearching = partner === null && Boolean(filters.search);
     const total = page.meta?.total ?? page.total ?? page.data.length;
 
     return (
@@ -66,8 +55,8 @@ export default function ProcurementIndex({
                     title="Daftar Pengadaan"
                     description={
                         auth.permissions.viewAllProcurements
-                            ? 'Seluruh pengadaan barang dan jasa yang terdaftar di UP Kendari, dikelompokkan dalam folder per mitra. Klik folder untuk melihat pengadaan mitra itu.'
-                            : 'Pengadaan yang ditugaskan kepada Anda, dikelompokkan dalam folder per mitra.'
+                            ? 'Seluruh pengadaan barang dan jasa yang terdaftar di UP Kendari. Klik + untuk melihat rincian, atau Detail untuk membuka pengadaan.'
+                            : 'Pengadaan yang ditugaskan kepada Anda. Klik + untuk melihat rincian, atau Detail untuk membuka pengadaan.'
                     }
                     actions={
                         auth.permissions.createProcurement && (
@@ -101,53 +90,10 @@ export default function ProcurementIndex({
                     </OpenPartnerBar>
                 )}
 
-                {isSearching && (
-                    <p className="text-xs text-muted-foreground">
-                        Hasil pencarian di semua folder mitra: {total}{' '}
-                        pengadaan.
-                    </p>
-                )}
-
-                {partner === null && !isSearching && folders !== null ? (
-                    <PartnerFolderGrid
-                        page={folders}
-                        emptyTitle="Tidak ada pengadaan yang cocok"
-                        href={(folder) =>
-                            procurements.index({
-                                query: queryOf({
-                                    ...filters,
-                                    mitra: folder.key,
-                                }),
-                            }).url
-                        }
-                        details={(folder) => (
-                            <>
-                                <span className="tabular block text-[11px] text-muted-foreground">
-                                    {folder.total} pengadaan
-                                </span>
-                                <FolderBadge
-                                    done={folder.done}
-                                    total={folder.total}
-                                    label="selesai"
-                                />
-                            </>
-                        )}
-                    />
-                ) : (
-                    <ProcurementTable
-                        page={page}
-                        columns={[
-                            'unit',
-                            'budgetSource',
-                            'hpe',
-                            'status',
-                            'approval',
-                            'planner',
-                            'executor',
-                        ]}
-                        emptyDescription="Tidak ada pengadaan yang cocok dengan filter saat ini."
-                    />
-                )}
+                <ProcurementListTable
+                    page={page}
+                    emptyDescription="Tidak ada pengadaan yang cocok dengan filter saat ini."
+                />
             </div>
         </>
     );

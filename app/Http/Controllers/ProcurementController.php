@@ -29,6 +29,7 @@ use App\Services\ContractRequirementReader;
 use App\Services\DeliveryOrderService;
 use App\Services\DocumentGenerator;
 use App\Services\ProcurementService;
+use App\Services\ProcurementStepService;
 use App\Services\ProgressStatusResolver;
 use App\Support\FinanceLetters;
 use App\Support\MasterDataOptions;
@@ -372,6 +373,8 @@ class ProcurementController extends Controller
                 'pelaksanaan' => $this->checklistPayload($procurement, ProcurementStage::Pelaksanaan),
                 'keuangan' => $this->checklistPayload($procurement, ProcurementStage::Keuangan),
             ],
+            // Adding and removing steps on this procurement alone.
+            'stepSettings' => $this->stepSettings($procurement, $user),
             'documents' => $procurement->documents
                 ->sortByDesc('generated_at')
                 ->values()
@@ -783,7 +786,9 @@ class ProcurementController extends Controller
 
         return $procurement->checklists
             ->where('stage', $stage)
-            ->sortBy(fn ($checklist): int => $checklist->checklistItem->sort_order)
+            // A step added by hand right after another shares its sort order
+            // and follows it, in the order the steps were added.
+            ->sort(fn ($a, $b): int => [$a->checklistItem->sort_order, $a->id] <=> [$b->checklistItem->sort_order, $b->id])
             ->values()
             ->map(function ($checklist) use ($procurement, $resolvable, $letterTypes): array {
                 $item = $checklist->checklistItem;
@@ -805,6 +810,12 @@ class ProcurementController extends Controller
                     // are shown under Pembayaran.
                     'section' => $item->section?->value,
                     'is_optional' => $item->is_optional,
+                    // Added to this procurement by hand.
+                    'is_custom' => $item->is_custom,
+                    // Only a step with nothing on it yet can be removed.
+                    'removable' => ! $checklist->is_completed
+                        && $checklist->files->isEmpty()
+                        && trim((string) $checklist->notes) === '',
                     'is_completed' => $checklist->is_completed,
                     'notes' => $checklist->notes,
                     'completed_by' => $checklist->completedBy?->name,
@@ -835,6 +846,43 @@ class ProcurementController extends Controller
                 ];
             })
             ->all();
+    }
+
+    /**
+     * Who may adjust the steps of each stage, the steps removed so far (to
+     * restore), and the documents a step added by hand may ask for.
+     *
+     * @return array{can: array<string, bool>, removed: array<string, list<array<string, mixed>>>, documentTypes: list<array{value: int, label: string}>}
+     */
+    protected function stepSettings(Procurement $procurement, User $user): array
+    {
+        $steps = app(ProcurementStepService::class);
+        $stages = array_keys(ProcurementStepService::STAGES);
+        $hasRight = $user->hasPermission(Permission::ManageProcurementSteps);
+
+        $can = [];
+        $removed = [];
+
+        foreach ($stages as $stage) {
+            $can[$stage] = $user->can('manageSteps', [$procurement, $stage]);
+            $removed[$stage] = $hasRight ? $steps->removed($procurement, $stage) : [];
+        }
+
+        return [
+            'can' => $can,
+            'removed' => $removed,
+            'documentTypes' => in_array(true, $can, true)
+                ? array_values(DocumentType::query()
+                    ->active()
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'upload_only'])
+                    ->map(fn (DocumentType $type): array => [
+                        'value' => $type->id,
+                        'label' => $type->upload_only ? "{$type->name} (diunggah)" : $type->name,
+                    ])
+                    ->all())
+                : [],
+        ];
     }
 
     /**
@@ -870,7 +918,8 @@ class ProcurementController extends Controller
         foreach ($procurement->checklists->where('stage', ProcurementStage::Keuangan) as $checklist) {
             $item = $checklist->checklistItem;
 
-            if ($item->procurement_id === $procurement->id && $item->is_active && $item->section !== null) {
+            // A step added by hand is not read from the contract.
+            if ($item->procurement_id === $procurement->id && ! $item->is_custom && $item->is_active && $item->section !== null) {
                 $readSections[$item->section->value] = true;
             }
         }

@@ -2,6 +2,7 @@ import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
+import { MaintenanceBanner } from '@/components/maintenance-banner';
 import { NotificationWatcher } from '@/components/notification-watcher';
 import { PortalTab } from '@/components/portal-tab';
 import type { AppLayoutProps } from '@/types';
@@ -16,6 +17,7 @@ export default function AppSidebarLayout({
             <PortalTab />
             <AppContent variant="sidebar" className="overflow-x-clip">
                 <AppSidebarHeader breadcrumbs={breadcrumbs} />
+                <MaintenanceBanner />
                 <NotificationWatcher />
                 {children}
             </AppContent>

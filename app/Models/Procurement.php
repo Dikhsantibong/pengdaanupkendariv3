@@ -757,6 +757,16 @@ class Procurement extends Model
     }
 
     /**
+     * The steps removed from this procurement by hand.
+     *
+     * @return HasMany<ProcurementStepExclusion, $this>
+     */
+    public function stepExclusions(): HasMany
+    {
+        return $this->hasMany(ProcurementStepExclusion::class);
+    }
+
+    /**
      * Every document generated for this procurement.
      *
      * @return HasMany<ProcurementDocument, $this>

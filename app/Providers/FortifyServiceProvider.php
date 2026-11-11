@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Support\LoginOptions;
+use App\Support\MaintenanceMode;
 use App\Support\PublicProcurementBoard;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -53,6 +54,8 @@ class FortifyServiceProvider extends ServiceProvider
             'canResetPassword' => LoginOptions::passwordReset(),
             'canUsePasskeys' => LoginOptions::passkeys(),
             'status' => $request->session()->get('status'),
+            // While on, the page says the application cannot be used yet.
+            'maintenance' => MaintenanceMode::isActive() ? MaintenanceMode::state() : null,
             'showcase' => app(PublicProcurementBoard::class)->loginShowcase(),
         ]));
 

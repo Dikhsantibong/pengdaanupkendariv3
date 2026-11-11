@@ -14,6 +14,7 @@ import {
     MoreHorizontal,
     PartyPopper,
     Send,
+    Trash2,
     Undo2,
     X,
 } from 'lucide-react';
@@ -31,6 +32,8 @@ import {
     touchRememberedPanel,
     useRememberedPanel,
 } from '@/components/procurement/request-board';
+import { StepManagerBar } from '@/components/procurement/step-manager';
+import type { StepManager } from '@/components/procurement/step-manager';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -289,6 +292,7 @@ export function ChecklistSteps({
     partnerCandidates = [],
     candidatesEditable = false,
     directAppointment = false,
+    stepManager,
 }: {
     procurementId: number;
     description?: string;
@@ -304,6 +308,8 @@ export function ChecklistSteps({
     partnerCandidates?: PartnerCandidate[];
     candidatesEditable?: boolean;
     directAppointment?: boolean;
+    /** Adding and removing this stage's steps on this procurement alone. */
+    stepManager?: StepManager;
 }) {
     // The step whose details are open, kept across the reload every save
     // brings, so the panel is still there when the save comes back.
@@ -330,6 +336,34 @@ export function ChecklistSteps({
                         errors.is_completed ??
                             Object.values(errors)[0] ??
                             'Langkah ini belum bisa ditandai selesai.',
+                    ),
+            },
+        );
+    };
+
+    const remove = (row: ChecklistRow) => {
+        if (
+            !window.confirm(
+                `Hapus tahapan "${row.name}" dari pengadaan ini? Data Master dan pengadaan lain tidak berubah, dan tahapan ini dapat dipulihkan kapan saja.`,
+            )
+        ) {
+            return;
+        }
+
+        setError(null);
+        router.delete(
+            procurements.steps.destroy({
+                procurement: procurementId,
+                checklist: row.id,
+            }).url,
+            {
+                preserveScroll: true,
+                preserveState: 'errors',
+                onError: (errors) =>
+                    setError(
+                        errors.step ??
+                            Object.values(errors)[0] ??
+                            'Tahapan ini belum dapat dihapus.',
                     ),
             },
         );
@@ -411,6 +445,14 @@ export function ChecklistSteps({
                     </div>
                 </header>
 
+                {stepManager && (
+                    <StepManagerBar
+                        procurementId={procurementId}
+                        manager={stepManager}
+                        rows={rows}
+                    />
+                )}
+
                 {!editable && lockedReason && (
                     <p className="flex items-center gap-2 border-b border-border bg-muted/40 px-4 py-2 text-xs text-muted-foreground">
                         <Lock className="size-3.5" />
@@ -442,6 +484,11 @@ export function ChecklistSteps({
                             canManageDocuments={canManageDocuments}
                             onOpen={() => open(row.id)}
                             onToggle={(value) => toggle(row, value)}
+                            onRemove={
+                                stepManager?.canManage
+                                    ? () => remove(row)
+                                    : undefined
+                            }
                         />
                     ))}
                 </ol>
@@ -588,6 +635,7 @@ function StepRow({
     canManageDocuments,
     onOpen,
     onToggle,
+    onRemove,
 }: {
     procurementId: number;
     number: number;
@@ -597,6 +645,8 @@ function StepRow({
     canManageDocuments: boolean;
     onOpen: () => void;
     onToggle: (value: boolean) => void;
+    /** Removes the step from this procurement, for whoever may. */
+    onRemove?: () => void;
 }) {
     const state = stateOf(row);
     const requirements = requirementsOf(row);
@@ -654,6 +704,14 @@ function StepRow({
                 {row.is_optional && (
                     <span className="ml-2 rounded-sm bg-muted px-1.5 py-0.5 text-[0.6875rem] text-muted-foreground">
                         Opsional
+                    </span>
+                )}
+                {row.is_custom && (
+                    <span
+                        className="ml-2 rounded-sm bg-primary/10 px-1.5 py-0.5 text-[0.6875rem] text-primary"
+                        title="Ditambahkan khusus pada pengadaan ini"
+                    >
+                        Tambahan
                     </span>
                 )}
                 {row.description && (
@@ -824,6 +882,27 @@ function StepRow({
                                 >
                                     <Undo2 className="size-4" />
                                     Tandai belum selesai
+                                </DropdownMenuItem>
+                            </>
+                        )}
+                        {onRemove && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    disabled={!row.removable}
+                                    onSelect={onRemove}
+                                    className="text-destructive focus:text-destructive"
+                                >
+                                    <Trash2 className="size-4" />
+                                    <span className="flex flex-col">
+                                        Hapus tahapan
+                                        {!row.removable && (
+                                            <span className="text-[11px] text-muted-foreground">
+                                                Sudah selesai, berisi berkas,
+                                                atau bercatatan
+                                            </span>
+                                        )}
+                                    </span>
                                 </DropdownMenuItem>
                             </>
                         )}

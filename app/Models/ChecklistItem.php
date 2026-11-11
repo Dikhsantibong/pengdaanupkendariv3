@@ -22,6 +22,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int|null $procurement_id
+ * @property bool $is_custom Added by hand to its procurement, not read from the contract.
  * @property ProcurementStage $stage
  * @property FinanceSection|null $section
  * @property WorkCategory|null $work_category
@@ -37,7 +38,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $deleted_at
  * @property-read int|null $procurement_checklists_count
  */
-#[Fillable(['procurement_id', 'stage', 'section', 'work_category', 'name', 'description', 'is_optional', 'input_kind', 'input_contract_number_format_id', 'sort_order', 'is_active'])]
+#[Fillable(['procurement_id', 'is_custom', 'stage', 'section', 'work_category', 'name', 'description', 'is_optional', 'input_kind', 'input_contract_number_format_id', 'sort_order', 'is_active'])]
 class ChecklistItem extends Model
 {
     /** @use HasFactory<ChecklistItemFactory> */
@@ -269,6 +270,7 @@ class ChecklistItem extends Model
     protected function casts(): array
     {
         return [
+            'is_custom' => 'boolean',
             'stage' => ProcurementStage::class,
             'section' => FinanceSection::class,
             'work_category' => WorkCategory::class,

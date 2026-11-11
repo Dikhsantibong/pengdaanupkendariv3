@@ -2714,6 +2714,104 @@ Bila token atau komponen inti berubah, perbarui juga `DESIGN.md`.
 
 ---
 
+# Gaya Tahapan Detail Pengadaan (Pita Panah)
+
+Baris tahapan di detail pengadaan (Usulan → Perencanaan → Pelaksanaan → Penyerahan → Pembayaran) kini bergaya **pita panah (chevron)**. Isi, urutan, dan fungsinya tidak berubah; hanya tampilannya.
+
+- Setiap tahap berbentuk blok berujung runcing di kanan dan bertakik di kiri, saling menyambung dengan celah tipis. Bentuknya dibuat dengan `clip-path` (`ribbonShape` di `components/procurement/stage-stepper.tsx`).
+- **Selesai:** biru tua, centang dalam lingkaran bergaris putih, teks putih.
+- **Sedang berjalan:** biru PLN (`primary`), nomor tahap dalam lingkaran putih.
+- **Belum / terkunci:** biru sangat muda, teks abu, nomor atau ikon gembok.
+- Tahap yang sedang dibuka ditandai garis di bagian bawah pita.
+- Titik merah "perlu tindakan" tetap ada.
+- Tombol Amandemen, Delivery Order, dan Riwayat Approval tidak berubah.
+- Di layar sempit pita bisa digeser ke samping.
+- **Ukuran diperbesar:** setiap pita setinggi 80px, nama tahap 16px, keterangan 12px, lingkaran ikon 36–40px, dan ujung panah 22px.
+  - Di layar di bawah 1536px jarak dan ikon sedikit lebih ringkas, sehingga pita tetap muat tanpa digeser di laptop 1366px.
+
+---
+
+# Daftar Pengadaan sebagai Tabel Bertingkat (tanpa Folder)
+
+Halaman **Daftar Pengadaan** tidak lagi menampilkan folder per mitra. Seluruh pengadaan yang cocok dengan filter tampil langsung dalam satu tabel berhalaman (15 per halaman, terbaru di atas). Gayanya meniru contoh aplikasi tagihan; fungsi dari contoh itu tidak ditiru.
+
+- **Kolom:** tombol **+ / −**, Nomor Kontrak, Nama Pengadaan, Mitra, Unit Tujuan, Nilai HPE, Status, Tanggal Buat, dan tombol **Detail** (ikon mata, garis biru) yang membuka halaman pengadaan.
+- **Tombol + membuka baris rincian di tempat**, tiga kolom label-nilai:
+  - Direksi Pekerjaan, Jenis Kontrak, Metode, Sumber Anggaran, Nomor PRK;
+  - Nilai HPE, Nilai Setelah Nego, No. PR/PO, Target Selesai, Tanggal Buat;
+  - Tahap Saat Ini, status Perencanaan dan Pelaksanaan, PIC Perencana/Pelaksana.
+- Filter yang ada tetap berlaku.
+- Tautan `?mitra=` dari halaman lain tetap membuka pengadaan satu mitra, dengan bar mitra di atas tabel. Backend dan prop `folders` tidak diubah.
+- **Komponen:** `resources/js/components/procurement-list-table.tsx`.
+
+---
+
+# Tambah dan Hapus Tahapan per Pengadaan (Perencanaan, Pelaksanaan, Penyerahan)
+
+Tahapan pada tab **Perencanaan**, **Pelaksanaan**, dan **Penyerahan** dapat disesuaikan **untuk satu pengadaan saja**. Data Master (Item Checklist) dan pengadaan lain tidak berubah.
+
+**Siapa dan kapan:**
+- Hak baru **Atur tahapan pengadaan** (`procurement.manage-steps`). Bawaannya TL Pengadaan dan TL ICC, sementara Administrator selalu punya. Hak ini bisa diberikan ke peran lain di menu Hak Akses.
+- Hanya selama tahap itu **belum diajukan** (terbuka lagi bila dikembalikan):
+  - Perencanaan: Belum Diajukan / Ditolak.
+  - Pelaksanaan: tidak sedang ditinjau dan belum diteruskan ke Penyerahan.
+  - Penyerahan: Belum Diajukan / Dikembalikan dan belum lunas.
+- Tidak berlaku untuk pengadaan selesai atau batal. Pembayaran tidak diatur di sini.
+
+**Tambah Tahapan** (tombol di atas tabel langkah):
+- Isian: Nama, Keterangan, posisi (di akhir tahap atau setelah langkah tertentu), Opsional/Wajib.
+- Perencanaan/Pelaksanaan bisa memilih **jenis dokumen** dari Data Master → Jenis Dokumen; tahapan lalu meminta dokumen tervalidasi itu lewat alur dokumen yang sudah ada. Bila tidak dipilih, cukup ditandai selesai.
+- Tahapan Penyerahan selalu diselesaikan dengan mengunggah berkas (alur berkas Penyerahan yang sudah ada).
+- Tahapan tambahan berlabel **Tambahan**. Tahapan wajib ikut menahan pengajuan seperti tahapan lain.
+
+**Hapus Tahapan** (menu … pada baris):
+- Dengan konfirmasi.
+- **Ditolak** bila tahapan sudah ditandai selesai, berisi berkas unggahan, atau bercatatan, supaya tidak ada data yang hilang.
+- Dokumen yang pernah dibuat tetap tersimpan.
+
+**Pulihkan:**
+- Tombol **Tahapan dihapus (n)** menampilkan tahapan yang dihapus beserta siapa dan kapan.
+- **Pulihkan** mengembalikannya sebagai langkah yang belum dikerjakan.
+
+**Teknis:**
+- Migrasi `add_custom_steps_and_step_exclusions`:
+  - Kolom `checklist_items.is_custom`.
+  - Tabel `procurement_step_exclusions` (pengadaan, item, `removed_by`), dengan indeks unik bernama pendek `step_exclusions_unique` untuk MySQL.
+  - Hak bawaan untuk TL Pengadaan dan TL ICC.
+- Tahapan tambahan = item milik pengadaan dengan `is_custom = true`. Pembaca syarat kontrak (`storeContractRequirements`, `requirementsSource`) mengabaikannya, jadi tidak dinonaktifkan dan tidak menggantikan daftar template.
+- `ProcurementService::syncChecklists` menambahkan item custom yang aktif dan membuang item yang dikecualikan. Baris yang sudah selesai tetap disimpan seperti aturan sebelumnya.
+- Kode: `ProcurementStepService` (add/remove/restore/isOpen), `Procurements\StepController`, rute `procurements.steps.store/destroy/restore` (`/tahapan`), `ProcurementPolicy::manageSteps`, komponen `components/procurement/step-manager.tsx`.
+- Setiap perubahan dicatat di riwayat aktivitas ("Tahapan … ditambahkan/dihapus/dipulihkan").
+- **Test:** `ProcurementStepTest`.
+
+---
+
+# Mode Pemeliharaan (Administrator)
+
+Administrator dapat menutup aplikasi sementara saat pemeliharaan, lewat menu **Administrasi → Mode Pemeliharaan** (`/pemeliharaan`, khusus Administrator).
+
+**Pengaturan:**
+- Sakelar aktif/nonaktif.
+- **Pesan** yang tampil di halaman login (kosong = pesan bawaan).
+- **Perkiraan selesai**, hanya sebagai informasi; mode tetap aktif sampai dimatikan.
+- Ada pratinjau tampilan login, serta catatan siapa yang terakhir mengubah dan kapan.
+
+**Saat aktif:**
+- **Halaman login** menampilkan kotak "Aplikasi Sedang dalam Pemeliharaan" beserta pesan, perkiraan selesai, dan keterangan "Untuk sementara hanya Administrator yang dapat masuk". Formulir login tetap ada agar Administrator bisa masuk.
+- **Hanya Administrator yang dapat masuk.** Email lain (termasuk yang tidak terdaftar) ditolak sebelum kata sandi diperiksa, dengan pesan yang sama.
+- **Pengguna lain yang sedang masuk** dikeluarkan saat membuka halaman berikutnya, dengan pesan di halaman login. Permintaan latar (JSON, mis. notifikasi) dijawab 503.
+- **Halaman publik** (Beranda, Monitoring Publik, formulir dan tanda tangan vendor) dialihkan ke halaman login.
+- **Administrator tetap bekerja seperti biasa**, termasuk saat **Pindah Akun**. Setiap halaman menampilkan pita kuning "Mode pemeliharaan aktif" dengan tautan ke pengaturannya.
+
+**Teknis:**
+- Disimpan di database (tabel `app_settings`, kunci `maintenance`), bukan di cache, sehingga tidak hilang oleh `php artisan optimize:clear`.
+- Tidak memakai `php artisan down` (yang juga mengunci Administrator).
+- Kode: `App\Support\MaintenanceMode`, middleware `BlockDuringMaintenance` (grup web, setelah `HandleInertiaRequests`), `MaintenanceController`, halaman `pages/maintenance/edit.tsx`, komponen `maintenance-banner.tsx`, prop `maintenance` di halaman login.
+- Migrasi: `create_app_settings_table`.
+- **Test:** `MaintenanceModeTest`.
+
+---
+
 # Teknologi
 
 Sesuai dengan `claude.md`.

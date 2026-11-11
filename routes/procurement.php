@@ -25,6 +25,7 @@ use App\Http\Controllers\Procurements\PicAssignmentController;
 use App\Http\Controllers\Procurements\PlanningIdentityController;
 use App\Http\Controllers\Procurements\ProposalController;
 use App\Http\Controllers\Procurements\StatusController;
+use App\Http\Controllers\Procurements\StepController;
 use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
 
@@ -49,6 +50,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('checklists/{checklist}/berkas/{file}', [ChecklistFileController::class, 'destroy'])->name('checklists.files.destroy');
         // The partner's letter a Keuangan step is evidenced by, as Word.
         Route::get('checklists/{checklist}/template', [ChecklistFileController::class, 'template'])->name('checklists.template');
+        // Adjusting this procurement's own steps: add, remove, restore.
+        Route::post('tahapan', [StepController::class, 'store'])->name('steps.store');
+        Route::delete('tahapan/{checklist}', [StepController::class, 'destroy'])->name('steps.destroy');
+        Route::post('tahapan/pulihkan/{exclusion}', [StepController::class, 'restore'])->name('steps.restore');
         Route::post('approval', [ApprovalController::class, 'store'])->name('approval.store');
         Route::put('approval', [ApprovalController::class, 'update'])->name('approval.update');
         Route::delete('approval', [ApprovalController::class, 'destroy'])->name('approval.destroy');

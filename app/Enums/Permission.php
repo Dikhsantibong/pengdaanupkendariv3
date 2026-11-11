@@ -35,6 +35,7 @@ enum Permission: string
     case ReviewExecution = 'procurement.review-execution';
     case ReviewHandover = 'procurement.review-handover';
     case CompleteProcurement = 'procurement.complete';
+    case ManageProcurementSteps = 'procurement.manage-steps';
     case ProcessPayment = 'procurement.process-payment';
     case ViewAllProcurements = 'procurement.view-all';
     case ViewAllProposals = 'proposal.view-all';
@@ -69,6 +70,7 @@ enum Permission: string
             self::ReviewExecution => 'Setujui / tolak pelaksanaan',
             self::ReviewHandover => 'Setujui / kembalikan penyerahan',
             self::CompleteProcurement => 'Nyatakan pengadaan selesai',
+            self::ManageProcurementSteps => 'Atur tahapan pengadaan',
             self::ProcessPayment => 'Proses pembayaran (Keuangan)',
             self::ViewAllProcurements => 'Lihat seluruh pengadaan',
             self::ViewAllProposals => 'Lihat seluruh usulan',
@@ -104,6 +106,7 @@ enum Permission: string
             self::ReviewExecution => 'Menyetujui atau menolak pelaksanaan yang diajukan PIC Pelaksana. Pelaksanaan yang disetujui diteruskan ke Penyerahan.',
             self::ReviewHandover => 'Menyetujui atau mengembalikan berkas penyerahan yang diajukan PIC Pelaksana. Penyerahan yang disetujui diteruskan ke Pembayaran (Keuangan).',
             self::CompleteProcurement => 'Menutup pengadaan yang sudah selesai.',
+            self::ManageProcurementSteps => 'Menambah, menghapus, dan memulihkan tahapan Perencanaan, Pelaksanaan, dan Penyerahan pada satu pengadaan, selama tahap itu belum diajukan. Data Master dan pengadaan lain tidak berubah.',
             self::ProcessPayment => 'Melengkapi berkas pembayaran pengadaan yang penyerahannya sudah disetujui, lalu mengajukannya ke TL atasan (TL Keuangan) dan Asman bidang (Asman Business Support). Persetujuan Asman mencatat pembayaran lunas dan menutup pengadaan.',
             self::ViewAllProcurements => 'Melihat seluruh pengadaan, bukan hanya yang ditugaskan atau dibuat sendiri.',
             self::ViewAllProposals => 'Di halaman Usulan Pekerjaan: melihat usulan yang menunggu persetujuan, riwayat usulan, dan riwayat keputusan dari seluruh pengusul (perlu Menu Usulan Pekerjaan).',
@@ -139,6 +142,7 @@ enum Permission: string
             self::ReviewExecution,
             self::ReviewHandover,
             self::CompleteProcurement,
+            self::ManageProcurementSteps,
             self::ProcessPayment,
             self::ViewAllProcurements,
             self::ViewAllProposals => 'Pengadaan',
@@ -180,6 +184,8 @@ enum Permission: string
             // Keuangan pays; it does not propose work.
             self::ProposeWork => [UserRole::Pengusul, UserRole::DireksiPekerjaan],
             self::ProcessPayment => [UserRole::Keuangan],
+            // Those who approve the stages shape them.
+            self::ManageProcurementSteps => [UserRole::TeamLeaderPengadaan, UserRole::TeamLeaderIcc],
             self::MenuFinance => [UserRole::Keuangan, UserRole::TeamLeaderPengadaan, UserRole::TeamLeaderIcc],
             self::ApproveProposal => [UserRole::DireksiPekerjaan],
             self::MenuHandover => [UserRole::TeamLeaderPengadaan, UserRole::TeamLeaderIcc, UserRole::PicPelaksana],

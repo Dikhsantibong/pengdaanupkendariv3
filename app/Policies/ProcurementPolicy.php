@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Services\AmendmentService;
 use App\Services\DeliveryOrderService;
 use App\Services\ProcurementService;
+use App\Services\ProcurementStepService;
 use App\Support\ProposalDocuments;
 
 class ProcurementPolicy
@@ -623,6 +624,18 @@ class ProcurementPolicy
         return $procurement->isInFinance()
             && in_array($procurement->handover_approval_state, [PlanningApprovalState::BelumDiajukan, PlanningApprovalState::Ditolak], true)
             && $this->worksOnExecution($user, $procurement);
+    }
+
+    /**
+     * Determine whether the user may add, remove or restore the steps of one
+     * stage (perencanaan, pelaksanaan, penyerahan) of this procurement: with
+     * the right to adjust steps, while the stage is not submitted.
+     */
+    public function manageSteps(User $user, Procurement $procurement, string $stage): bool
+    {
+        return $user->hasPermission(Permission::ManageProcurementSteps)
+            && $this->view($user, $procurement)
+            && app(ProcurementStepService::class)->isOpen($procurement, $stage);
     }
 
     /**

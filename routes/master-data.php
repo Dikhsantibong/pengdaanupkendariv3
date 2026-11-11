@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AccessRightController;
+use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\MasterData\AssessmentAspectController;
 use App\Http\Controllers\MasterData\AssessmentFormController;
 use App\Http\Controllers\MasterData\BudgetSourceController;
@@ -52,4 +53,7 @@ Route::middleware(['auth', 'verified', 'can:manage-users'])->group(function () {
     Route::get('hak-akses', [AccessRightController::class, 'index'])->name('access-rights.index');
     Route::put('hak-akses', [AccessRightController::class, 'update'])->name('access-rights.update');
     Route::resource('users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
+    // Closing the application to everyone but the administrator.
+    Route::get('pemeliharaan', [MaintenanceController::class, 'edit'])->name('maintenance.edit');
+    Route::put('pemeliharaan', [MaintenanceController::class, 'update'])->name('maintenance.update');
 });

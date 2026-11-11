@@ -148,6 +148,10 @@ export type ChecklistRow = {
     /** The Keuangan tab of the step: Penyerahan or Pembayaran. */
     section?: 'penyerahan' | 'pembayaran' | null;
     is_optional: boolean;
+    /** Added to this procurement by hand. */
+    is_custom?: boolean;
+    /** Nothing ticked, uploaded or noted on it yet, so it may be removed. */
+    removable?: boolean;
     is_completed: boolean;
     notes: string | null;
     completed_by: string | null;
@@ -160,6 +164,25 @@ export type ChecklistRow = {
     template_url: string | null;
     /** Data the step asks for before it can be ticked, if any. */
     input: ChecklistInput | null;
+};
+
+/** The stages whose steps can be adjusted on one procurement. */
+export type AdjustableStage = 'perencanaan' | 'pelaksanaan' | 'penyerahan';
+
+/** A step removed from one procurement by hand, which can be restored. */
+export type RemovedStep = {
+    id: number;
+    name: string;
+    is_custom: boolean;
+    removed_by: string | null;
+    removed_at: string | null;
+};
+
+/** Who may adjust each stage's steps, and what was removed so far. */
+export type StepSettings = {
+    can: Record<AdjustableStage, boolean>;
+    removed: Record<AdjustableStage, RemovedStep[]>;
+    documentTypes: Array<{ value: number; label: string }>;
 };
 
 /** A file uploaded on a checklist step. */

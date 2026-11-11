@@ -1,4 +1,4 @@
-import { Check, ChevronRight, Lock } from 'lucide-react';
+import { Check, Lock } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
@@ -87,34 +87,41 @@ export function StageStepper({
             >
                 {stages.map((stage, index) => {
                     const selected = stage.value === active;
+                    const isFirst = index === 0;
+                    const isLast = index === stages.length - 1;
+                    const pending =
+                        stage.state === 'locked' || stage.state === 'todo';
 
                     return (
                         <li
                             key={stage.value}
-                            className="flex min-w-fit flex-1 items-center"
-                        >
-                            {index > 0 && (
-                                <ChevronRight
-                                    className={cn(
-                                        'mx-0.5 size-4 shrink-0',
-                                        stage.state === 'locked' ||
-                                            stage.state === 'todo'
-                                            ? 'text-muted-foreground/40'
-                                            : 'text-muted-foreground',
-                                    )}
-                                    aria-hidden="true"
-                                />
+                            className={cn(
+                                'flex min-w-fit flex-1',
+                                // The notch of each ribbon tucks under the
+                                // point of the one before, a thin gap between.
+                                !isFirst && '-ml-3.5',
                             )}
+                        >
                             <button
                                 type="button"
                                 role="tab"
                                 aria-selected={selected}
                                 onClick={() => onSelect(stage.value)}
+                                style={{
+                                    clipPath: ribbonShape(isFirst, isLast),
+                                }}
                                 className={cn(
-                                    'relative flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
-                                    selected
-                                        ? 'bg-primary/10 ring-1 ring-primary/40'
-                                        : 'hover:bg-muted/60',
+                                    'relative flex min-h-20 w-full items-center gap-2.5 py-3.5 text-left transition-[filter,background-color] outline-none hover:brightness-105 focus-visible:brightness-110 2xl:gap-3.5',
+                                    isFirst
+                                        ? 'pl-4 2xl:pl-5'
+                                        : 'pl-8 2xl:pl-10',
+                                    isLast ? 'pr-4 2xl:pr-5' : 'pr-7 2xl:pr-10',
+                                    stage.state === 'done' &&
+                                        'bg-[#0a5596] text-white dark:bg-[#1d5f99]',
+                                    stage.state === 'current' &&
+                                        'bg-primary text-primary-foreground',
+                                    pending &&
+                                        'bg-primary/10 text-muted-foreground hover:bg-primary/15',
                                 )}
                             >
                                 <StageMark
@@ -124,20 +131,37 @@ export function StageStepper({
                                 <span className="min-w-0">
                                     <span
                                         className={cn(
-                                            'block text-sm font-medium whitespace-nowrap',
-                                            stage.state === 'locked' ||
-                                                stage.state === 'todo'
-                                                ? 'text-muted-foreground'
-                                                : 'text-foreground',
-                                            selected && 'text-primary',
+                                            'block text-base leading-tight font-semibold whitespace-nowrap',
+                                            pending && 'text-foreground/70',
                                         )}
                                     >
                                         {stage.label}
                                     </span>
-                                    <span className="tabular block text-[11px] whitespace-nowrap text-muted-foreground">
+                                    <span
+                                        className={cn(
+                                            'tabular mt-1 block text-xs whitespace-nowrap',
+                                            pending
+                                                ? 'text-muted-foreground'
+                                                : 'text-white/80',
+                                        )}
+                                    >
                                         {stage.summary}
                                     </span>
                                 </span>
+                                {selected && (
+                                    // The stage on screen: a bar along its foot.
+                                    <span
+                                        className={cn(
+                                            'absolute inset-x-0 bottom-0 h-1.5',
+                                            !isFirst && 'ml-7',
+                                            !isLast && 'mr-7',
+                                            pending
+                                                ? 'bg-primary'
+                                                : 'bg-white/85',
+                                        )}
+                                        aria-hidden="true"
+                                    />
+                                )}
                                 {stage.attention && <AttentionDot />}
                             </button>
                         </li>
@@ -187,12 +211,13 @@ function StageMark({ state, number }: { state: StageState; number: number }) {
     return (
         <span
             className={cn(
-                'tabular flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
-                state === 'done' &&
-                    'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400',
-                state === 'current' && 'bg-primary text-primary-foreground',
-                state === 'todo' && 'bg-muted text-muted-foreground',
-                state === 'locked' && 'bg-muted text-muted-foreground/70',
+                'tabular flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold 2xl:size-10',
+                state === 'done' && 'border border-white/70 text-white',
+                state === 'current' && 'bg-white text-primary',
+                state === 'todo' &&
+                    'border border-muted-foreground/40 text-muted-foreground',
+                state === 'locked' &&
+                    'border border-muted-foreground/30 text-muted-foreground/70',
             )}
             aria-label={
                 state === 'done'
@@ -205,9 +230,9 @@ function StageMark({ state, number }: { state: StageState; number: number }) {
             }
         >
             {state === 'done' ? (
-                <Check className="size-3.5" />
+                <Check className="size-5" strokeWidth={3} />
             ) : state === 'locked' ? (
-                <Lock className="size-3" />
+                <Lock className="size-4" />
             ) : (
                 number
             )}
@@ -215,11 +240,27 @@ function StageMark({ state, number }: { state: StageState; number: number }) {
     );
 }
 
+/** Depth of the point on each ribbon. */
+const POINT = '22px';
+
+/**
+ * The ribbon outline: a point on the right and a notch on the left, the
+ * first flat on its left and the last flat on its right.
+ */
+function ribbonShape(isFirst: boolean, isLast: boolean): string {
+    const right = isLast
+        ? ['100% 0', '100% 100%']
+        : [`calc(100% - ${POINT}) 0`, '100% 50%', `calc(100% - ${POINT}) 100%`];
+    const left = isFirst ? ['0 100%'] : ['0 100%', `${POINT} 50%`];
+
+    return `polygon(0 0, ${[...right, ...left].join(', ')})`;
+}
+
 /** A small red dot: something here waits on the user. */
 function AttentionDot() {
     return (
         <span
-            className="absolute top-1 right-1 size-2 rounded-full bg-destructive ring-2 ring-card"
+            className="absolute top-2.5 right-9 size-2.5 rounded-full bg-destructive ring-2 ring-white"
             title="Perlu tindakan Anda"
         />
     );

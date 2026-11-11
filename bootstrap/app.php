@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\BlockDuringMaintenance;
 use App\Http\Middleware\EnsureLoginOptionEnabled;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -25,6 +26,9 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleAppearance::class,
             RestrictImpersonatedSession::class,
             HandleInertiaRequests::class,
+            // Inside Inertia's middleware, so its redirects reach the browser
+            // the way Inertia expects.
+            BlockDuringMaintenance::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);
     })

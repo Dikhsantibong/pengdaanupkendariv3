@@ -1,4 +1,5 @@
 import { Form, Head } from '@inertiajs/react';
+import { Wrench } from 'lucide-react';
 import InputError from '@/components/input-error';
 import PasskeyVerify from '@/components/passkey-verify';
 import PasswordInput from '@/components/password-input';
@@ -8,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { formatDateTime } from '@/lib/format';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 
@@ -16,6 +18,8 @@ type Props = {
     canResetPassword: boolean;
     /** Off unless LOGIN_PASSKEYS_ENABLED is set in .env. */
     canUsePasskeys: boolean;
+    /** Set while the administrator closed the application for maintenance. */
+    maintenance: { message: string; until: string | null } | null;
 };
 
 /* The showcase panel beside this form is rendered by AuthShowcaseLayout. */
@@ -24,10 +28,40 @@ export default function Login({
     status,
     canResetPassword,
     canUsePasskeys,
+    maintenance,
 }: Props) {
     return (
         <>
             <Head title="Masuk" />
+
+            {maintenance && (
+                <div
+                    role="alert"
+                    className="mb-6 flex items-start gap-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-4"
+                >
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-400">
+                        <Wrench className="size-4" />
+                    </span>
+                    <div className="space-y-1">
+                        <p className="text-sm font-semibold text-foreground">
+                            Aplikasi Sedang dalam Pemeliharaan
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                            {maintenance.message}
+                        </p>
+                        {maintenance.until && (
+                            <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                                Perkiraan selesai:{' '}
+                                {formatDateTime(maintenance.until)}
+                            </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                            Untuk sementara hanya Administrator yang dapat
+                            masuk.
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {canUsePasskeys && <PasskeyVerify />}
 

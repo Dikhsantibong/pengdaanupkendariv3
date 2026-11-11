@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Enums\Permission;
 use App\Models\Procurement;
 use App\Support\Impersonation;
+use App\Support\MaintenanceMode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Middleware;
@@ -77,6 +78,9 @@ class HandleInertiaRequests extends Middleware
                 'canStart' => Impersonation::canStart($user, $request),
                 'active' => $user === null ? null : Impersonation::shared($request),
             ],
+            // While the application is closed for maintenance, the signed-in
+            // administrator is reminded of it on every page.
+            'maintenance' => $user !== null && MaintenanceMode::isActive() ? ['active' => true] : null,
             'unreadNotifications' => $user === null ? 0 : $user->unreadNotifications()->count(),
             // Pinned open only by choice; otherwise it waits behind "Portal Saya".
             'sidebarOpen' => $request->cookie('sidebar_docked') === 'true',
