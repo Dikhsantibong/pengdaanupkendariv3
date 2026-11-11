@@ -424,6 +424,14 @@ class ProcurementService
             ->get();
         $excluded = $procurement->stepExclusions()->pluck('checklist_item_id');
 
+        // Data Master steps the procurement takes on although its format,
+        // method or category would skip them.
+        $added = ChecklistItem::query()
+            ->shared()
+            ->active()
+            ->whereIn('id', $procurement->stepAdditions()->select('checklist_item_id'))
+            ->get();
+
         $readSections = $own->map(fn (ChecklistItem $item): ?string => $item->section?->value)->filter()->unique();
 
         $applicable = ChecklistItem::query()
@@ -443,7 +451,10 @@ class ProcurementService
             // A section read from the contract replaces the template's list.
             ->reject(fn (ChecklistItem $item): bool => $item->section !== null && $readSections->contains($item->section->value))
             ->concat($own)
-            ->concat($custom)
+            ->concat($custom);
+
+        $applicable = $applicable
+            ->concat($added->whereNotIn('id', $applicable->pluck('id')))
             ->reject(fn (ChecklistItem $item): bool => $excluded->contains($item->id));
 
         $existing = $procurement->checklists()->pluck('checklist_item_id')->all();

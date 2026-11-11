@@ -11,7 +11,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -20,11 +19,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
 import { formatDateTime } from '@/lib/format';
 import procurements from '@/routes/procurements';
-import type { AdjustableStage, ChecklistRow, RemovedStep } from '@/types';
+import type { AdjustableStage, AvailableStep, RemovedStep } from '@/types';
 
 /** Adjusting one stage's steps on this procurement alone. */
 export type StepManager = {
@@ -32,7 +29,8 @@ export type StepManager = {
     /** Adding, removing and restoring is open to the user now. */
     canManage: boolean;
     removed: RemovedStep[];
-    documentTypes: Array<{ value: number; label: string }>;
+    /** Data Master steps of the stage the procurement does not have. */
+    available: AvailableStep[];
 };
 
 const STAGE_LABELS: Record<AdjustableStage, string> = {
@@ -41,9 +39,6 @@ const STAGE_LABELS: Record<AdjustableStage, string> = {
     penyerahan: 'Penyerahan',
 };
 
-const END = 'end';
-const NONE = 'none';
-
 /**
  * The bar above a stage's steps: add a step to this procurement, or bring
  * back one removed from it. Data Master and other procurements are untouched.
@@ -51,11 +46,9 @@ const NONE = 'none';
 export function StepManagerBar({
     procurementId,
     manager,
-    rows,
 }: {
     procurementId: number;
     manager: StepManager;
-    rows: ChecklistRow[];
 }) {
     const [adding, setAdding] = useState(false);
     const [showRemoved, setShowRemoved] = useState(false);
@@ -100,7 +93,6 @@ export function StepManagerBar({
                 onOpenChange={setAdding}
                 procurementId={procurementId}
                 manager={manager}
-                rows={rows}
             />
             <RemovedStepsDialog
                 open={showRemoved}
@@ -117,40 +109,21 @@ function AddStepDialog({
     onOpenChange,
     procurementId,
     manager,
-    rows,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     procurementId: number;
     manager: StepManager;
-    rows: ChecklistRow[];
 }) {
-    const isHandover = manager.stage === 'penyerahan';
     const form = useForm({
         stage: manager.stage as string,
-        name: '',
-        description: '',
-        is_optional: false,
-        after_checklist_id: END,
-        document_type_id: NONE,
+        checklist_item_id: '',
     });
+    const chosen = manager.available.find(
+        (step) => String(step.id) === form.data.checklist_item_id,
+    );
 
-    const submit = () => {
-        form.transform((data) => ({
-            stage: data.stage,
-            name: data.name,
-            description: data.description,
-            is_optional: data.is_optional,
-            after_checklist_id:
-                data.after_checklist_id === END
-                    ? null
-                    : Number(data.after_checklist_id),
-            document_type_id:
-                data.document_type_id === NONE
-                    ? null
-                    : Number(data.document_type_id),
-        }));
-
+    const submit = () =>
         form.post(procurements.steps.store(procurementId).url, {
             preserveScroll: true,
             onSuccess: () => {
@@ -158,7 +131,6 @@ function AddStepDialog({
                 onOpenChange(false);
             },
         });
-    };
 
     return (
         <Dialog
@@ -177,141 +149,98 @@ function AddStepDialog({
                         Tambah Tahapan {STAGE_LABELS[manager.stage]}
                     </DialogTitle>
                     <DialogDescription>
-                        Tahapan ini hanya ditambahkan pada pengadaan ini.
+                        Pilih tahapan dari Data Master yang belum ada pada
+                        pengadaan ini. Tahapan ditambahkan pada pengadaan ini
+                        saja, mengikuti urutan Data Master.
                     </DialogDescription>
                 </DialogHeader>
 
-                <form
-                    id="add-step-form"
-                    className="space-y-4"
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        submit();
-                    }}
-                >
-                    <div className="grid gap-2">
-                        <Label htmlFor="step-name">Nama Tahapan</Label>
-                        <Input
-                            id="step-name"
-                            value={form.data.name}
-                            onChange={(event) =>
-                                form.setData('name', event.target.value)
-                            }
-                            placeholder="Contoh: Survei Lapangan"
-                            autoComplete="off"
-                            required
-                        />
-                        <InputError message={form.errors.name} />
-                    </div>
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="step-description">
-                            Keterangan (opsional)
-                        </Label>
-                        <Textarea
-                            id="step-description"
-                            value={form.data.description}
-                            onChange={(event) =>
-                                form.setData('description', event.target.value)
-                            }
-                            rows={2}
-                        />
-                        <InputError message={form.errors.description} />
-                    </div>
-
-                    <div className="grid gap-2">
-                        <Label htmlFor="step-after">Letakkan</Label>
-                        <Select
-                            value={form.data.after_checklist_id}
-                            onValueChange={(value) =>
-                                form.setData('after_checklist_id', value)
-                            }
-                        >
-                            <SelectTrigger id="step-after" className="w-full">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value={END}>
-                                    Di akhir tahapan
-                                </SelectItem>
-                                {rows.map((row, index) => (
-                                    <SelectItem
-                                        key={row.id}
-                                        value={String(row.id)}
-                                    >
-                                        Setelah {index + 1}. {row.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <InputError message={form.errors.after_checklist_id} />
-                    </div>
-
-                    {isHandover ? (
-                        <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                            Tahapan penyerahan diselesaikan dengan mengunggah
-                            berkasnya pada tahapan itu.
-                        </p>
-                    ) : (
+                {manager.available.length === 0 ? (
+                    <p className="rounded-md border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+                        Semua tahapan {STAGE_LABELS[manager.stage]} di Data
+                        Master sudah ada pada pengadaan ini.
+                        {manager.removed.length > 0 &&
+                            ' Tahapan yang dihapus dapat dipulihkan lewat tombol Tahapan dihapus.'}
+                    </p>
+                ) : (
+                    <form
+                        id="add-step-form"
+                        className="space-y-4"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            submit();
+                        }}
+                    >
                         <div className="grid gap-2">
-                            <Label htmlFor="step-document">
-                                Yang dibutuhkan
+                            <Label htmlFor="step-item">
+                                Tahapan dari Data Master
                             </Label>
                             <Select
-                                value={form.data.document_type_id}
+                                value={form.data.checklist_item_id}
                                 onValueChange={(value) =>
-                                    form.setData('document_type_id', value)
+                                    form.setData('checklist_item_id', value)
                                 }
                             >
                                 <SelectTrigger
-                                    id="step-document"
+                                    id="step-item"
                                     className="w-full"
                                 >
-                                    <SelectValue />
+                                    <SelectValue placeholder="Pilih tahapan" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value={NONE}>
-                                        Cukup ditandai selesai
-                                    </SelectItem>
-                                    {manager.documentTypes.map((type) => (
+                                    {manager.available.map((step) => (
                                         <SelectItem
-                                            key={type.value}
-                                            value={String(type.value)}
+                                            key={step.id}
+                                            value={String(step.id)}
                                         >
-                                            Dokumen: {type.label}
+                                            <span className="flex flex-col">
+                                                <span>
+                                                    {step.name}
+                                                    {step.is_optional
+                                                        ? ' (opsional)'
+                                                        : ''}
+                                                </span>
+                                                {step.description && (
+                                                    // Tells apart the same name in two contracts.
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {step.description}
+                                                    </span>
+                                                )}
+                                            </span>
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
                             </Select>
-                            <p className="text-xs text-muted-foreground">
-                                Pilih jenis dokumen bila tahapan ini harus
-                                dibuktikan dengan dokumen bertanda tangan. Jenis
-                                dokumen baru dibuat di Data Master → Jenis
-                                Dokumen.
-                            </p>
                             <InputError
-                                message={form.errors.document_type_id}
+                                message={
+                                    form.errors.checklist_item_id ??
+                                    form.errors.stage
+                                }
                             />
                         </div>
-                    )}
 
-                    <div className="flex items-center justify-between gap-4 rounded-md border border-border px-3 py-2.5">
-                        <div className="space-y-0.5">
-                            <Label htmlFor="step-optional">Opsional</Label>
-                            <p className="text-xs text-muted-foreground">
-                                Tahapan opsional tidak menahan pengajuan.
-                            </p>
-                        </div>
-                        <Switch
-                            id="step-optional"
-                            checked={form.data.is_optional}
-                            onCheckedChange={(checked) =>
-                                form.setData('is_optional', checked)
-                            }
-                        />
-                    </div>
-                    <InputError message={form.errors.stage} />
-                </form>
+                        {chosen && (
+                            <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                                <p className="font-medium text-foreground">
+                                    {chosen.name}
+                                </p>
+                                <p>
+                                    {chosen.description ??
+                                        'Tanpa keterangan di Data Master.'}
+                                </p>
+                                <p className="mt-1">
+                                    {chosen.is_optional
+                                        ? 'Opsional: tidak menahan pengajuan.'
+                                        : 'Wajib: ikut menahan pengajuan sampai selesai.'}
+                                </p>
+                            </div>
+                        )}
+
+                        <p className="text-xs text-muted-foreground">
+                            Tahapan baru dibuat di Data Master → Item Checklist.
+                        </p>
+                    </form>
+                )}
 
                 <DialogFooter>
                     <Button
@@ -321,14 +250,19 @@ function AddStepDialog({
                     >
                         Batal
                     </Button>
-                    <Button
-                        type="submit"
-                        form="add-step-form"
-                        disabled={form.processing}
-                    >
-                        <Plus className="size-4" />
-                        Tambah Tahapan
-                    </Button>
+                    {manager.available.length > 0 && (
+                        <Button
+                            type="submit"
+                            form="add-step-form"
+                            disabled={
+                                form.processing ||
+                                form.data.checklist_item_id === ''
+                            }
+                        >
+                            <Plus className="size-4" />
+                            Tambah Tahapan
+                        </Button>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>

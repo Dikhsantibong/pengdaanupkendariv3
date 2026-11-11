@@ -178,11 +178,19 @@ export type RemovedStep = {
     removed_at: string | null;
 };
 
-/** Who may adjust each stage's steps, and what was removed so far. */
+/** A Data Master step the procurement does not have, which can be added. */
+export type AvailableStep = {
+    id: number;
+    name: string;
+    description: string | null;
+    is_optional: boolean;
+};
+
+/** Who may adjust each stage's steps, what was removed, and what can be added. */
 export type StepSettings = {
     can: Record<AdjustableStage, boolean>;
     removed: Record<AdjustableStage, RemovedStep[]>;
-    documentTypes: Array<{ value: number; label: string }>;
+    available: Record<AdjustableStage, AvailableStep[]>;
 };
 
 /** A file uploaded on a checklist step. */

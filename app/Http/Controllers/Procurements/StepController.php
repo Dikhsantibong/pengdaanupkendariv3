@@ -21,17 +21,16 @@ class StepController extends Controller
     public function __construct(protected ProcurementStepService $steps) {}
 
     /**
-     * Add a step to one stage of the procurement.
+     * Add a Data Master step to one stage of the procurement.
      */
     public function store(StoreProcurementStepRequest $request, Procurement $procurement): RedirectResponse
     {
-        $item = $this->steps->add($procurement, $request->user(), $request->string('stage')->value(), [
-            'name' => $request->string('name')->value(),
-            'description' => $request->input('description'),
-            'is_optional' => $request->boolean('is_optional'),
-            'after_checklist_id' => $request->integer('after_checklist_id') ?: null,
-            'document_type_id' => $request->integer('document_type_id') ?: null,
-        ]);
+        $item = $this->steps->add(
+            $procurement,
+            $request->user(),
+            $request->string('stage')->value(),
+            $request->integer('checklist_item_id'),
+        );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => "Tahapan {$item->name} ditambahkan."]);
 

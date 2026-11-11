@@ -449,7 +449,6 @@ export function ChecklistSteps({
                     <StepManagerBar
                         procurementId={procurementId}
                         manager={stepManager}
-                        rows={rows}
                     />
                 )}
 

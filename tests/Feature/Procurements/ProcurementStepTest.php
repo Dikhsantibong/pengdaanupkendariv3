@@ -9,12 +9,13 @@ use App\Enums\ProcurementStage;
 use App\Enums\UserRole;
 use App\Models\ChecklistItem;
 use App\Models\ContractNumberFormat;
-use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementChecklist;
+use App\Models\ProcurementStepAddition;
 use App\Models\ProcurementStepExclusion;
 use App\Models\User;
 use App\Services\ProcurementService;
+use App\Services\ProcurementStepService;
 use Database\Seeders\FinanceRequirementSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
@@ -25,7 +26,7 @@ use Tests\TestCase;
 
 /**
  * The steps of one procurement can be adjusted on that procurement alone:
- * a step added by hand, a step removed and restored. Data Master and every
+ * a Data Master step it skips added, a step removed and restored. Data Master and every
  * other procurement stay as they are, and nothing filed on a step is lost.
  */
 class ProcurementStepTest extends TestCase
@@ -38,6 +39,9 @@ class ProcurementStepTest extends TestCase
 
     protected ChecklistItem $second;
 
+    /** A Data Master step both procurements skip, for their method. */
+    protected ChecklistItem $skipped;
+
     protected Procurement $procurement;
 
     protected Procurement $other;
@@ -49,57 +53,116 @@ class ProcurementStepTest extends TestCase
         $this->teamLeader = User::factory()->teamLeaderPengadaan()->create();
 
         $this->first = ChecklistItem::factory()->stage(ProcurementStage::Perencanaan)->create(['name' => 'RKS Uji', 'sort_order' => 1]);
-        $this->second = ChecklistItem::factory()->stage(ProcurementStage::Perencanaan)->create(['name' => 'HPE Uji', 'sort_order' => 2]);
+        $this->skipped = ChecklistItem::factory()->stage(ProcurementStage::Perencanaan)->create(['name' => 'Survei Uji', 'sort_order' => 2]);
+        $this->second = ChecklistItem::factory()->stage(ProcurementStage::Perencanaan)->create(['name' => 'HPE Uji', 'sort_order' => 3]);
         ChecklistItem::factory()->stage(ProcurementStage::Pelaksanaan)->create(['name' => 'Kontrak Uji', 'sort_order' => 1]);
 
         $this->procurement = Procurement::factory()->create();
         $this->other = Procurement::factory()->create();
+
+        $this->skipped->excludedProcurementMethods()->attach([
+            $this->procurement->procurement_method_id,
+            $this->other->procurement_method_id,
+        ]);
 
         foreach ([$this->procurement, $this->other] as $procurement) {
             app(ProcurementService::class)->syncChecklists($procurement);
         }
     }
 
-    public function test_a_step_is_added_after_another_on_this_procurement_only(): void
+    public function test_a_data_master_step_it_skips_is_added_to_this_procurement_only(): void
     {
-        $after = $this->row($this->procurement, $this->first);
+        $this->actingAs($this->teamLeader)
+            ->get(route('procurements.show', $this->procurement))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('stepSettings.can.perencanaan', true)
+                ->where('stepSettings.available.perencanaan', fn ($steps) => collect($steps)->pluck('name')->all() === ['Survei Uji']));
 
         $this->actingAs($this->teamLeader)
             ->post(route('procurements.steps.store', $this->procurement), [
                 'stage' => 'perencanaan',
-                'name' => 'Survei Lapangan',
-                'description' => 'Tinjau lokasi bersama Direksi Pekerjaan.',
-                'is_optional' => false,
-                'after_checklist_id' => $after->id,
+                'checklist_item_id' => $this->skipped->id,
             ])
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $item = ChecklistItem::query()->where('name', 'Survei Lapangan')->firstOrFail();
-        $this->assertTrue($item->is_custom);
-        $this->assertSame($this->procurement->id, $item->procurement_id);
-
+        // In its Data Master place, and no longer offered.
         $this->actingAs($this->teamLeader)
             ->get(route('procurements.show', $this->procurement))
             ->assertInertia(fn (Assert $page) => $page
-                ->where('checklists.perencanaan', fn ($rows) => collect($rows)->pluck('name')->all() === ['RKS Uji', 'Survei Lapangan', 'HPE Uji'])
-                ->where('checklists.perencanaan.1.is_custom', true)
+                ->where('checklists.perencanaan', fn ($rows) => collect($rows)->pluck('name')->all() === ['RKS Uji', 'Survei Uji', 'HPE Uji'])
                 ->where('checklists.perencanaan.1.removable', true)
-                ->where('stepSettings.can.perencanaan', true));
+                ->where('stepSettings.available.perencanaan', []));
 
-        // A required step added by hand holds the planning back like any other.
-        $this->assertContains('Survei Lapangan', $this->procurement->fresh()->pendingRequiredPlanningChecklists()->map(fn ($row) => $row->checklistItem->name)->all());
+        // A required step holds the planning back like any other.
+        $this->assertContains('Survei Uji', $this->procurement->fresh()->pendingRequiredPlanningChecklists()->map(fn ($row) => $row->checklistItem->name)->all());
 
-        // Nowhere else: not on another procurement, not on Data Master.
+        // Nowhere else: Data Master and the other procurement are untouched.
         app(ProcurementService::class)->syncChecklists($this->other);
-        $this->assertSame(2, $this->other->checklists()->where('stage', ProcurementStage::Perencanaan->value)->count());
-        $this->assertSame(0, ChecklistItem::query()->shared()->where('name', 'Survei Lapangan')->count());
+        $this->assertNull($this->row($this->other, $this->skipped));
+        $this->assertSame(2, $this->skipped->excludedProcurementMethods()->count());
+        $this->assertSame(0, ChecklistItem::query()->where('is_custom', true)->count());
 
         $this->assertDatabaseHas('procurement_activities', [
             'procurement_id' => $this->procurement->id,
             'type' => ActivityType::ChecklistDiperbarui->value,
-            'description' => 'Tahapan Survei Lapangan ditambahkan ke Perencanaan.',
+            'description' => 'Tahapan Survei Uji ditambahkan ke Perencanaan.',
         ]);
+
+        // Removing it again takes it off and offers it once more.
+        $this->actingAs($this->teamLeader)
+            ->delete(route('procurements.steps.destroy', [$this->procurement, $this->row($this->procurement, $this->skipped)]))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertNull($this->row($this->procurement, $this->skipped));
+        $this->assertSame(0, ProcurementStepAddition::query()->count());
+        $this->assertSame(0, ProcurementStepExclusion::query()->count());
+    }
+
+    public function test_only_a_missing_data_master_step_of_the_stage_is_added(): void
+    {
+        $foreign = ChecklistItem::factory()->stage(ProcurementStage::Pelaksanaan)->create(['name' => 'Langkah Lain']);
+        $ownOfAnother = ChecklistItem::factory()->stage(ProcurementStage::Perencanaan)->create([
+            'procurement_id' => $this->other->id,
+            'is_custom' => true,
+        ]);
+
+        // Already on the procurement, of another stage, or owned by another
+        // procurement: all refused.
+        foreach ([$this->first, $foreign] as $item) {
+            $this->actingAs($this->teamLeader)
+                ->post(route('procurements.steps.store', $this->procurement), ['stage' => 'perencanaan', 'checklist_item_id' => $item->id])
+                ->assertSessionHasErrors('checklist_item_id');
+        }
+
+        $this->actingAs($this->teamLeader)
+            ->post(route('procurements.steps.store', $this->procurement), ['stage' => 'perencanaan', 'checklist_item_id' => $ownOfAnother->id])
+            ->assertSessionHasErrors('checklist_item_id');
+
+        $this->assertSame(0, ProcurementStepAddition::query()->count());
+    }
+
+    public function test_a_step_written_by_hand_earlier_stays_and_can_be_removed(): void
+    {
+        $custom = ChecklistItem::factory()->stage(ProcurementStage::Perencanaan)->create([
+            'procurement_id' => $this->procurement->id,
+            'is_custom' => true,
+            'name' => 'Langkah Lama',
+            'sort_order' => 9,
+        ]);
+        app(ProcurementService::class)->syncChecklists($this->procurement);
+
+        $row = $this->row($this->procurement, $custom);
+        $this->assertNotNull($row);
+
+        $this->actingAs($this->teamLeader)
+            ->delete(route('procurements.steps.destroy', [$this->procurement, $row]))
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertNull($this->row($this->procurement, $custom));
+        $this->assertSame(1, ProcurementStepExclusion::query()->count());
     }
 
     public function test_a_step_is_removed_and_restored_without_touching_data_master(): void
@@ -161,7 +224,7 @@ class ProcurementStepTest extends TestCase
         $row = $this->row($this->procurement, $this->first);
 
         $this->actingAs($planner)
-            ->post(route('procurements.steps.store', $this->procurement), ['stage' => 'perencanaan', 'name' => 'Langkah Lain'])
+            ->post(route('procurements.steps.store', $this->procurement), ['stage' => 'perencanaan', 'checklist_item_id' => $this->skipped->id])
             ->assertForbidden();
 
         $this->actingAs($planner)
@@ -178,14 +241,14 @@ class ProcurementStepTest extends TestCase
         Cache::forget('access-rights.grants');
 
         $this->actingAs($planner)
-            ->post(route('procurements.steps.store', $this->procurement), ['stage' => 'perencanaan', 'name' => 'Langkah Lain'])
+            ->post(route('procurements.steps.store', $this->procurement), ['stage' => 'perencanaan', 'checklist_item_id' => $this->skipped->id])
             ->assertRedirect();
 
         // Closed once the planning is submitted.
         $this->procurement->forceFill(['planning_approval_state' => PlanningApprovalState::MenungguPersetujuan])->save();
 
         $this->actingAs($this->teamLeader)
-            ->post(route('procurements.steps.store', $this->procurement), ['stage' => 'perencanaan', 'name' => 'Terlambat'])
+            ->post(route('procurements.steps.store', $this->procurement), ['stage' => 'perencanaan', 'checklist_item_id' => $this->skipped->id])
             ->assertForbidden();
 
         $this->actingAs($this->teamLeader)
@@ -193,45 +256,18 @@ class ProcurementStepTest extends TestCase
             ->assertForbidden();
 
         // The execution is still open to adjust.
+        $test = ChecklistItem::factory()->stage(ProcurementStage::Pelaksanaan)->create(['name' => 'Uji Fungsi']);
+        $test->excludedProcurementMethods()->attach($this->procurement->procurement_method_id);
+
         $this->actingAs($this->teamLeader)
-            ->post(route('procurements.steps.store', $this->procurement), ['stage' => 'pelaksanaan', 'name' => 'Uji Fungsi'])
+            ->post(route('procurements.steps.store', $this->procurement), ['stage' => 'pelaksanaan', 'checklist_item_id' => $test->id])
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        $this->assertSame(['Langkah Lain', 'Uji Fungsi'], ChecklistItem::query()->where('is_custom', true)->orderBy('id')->pluck('name')->all());
+        $this->assertSame([$this->skipped->id, $test->id], ProcurementStepAddition::query()->orderBy('id')->pluck('checklist_item_id')->all());
     }
 
-    public function test_a_step_added_by_hand_may_ask_for_a_document(): void
-    {
-        $type = DocumentType::factory()->create(['name' => 'Laporan Survei', 'upload_only' => true]);
-
-        $this->actingAs($this->teamLeader)
-            ->post(route('procurements.steps.store', $this->procurement), [
-                'stage' => 'pelaksanaan',
-                'name' => 'Laporan Survei Lokasi',
-                'document_type_id' => $type->id,
-            ])
-            ->assertRedirect()
-            ->assertSessionHasNoErrors();
-
-        $this->actingAs($this->teamLeader)
-            ->get(route('procurements.show', $this->procurement))
-            ->assertInertia(fn (Assert $page) => $page
-                ->where('checklists.pelaksanaan.1.name', 'Laporan Survei Lokasi')
-                ->has('checklists.pelaksanaan.1.documents', 1)
-                ->where('checklists.pelaksanaan.1.documents.0.type_id', $type->id));
-
-        // A Penyerahan step is an upload on the step itself, not a document.
-        $this->actingAs($this->teamLeader)
-            ->post(route('procurements.steps.store', $this->procurement), [
-                'stage' => 'penyerahan',
-                'name' => 'Foto Serah Terima',
-                'document_type_id' => $type->id,
-            ])
-            ->assertSessionHasErrors('document_type_id');
-    }
-
-    public function test_a_penyerahan_step_added_by_hand_stands_beside_the_contract_requirements(): void
+    public function test_a_penyerahan_step_of_another_contract_can_be_added(): void
     {
         foreach (['SPK', 'PJ', 'SPPL'] as $code) {
             ContractNumberFormat::factory()->create(['code' => $code]);
@@ -251,22 +287,22 @@ class ProcurementStepTest extends TestCase
         $templateRows = $this->handoverRows($procurement)->count();
         $this->assertGreaterThan(0, $templateRows);
 
+        // A Penyerahan requirement of another contract is offered.
+        $offered = app(ProcurementStepService::class)->available($procurement, 'penyerahan');
+        $this->assertNotEmpty($offered);
+
         $this->actingAs($this->teamLeader)
-            ->post(route('procurements.steps.store', $procurement), ['stage' => 'penyerahan', 'name' => 'Foto Serah Terima'])
+            ->post(route('procurements.steps.store', $procurement), ['stage' => 'penyerahan', 'checklist_item_id' => $offered[0]['id']])
             ->assertRedirect()
             ->assertSessionHasNoErrors();
 
-        // Read again on every visit: the contract never switches it off, and
-        // it does not stand in for the template's requirements either.
+        // Kept on every visit, beside the procurement's own requirements.
         $this->actingAs($this->teamLeader)->get(route('procurements.show', $procurement))->assertOk();
 
-        $custom = ChecklistItem::query()->where('name', 'Foto Serah Terima')->sole();
-        $this->assertTrue($custom->is_active);
-        $this->assertSame(FinanceSection::Penyerahan, $custom->section);
+        $added = ChecklistItem::query()->findOrFail($offered[0]['id']);
+        $this->assertSame(FinanceSection::Penyerahan, $added->section);
         $this->assertSame($templateRows + 1, $this->handoverRows($procurement)->count());
-
-        $row = $this->row($procurement, $custom);
-        $this->assertTrue($row?->needsOwnUpload());
+        $this->assertTrue($this->row($procurement, $added)?->needsOwnUpload());
 
         // Pembayaran is not adjusted here.
         $payment = $procurement->checklists()->with('checklistItem')->get()

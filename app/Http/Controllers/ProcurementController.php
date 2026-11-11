@@ -850,38 +850,28 @@ class ProcurementController extends Controller
 
     /**
      * Who may adjust the steps of each stage, the steps removed so far (to
-     * restore), and the documents a step added by hand may ask for.
+     * restore), and the Data Master steps each stage can still take on.
      *
-     * @return array{can: array<string, bool>, removed: array<string, list<array<string, mixed>>>, documentTypes: list<array{value: int, label: string}>}
+     * @return array{can: array<string, bool>, removed: array<string, list<array<string, mixed>>>, available: array<string, list<array<string, mixed>>>}
      */
     protected function stepSettings(Procurement $procurement, User $user): array
     {
         $steps = app(ProcurementStepService::class);
-        $stages = array_keys(ProcurementStepService::STAGES);
-        $hasRight = $user->hasPermission(Permission::ManageProcurementSteps);
 
         $can = [];
         $removed = [];
+        $available = [];
 
-        foreach ($stages as $stage) {
+        foreach (array_keys(ProcurementStepService::STAGES) as $stage) {
             $can[$stage] = $user->can('manageSteps', [$procurement, $stage]);
-            $removed[$stage] = $hasRight ? $steps->removed($procurement, $stage) : [];
+            $removed[$stage] = $user->hasPermission(Permission::ManageProcurementSteps) ? $steps->removed($procurement, $stage) : [];
+            $available[$stage] = $can[$stage] ? $steps->available($procurement, $stage) : [];
         }
 
         return [
             'can' => $can,
             'removed' => $removed,
-            'documentTypes' => in_array(true, $can, true)
-                ? array_values(DocumentType::query()
-                    ->active()
-                    ->orderBy('name')
-                    ->get(['id', 'name', 'upload_only'])
-                    ->map(fn (DocumentType $type): array => [
-                        'value' => $type->id,
-                        'label' => $type->upload_only ? "{$type->name} (diunggah)" : $type->name,
-                    ])
-                    ->all())
-                : [],
+            'available' => $available,
         ];
     }
 

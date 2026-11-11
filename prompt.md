@@ -2758,11 +2758,15 @@ Tahapan pada tab **Perencanaan**, **Pelaksanaan**, dan **Penyerahan** dapat dise
   - Penyerahan: Belum Diajukan / Dikembalikan dan belum lunas.
 - Tidak berlaku untuk pengadaan selesai atau batal. Pembayaran tidak diatur di sini.
 
-**Tambah Tahapan** (tombol di atas tabel langkah):
-- Isian: Nama, Keterangan, posisi (di akhir tahap atau setelah langkah tertentu), Opsional/Wajib.
-- Perencanaan/Pelaksanaan bisa memilih **jenis dokumen** dari Data Master → Jenis Dokumen; tahapan lalu meminta dokumen tervalidasi itu lewat alur dokumen yang sudah ada. Bila tidak dipilih, cukup ditandai selesai.
-- Tahapan Penyerahan selalu diselesaikan dengan mengunggah berkas (alur berkas Penyerahan yang sudah ada).
-- Tahapan tambahan berlabel **Tambahan**. Tahapan wajib ikut menahan pengajuan seperti tahapan lain.
+**Tambah Tahapan** (tombol di atas tabel langkah) — **memilih dari Data Master**, bukan membuat tahapan baru:
+- Daftar berisi tahapan **Item Checklist** di Data Master untuk tahap itu yang **belum ada** pada pengadaan ini, misalnya yang dilewati karena format kontrak, metode, atau kategori pekerjaannya. Untuk Penyerahan, daftarnya berisi syarat penyerahan kontrak lain.
+- Setiap pilihan menampilkan keterangannya (sumber pasal/format), supaya nama yang sama dari kontrak berbeda bisa dibedakan.
+- Tahapan masuk **sesuai urutan Data Master** dan berperilaku persis seperti di Data Master: dokumen, isian, wajib/opsional.
+- Tahapan yang dihapus dari pengadaan dipulihkan lewat tombol **Tahapan dihapus**, bukan dari daftar ini.
+- Tahapan baru tetap dibuat di Data Master → Item Checklist.
+- Tahapan buatan sendiri dari versi sebelumnya (`is_custom`) tetap tampil berlabel **Tambahan** dan tetap bisa dihapus. Tahapan seperti itu tidak bisa dibuat lagi.
+- Disimpan di tabel `procurement_step_additions` (migrasi `create_procurement_step_additions_table`). `syncChecklists` ikut menyertakan tahapan tambahan ini.
+- Tahapan tambahan yang dihapus akan hilang dari pengadaan (catatan tambahannya dihapus). Bila sementara itu tahapan tersebut sudah menjadi bagian pengadaan karena formatnya berubah, tahapan itu dikecualikan dan bisa dipulihkan.
 
 **Hapus Tahapan** (menu … pada baris):
 - Dengan konfirmasi.

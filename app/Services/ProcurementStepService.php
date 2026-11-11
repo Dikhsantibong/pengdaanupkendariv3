@@ -10,19 +10,21 @@ use App\Enums\StatusCategory;
 use App\Models\ChecklistItem;
 use App\Models\Procurement;
 use App\Models\ProcurementChecklist;
+use App\Models\ProcurementStepAddition;
 use App\Models\ProcurementStepExclusion;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Adjusting the steps of one procurement: adding a step of its own,
- * removing a step it does not need, and bringing a removed step back.
+ * Adjusting the steps of one procurement: adding a Data Master step it
+ * would otherwise skip, removing a step it does not need, and bringing a
+ * removed step back.
  *
- * Only that procurement changes. A step added is a checklist item owned by
- * the procurement and marked custom; a step removed is an exclusion of the
- * item for the procurement, so Data Master and every other procurement keep
- * it. A step already ticked, or carrying an uploaded file or a note, is
+ * Only that procurement changes. A step added is recorded as an addition of
+ * the Data Master item for the procurement; a step removed is an exclusion
+ * of it, so Data Master and every other procurement keep their steps. (Steps
+ * written by hand on one procurement, is_custom, are no longer created but
+ * stay removable.) A step already ticked, or carrying an uploaded file or a note, is
  * never removed: its record stays as it is.
  */
 class ProcurementStepService
@@ -89,57 +91,75 @@ class ProcurementStepService
     }
 
     /**
-     * Add a step of its own to one stage of the procurement.
+     * Add a Data Master step to one stage of the procurement, one it does
+     * not have yet (left out for its contract format, method or category).
+     * It takes its place in the stage by its Data Master order.
      *
-     * It goes right after the step named, or at the end of the stage.
-     *
-     * @param  array{name: string, description?: string|null, is_optional?: bool, after_checklist_id?: int|null, document_type_id?: int|null}  $data
+     * A step removed from the procurement by hand is brought back instead.
      */
-    public function add(Procurement $procurement, User $actor, string $stage, array $data): ChecklistItem
+    public function add(Procurement $procurement, User $actor, string $stage, int $itemId): ChecklistItem
     {
-        [$procurementStage, $section] = self::STAGES[$stage];
+        $item = collect($this->available($procurement, $stage))->firstWhere('id', $itemId) === null
+            ? null
+            : ChecklistItem::query()->find($itemId);
 
-        $item = DB::transaction(function () use ($procurement, $stage, $procurementStage, $section, $data): ChecklistItem {
-            $after = isset($data['after_checklist_id'])
-                ? $procurement->checklists()->with('checklistItem')->whereKey($data['after_checklist_id'])->first()
-                : null;
-
-            // A step of another stage is no place to put it.
-            if ($after !== null && $this->stageOf($after) !== $stage) {
-                $after = null;
-            }
-
-            $item = ChecklistItem::query()->create([
-                'procurement_id' => $procurement->id,
-                'is_custom' => true,
-                'stage' => $procurementStage,
-                'section' => $section,
-                'name' => trim($data['name']),
-                'description' => isset($data['description']) && trim($data['description']) !== '' ? trim($data['description']) : null,
-                'is_optional' => (bool) ($data['is_optional'] ?? false),
-                // Ties keep the order the steps were added in.
-                'sort_order' => $after?->checklistItem->sort_order ?? $this->lastSortOrder($procurement, $procurementStage, $section) + 1,
-                'is_active' => true,
+        if ($item === null) {
+            throw ValidationException::withMessages([
+                'checklist_item_id' => 'Tahapan ini sudah ada pada pengadaan atau bukan tahapan '.self::LABELS[$stage].'.',
             ]);
+        }
 
-            if (isset($data['document_type_id'])) {
-                $item->documentTypes()->attach($data['document_type_id'], ['sort_order' => 1, 'is_alternative' => false]);
-            }
+        // Back from a removal: lifting it is all there is to do.
+        $procurement->stepExclusions()->where('checklist_item_id', $item->id)->delete();
 
-            return $item;
-        });
+        ProcurementStepAddition::query()->firstOrCreate(
+            ['procurement_id' => $procurement->id, 'checklist_item_id' => $item->id],
+            ['added_by' => $actor->id],
+        );
 
         $this->procurements->recordActivity(
             $procurement,
             $actor,
             ActivityType::ChecklistDiperbarui,
             "Tahapan {$item->name} ditambahkan ke ".self::LABELS[$stage].'.',
-            ['stage' => $procurementStage->value, 'step' => 'added', 'checklist_item_id' => $item->id],
+            ['stage' => $item->stage->value, 'step' => 'added', 'checklist_item_id' => $item->id],
         );
 
         $this->procurements->syncChecklists($procurement);
 
         return $item;
+    }
+
+    /**
+     * The Data Master steps of a stage the procurement does not have, in
+     * their Data Master order: the ones its contract format, method or
+     * category leaves out. Those removed by hand are restored from their
+     * own list instead.
+     *
+     * @return list<array{id: int, name: string, description: string|null, is_optional: bool}>
+     */
+    public function available(Procurement $procurement, string $stage): array
+    {
+        [$procurementStage, $section] = self::STAGES[$stage];
+
+        $present = $procurement->checklists()->pluck('checklist_item_id');
+        $excluded = $procurement->stepExclusions()->pluck('checklist_item_id');
+
+        return array_values(ChecklistItem::query()
+            ->shared()
+            ->active()
+            ->forStage($procurementStage)
+            ->when($section !== null, fn ($query) => $query->where('section', $section?->value))
+            ->whereNotIn('id', $present->merge($excluded))
+            ->ordered()
+            ->get()
+            ->map(fn (ChecklistItem $item): array => [
+                'id' => $item->id,
+                'name' => $item->name,
+                'description' => $item->description,
+                'is_optional' => $item->is_optional,
+            ])
+            ->all());
     }
 
     /**
@@ -167,10 +187,16 @@ class ProcurementStepService
 
         $stage = (string) $this->stageOf($checklist);
 
-        ProcurementStepExclusion::query()->firstOrCreate(
-            ['procurement_id' => $procurement->id, 'checklist_item_id' => $checklist->checklist_item_id],
-            ['removed_by' => $actor->id],
-        );
+        // A step added by hand just goes again; one the procurement has of
+        // its own is excluded, so it can be restored.
+        $wasAdded = $procurement->stepAdditions()->where('checklist_item_id', $checklist->checklist_item_id)->delete() > 0;
+
+        if (! $wasAdded) {
+            ProcurementStepExclusion::query()->firstOrCreate(
+                ['procurement_id' => $procurement->id, 'checklist_item_id' => $checklist->checklist_item_id],
+                ['removed_by' => $actor->id],
+            );
+        }
 
         $this->procurements->recordActivity(
             $procurement,
@@ -181,6 +207,17 @@ class ProcurementStepService
         );
 
         $this->procurements->syncChecklists($procurement);
+
+        // Added by hand but since part of the procurement's own steps (its
+        // format changed): excluded like any of them.
+        if ($wasAdded && $procurement->checklists()->where('checklist_item_id', $checklist->checklist_item_id)->exists()) {
+            ProcurementStepExclusion::query()->firstOrCreate(
+                ['procurement_id' => $procurement->id, 'checklist_item_id' => $checklist->checklist_item_id],
+                ['removed_by' => $actor->id],
+            );
+
+            $this->procurements->syncChecklists($procurement);
+        }
     }
 
     /**
@@ -227,17 +264,5 @@ class ProcurementStepService
                 'removed_at' => $exclusion->created_at?->toDateTimeString(),
             ])
             ->all());
-    }
-
-    /**
-     * The highest sort order among the procurement's steps of a stage.
-     */
-    protected function lastSortOrder(Procurement $procurement, ProcurementStage $stage, ?FinanceSection $section): int
-    {
-        return (int) ChecklistItem::query()
-            ->withTrashed()
-            ->whereIn('id', $procurement->checklists()->where('stage', $stage->value)->select('checklist_item_id'))
-            ->when($section !== null, fn ($query) => $query->where('section', $section?->value))
-            ->max('sort_order');
     }
 }

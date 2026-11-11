@@ -277,7 +277,7 @@ export default function ShowProcurement({
         stage,
         canManage: stepSettings.can[stage],
         removed: stepSettings.removed[stage],
-        documentTypes: stepSettings.documentTypes,
+        available: stepSettings.available[stage],
     });
 
     const progressOf = (rows: ChecklistRow[]): string => {

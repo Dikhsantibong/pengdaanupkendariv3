@@ -767,6 +767,16 @@ class Procurement extends Model
     }
 
     /**
+     * The Data Master steps added to this procurement by hand.
+     *
+     * @return HasMany<ProcurementStepAddition, $this>
+     */
+    public function stepAdditions(): HasMany
+    {
+        return $this->hasMany(ProcurementStepAddition::class);
+    }
+
+    /**
      * Every document generated for this procurement.
      *
      * @return HasMany<ProcurementDocument, $this>

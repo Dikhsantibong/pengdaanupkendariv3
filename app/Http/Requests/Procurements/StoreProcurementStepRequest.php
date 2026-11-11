@@ -25,25 +25,20 @@ class StoreProcurementStepRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
+     * Whether the step belongs to the stage and is missing from the
+     * procurement is checked by ProcurementStepService::add().
+     *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
-        /** @var Procurement $procurement */
-        $procurement = $this->route('procurement');
-
         return [
             'stage' => ['required', Rule::in(array_keys(ProcurementStepService::STAGES))],
-            'name' => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:1000'],
-            'is_optional' => ['boolean'],
-            'after_checklist_id' => [
-                'nullable',
+            'checklist_item_id' => [
+                'required',
                 'integer',
-                Rule::exists('procurement_checklists', 'id')->where('procurement_id', $procurement->id),
+                Rule::exists('checklist_items', 'id')->whereNull('procurement_id')->whereNull('deleted_at'),
             ],
-            // A Penyerahan step is evidenced by files uploaded on it.
-            'document_type_id' => ['nullable', 'integer', 'prohibited_if:stage,penyerahan', Rule::exists('document_types', 'id')],
         ];
     }
 
@@ -56,11 +51,7 @@ class StoreProcurementStepRequest extends FormRequest
     {
         return [
             'stage' => 'tahap',
-            'name' => 'nama tahapan',
-            'description' => 'keterangan',
-            'is_optional' => 'sifat tahapan',
-            'after_checklist_id' => 'posisi tahapan',
-            'document_type_id' => 'dokumen',
+            'checklist_item_id' => 'tahapan',
         ];
     }
 }
