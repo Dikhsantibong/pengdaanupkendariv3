@@ -284,6 +284,91 @@ class BudgetPlanTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->where('auth.permissions.menus.budget-plans', true));
     }
 
+    public function test_the_anggaran_role_adds_and_filters_anggaran_operasi_and_energi_primer(): void
+    {
+        // Add an Anggaran Operasi (AO PEMELIHARAAN) plan.
+        $this->actingAs($this->budgeter)
+            ->post(route('budget-plans.store'), [
+                'budget_type' => 'operasi',
+                'prk_induk' => 'KD262G0101',
+                'work_director_id' => $this->division->id,
+                'prk_induk_description' => 'PENGADAAN MATERIAL DAN JASA BIDANG OPERASI',
+                'pagu_value' => 168000.00,
+                'realization_value' => 127554.04,
+                'disburse_plan' => '01-12',
+                'notes' => "Terkontrak 11 site\nDokumen tagihan Real",
+            ])
+            ->assertSessionHasNoErrors();
+
+        // Add an Anggaran Pendukung Energi Primer plan.
+        $this->actingAs($this->budgeter)
+            ->post(route('budget-plans.store'), [
+                'budget_type' => 'energi_primer',
+                'prk_induk' => 'KD262G0102',
+                'work_director_id' => $this->division->id,
+                'prk_induk_description' => 'JASA TAD PPKIT PLTD DAN PLTM TERSEBAR 11 Site',
+                'pagu_value' => 28571662.00,
+                'realization_value' => 25238889.68,
+                'disburse_plan' => '01-12',
+                'notes' => "PT Nusa Daya\nTahap 1 s/d JUNI 26 ok (done)",
+            ])
+            ->assertSessionHasNoErrors();
+
+        $ao = BudgetPlan::query()->where('prk_induk', 'KD262G0101')->sole();
+        $this->assertSame('operasi', $ao->budget_type->value);
+        $this->assertSame('168000.00', $ao->pagu_value);
+        $this->assertSame('127554.04', $ao->realization_value);
+        // Sisa pagu is calculated automatically: 168000.00 - 127554.04 = 40445.96
+        $this->assertSame('40445.96', $ao->remaining_pagu_value);
+
+        // Filter by jenis = operasi
+        $this->actingAs($this->budgeter)
+            ->get(route('budget-plans.index', ['jenis' => 'operasi']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('budget-plans/index')
+                ->where('activeType', 'operasi')
+                ->has('plans', 1)
+                ->where('plans.0.prk_induk', 'KD262G0101')
+                ->where('totals.pagu', fn ($pagu) => (float) $pagu === 168000.0)
+                ->where('totals.realisasi', fn ($realisasi) => abs((float) $realisasi - 127554.04) < 0.01)
+                ->where('totals.sisa_pagu', fn ($sisa) => abs((float) $sisa - 40445.96) < 0.01));
+
+        // Filter by jenis = energi_primer
+        $this->actingAs($this->budgeter)
+            ->get(route('budget-plans.index', ['jenis' => 'energi_primer']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('activeType', 'energi_primer')
+                ->has('plans', 1)
+                ->where('plans.0.prk_induk', 'KD262G0102')
+                ->where('totals.pagu', fn ($pagu) => (float) $pagu === 28571662.0)
+                ->where('totals.realisasi', fn ($realisasi) => abs((float) $realisasi - 25238889.68) < 0.01));
+
+        // Export as Operasi Excel sheet
+        $response = $this->actingAs($this->budgeter)
+            ->get(route('budget-plans.export', ['jenis' => 'operasi']))
+            ->assertOk()
+            ->assertDownload();
+
+        $reader = new Reader;
+        $reader->open($response->baseResponse->getFile()->getPathname());
+        $rows = [];
+        foreach ($reader->getSheetIterator() as $sheet) {
+            foreach ($sheet->getRowIterator() as $row) {
+                $rows[] = $row->toArray();
+            }
+        }
+        $reader->close();
+
+        $this->assertCount(3, $rows);
+        $this->assertSame(['NO', 'PRK', 'DESKRIPSI', 'BIDANG', 'PAGU', 'SISA PAGU', 'RENCANA DISBURSE', 'REALISASI s/d SM 2 (OKTOBER)', 'KET'], $rows[0]);
+        $this->assertSame([1, 'KD262G0101', 'PENGADAAN MATERIAL DAN JASA BIDANG OPERASI', 'Asman Operasi'], array_slice($rows[1], 0, 4));
+        $this->assertEquals(168000.0, $rows[1][4]);
+        $this->assertEquals(40445.96, $rows[1][5]);
+        $this->assertSame('TOTAL', $rows[2][0]);
+    }
+
     public function test_the_proposal_form_offers_the_prk_of_each_bidang(): void
     {
         $plan = BudgetPlan::factory()->create([

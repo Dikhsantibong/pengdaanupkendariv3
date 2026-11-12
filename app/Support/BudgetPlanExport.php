@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\BudgetType;
 use App\Models\BudgetPlan;
 use Illuminate\Support\Collection;
 use OpenSpout\Common\Entity\Cell;
@@ -71,6 +72,23 @@ class BudgetPlanExport
         ["BIDANG\n(Direksi Pekerjaan)", 22],
     ];
 
+    /**
+     * Columns for Anggaran Operasi (AO) and Anggaran Pendukung Energi Primer.
+     *
+     * @var list<array{string, int}>
+     */
+    private const COLUMNS_AO = [
+        ['NO', 5],
+        ['PRK', 16],
+        ['DESKRIPSI', 40],
+        ['BIDANG', 22],
+        ['PAGU', 20],
+        ['SISA PAGU', 20],
+        ['RENCANA DISBURSE', 18],
+        ['REALISASI s/d SM 2 (OKTOBER)', 22],
+        ['KET', 40],
+    ];
+
     /** Rows above the data: the note, the group band and the headers. */
     private const HEADER_ROWS = 3;
 
@@ -79,8 +97,14 @@ class BudgetPlanExport
      *
      * @param  Collection<int, BudgetPlan>  $plans
      */
-    public function write(Collection $plans, string $path): void
+    public function write(Collection $plans, string $path, BudgetType $type = BudgetType::Investasi): void
     {
+        if ($type !== BudgetType::Investasi) {
+            $this->writeOperation($plans, $path, $type);
+
+            return;
+        }
+
         $options = new Options;
 
         foreach (self::COLUMNS as $index => [, $width]) {
@@ -114,6 +138,143 @@ class BudgetPlanExport
 
         $writer->addRow($this->totalRow($plans));
         $writer->close();
+    }
+
+    /**
+     * Write AO or Energi Primer plans to Excel.
+     *
+     * @param  Collection<int, BudgetPlan>  $plans
+     */
+    private function writeOperation(Collection $plans, string $path, BudgetType $type): void
+    {
+        $options = new Options;
+
+        foreach (self::COLUMNS_AO as $index => [, $width]) {
+            $options->setColumnWidth($width, $index + 1);
+        }
+
+        $writer = new Writer($options);
+        $writer->openToFile($path);
+        $sheetName = $type === BudgetType::Operasi ? 'AO Pemeliharaan' : 'Energi Primer';
+        $writer->getCurrentSheet()->setName($sheetName);
+        $writer->getCurrentSheet()->setSheetView(
+            (new SheetView)->withFreezeRow(2)->withFreezeColumn('C'),
+        );
+
+        $writer->addRow($this->operationHeaderRow());
+
+        foreach ($plans->values() as $index => $plan) {
+            $writer->addRow($this->operationPlanRow($index + 1, $plan));
+        }
+
+        $writer->addRow($this->operationTotalRow($plans));
+        $writer->close();
+    }
+
+    /**
+     * Header row for AO / Energi Primer.
+     */
+    private function operationHeaderRow(): Row
+    {
+        $cells = [];
+
+        foreach (self::COLUMNS_AO as $index => [$title]) {
+            $bg = match ($index) {
+                5 => 'C6E0B4', // SISA PAGU light green
+                8 => 'FFF2CC', // KET
+                default => 'BDD7EE', // light blue
+            };
+
+            $cells[] = Cell::fromValue($title, new Style(
+                fontBold: true,
+                fontSize: 9,
+                cellAlignment: CellAlignment::CENTER,
+                cellVerticalAlignment: CellVerticalAlignment::CENTER,
+                shouldWrapText: true,
+                border: $this->border(),
+                backgroundColor: $bg,
+            ));
+        }
+
+        return new Row($cells, 32);
+    }
+
+    /**
+     * Data row for AO / Energi Primer.
+     */
+    private function operationPlanRow(int $number, BudgetPlan $plan): Row
+    {
+        $pagu = $this->amount($plan->pagu_value);
+        $realisasi = $this->amount($plan->realization_value);
+        $sisa = $this->amount($plan->remaining_pagu_value) ?? ($pagu !== null || $realisasi !== null ? ($pagu ?? 0) - ($realisasi ?? 0) : null);
+
+        $values = [
+            $number,
+            $plan->prk_induk,
+            $plan->prk_induk_description,
+            $plan->workDirector?->name,
+            $pagu,
+            $sisa,
+            $plan->disburse_plan,
+            $realisasi,
+            $plan->notes,
+        ];
+
+        $cells = [];
+
+        foreach ($values as $index => $value) {
+            $isAmount = is_float($value);
+            $bg = match ($index) {
+                5 => 'E2EFDA', // SISA PAGU column soft green
+                8 => $value !== null && $value !== '' ? 'FFF2CC' : null, // KET soft yellow
+                default => null,
+            };
+
+            $cells[] = Cell::fromValue($value, new Style(
+                fontSize: 9,
+                cellAlignment: $isAmount ? CellAlignment::RIGHT : ($index === 0 || $index === 6 ? CellAlignment::CENTER : CellAlignment::LEFT),
+                cellVerticalAlignment: CellVerticalAlignment::TOP,
+                shouldWrapText: true,
+                border: $this->border(),
+                format: $isAmount ? '#,##0.00' : null,
+                backgroundColor: $bg,
+            ));
+        }
+
+        return new Row($cells);
+    }
+
+    /**
+     * Totals for AO / Energi Primer.
+     *
+     * @param  Collection<int, BudgetPlan>  $plans
+     */
+    private function operationTotalRow(Collection $plans): Row
+    {
+        $sumPagu = (float) $plans->sum(fn (BudgetPlan $plan): float => (float) $plan->pagu_value);
+        $sumRealisasi = (float) $plans->sum(fn (BudgetPlan $plan): float => (float) $plan->realization_value);
+        $sumSisa = (float) $plans->sum(fn (BudgetPlan $plan): float => (float) ($plan->remaining_pagu_value ?? ((float) $plan->pagu_value - (float) $plan->realization_value)));
+
+        $totals = [
+            4 => $sumPagu,
+            5 => $sumSisa,
+            7 => $sumRealisasi,
+        ];
+
+        $cells = [];
+
+        foreach (array_keys(self::COLUMNS_AO) as $index) {
+            $cells[] = Cell::fromValue($index === 0 ? 'TOTAL' : ($totals[$index] ?? null), new Style(
+                fontBold: true,
+                fontSize: 9,
+                cellAlignment: isset($totals[$index]) ? CellAlignment::RIGHT : CellAlignment::LEFT,
+                border: $this->border(),
+                backgroundColor: 'F2F2F2',
+                format: isset($totals[$index]) ? '#,##0.00' : null,
+            ));
+        }
+
+        return new Row($cells);
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\BudgetType;
 use Carbon\CarbonImmutable;
 use Database\Factories\BudgetPlanFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -12,14 +13,20 @@ use Illuminate\Support\Carbon;
 
 /**
  * One row of the budget plan (Perencanaan Anggaran) kept by the Anggaran
- * role: a PRK with its planned AI (Nilai RAB) and AKI, and its WO and PR.
+ * role: a PRK with its planned AI (Nilai RAB) and AKI, or AO (Pagu & Realisasi),
+ * and its WO and PR.
  *
  * @property int $id
  * @property string|null $district
+ * @property BudgetType $budget_type
  * @property string $prk_induk
  * @property int|null $work_director_id
  * @property string|null $prk_induk_description
  * @property string|null $sub_program_description
+ * @property string|null $pagu_value
+ * @property string|null $remaining_pagu_value
+ * @property string|null $disburse_plan
+ * @property string|null $realization_value
  * @property string|null $ai_plan_value
  * @property string|null $aki_plan_value
  * @property string|null $wo_number
@@ -39,6 +46,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $payment_dates
  * @property string|null $payment_proof_number
  * @property string|null $payment_progress
+ * @property string|null $notes
  * @property int|null $created_by
  * @property int|null $updated_by
  * @property Carbon|null $created_at
@@ -49,10 +57,15 @@ use Illuminate\Support\Carbon;
  */
 #[Fillable([
     'district',
+    'budget_type',
     'prk_induk',
     'work_director_id',
     'prk_induk_description',
     'sub_program_description',
+    'pagu_value',
+    'remaining_pagu_value',
+    'disburse_plan',
+    'realization_value',
     'ai_plan_value',
     'aki_plan_value',
     'wo_number',
@@ -72,6 +85,7 @@ use Illuminate\Support\Carbon;
     'payment_dates',
     'payment_proof_number',
     'payment_progress',
+    'notes',
     'created_by',
     'updated_by',
 ])]
@@ -90,11 +104,24 @@ class BudgetPlan extends Model
         return $this->belongsTo(WorkDirector::class);
     }
 
+    protected static function booted(): void
+    {
+        static::saving(function (BudgetPlan $plan): void {
+            if ($plan->budget_type !== BudgetType::Investasi) {
+                if ($plan->pagu_value !== null || $plan->realization_value !== null) {
+                    $pagu = (float) ($plan->pagu_value ?? 0);
+                    $realisasi = (float) ($plan->realization_value ?? 0);
+                    $plan->remaining_pagu_value = (string) ($pagu - $realisasi);
+                }
+            }
+        });
+    }
+
     /**
      * The PRK offered on the work proposal form, each with the bidang it is
      * meant for and the WO and PR it carries.
      *
-     * @return array<int, array{value: string, label: string, description: string|null, workDirectorId: int|null, woNumber: string|null, prNumber: string|null, programName: string|null, subProgram: string|null, aiValue: float|null}>
+     * @return array<int, array{value: string, label: string, description: string|null, workDirectorId: int|null, woNumber: string|null, prNumber: string|null, programName: string|null, subProgram: string|null, aiValue: float|null, budgetType: string}>
      */
     public static function proposalOptions(): array
     {
@@ -112,7 +139,10 @@ class BudgetPlan extends Model
                 // Filled into the proposal when the PRK is picked.
                 'programName' => $plan->prk_induk_description,
                 'subProgram' => $plan->sub_program_description,
-                'aiValue' => $plan->ai_plan_value === null ? null : (float) $plan->ai_plan_value,
+                'aiValue' => $plan->ai_plan_value !== null
+                    ? (float) $plan->ai_plan_value
+                    : ($plan->pagu_value !== null ? (float) $plan->pagu_value : null),
+                'budgetType' => $plan->budget_type->value,
             ])
             ->all();
     }
@@ -145,6 +175,10 @@ class BudgetPlan extends Model
     protected function casts(): array
     {
         return [
+            'budget_type' => BudgetType::class,
+            'pagu_value' => 'decimal:2',
+            'remaining_pagu_value' => 'decimal:2',
+            'realization_value' => 'decimal:2',
             'ai_plan_value' => 'decimal:2',
             'aki_plan_value' => 'decimal:2',
             'po_value' => 'decimal:2',

@@ -1,1 +1,0 @@
-import{n as e,t}from"./jsx-runtime-CTQSNLil.js";import{H as n,P as r}from"./app-BUXQFgmo.js";import{t as i}from"./finance-board-CChHo-y8.js";var a=e(),o=t();function s(e){let t=(0,a.c)(2),n;return t[0]===e?n=t[1]:(n=(0,o.jsx)(i,{...e}),t[0]=e,t[1]=n),n}s.layout={breadcrumbs:[{title:`Dashboard`,href:n()},{title:`Penyerahan`,href:r.index()}]};export{s as default};

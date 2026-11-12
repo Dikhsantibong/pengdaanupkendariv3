@@ -2,9 +2,11 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\BudgetType;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Enum;
 
 class BudgetPlanRequest extends FormRequest
 {
@@ -15,13 +17,27 @@ class BudgetPlanRequest extends FormRequest
      */
     public function rules(): array
     {
+        $type = BudgetType::tryFrom((string) $this->input('budget_type', '')) ?? BudgetType::Investasi;
+
         return [
+            'budget_type' => ['nullable', new Enum(BudgetType::class)],
             'district' => ['nullable', 'string', 'max:50'],
             'prk_induk' => ['required', 'string', 'max:100'],
             // The bidang whose proposers may pick this PRK.
-            'work_director_id' => ['required', 'integer', Rule::exists('work_directors', 'id')->whereNull('deleted_at')],
+            'work_director_id' => [
+                $type === BudgetType::Investasi ? 'required' : 'nullable',
+                'integer',
+                Rule::exists('work_directors', 'id')->whereNull('deleted_at'),
+            ],
             'prk_induk_description' => ['nullable', 'string', 'max:2000'],
             'sub_program_description' => ['nullable', 'string', 'max:2000'],
+            // AO & Energi Primer
+            'pagu_value' => ['nullable', 'numeric', 'min:0', 'max:999999999999999999'],
+            'remaining_pagu_value' => ['nullable', 'numeric', 'min:-999999999999999999', 'max:999999999999999999'],
+            'disburse_plan' => ['nullable', 'string', 'max:50'],
+            'realization_value' => ['nullable', 'numeric', 'min:0', 'max:999999999999999999'],
+            'notes' => ['nullable', 'string', 'max:5000'],
+            // Investasi
             'ai_plan_value' => ['nullable', 'numeric', 'min:0', 'max:999999999999999999'],
             'aki_plan_value' => ['nullable', 'numeric', 'min:0', 'max:999999999999999999'],
             'wo_number' => ['nullable', 'string', 'max:255'],
@@ -55,11 +71,17 @@ class BudgetPlanRequest extends FormRequest
     public function attributes(): array
     {
         return [
+            'budget_type' => 'jenis anggaran',
             'district' => 'distrik',
             'prk_induk' => 'PRK induk',
             'work_director_id' => 'bidang (direksi pekerjaan)',
             'prk_induk_description' => 'deskripsi PRK induk',
             'sub_program_description' => 'deskripsi sub program',
+            'pagu_value' => 'pagu',
+            'remaining_pagu_value' => 'sisa pagu',
+            'disburse_plan' => 'rencana disburse',
+            'realization_value' => 'realisasi',
+            'notes' => 'keterangan',
             'ai_plan_value' => 'rencana AI / nilai RAB',
             'aki_plan_value' => 'rencana AKI',
             'wo_number' => 'nomor WO',
