@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Procurements;
 
+use App\Enums\ChecklistInput;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Models\ChecklistItem;
@@ -94,6 +95,45 @@ class SpplExecutionTest extends TestCase
             ->assertSessionHasNoErrors();
 
         $this->assertTrue($checklist->refresh()->is_completed);
+    }
+
+    public function test_the_spk_and_pj_rentang_waktu_asks_for_the_start_date_and_days(): void
+    {
+        $this->seed(MasterDataSeeder::class);
+
+        foreach (['SPK', 'PJ'] as $format) {
+            $executor = User::factory()->executor()->create();
+            $procurement = Procurement::factory()->create([
+                'procurement_method_id' => null,
+                'contract_number_format_id' => ContractNumberFormat::query()->where('code', $format)->value('id'),
+                'executor_id' => $executor->id,
+                'planning_approval_state' => PlanningApprovalState::Disetujui,
+            ]);
+            app(ProcurementService::class)->syncChecklists($procurement);
+
+            $checklist = $procurement->checklists()
+                ->whereHas('checklistItem', fn ($query) => $query->where('name', 'Rentang Waktu'))
+                ->firstOrFail();
+
+            $this->assertSame(ChecklistInput::ContractPeriod, $checklist->checklistItem->inputFor($procurement), $format);
+
+            $this->actingAs($executor)
+                ->put(route('procurements.checklists.update', [$procurement, $checklist]), ['is_completed' => true])
+                ->assertSessionHasErrors('is_completed');
+
+            $this->actingAs($executor)
+                ->put(route('procurements.checklists.input', [$procurement, $checklist]), [
+                    'execution_start_date' => '2026-11-01',
+                    'execution_duration_days' => 60,
+                ])
+                ->assertSessionHasNoErrors();
+
+            $this->assertSame('2026-12-30', $procurement->refresh()->executionEndDate()?->toDateString(), $format);
+
+            $this->actingAs($executor)
+                ->put(route('procurements.checklists.update', [$procurement, $checklist]), ['is_completed' => true])
+                ->assertSessionHasNoErrors();
+        }
     }
 
     public function test_the_bank_account_and_warranty_are_saved(): void

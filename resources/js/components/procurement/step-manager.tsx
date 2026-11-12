@@ -28,6 +28,8 @@ export type StepManager = {
     stage: AdjustableStage;
     /** Adding, removing and restoring is open to the user now. */
     canManage: boolean;
+    /** Holds the right, so a locked stage says why it cannot be adjusted. */
+    hasRight: boolean;
     removed: RemovedStep[];
     /** Data Master steps of the stage the procurement does not have. */
     available: AvailableStep[];
@@ -37,6 +39,7 @@ const STAGE_LABELS: Record<AdjustableStage, string> = {
     perencanaan: 'Perencanaan',
     pelaksanaan: 'Pelaksanaan',
     penyerahan: 'Penyerahan',
+    pembayaran: 'Pembayaran',
 };
 
 /**
@@ -53,7 +56,11 @@ export function StepManagerBar({
     const [adding, setAdding] = useState(false);
     const [showRemoved, setShowRemoved] = useState(false);
 
-    if (!manager.canManage && manager.removed.length === 0) {
+    if (
+        !manager.canManage &&
+        !manager.hasRight &&
+        manager.removed.length === 0
+    ) {
         return null;
     }
 
@@ -63,7 +70,9 @@ export function StepManagerBar({
                 <SlidersHorizontal className="size-3.5 shrink-0" />
                 {manager.canManage
                     ? 'Tahapan dapat disesuaikan untuk pengadaan ini saja. Data Master dan pengadaan lain tidak berubah.'
-                    : 'Sebagian tahapan pengadaan ini telah disesuaikan.'}
+                    : manager.hasRight
+                      ? `Tahapan ${STAGE_LABELS[manager.stage]} hanya dapat ditambah atau dihapus selama tahap ini belum diajukan (atau saat dikembalikan).`
+                      : 'Sebagian tahapan pengadaan ini telah disesuaikan.'}
             </p>
             <div className="flex shrink-0 flex-wrap items-center gap-2">
                 {manager.removed.length > 0 && (

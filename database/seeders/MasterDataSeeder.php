@@ -401,6 +401,8 @@ class MasterDataSeeder extends Seeder
         /** @var array<string, ChecklistInput|null> $inputs */
         $inputs = [
             'Pelaksana' => ChecklistInput::BankAccount,
+            // The start date and days, for SPK / PJ and SPPL alike.
+            'Rentang Waktu' => ChecklistInput::ContractPeriod,
             'Rentang Waktu Pelaksanaan' => ChecklistInput::ContractPeriod,
             'Masa Garansi' => ChecklistInput::Warranty,
             // The executor gives the contract number with the contract itself:

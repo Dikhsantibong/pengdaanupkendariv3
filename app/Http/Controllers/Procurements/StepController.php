@@ -45,7 +45,6 @@ class StepController extends Controller
         abort_unless($checklist->procurement_id === $procurement->id, 404);
 
         $stage = $this->steps->stageOf($checklist);
-        abort_if($stage === null, 404);
 
         $this->authorize('manageSteps', [$procurement, $stage]);
 
@@ -64,10 +63,7 @@ class StepController extends Controller
         abort_unless($exclusion->procurement_id === $procurement->id, 404);
 
         $item = $exclusion->checklistItem;
-        $stage = match (true) {
-            $item->stage->value === 'keuangan' => 'penyerahan',
-            default => $item->stage->value,
-        };
+        $stage = $this->steps->stageOfItem($item);
 
         $this->authorize('manageSteps', [$procurement, $stage]);
 

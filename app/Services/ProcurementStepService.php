@@ -38,6 +38,7 @@ class ProcurementStepService
         'perencanaan' => [ProcurementStage::Perencanaan, null],
         'pelaksanaan' => [ProcurementStage::Pelaksanaan, null],
         'penyerahan' => [ProcurementStage::Keuangan, FinanceSection::Penyerahan],
+        'pembayaran' => [ProcurementStage::Keuangan, FinanceSection::Pembayaran],
     ];
 
     /**
@@ -49,6 +50,7 @@ class ProcurementStepService
         'perencanaan' => 'Perencanaan',
         'pelaksanaan' => 'Pelaksanaan',
         'penyerahan' => 'Penyerahan',
+        'pembayaran' => 'Pembayaran',
     ];
 
     public function __construct(protected ProcurementService $procurements) {}
@@ -72,21 +74,32 @@ class ProcurementStepService
             'perencanaan' => in_array($procurement->planning_approval_state, $open, true),
             'pelaksanaan' => ! $procurement->isExecutionAwaitingApproval()
                 && $procurement->finance_submitted_at === null,
-            default => $procurement->payment_completed_at === null
+            'penyerahan' => $procurement->payment_completed_at === null
                 && in_array($procurement->handover_approval_state, $open, true),
+            // Until Keuangan submits the payment (again open while returned).
+            default => $procurement->payment_completed_at === null
+                && $procurement->payment_approval_state->isOpen(),
         };
     }
 
     /**
-     * The adjustable stage a step sits on, or null for one that is not
-     * adjusted here (Pembayaran).
+     * The adjustable stage a step sits on: its Keuangan tab for a Keuangan
+     * step (one without a tab shows under Pembayaran).
      */
-    public function stageOf(ProcurementChecklist $checklist): ?string
+    public function stageOf(ProcurementChecklist $checklist): string
     {
-        return match ($checklist->stage) {
+        return $this->stageOfItem($checklist->checklistItem);
+    }
+
+    /**
+     * The adjustable stage a checklist item belongs to.
+     */
+    public function stageOfItem(ChecklistItem $item): string
+    {
+        return match ($item->stage) {
             ProcurementStage::Perencanaan => 'perencanaan',
             ProcurementStage::Pelaksanaan => 'pelaksanaan',
-            ProcurementStage::Keuangan => $checklist->financeSection() === FinanceSection::Penyerahan ? 'penyerahan' : null,
+            ProcurementStage::Keuangan => $item->section === FinanceSection::Penyerahan ? 'penyerahan' : 'pembayaran',
         };
     }
 
@@ -185,7 +198,7 @@ class ProcurementStepService
             ]);
         }
 
-        $stage = (string) $this->stageOf($checklist);
+        $stage = $this->stageOf($checklist);
 
         // A step added by hand just goes again; one the procurement has of
         // its own is excluded, so it can be restored.
@@ -226,7 +239,7 @@ class ProcurementStepService
     public function restore(Procurement $procurement, User $actor, ProcurementStepExclusion $exclusion): void
     {
         $item = $exclusion->checklistItem;
-        $stage = $item->stage === ProcurementStage::Keuangan ? 'penyerahan' : $item->stage->value;
+        $stage = $this->stageOfItem($item);
 
         $exclusion->delete();
 

@@ -276,6 +276,7 @@ export default function ShowProcurement({
     const stepManagerFor = (stage: AdjustableStage) => ({
         stage,
         canManage: stepSettings.can[stage],
+        hasRight: stepSettings.hasRight,
         removed: stepSettings.removed[stage],
         available: stepSettings.available[stage],
     });
@@ -937,6 +938,7 @@ export default function ShowProcurement({
                                     doneMessage="Semua kelengkapan pembayaran sudah lengkap. Ajukan pembayaran di kolom Persetujuan."
                                     rows={financeRows('pembayaran')}
                                     editable={can.updatePaymentChecklist}
+                                    stepManager={stepManagerFor('pembayaran')}
                                     canManageDocuments={
                                         can.updatePaymentChecklist
                                     }

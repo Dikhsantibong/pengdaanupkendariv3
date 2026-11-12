@@ -4,6 +4,7 @@ namespace Tests\Feature\Procurements;
 
 use App\Enums\ActivityType;
 use App\Enums\FinanceSection;
+use App\Enums\PaymentApprovalState;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Enums\UserRole;
@@ -304,14 +305,28 @@ class ProcurementStepTest extends TestCase
         $this->assertSame($templateRows + 1, $this->handoverRows($procurement)->count());
         $this->assertTrue($this->row($procurement, $added)?->needsOwnUpload());
 
-        // Pembayaran is not adjusted here.
+        // Pembayaran is adjusted the same way, until the payment is submitted.
         $payment = $procurement->checklists()->with('checklistItem')->get()
             ->first(fn (ProcurementChecklist $checklist): bool => $checklist->financeSection() === FinanceSection::Pembayaran);
-
         $this->assertNotNull($payment);
+
         $this->actingAs($this->teamLeader)
             ->delete(route('procurements.steps.destroy', [$procurement, $payment]))
-            ->assertNotFound();
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertNull($procurement->checklists()->whereKey($payment->id)->first());
+        $this->actingAs($this->teamLeader)
+            ->get(route('procurements.show', $procurement))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('stepSettings.can.pembayaran', true)
+                ->has('stepSettings.removed.pembayaran', 1));
+
+        $procurement->forceFill(['payment_approval_state' => PaymentApprovalState::MenungguTl])->save();
+
+        $this->actingAs($this->teamLeader)
+            ->post(route('procurements.steps.restore', [$procurement, ProcurementStepExclusion::query()->sole()]))
+            ->assertForbidden();
     }
 
     protected function row(Procurement $procurement, ChecklistItem $item): ?ProcurementChecklist

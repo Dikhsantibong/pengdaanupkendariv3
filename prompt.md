@@ -2746,7 +2746,7 @@ Halaman **Daftar Pengadaan** tidak lagi menampilkan folder per mitra. Seluruh pe
 
 ---
 
-# Tambah dan Hapus Tahapan per Pengadaan (Perencanaan, Pelaksanaan, Penyerahan)
+# Tambah dan Hapus Tahapan per Pengadaan (Perencanaan, Pelaksanaan, Penyerahan, Pembayaran)
 
 Tahapan pada tab **Perencanaan**, **Pelaksanaan**, dan **Penyerahan** dapat disesuaikan **untuk satu pengadaan saja**. Data Master (Item Checklist) dan pengadaan lain tidak berubah.
 
@@ -2756,7 +2756,10 @@ Tahapan pada tab **Perencanaan**, **Pelaksanaan**, dan **Penyerahan** dapat dise
   - Perencanaan: Belum Diajukan / Ditolak.
   - Pelaksanaan: tidak sedang ditinjau dan belum diteruskan ke Penyerahan.
   - Penyerahan: Belum Diajukan / Dikembalikan dan belum lunas.
-- Tidak berlaku untuk pengadaan selesai atau batal. Pembayaran tidak diatur di sini.
+  - Pembayaran: selama pembayaran Belum Diajukan / Dikembalikan dan belum lunas.
+- Tidak berlaku untuk pengadaan selesai atau batal.
+- Saat tahap terkunci, pemegang hak melihat keterangan "Tahapan … hanya dapat ditambah atau dihapus selama tahap ini belum diajukan (atau saat dikembalikan)", supaya tidak terkesan fiturnya hilang.
+- **Pembayaran** kini ikut diatur dengan cara yang sama: Tambah dari Data Master (syarat pembayaran kontrak lain), Hapus, dan Pulihkan.
 
 **Tambah Tahapan** (tombol di atas tabel langkah) — **memilih dari Data Master**, bukan membuat tahapan baru:
 - Daftar berisi tahapan **Item Checklist** di Data Master untuk tahap itu yang **belum ada** pada pengadaan ini, misalnya yang dilewati karena format kontrak, metode, atau kategori pekerjaannya. Untuk Penyerahan, daftarnya berisi syarat penyerahan kontrak lain.
@@ -2821,6 +2824,18 @@ Administrator dapat menutup aplikasi sementara saat pemeliharaan, lewat menu **A
 - Tombol **Kembali** di halaman detail penilaian (`/penilaian-penyedia/{id}`) kini membuka **halaman mitra itu** (`/penilaian-penyedia/mitra?nama=…`), yaitu daftar penilaian mitra beserta sertifikatnya, tempat penilaian tadi dibuka.
 - Sebelumnya tombol ini membuka tampilan folder semua mitra.
 - File: `resources/js/pages/vendor-assessments/show.tsx`.
+
+---
+
+# Isian Rentang Waktu pada SPK / PJ
+
+- Langkah pelaksanaan **Rentang Waktu** (format SPK/PJ) sebelumnya hanya centang. Isian tanggal mulai dan jumlah hari hanya ada di langkah **Rentang Waktu Pelaksanaan** milik SPPL.
+- Kini **Rentang Waktu** juga meminta **tanggal mulai pelaksanaan + jumlah hari**. Tanggal akhirnya dihitung otomatis, dengan tanggal mulai dihitung sebagai hari pertama.
+- Kolomnya sama (`execution_start_date`, `execution_duration_days`), sehingga variabel dokumen seperti `{{tanggal_mulai_pelaksanaan}}` ikut terisi.
+- Langkah baru bisa ditandai selesai setelah isiannya lengkap. Langkah yang sudah terlanjur dicentang tetap selesai.
+- Migrasi `give_the_contract_period_input_to_rentang_waktu` mengisi "Isian Tahapan" langkah ini hanya bila masih kosong, sehingga pengaturan admin di Data Master tidak tertimpa. `MasterDataSeeder` disamakan.
+- Isian tiap langkah tetap dapat diubah di **Data Master → Item Checklist → Isian Tahapan**.
+- **Test:** `SpplExecutionTest::test_the_spk_and_pj_rentang_waktu_asks_for_the_start_date_and_days`.
 
 ---
 

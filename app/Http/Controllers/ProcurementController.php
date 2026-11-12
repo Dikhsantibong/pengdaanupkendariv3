@@ -852,7 +852,7 @@ class ProcurementController extends Controller
      * Who may adjust the steps of each stage, the steps removed so far (to
      * restore), and the Data Master steps each stage can still take on.
      *
-     * @return array{can: array<string, bool>, removed: array<string, list<array<string, mixed>>>, available: array<string, list<array<string, mixed>>>}
+     * @return array{hasRight: bool, can: array<string, bool>, removed: array<string, list<array<string, mixed>>>, available: array<string, list<array<string, mixed>>>}
      */
     protected function stepSettings(Procurement $procurement, User $user): array
     {
@@ -869,6 +869,8 @@ class ProcurementController extends Controller
         }
 
         return [
+            // Holds the right, so a locked stage says why it cannot be adjusted.
+            'hasRight' => $user->hasPermission(Permission::ManageProcurementSteps),
             'can' => $can,
             'removed' => $removed,
             'available' => $available,

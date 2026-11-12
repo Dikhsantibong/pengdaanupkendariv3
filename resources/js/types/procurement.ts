@@ -167,7 +167,8 @@ export type ChecklistRow = {
 };
 
 /** The stages whose steps can be adjusted on one procurement. */
-export type AdjustableStage = 'perencanaan' | 'pelaksanaan' | 'penyerahan';
+export type AdjustableStage =
+    'perencanaan' | 'pelaksanaan' | 'penyerahan' | 'pembayaran';
 
 /** A step removed from one procurement by hand, which can be restored. */
 export type RemovedStep = {
@@ -188,6 +189,8 @@ export type AvailableStep = {
 
 /** Who may adjust each stage's steps, what was removed, and what can be added. */
 export type StepSettings = {
+    /** Holds the right to adjust steps, whether or not a stage is open. */
+    hasRight: boolean;
     can: Record<AdjustableStage, boolean>;
     removed: Record<AdjustableStage, RemovedStep[]>;
     available: Record<AdjustableStage, AvailableStep[]>;
