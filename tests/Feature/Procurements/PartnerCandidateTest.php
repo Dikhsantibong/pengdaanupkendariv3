@@ -75,6 +75,7 @@ class PartnerCandidateTest extends TestCase
         $this->actingAs($this->executor)
             ->put(route('procurements.checklists.input', [$procurement, $step]), [
                 'partner_candidate_id' => $second->id,
+                'partner_address' => 'Jl. Sudirman No. 2, Kendari',
                 'bank_account_number' => '123',
                 'bank_name' => 'BRI',
                 'bank_account_holder' => 'PT Dua',

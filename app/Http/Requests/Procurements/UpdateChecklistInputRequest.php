@@ -44,6 +44,8 @@ class UpdateChecklistInputRequest extends FormRequest
                     'required', 'integer',
                     Rule::exists('procurement_partner_candidates', 'id')->where('procurement_id', $checklist->procurement_id),
                 ],
+                // Filled in from the candidate, and corrected here when needed.
+                'partner_address' => ['required', 'string', 'max:1000'],
                 'bank_account_number' => ['required', 'string', 'max:50', 'regex:/^[0-9 .\-]+$/'],
                 'bank_name' => ['required', 'string', 'max:100'],
                 'bank_account_holder' => ['required', 'string', 'max:255'],
@@ -76,6 +78,7 @@ class UpdateChecklistInputRequest extends FormRequest
             'execution_duration_days' => 'jumlah hari',
             'warranty_months' => 'masa garansi',
             'partner_candidate_id' => 'pelaksana',
+            'partner_address' => 'alamat pelaksana',
             'bank_account_number' => 'nomor rekening',
             'bank_name' => 'nama bank',
             'bank_account_holder' => 'nama pemilik rekening',

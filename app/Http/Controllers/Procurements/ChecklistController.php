@@ -68,7 +68,15 @@ class ChecklistController extends Controller
         // procurement, where the contract documents read them.
         if ($kind === ChecklistInput::BankAccount) {
             $candidate = $procurement->partnerCandidates()->whereKey((int) $values['partner_candidate_id'])->firstOrFail();
-            $values = [...$values, ...$candidate->partnerFields()];
+            $address = trim((string) $values['partner_address']);
+
+            // The address typed here is the one the contract carries; the
+            // candidate keeps it too, so both lists agree.
+            if ($candidate->address !== $address) {
+                $candidate->update(['address' => $address]);
+            }
+
+            $values = [...$values, ...$candidate->partnerFields(), 'partner_address' => $address];
         }
 
         // Numbers are kept without the spaces typed around them.

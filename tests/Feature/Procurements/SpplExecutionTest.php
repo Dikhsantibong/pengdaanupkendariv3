@@ -141,11 +141,22 @@ class SpplExecutionTest extends TestCase
         [$procurement, $executor, $rekening] = $this->spplStep('Pelaksana');
 
         // The step picks the executor from the calon mitra.
-        $candidate = $procurement->partnerCandidates()->create(['name' => 'CV Maju Jaya']);
+        $candidate = $procurement->partnerCandidates()->create(['name' => 'CV Maju Jaya', 'address' => 'Jl. Lama']);
+
+        // The address is asked for with the account.
+        $this->actingAs($executor)
+            ->put(route('procurements.checklists.input', [$procurement, $rekening]), [
+                'partner_candidate_id' => $candidate->id,
+                'bank_account_number' => '0123 4567 89',
+                'bank_name' => 'BRI',
+                'bank_account_holder' => 'CV Maju Jaya',
+            ])
+            ->assertSessionHasErrors('partner_address');
 
         $this->actingAs($executor)
             ->put(route('procurements.checklists.input', [$procurement, $rekening]), [
                 'partner_candidate_id' => $candidate->id,
+                'partner_address' => 'Jl. Malik Raya No. 5, Kendari',
                 'bank_account_number' => '0123 4567 89',
                 'bank_name' => 'BRI',
                 'bank_account_holder' => 'CV Maju Jaya',
@@ -167,6 +178,9 @@ class SpplExecutionTest extends TestCase
         $this->assertSame('CV Maju Jaya', $procurement->bank_account_holder);
         $this->assertSame($candidate->id, $procurement->partner_candidate_id);
         $this->assertSame('CV Maju Jaya', $procurement->partner_name);
+        // The address corrected on the step is the contract's and the candidate's.
+        $this->assertSame('Jl. Malik Raya No. 5, Kendari', $procurement->partner_address);
+        $this->assertSame('Jl. Malik Raya No. 5, Kendari', $candidate->refresh()->address);
         $this->assertSame(3, $procurement->warranty_months);
     }
 

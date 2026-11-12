@@ -247,6 +247,7 @@ export type ChecklistInput = {
         warranty_months: number | null;
         /** The calon mitra picked as the executor. */
         partner_candidate_id: number | null;
+        partner_address: string | null;
         bank_account_number: string | null;
         bank_name: string | null;
         bank_account_holder: string | null;

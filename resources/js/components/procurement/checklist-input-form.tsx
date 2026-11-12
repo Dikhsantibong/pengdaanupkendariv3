@@ -97,6 +97,7 @@ export function ChecklistInputForm({
             values.partner_candidate_id === null
                 ? ''
                 : String(values.partner_candidate_id),
+        partner_address: values.partner_address ?? '',
         bank_account_number: values.bank_account_number ?? '',
         bank_name: values.bank_name ?? '',
         bank_account_holder: values.bank_account_holder ?? '',
@@ -350,6 +351,11 @@ export function ChecklistInputForm({
                                             form.setData((data) => ({
                                                 ...data,
                                                 partner_candidate_id: value,
+                                                // The candidate's address,
+                                                // to correct here if needed.
+                                                partner_address:
+                                                    picked?.address ??
+                                                    data.partner_address,
                                                 // The account usually bears
                                                 // the partner's name.
                                                 bank_account_holder:
@@ -376,15 +382,33 @@ export function ChecklistInputForm({
                                                         )}
                                                     >
                                                         {candidate.name}
-                                                        {candidate.quotation_number
-                                                            ? ` · ${candidate.quotation_number}`
-                                                            : ''}
                                                     </SelectItem>
                                                 ),
                                             )}
                                         </SelectContent>
                                     </Select>
                                 )}
+                            </Field>
+                        </div>
+                        <div className="sm:col-span-3">
+                            <Field
+                                id={`address-${checklistId}`}
+                                label="Alamat Pelaksana"
+                                error={form.errors.partner_address}
+                            >
+                                <Input
+                                    id={`address-${checklistId}`}
+                                    className="h-8"
+                                    value={form.data.partner_address}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'partner_address',
+                                            event.target.value,
+                                        )
+                                    }
+                                    placeholder="Terisi dari calon mitra yang dipilih"
+                                    autoComplete="off"
+                                />
                             </Field>
                         </div>
                         <Field

@@ -942,6 +942,7 @@ class ProcurementController extends Controller
             'execution_end_date' => $procurement->executionEndDate()?->toDateString(),
             'warranty_months' => $procurement->warranty_months,
             'partner_candidate_id' => $procurement->partner_candidate_id,
+            'partner_address' => $procurement->partner_address,
             'bank_account_number' => $procurement->bank_account_number,
             'bank_name' => $procurement->bank_name,
             'bank_account_holder' => $procurement->bank_account_holder,
