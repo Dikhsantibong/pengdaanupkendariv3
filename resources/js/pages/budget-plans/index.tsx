@@ -1,18 +1,5 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import {
-    Activity,
-    ChevronDown,
-    Coins,
-    FileSpreadsheet,
-    Flame,
-    Pencil,
-    Plus,
-    Search,
-    Trash2,
-    TrendingUp,
-    Wallet,
-    Wrench,
-} from 'lucide-react';
+import { ChevronDown, Search, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { CurrencyInput } from '@/components/currency-input';
@@ -45,6 +32,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { formatCurrency, formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -143,28 +131,10 @@ type BudgetPlanFormValues = Record<TextKey, string> &
 const ALL = 'semua';
 const NONE = 'kosong';
 
-const TYPE_CONFIG: Record<
-    BudgetPlanType,
-    { label: string; shortLabel: string; badge: string; icon: typeof Wallet }
-> = {
-    investasi: {
-        label: 'Anggaran Investasi (AI)',
-        shortLabel: 'AI',
-        badge: 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300',
-        icon: TrendingUp,
-    },
-    operasi: {
-        label: 'Anggaran Operasi (AO PEMELIHARAAN)',
-        shortLabel: 'AO Pemeliharaan',
-        badge: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300',
-        icon: Wrench,
-    },
-    energi_primer: {
-        label: 'Anggaran Pendukung Energi Primer',
-        shortLabel: 'Energi Primer',
-        badge: 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300',
-        icon: Flame,
-    },
+const TYPE_LABELS: Record<BudgetPlanType, string> = {
+    investasi: 'Anggaran Investasi (AI)',
+    operasi: 'Anggaran Operasi (AO PEMELIHARAAN)',
+    energi_primer: 'Anggaran Pendukung Energi Primer',
 };
 
 /** The column groups of the Anggaran Investasi sheet. */
@@ -269,13 +239,13 @@ export default function BudgetPlansIndex({
 
     return (
         <>
-            <Head title={`Perencanaan Anggaran - ${TYPE_CONFIG[activeType].label}`} />
+            <Head title={`Perencanaan Anggaran - ${TYPE_LABELS[activeType]}`} />
 
-            <div className="flex min-w-0 flex-col gap-4 p-4 md:p-6">
+            <div className="flex min-w-0 flex-col gap-5 p-4 md:p-6">
                 <PageHeader
-                    eyebrow="Anggaran & Keuangan"
+                    eyebrow="Anggaran"
                     title="Perencanaan Anggaran"
-                    description="Kelola program PRK untuk Anggaran Operasi (AO), Anggaran Investasi (AI), dan Anggaran Pendukung Energi Primer."
+                    description="Program, kontrak, progres fisik/BA, dan pembayaran tiap PRK induk. Tersedia pilihan Anggaran Operasi (AO), Anggaran Investasi (AI), dan Anggaran Pendukung Energi Primer."
                     actions={
                         <div className="flex flex-wrap gap-2">
                             <Button variant="outline" asChild>
@@ -292,59 +262,36 @@ export default function BudgetPlansIndex({
                                         },
                                     })}
                                 >
-                                    <FileSpreadsheet className="size-4" />
                                     Unduh Excel
                                 </a>
                             </Button>
                             {canManage && (
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button className="gap-1.5 shadow-sm">
-                                            <Plus className="size-4" />
+                                        <Button>
                                             Tambah PRK
-                                            <ChevronDown className="size-3.5 opacity-70" />
+                                            <ChevronDown className="size-4 opacity-50" />
                                         </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-80">
-                                        <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wider">
+                                    <DropdownMenuContent align="end" className="w-72">
+                                        <DropdownMenuLabel className="section-label px-2 py-1.5">
                                             Pilih Jenis Anggaran
                                         </DropdownMenuLabel>
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem
-                                            className="flex flex-col items-start gap-1 p-2.5 cursor-pointer"
                                             onClick={() => openCreateModal('operasi')}
                                         >
-                                            <div className="flex items-center gap-2 font-medium text-foreground">
-                                                <Wrench className="size-4 text-emerald-600 dark:text-emerald-400" />
-                                                Anggaran Operasi (AO PEMELIHARAAN)
-                                            </div>
-                                            <p className="text-[11px] text-muted-foreground">
-                                                Pagu, Realisasi, Sisa Pagu, Rencana Disburse
-                                            </p>
+                                            Anggaran Operasi (AO PEMELIHARAAN)
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
-                                            className="flex flex-col items-start gap-1 p-2.5 cursor-pointer"
                                             onClick={() => openCreateModal('investasi')}
                                         >
-                                            <div className="flex items-center gap-2 font-medium text-foreground">
-                                                <TrendingUp className="size-4 text-blue-600 dark:text-blue-400" />
-                                                Anggaran Investasi (AI)
-                                            </div>
-                                            <p className="text-[11px] text-muted-foreground">
-                                                Program, Kontrak, Fisik/BA, Pembayaran
-                                            </p>
+                                            Anggaran Investasi (AI)
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
-                                            className="flex flex-col items-start gap-1 p-2.5 cursor-pointer"
                                             onClick={() => openCreateModal('energi_primer')}
                                         >
-                                            <div className="flex items-center gap-2 font-medium text-foreground">
-                                                <Flame className="size-4 text-amber-600 dark:text-amber-400" />
-                                                Anggaran Pendukung Energi Primer
-                                            </div>
-                                            <p className="text-[11px] text-muted-foreground">
-                                                Pagu, Realisasi, Sisa Pagu, Rencana Disburse
-                                            </p>
+                                            Anggaran Pendukung Energi Primer
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -353,41 +300,26 @@ export default function BudgetPlansIndex({
                     }
                 />
 
-                {/* Navigation Tabs for Budget Types */}
-                <div className="flex flex-wrap items-center gap-2 border-b border-border pb-3">
-                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mr-1">
-                        Kategori:
-                    </span>
-                    {(
-                        [
-                            'investasi',
-                            'operasi',
-                            'energi_primer',
-                        ] as BudgetPlanType[]
-                    ).map((type) => {
-                        const cfg = TYPE_CONFIG[type];
-                        const Icon = cfg.icon;
-                        const isActive = activeType === type;
-                        return (
-                            <button
-                                key={type}
-                                type="button"
-                                onClick={() => switchType(type)}
-                                className={cn(
-                                    'inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-medium transition-all',
-                                    isActive
-                                        ? 'bg-primary text-primary-foreground shadow-sm'
-                                        : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground',
-                                )}
-                            >
-                                <Icon className="size-3.5" />
-                                {cfg.label}
-                            </button>
-                        );
-                    })}
-                </div>
+                {/* Tabs Kategori sesuai spesifikasi DESIGN.md 4.6 */}
+                <Tabs
+                    defaultValue={activeType}
+                    value={activeType}
+                    onValueChange={(val) => switchType(val as BudgetPlanType)}
+                >
+                    <TabsList className="w-full justify-start overflow-x-auto">
+                        <TabsTrigger value="investasi">
+                            Anggaran Investasi (AI)
+                        </TabsTrigger>
+                        <TabsTrigger value="operasi">
+                            Anggaran Operasi (AO PEMELIHARAAN)
+                        </TabsTrigger>
+                        <TabsTrigger value="energi_primer">
+                            Anggaran Pendukung Energi Primer
+                        </TabsTrigger>
+                    </TabsList>
+                </Tabs>
 
-                {/* Summaries based on Active View */}
+                {/* StatCard ringkas sesuai spesifikasi DESIGN.md 5.4 */}
                 {!isOperationView ? (
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                         <Summary label="Jumlah PRK" value={String(totals.count)} />
@@ -410,31 +342,24 @@ export default function BudgetPlansIndex({
                     </div>
                 ) : (
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                        <Summary
-                            label="Jumlah PRK"
-                            value={String(totals.count)}
-                            icon={Coins}
-                        />
+                        <Summary label="Jumlah PRK" value={String(totals.count)} />
                         <Summary
                             label="Total Pagu"
                             value={formatCurrency(totals.pagu ?? 0)}
-                            icon={Wallet}
                         />
                         <Summary
                             label="Total Realisasi s/d SM 2"
                             value={formatCurrency(totals.realisasi ?? 0)}
-                            icon={Activity}
                         />
                         <Summary
                             label="Total Sisa Pagu (Pagu - Realisasi)"
                             value={formatCurrency(totals.sisa_pagu ?? 0)}
                             highlight
-                            icon={TrendingUp}
                         />
                     </div>
                 )}
 
-                {/* Filter Controls */}
+                {/* Baris Filter sesuai DESIGN.md 5.10 */}
                 <form
                     className="flex flex-col gap-2 sm:flex-row"
                     onSubmit={(event) => {
@@ -479,7 +404,7 @@ export default function BudgetPlansIndex({
                     </Button>
                 </form>
 
-                {/* Empty State or Tables */}
+                {/* Tabel atau Empty State sesuai DESIGN.md 4.7 & 5.9 */}
                 {plans.length === 0 ? (
                     <div className="rounded-md border border-border bg-card">
                         <EmptyState
@@ -487,21 +412,21 @@ export default function BudgetPlansIndex({
                             title={
                                 filters.cari !== '' || filters.bidang !== null
                                     ? 'Tidak ada PRK yang cocok'
-                                    : `Belum ada ${TYPE_CONFIG[activeType].label}`
+                                    : `Belum ada data ${TYPE_LABELS[activeType]}`
                             }
                             description={
                                 canManage
-                                    ? `Klik "Tambah PRK" untuk menambahkan data ${TYPE_CONFIG[activeType].label}.`
+                                    ? `Klik "Tambah PRK" untuk menambahkan data ${TYPE_LABELS[activeType]}.`
                                     : 'Data PRK diisi oleh akun Anggaran.'
                             }
                         />
                     </div>
                 ) : isOperationView ? (
-                    /* Table for Anggaran Operasi (AO) & Anggaran Pendukung Energi Primer matching user screenshot */
-                    <div className="max-h-[70vh] overflow-auto rounded-md border border-border bg-card shadow-sm">
+                    /* Tabel Anggaran Operasi (AO) & Pendukung Energi Primer */
+                    <div className="max-h-[70vh] overflow-auto rounded-md border border-border bg-card">
                         <table className="w-max min-w-full border-collapse text-xs">
-                            <thead className="sticky top-0 z-10 bg-sky-100/90 dark:bg-sky-950/80 backdrop-blur">
-                                <tr className="border-b border-border font-semibold text-foreground">
+                            <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur">
+                                <tr className="border-b border-border">
                                     <Th center className="w-12">
                                         NO
                                     </Th>
@@ -511,10 +436,7 @@ export default function BudgetPlansIndex({
                                     <Th right className="min-w-36">
                                         PAGU
                                     </Th>
-                                    <Th
-                                        right
-                                        className="min-w-36 bg-emerald-200/70 dark:bg-emerald-950/70 text-emerald-950 dark:text-emerald-200"
-                                    >
+                                    <Th right className="min-w-36 bg-muted/60 font-semibold">
                                         SISA PAGU
                                     </Th>
                                     <Th center className="min-w-28">
@@ -523,10 +445,7 @@ export default function BudgetPlansIndex({
                                     <Th right className="min-w-40">
                                         REALISASI s/d SM 2 (OKTOBER)
                                     </Th>
-                                    <Th
-                                        wide
-                                        className="min-w-64 bg-amber-200/60 dark:bg-amber-950/60 text-amber-950 dark:text-amber-200"
-                                    >
+                                    <Th wide className="min-w-64">
                                         KET
                                     </Th>
                                     {canManage && (
@@ -540,26 +459,26 @@ export default function BudgetPlansIndex({
                                 {plans.map((plan, index) => (
                                     <tr
                                         key={plan.id}
-                                        className="align-top hover:bg-muted/40 transition-colors"
+                                        className="align-top border-b border-border hover:bg-muted/50 transition-colors"
                                     >
-                                        <Td className="tabular text-center font-medium">
+                                        <Td className="tabular text-center">
                                             {index + 1}
                                         </Td>
-                                        <Td className="tabular font-semibold whitespace-nowrap text-primary">
+                                        <Td className="tabular font-medium whitespace-nowrap text-foreground">
                                             {plan.prk_induk}
                                         </Td>
-                                        <Td wide className="font-medium">
+                                        <Td wide>
                                             {plan.prk_induk_description || '—'}
                                         </Td>
-                                        <Td className="whitespace-nowrap text-muted-foreground">
+                                        <Td className="whitespace-nowrap">
                                             {plan.work_director || '—'}
                                         </Td>
-                                        <Td right className="font-medium">
+                                        <Td right>
                                             {money(plan.pagu_value)}
                                         </Td>
                                         <Td
                                             right
-                                            className="font-bold tabular bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 border-l border-r border-emerald-200/50"
+                                            className="font-medium tabular bg-muted/20"
                                         >
                                             {money(
                                                 plan.remaining_pagu_value ??
@@ -570,16 +489,13 @@ export default function BudgetPlansIndex({
                                                         : null),
                                             )}
                                         </Td>
-                                        <Td className="tabular text-center">
+                                        <Td className="tabular text-center whitespace-nowrap">
                                             {plan.disburse_plan || '—'}
                                         </Td>
-                                        <Td right className="font-medium">
+                                        <Td right>
                                             {money(plan.realization_value)}
                                         </Td>
-                                        <Td
-                                            wide
-                                            className="bg-amber-50/70 dark:bg-amber-950/30 text-amber-950 dark:text-amber-200 border-l border-amber-200/50"
-                                        >
+                                        <Td wide>
                                             {plan.notes || '—'}
                                         </Td>
                                         {canManage && (
@@ -593,7 +509,6 @@ export default function BudgetPlansIndex({
                                                         setOpen(true);
                                                     }}
                                                 >
-                                                    <Pencil className="size-3.5" />
                                                     Ubah
                                                 </Button>
                                                 <Button
@@ -602,7 +517,6 @@ export default function BudgetPlansIndex({
                                                     className="text-destructive hover:text-destructive"
                                                     onClick={() => remove(plan)}
                                                 >
-                                                    <Trash2 className="size-3.5" />
                                                     Hapus
                                                 </Button>
                                             </Td>
@@ -610,19 +524,18 @@ export default function BudgetPlansIndex({
                                     </tr>
                                 ))}
                             </tbody>
-                            <tfoot className="bg-sky-50/80 dark:bg-sky-950/60 font-semibold border-t-2 border-border">
+                            <tfoot className="bg-muted/60 border-t border-border font-medium">
                                 <tr>
-                                    <Td className="text-center font-bold">TOTAL</Td>
+                                    <Td className="font-semibold text-center">TOTAL</Td>
                                     <Td colSpan={3} />
-                                    <Td right>{formatCurrency(totals.pagu ?? 0)}</Td>
-                                    <Td
-                                        right
-                                        className="font-bold tabular text-emerald-800 dark:text-emerald-300 bg-emerald-100/60 dark:bg-emerald-950/60"
-                                    >
+                                    <Td right className="font-semibold">
+                                        {formatCurrency(totals.pagu ?? 0)}
+                                    </Td>
+                                    <Td right className="font-semibold">
                                         {formatCurrency(totals.sisa_pagu ?? 0)}
                                     </Td>
                                     <Td />
-                                    <Td right>
+                                    <Td right className="font-semibold">
                                         {formatCurrency(totals.realisasi ?? 0)}
                                     </Td>
                                     <Td colSpan={canManage ? 2 : 1} />
@@ -631,8 +544,8 @@ export default function BudgetPlansIndex({
                         </table>
                     </div>
                 ) : (
-                    /* Existing 25-column table for Anggaran Investasi */
-                    <div className="max-h-[70vh] overflow-auto rounded-md border border-border bg-card shadow-sm">
+                    /* Tabel Anggaran Investasi (AI) */
+                    <div className="max-h-[70vh] overflow-auto rounded-md border border-border bg-card">
                         <table className="w-max min-w-full border-collapse text-xs">
                             <thead className="sticky top-0 z-10">
                                 <tr>
@@ -641,7 +554,7 @@ export default function BudgetPlansIndex({
                                             key={group.label}
                                             colSpan={group.span}
                                             className={cn(
-                                                'border border-border px-2 py-1.5 text-center text-[11px] font-semibold tracking-[0.2em] uppercase',
+                                                'border border-border px-2 py-1.5 text-center text-[0.6875rem] font-semibold tracking-[0.2em] uppercase',
                                                 group.className,
                                             )}
                                         >
@@ -694,7 +607,7 @@ export default function BudgetPlansIndex({
                                 {plans.map((plan, index) => (
                                     <tr
                                         key={plan.id}
-                                        className="align-top hover:bg-muted/40"
+                                        className="align-top border-b border-border hover:bg-muted/50 transition-colors"
                                     >
                                         <Td className="tabular text-center">
                                             {index + 1}
@@ -770,7 +683,6 @@ export default function BudgetPlansIndex({
                                                         setOpen(true);
                                                     }}
                                                 >
-                                                    <Pencil className="size-3.5" />
                                                     Ubah
                                                 </Button>
                                                 <Button
@@ -779,7 +691,6 @@ export default function BudgetPlansIndex({
                                                     className="text-destructive hover:text-destructive"
                                                     onClick={() => remove(plan)}
                                                 >
-                                                    <Trash2 className="size-3.5" />
                                                     Hapus
                                                 </Button>
                                             </Td>
@@ -787,16 +698,22 @@ export default function BudgetPlansIndex({
                                     </tr>
                                 ))}
                             </tbody>
-                            <tfoot className="bg-muted/60 font-medium">
+                            <tfoot className="bg-muted/60 border-t border-border font-medium">
                                 <tr>
-                                    <Td className="font-semibold">Total</Td>
+                                    <Td className="font-semibold text-center">Total</Td>
                                     <Td colSpan={5} />
-                                    <Td right>{formatCurrency(totals.ai ?? 0)}</Td>
-                                    <Td right>{formatCurrency(totals.aki ?? 0)}</Td>
+                                    <Td right className="font-semibold">
+                                        {formatCurrency(totals.ai ?? 0)}
+                                    </Td>
+                                    <Td right className="font-semibold">
+                                        {formatCurrency(totals.aki ?? 0)}
+                                    </Td>
                                     <Td colSpan={8} />
-                                    <Td right>{formatCurrency(totals.po ?? 0)}</Td>
+                                    <Td right className="font-semibold">
+                                        {formatCurrency(totals.po ?? 0)}
+                                    </Td>
                                     <Td colSpan={3} />
-                                    <Td right>
+                                    <Td right className="font-semibold">
                                         {formatCurrency(totals.invoice ?? 0)}
                                     </Td>
                                     <Td colSpan={canManage ? 5 : 4} />
@@ -841,7 +758,7 @@ function Th({
     return (
         <th
             className={cn(
-                'border border-border px-2 py-2 align-middle font-medium text-foreground',
+                'border border-border px-3 py-2 align-middle text-[0.6875rem] font-semibold tracking-[0.06em] uppercase text-muted-foreground',
                 center ? 'text-center' : right ? 'text-right' : 'text-left',
                 wide ? 'min-w-56' : 'max-w-44',
                 className,
@@ -853,7 +770,11 @@ function Th({
 }
 
 function Hint({ children }: { children: ReactNode }) {
-    return <span className="block text-[10px] font-normal text-muted-foreground">{children}</span>;
+    return (
+        <span className="block text-[10px] font-normal normal-case text-muted-foreground">
+            {children}
+        </span>
+    );
 }
 
 function Td({
@@ -873,7 +794,7 @@ function Td({
         <td
             colSpan={colSpan}
             className={cn(
-                'border border-border px-2 py-1.5 whitespace-pre-line',
+                'border border-border px-3 py-2 whitespace-pre-line text-sm text-foreground',
                 right && 'tabular text-right whitespace-nowrap',
                 wide && 'min-w-56',
                 className,
@@ -888,39 +809,20 @@ function Summary({
     label,
     value,
     highlight = false,
-    icon: Icon,
 }: {
     label: string;
     value: string;
     highlight?: boolean;
-    icon?: typeof Wallet;
 }) {
     return (
         <div
             className={cn(
-                'rounded-lg border px-4 py-3 shadow-xs transition-colors',
-                highlight
-                    ? 'border-emerald-300 bg-emerald-50/60 dark:border-emerald-800 dark:bg-emerald-950/30'
-                    : 'border-border bg-card',
+                'rounded-md border border-border bg-card p-4 space-y-1',
+                highlight && 'border-l-2 border-l-primary',
             )}
         >
-            <div className="flex items-center justify-between gap-2">
-                <p className="text-xs text-muted-foreground font-medium">{label}</p>
-                {Icon && (
-                    <Icon
-                        className={cn(
-                            'size-4',
-                            highlight ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground',
-                        )}
-                    />
-                )}
-            </div>
-            <p
-                className={cn(
-                    'tabular mt-1.5 truncate text-lg font-bold tracking-tight',
-                    highlight ? 'text-emerald-900 dark:text-emerald-200' : 'text-foreground',
-                )}
-            >
+            <p className="section-label truncate">{label}</p>
+            <p className="tabular text-2xl font-semibold tracking-tight text-foreground">
                 {value}
             </p>
         </div>
@@ -980,7 +882,7 @@ function BudgetPlanForm({
         form.data.budget_type === 'operasi' ||
         form.data.budget_type === 'energi_primer';
 
-    // Live calculation for Sisa Pagu = Pagu - Realisasi
+    // Live calculation: Sisa Pagu = Pagu - Realisasi
     const computedRemainingPagu =
         (form.data.pagu_value || 0) - (form.data.realization_value || 0);
 
@@ -1034,7 +936,7 @@ function BudgetPlanForm({
                 options.wide && 'md:col-span-2',
             )}
         >
-            <Label htmlFor={`budget-${name}`}>
+            <Label htmlFor={`budget-${name}`} className="section-label">
                 {label} {options.required && <span className="text-destructive">*</span>}
             </Label>
             {options.area ? (
@@ -1062,14 +964,16 @@ function BudgetPlanForm({
 
     const money = (name: MoneyKey, label: string, hint?: string) => (
         <div className="grid content-start gap-1.5">
-            <Label htmlFor={`budget-${name}`}>{label}</Label>
+            <Label htmlFor={`budget-${name}`} className="section-label">
+                {label}
+            </Label>
             <CurrencyInput
                 id={`budget-${name}`}
                 value={form.data[name]}
                 onValueChange={(value) => form.setData(name, value)}
             />
             {hint && (
-                <p className="text-[11px] text-muted-foreground">{hint}</p>
+                <p className="text-xs text-muted-foreground">{hint}</p>
             )}
             <InputError message={form.errors[name]} />
         </div>
@@ -1081,7 +985,9 @@ function BudgetPlanForm({
         values: string[],
     ) => (
         <div className="grid content-start gap-1.5">
-            <Label htmlFor={`budget-${name}`}>{label}</Label>
+            <Label htmlFor={`budget-${name}`} className="section-label">
+                {label}
+            </Label>
             <Select
                 value={form.data[name] === '' ? NONE : form.data[name]}
                 onValueChange={(value) =>
@@ -1107,60 +1013,17 @@ function BudgetPlanForm({
     return (
         <>
             <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                    {plan === null ? (
-                        <>
-                            <span>Tambah PRK:</span>
-                            <span className="text-primary font-bold">
-                                {TYPE_CONFIG[form.data.budget_type].label}
-                            </span>
-                        </>
-                    ) : (
-                        `Ubah PRK ${plan.prk_induk}`
-                    )}
+                <DialogTitle>
+                    {plan === null
+                        ? `Tambah PRK - ${TYPE_LABELS[form.data.budget_type]}`
+                        : `Ubah PRK ${plan.prk_induk}`}
                 </DialogTitle>
                 <DialogDescription>
                     {isOperationType
-                        ? 'Form input Anggaran Operasi dan Pendukung Energi Primer (Pagu, Realisasi, Sisa Pagu, Rencana Disburse, Keterangan).'
-                        : 'Form input Anggaran Investasi (Program, Kontrak, Fisik/BA, Pembayaran).'}
+                        ? 'Isi nomor PRK, deskripsi, pagu, realisasi, rencana disburse, dan keterangan.'
+                        : 'Nilai dalam rupiah penuh. PRK muncul sebagai pilihan Nomor PRK pada form Usulan Pekerjaan bidang yang dipilih.'}
                 </DialogDescription>
             </DialogHeader>
-
-            {/* Selector for Budget Type in Modal */}
-            <div className="rounded-lg border border-border bg-muted/40 p-3">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">
-                    Jenis Anggaran:
-                </Label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {(
-                        [
-                            'operasi',
-                            'investasi',
-                            'energi_primer',
-                        ] as BudgetPlanType[]
-                    ).map((type) => {
-                        const cfg = TYPE_CONFIG[type];
-                        const Icon = cfg.icon;
-                        const isSelected = form.data.budget_type === type;
-                        return (
-                            <button
-                                key={type}
-                                type="button"
-                                onClick={() => form.setData('budget_type', type)}
-                                className={cn(
-                                    'flex items-center gap-2 rounded-md border p-2.5 text-left text-xs font-medium transition-all',
-                                    isSelected
-                                        ? 'border-primary bg-primary/10 text-primary font-semibold ring-1 ring-primary'
-                                        : 'border-border bg-card text-muted-foreground hover:bg-muted/70 hover:text-foreground',
-                                )}
-                            >
-                                <Icon className="size-4 shrink-0" />
-                                <span className="truncate">{cfg.shortLabel}</span>
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
 
             <form
                 id="budget-plan-form"
@@ -1170,15 +1033,43 @@ function BudgetPlanForm({
                     submit();
                 }}
             >
+                {/* Pilihan Jenis Anggaran memakai Select standar */}
+                <div className="grid content-start gap-1.5">
+                    <Label className="section-label">Jenis Anggaran</Label>
+                    <Select
+                        value={form.data.budget_type}
+                        onValueChange={(value) =>
+                            form.setData('budget_type', value as BudgetPlanType)
+                        }
+                        disabled={plan !== null}
+                    >
+                        <SelectTrigger className="w-full">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="operasi">
+                                Anggaran Operasi (AO PEMELIHARAAN)
+                            </SelectItem>
+                            <SelectItem value="investasi">
+                                Anggaran Investasi (AI)
+                            </SelectItem>
+                            <SelectItem value="energi_primer">
+                                Anggaran Pendukung Energi Primer
+                            </SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <InputError message={form.errors.budget_type} />
+                </div>
+
                 {isOperationType ? (
-                    /* Form for Anggaran Operasi (AO) & Anggaran Pendukung Energi Primer */
-                    <Section title={`Data ${TYPE_CONFIG[form.data.budget_type].label}`}>
+                    /* Form Anggaran Operasi & Pendukung Energi Primer */
+                    <Section title={TYPE_LABELS[form.data.budget_type]}>
                         {text('prk_induk', 'Nomor PRK', {
                             placeholder: 'Contoh: KD262G0101',
                             required: true,
                         })}
                         <div className="grid content-start gap-1.5">
-                            <Label htmlFor="budget-work_director_id">
+                            <Label htmlFor="budget-work_director_id" className="section-label">
                                 Bidang (Direksi Pekerjaan)
                             </Label>
                             <Select
@@ -1222,23 +1113,18 @@ function BudgetPlanForm({
                             'Total realisasi sampai periode berjalan.',
                         )}
 
-                        {/* Sisa Pagu (Auto-calculated) */}
+                        {/* Sisa Pagu (Dihitung otomatis) */}
                         <div className="grid content-start gap-1.5">
-                            <Label htmlFor="budget-sisa-pagu">
+                            <Label className="section-label">
                                 Sisa Pagu (Pagu - Realisasi)
                             </Label>
-                            <div
-                                id="budget-sisa-pagu"
-                                className={cn(
-                                    'flex h-9 w-full items-center rounded-md border px-3 text-sm font-bold tabular-nums',
-                                    computedRemainingPagu < 0
-                                        ? 'border-destructive bg-destructive/10 text-destructive'
-                                        : 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200',
-                                )}
-                            >
-                                {formatCurrency(computedRemainingPagu)}
-                            </div>
-                            <p className="text-[11px] text-muted-foreground">
+                            <Input
+                                readOnly
+                                disabled
+                                value={formatCurrency(computedRemainingPagu)}
+                                className="tabular font-semibold text-foreground bg-muted/40"
+                            />
+                            <p className="text-xs text-muted-foreground">
                                 Dihitung otomatis: Pagu dikurangi Realisasi.
                             </p>
                         </div>
@@ -1251,11 +1137,11 @@ function BudgetPlanForm({
                             area: true,
                             wide: true,
                             placeholder:
-                                'Contoh: Terkontrak 11 site, Dokumen tagihan Real, Tahap 1 s/d JUNI 26 ok (done)...',
+                                'Contoh: Terkontrak 11 site, Dokumen tagihan Real, Tahap 1 s/d JUNI 26 ok...',
                         })}
                     </Section>
                 ) : (
-                    /* Existing 4-section Form for Anggaran Investasi */
+                    /* Form 4 Bagian untuk Anggaran Investasi */
                     <>
                         <Section title="Program">
                             {text('district', 'Distrik', { placeholder: 'UPKD' })}
@@ -1264,7 +1150,7 @@ function BudgetPlanForm({
                                 required: true,
                             })}
                             <div className="grid content-start gap-1.5 md:col-span-2">
-                                <Label htmlFor="budget-work_director_id">
+                                <Label htmlFor="budget-work_director_id" className="section-label">
                                     Bidang (Direksi Pekerjaan){' '}
                                     <span className="text-destructive">*</span>
                                 </Label>
@@ -1411,9 +1297,7 @@ function BudgetPlanForm({
 function Section({ title, children }: { title: string; children: ReactNode }) {
     return (
         <fieldset className="rounded-md border border-border p-4">
-            <legend className="section-label px-1 font-semibold text-xs tracking-wider uppercase text-muted-foreground">
-                {title}
-            </legend>
+            <legend className="section-label px-1">{title}</legend>
             <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-4">
                 {children}
             </div>
