@@ -35,7 +35,23 @@ export type BudgetPlanOption = {
     workDirectorId: number | null;
     woNumber: string | null;
     prNumber: string | null;
+    /** Deskripsi PRK Induk and Sub Program, for the job's name. */
+    programName: string | null;
+    subProgram: string | null;
+    /** Rencana AI / Nilai RAB, for the estimate. */
+    aiValue: number | null;
 };
+
+/**
+ * The job's name a PRK suggests: its program, with the sub program when it
+ * adds something.
+ */
+function nameFromPlan(plan: BudgetPlanOption): string {
+    return [plan.programName, plan.subProgram]
+        .map((part) => (part ?? '').replace(/\s+/g, ' ').trim())
+        .filter((part) => part !== '')
+        .join(' - ');
+}
 
 export type ProcurementFormOptions = {
     /** The PRK of Perencanaan Anggaran, offered to the bidang they are for. */
@@ -466,6 +482,17 @@ export function ProcurementForm({
                                 // The PRK's WO and PR come along with it.
                                 setData((current) => ({
                                     ...current,
+                                    // What the proposer has not typed yet is
+                                    // taken from the budget plan.
+                                    name:
+                                        current.name.trim() === ''
+                                            ? nameFromPlan(plan)
+                                            : current.name,
+                                    hpe_value:
+                                        current.hpe_value === 0 &&
+                                        plan.aiValue !== null
+                                            ? Math.round(plan.aiValue)
+                                            : current.hpe_value,
                                     wo_number: withNumber(
                                         current.wo_number,
                                         plan.woNumber,
@@ -939,8 +966,9 @@ function PrkPicker({
                 </button>
             )}
             <p className="text-[11px] text-muted-foreground">
-                Daftar PRK disediakan bagian Anggaran untuk bidang ini. Nomor WO
-                dan PR-nya ikut terisi.
+                Daftar PRK disediakan bagian Anggaran untuk bidang ini. Nama
+                pekerjaan (bila kosong), nilai RAB, nomor WO, dan nomor PR ikut
+                terisi; semuanya masih bisa diubah.
             </p>
             <InputError message={error} />
         </div>

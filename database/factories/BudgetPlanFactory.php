@@ -21,6 +21,7 @@ class BudgetPlanFactory extends Factory
         $ai = fake()->numberBetween(10, 900) * 1_000_000;
 
         return [
+            'district' => 'UPKD',
             'prk_induk' => fake()->unique()->numerify('2026.KD.#.##.###'),
             'work_director_id' => WorkDirector::factory(),
             'prk_induk_description' => 'Pemeliharaan '.fake()->words(3, true),

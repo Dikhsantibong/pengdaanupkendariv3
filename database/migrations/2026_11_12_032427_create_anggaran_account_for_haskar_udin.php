@@ -19,6 +19,11 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Tests build their own users; BudgetPlanTest runs this on purpose.
+        if (app()->runningUnitTests() && ! app()->bound('migrations.force-anggaran-account')) {
+            return;
+        }
+
         if (DB::table('users')->where('email', self::EMAIL)->exists()) {
             return;
         }

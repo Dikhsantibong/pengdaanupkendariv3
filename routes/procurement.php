@@ -163,6 +163,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Perencanaan Anggaran: read on the menu right, kept by Anggaran.
     Route::get('perencanaan-anggaran', [BudgetPlanController::class, 'index'])
         ->middleware('can:menu.budget-plans')->name('budget-plans.index');
+    Route::get('perencanaan-anggaran/excel', [BudgetPlanController::class, 'export'])
+        ->middleware('can:menu.budget-plans')->name('budget-plans.export');
     Route::middleware('can:budget-plans.manage')->group(function () {
         Route::post('perencanaan-anggaran', [BudgetPlanController::class, 'store'])->name('budget-plans.store');
         Route::put('perencanaan-anggaran/{budgetPlan}', [BudgetPlanController::class, 'update'])->name('budget-plans.update');

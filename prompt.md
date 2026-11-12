@@ -2918,7 +2918,54 @@ Langkah **Pelaksana** di tahap Pelaksanaan diubah sebagai berikut.
   - Memilih PRK ikut mengisi Nomor WO dan Nomor PR dari baris anggarannya.
   - Bila bidang itu belum punya PRK, Nomor PRK tetap diketik seperti sebelumnya.
   - Nomor PRK pengadaan lama tetap tampil.
+- **Pemberian hak di database yang sudah berjalan:**
+  - Migrasi `2026_11_12_034046_grant_budget_plan_permissions` mengisi `role_permissions` untuk kedua hak tersebut.
+  - Tanpa migrasi ini, menu Perencanaan Anggaran tidak muncul untuk peran Anggaran di production.
 - **Test:** `BudgetPlanTest`.
+
+---
+
+# Perencanaan Anggaran Lengkap, Isi Otomatis Usulan, Ekspor Excel
+
+- **Isian akun Anggaran mengikuti lembar Excel UPKD.** Kolom baru di `budget_plans` (migrasi `2026_11_12_034536_add_contract_and_payment_columns_to_budget_plans_table`); semuanya opsional:
+  - **Program:** Distrik
+  - **Kontrak:**
+    - PO Stock / Non Stock
+    - No PO Ellipse / Surat Penunjukan / DO / Surkes UMRO
+    - Alokasi PJB2 / Unit
+    - Item PO Ellipse
+    - Supplier
+    - Tanggal PO
+    - Nilai PO
+    - Tanggal Levering
+    - Keterangan Progres Kontrak
+  - **Fisik / BA:** Keterangan Progres Fisik / BA
+  - **Pembayaran:**
+    - Nilai Invoice
+    - Nomor Invoice
+    - Tanggal Bayar (boleh lebih dari satu)
+    - Nomor Bukti Bayar
+    - Keterangan Progres Bayar
+- **Halaman:**
+  - Tabel lebar dengan pita grup Program / Kontrak / Fisik-BA / Pembayaran, serta baris total AI, AKI, PO, dan invoice.
+  - Form dibagi per bagian.
+  - Nilai rupiah yang dibiarkan 0 disimpan kosong.
+- **Usulan Pekerjaan:** memilih Nomor PRK ikut mengisi:
+  - nama pekerjaan (bila masih kosong), dari Deskripsi PRK Induk dan Sub Program;
+  - nilai HPE (bila masih 0), dari Rencana AI / Nilai RAB;
+  - Nomor WO dan Nomor PR.
+
+  Semuanya masih bisa diubah. Pengusul hanya melihat data program; kolom kontrak dan pembayaran hanya untuk Anggaran.
+- **Ekspor Excel:**
+  - Tombol "Unduh Excel" (`/perencanaan-anggaran/excel`, `BudgetPlanController::export`, `App\Support\BudgetPlanExport`, OpenSpout).
+  - Isi berkas:
+    - sheet "UPKD" dengan catatan "*) dalam Rupiah penuh";
+    - pita grup berwarna dan judul kolom seperti lembar asli;
+    - angka berformat ribuan;
+    - kolom Bidang di akhir;
+    - baris TOTAL.
+  - Ekspor mengikuti filter dan pencarian yang sedang aktif.
+- **Test:** `BudgetPlanTest`, mencakup kolom baru, pilihan yang tidak dikenal, isi berkas Excel, dan hak unduh.
 
 ---
 

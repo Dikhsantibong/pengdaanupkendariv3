@@ -6,9 +6,12 @@ use App\Enums\UserRole;
 use App\Models\BudgetPlan;
 use App\Models\User;
 use App\Models\WorkDirector;
+use App\Services\AccessRights;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Testing\AssertableInertia as Assert;
+use OpenSpout\Reader\XLSX\Reader;
 use Tests\TestCase;
 
 /**
@@ -33,6 +36,16 @@ class BudgetPlanTest extends TestCase
 
     public function test_haskar_udin_has_an_anggaran_account(): void
     {
+        // The account migration is skipped while testing, so other tests
+        // keep their own users; it is run here on purpose, twice, to show
+        // a second run changes nothing.
+        $this->app->instance('migrations.force-anggaran-account', true);
+        $migration = require database_path('migrations/2026_11_12_032427_create_anggaran_account_for_haskar_udin.php');
+        $migration->up();
+        $migration->up();
+
+        $this->assertSame(1, User::query()->where('email', 'haskar.udin@upkendari.go.id')->count());
+
         $haskar = User::query()->where('email', 'haskar.udin@upkendari.go.id')->firstOrFail();
 
         $this->assertSame('Haskar Udin', $haskar->name);
@@ -61,6 +74,23 @@ class BudgetPlanTest extends TestCase
                 'aki_plan_value' => 1200000000,
                 'wo_number' => 'WO-2026-0042',
                 'pr_number' => '1000012345',
+                // The contract, physical progress and payment columns.
+                'district' => 'UPKD',
+                'po_stock_type' => 'Non Stock',
+                'po_number' => 'KDCD54',
+                'allocation' => 'UNIT',
+                'po_item' => '1-4',
+                'supplier' => 'PT. ALTRAK 1978',
+                'po_date' => '2025-05-19',
+                'po_value' => 650792334,
+                'delivery_date' => '2026-03-31',
+                'contract_progress' => 'Jasa Pekerjaan 29 Hari Kerja',
+                'physical_progress' => 'Pekerjaan Selesai, BASTP 25 Februari 2026',
+                'invoice_value' => 650792334,
+                'invoice_number' => 'AKD0526OKDCD5402',
+                'payment_dates' => '05/06/2026',
+                'payment_proof_number' => 'F26011',
+                'payment_progress' => 'TERBAYAR 100%',
             ])
             ->assertSessionHasNoErrors();
 
@@ -68,6 +98,10 @@ class BudgetPlanTest extends TestCase
         $this->assertSame($this->division->id, $plan->work_director_id);
         $this->assertSame('1500000000.00', $plan->ai_plan_value);
         $this->assertSame($this->budgeter->id, $plan->created_by);
+        $this->assertSame('PT. ALTRAK 1978', $plan->supplier);
+        $this->assertSame('2025-05-19', $plan->po_date?->toDateString());
+        $this->assertSame('650792334.00', $plan->invoice_value);
+        $this->assertSame('TERBAYAR 100%', $plan->payment_progress);
 
         $this->actingAs($this->budgeter)
             ->put(route('budget-plans.update', $plan), [
@@ -150,6 +184,99 @@ class BudgetPlanTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_a_running_database_gets_the_rights_from_the_grant_migration(): void
+    {
+        // A database migrated before the rights existed has no rows for them.
+        DB::table('role_permissions')->whereIn('permission', ['budget-plans.manage', 'menu.budget-plans'])->delete();
+        AccessRights::forget();
+
+        $this->actingAs($this->budgeter)->get(route('budget-plans.index'))->assertForbidden();
+
+        $migration = require database_path('migrations/2026_11_12_034046_grant_budget_plan_permissions.php');
+        $migration->up();
+        $migration->up();
+
+        $this->actingAs($this->budgeter)
+            ->get(route('budget-plans.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('canManage', true)
+                ->where('auth.permissions.menus.budget-plans', true));
+
+        $this->actingAs(User::factory()->teamLeaderIcc()->create())
+            ->get(route('budget-plans.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('canManage', false));
+    }
+
+    public function test_unknown_choices_are_refused(): void
+    {
+        $this->actingAs($this->budgeter)
+            ->post(route('budget-plans.store'), [
+                'prk_induk' => 'KD254A0102',
+                'work_director_id' => $this->division->id,
+                'po_stock_type' => 'Campuran',
+                'allocation' => 'GUDANG',
+                'po_date' => 'bukan tanggal',
+            ])
+            ->assertSessionHasErrors(['po_stock_type', 'allocation', 'po_date']);
+    }
+
+    public function test_the_plan_downloads_as_the_anggaran_sheet(): void
+    {
+        BudgetPlan::factory()->create([
+            'prk_induk' => 'KD254A0102',
+            'work_director_id' => $this->division->id,
+            'prk_induk_description' => 'FINAL STAGE PLTD RAHA #11 (CUMMINS)',
+            'ai_plan_value' => 650792000,
+            'supplier' => 'PT. ALTRAK 1978',
+            'po_date' => '2025-05-19',
+            'payment_progress' => 'TERBAYAR 100%',
+        ]);
+        BudgetPlan::factory()->create(['prk_induk' => 'KD254A0107', 'work_director_id' => WorkDirector::factory()]);
+
+        $response = $this->actingAs($this->budgeter)
+            ->get(route('budget-plans.export', ['bidang' => $this->division->id]))
+            ->assertOk()
+            ->assertDownload();
+
+        $reader = new Reader;
+        $reader->open($response->baseResponse->getFile()->getPathname());
+        $rows = [];
+
+        foreach ($reader->getSheetIterator() as $sheet) {
+            $this->assertSame('UPKD', $sheet->getName());
+
+            foreach ($sheet->getRowIterator() as $row) {
+                $rows[] = $row->toArray();
+            }
+        }
+
+        $reader->close();
+
+        // The note, the group band, the headers, one filtered row, the total.
+        $this->assertCount(5, $rows);
+        $this->assertSame('P R O G R A M', $rows[1][0]);
+        $this->assertSame('K O N T R A K', $rows[1][7]);
+        $this->assertSame('P E M B A Y A R A N', $rows[1][19]);
+        $this->assertSame('PRK INDUK', $rows[2][2]);
+        $this->assertSame('Supplier', $rows[2][13]);
+        $this->assertSame([1, 'UPKD', 'KD254A0102', 'FINAL STAGE PLTD RAHA #11 (CUMMINS)'], array_slice($rows[3], 0, 4));
+        $this->assertEquals(650792000, $rows[3][5]);
+        $this->assertSame('PT. ALTRAK 1978', $rows[3][13]);
+        $this->assertSame('19/05/2025', $rows[3][14]);
+        $this->assertSame('TERBAYAR 100%', $rows[3][23]);
+        $this->assertSame('Asman Operasi', $rows[3][24]);
+        $this->assertSame('TOTAL', $rows[4][0]);
+    }
+
+    public function test_only_who_sees_the_plan_downloads_it(): void
+    {
+        $this->actingAs(User::factory()->planner()->create())
+            ->get(route('budget-plans.export'))
+            ->assertForbidden();
+    }
+
     public function test_the_menu_is_shown_to_the_anggaran_role(): void
     {
         $this->actingAs($this->budgeter)
@@ -176,7 +303,10 @@ class BudgetPlanTest extends TestCase
                 ->where('options.budgetPlans.0.workDirectorId', $this->division->id)
                 ->where('options.budgetPlans.0.description', 'Overhaul Mesin PLTD')
                 ->where('options.budgetPlans.0.woNumber', 'WO-2026-0042')
-                ->where('options.budgetPlans.0.prNumber', '1000012345'));
+                ->where('options.budgetPlans.0.prNumber', '1000012345')
+                ->where('options.budgetPlans.0.subProgram', 'Overhaul Mesin PLTD')
+                ->has('options.budgetPlans.0.programName')
+                ->has('options.budgetPlans.0.aiValue'));
 
         $this->assertNotNull($plan->id);
     }
