@@ -47,6 +47,7 @@ class PartnerCandidateTest extends TestCase
                     'name' => $name,
                     'vendor_code' => "V0700{$index}",
                     'director_name' => "Direktur {$index}",
+                    'phone_number' => "0812000{$index}",
                     'quotation_number' => "00{$index}/SPH/2026",
                     'quotation_date' => '2026-08-01',
                 ])
@@ -54,6 +55,16 @@ class PartnerCandidateTest extends TestCase
         }
 
         $this->assertCount(3, $procurement->partnerCandidates()->get());
+        // The partner's mobile number is given with the offer.
+        $this->assertSame('08120001', $procurement->partnerCandidates()->where('name', 'PT Dua')->value('phone_number'));
+
+        // A phone number is digits, spaces, dashes, + and brackets only.
+        $this->actingAs($this->planner)
+            ->post(route('procurements.partner-candidates.store', $procurement), [
+                'name' => 'PT Empat',
+                'phone_number' => 'telepon saya',
+            ])
+            ->assertSessionHasErrors('phone_number');
         // Listing is not picking.
         $this->assertNull($procurement->refresh()->partner_candidate_id);
 
@@ -75,6 +86,8 @@ class PartnerCandidateTest extends TestCase
         $this->actingAs($this->executor)
             ->put(route('procurements.checklists.input', [$procurement, $step]), [
                 'partner_candidate_id' => $second->id,
+                'partner_director_name' => 'Direktur 1',
+                'partner_phone_number' => '08120001',
                 'partner_address' => 'Jl. Sudirman No. 2, Kendari',
                 'bank_account_number' => '123',
                 'bank_name' => 'BRI',
@@ -87,6 +100,7 @@ class PartnerCandidateTest extends TestCase
         // The contract documents read the picked partner.
         $this->assertSame('PT Dua', $procurement->partner_name);
         $this->assertSame('Direktur 1', $procurement->partner_director_name);
+        $this->assertSame('08120001', $procurement->partner_phone_number);
         $this->assertSame('001/SPH/2026', $procurement->quotation_number);
         // ... and its kode rekanan, which the SPK and DO print.
         $this->assertSame('V07001', $procurement->partner_vendor_code);

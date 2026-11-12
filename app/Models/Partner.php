@@ -19,6 +19,7 @@ use Illuminate\Support\Carbon;
  * @property string $name
  * @property string|null $vendor_code
  * @property string|null $director_name
+ * @property string|null $phone_number
  * @property string|null $address
  * @property int $sort_order
  * @property bool $is_active
@@ -26,7 +27,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  * @property Carbon|null $deleted_at
  */
-#[Fillable(['name', 'vendor_code', 'director_name', 'address', 'sort_order', 'is_active'])]
+#[Fillable(['name', 'vendor_code', 'director_name', 'phone_number', 'address', 'sort_order', 'is_active'])]
 class Partner extends Model
 {
     /** @use HasFactory<PartnerFactory> */
@@ -37,7 +38,7 @@ class Partner extends Model
      * one only gains the details it still lacks, so what was corrected in the
      * master data is never overwritten.
      *
-     * @param  array{vendor_code?: ?string, director_name?: ?string, address?: ?string}  $details
+     * @param  array{vendor_code?: ?string, director_name?: ?string, phone_number?: ?string, address?: ?string}  $details
      */
     public static function remember(?string $name, array $details = []): void
     {

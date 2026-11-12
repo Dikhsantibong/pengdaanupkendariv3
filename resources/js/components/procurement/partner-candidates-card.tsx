@@ -23,6 +23,7 @@ type CandidateValues = {
     name: string;
     vendor_code: string;
     director_name: string;
+    phone_number: string;
     address: string;
     quotation_number: string;
     quotation_date: string;
@@ -125,6 +126,8 @@ export function PartnerCandidatesCard({
                                             `Kode rekanan ${candidate.vendor_code}`,
                                         candidate.director_name &&
                                             `Direktur: ${candidate.director_name}`,
+                                        candidate.phone_number &&
+                                            `HP ${candidate.phone_number}`,
                                         candidate.quotation_number &&
                                             `Penawaran ${candidate.quotation_number}`,
                                         candidate.quotation_date &&
@@ -233,6 +236,7 @@ function CandidateForm({
         name: candidate?.name ?? '',
         vendor_code: candidate?.vendor_code ?? '',
         director_name: candidate?.director_name ?? '',
+        phone_number: candidate?.phone_number ?? '',
         address: candidate?.address ?? '',
         quotation_number: candidate?.quotation_number ?? '',
         quotation_date: candidate?.quotation_date ?? '',
@@ -277,7 +281,7 @@ function CandidateForm({
     const text = (
         name: Exclude<keyof CandidateValues, 'address' | 'quotation_file'>,
         label: string,
-        type: 'text' | 'date' | 'number' = 'text',
+        type: 'text' | 'tel' | 'date' | 'number' = 'text',
     ) => (
         <div className="grid gap-1.5">
             <Label htmlFor={`${prefix}-${name}`}>{label}</Label>
@@ -285,7 +289,9 @@ function CandidateForm({
                 id={`${prefix}-${name}`}
                 type={type}
                 min={type === 'number' ? 0 : undefined}
-                className={type === 'text' ? undefined : 'tabular'}
+                className={
+                    type === 'text' || type === 'tel' ? undefined : 'tabular'
+                }
                 value={form.data[name]}
                 onChange={(event) => form.setData(name, event.target.value)}
             />
@@ -316,6 +322,8 @@ function CandidateForm({
                                 name: partner.name,
                                 vendor_code: partner.vendor_code ?? '',
                                 director_name: partner.director_name ?? '',
+                                phone_number:
+                                    partner.phone_number ?? data.phone_number,
                                 address: partner.address ?? '',
                             }))
                         }
@@ -328,6 +336,7 @@ function CandidateForm({
                 </div>
                 {text('vendor_code', 'Kode Rekanan')}
                 {text('director_name', 'Nama Direktur')}
+                {text('phone_number', 'Nomor HP Mitra', 'tel')}
                 {text('quotation_number', 'Nomor Surat Penawaran')}
                 {text('quotation_date', 'Tanggal Surat Penawaran', 'date')}
                 {text(

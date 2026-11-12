@@ -37,6 +37,7 @@ use Illuminate\Support\Collection;
  * @property string $group_letters How the item groups are lettered: 'upper' (A, B) or 'lower' (a, b).
  * @property string|null $partner_vendor_code
  * @property string|null $partner_director_name
+ * @property string|null $partner_phone_number
  * @property string|null $partner_address
  * @property int|null $partner_candidate_id
  * @property int $work_director_id
@@ -135,6 +136,7 @@ use Illuminate\Support\Collection;
     'partner_name',
     'partner_vendor_code',
     'partner_director_name',
+    'partner_phone_number',
     'partner_address',
     'work_director_id',
     'target_unit_id',

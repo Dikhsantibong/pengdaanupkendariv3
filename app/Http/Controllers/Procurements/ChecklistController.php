@@ -68,15 +68,27 @@ class ChecklistController extends Controller
         // procurement, where the contract documents read them.
         if ($kind === ChecklistInput::BankAccount) {
             $candidate = $procurement->partnerCandidates()->whereKey((int) $values['partner_candidate_id'])->firstOrFail();
-            $address = trim((string) $values['partner_address']);
+            $typed = [
+                'director_name' => trim((string) $values['partner_director_name']),
+                'phone_number' => trim((string) $values['partner_phone_number']),
+                'address' => trim((string) $values['partner_address']),
+            ];
 
-            // The address typed here is the one the contract carries; the
-            // candidate keeps it too, so both lists agree.
-            if ($candidate->address !== $address) {
-                $candidate->update(['address' => $address]);
+            // The director, phone and address typed here are the ones the
+            // contract carries; the candidate keeps them too, so both agree.
+            $changed = array_filter($typed, fn (string $value, string $field): bool => $candidate->getAttribute($field) !== $value, ARRAY_FILTER_USE_BOTH);
+
+            if ($changed !== []) {
+                $candidate->update($changed);
             }
 
-            $values = [...$values, ...$candidate->partnerFields(), 'partner_address' => $address];
+            $values = [
+                ...$values,
+                ...$candidate->partnerFields(),
+                'partner_director_name' => $typed['director_name'],
+                'partner_phone_number' => $typed['phone_number'],
+                'partner_address' => $typed['address'],
+            ];
         }
 
         // Numbers are kept without the spaces typed around them.

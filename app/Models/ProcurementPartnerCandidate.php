@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $name
  * @property string|null $vendor_code
  * @property string|null $director_name
+ * @property string|null $phone_number
  * @property string|null $address
  * @property string|null $quotation_number
  * @property CarbonImmutable|null $quotation_date
@@ -27,7 +28,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null $quotation_file_size
  * @property int $sort_order
  */
-#[Fillable(['name', 'vendor_code', 'director_name', 'address', 'quotation_number', 'quotation_date', 'quotation_value', 'sort_order'])]
+#[Fillable(['name', 'vendor_code', 'director_name', 'phone_number', 'address', 'quotation_number', 'quotation_date', 'quotation_value', 'sort_order'])]
 class ProcurementPartnerCandidate extends Model
 {
     /**
@@ -52,6 +53,7 @@ class ProcurementPartnerCandidate extends Model
             Partner::remember($candidate->name, [
                 'vendor_code' => $candidate->vendor_code,
                 'director_name' => $candidate->director_name,
+                'phone_number' => $candidate->phone_number,
                 'address' => $candidate->address,
             ]);
         });
@@ -98,6 +100,7 @@ class ProcurementPartnerCandidate extends Model
             'partner_name' => $this->name,
             'partner_vendor_code' => $this->vendor_code,
             'partner_director_name' => $this->director_name,
+            'partner_phone_number' => $this->phone_number,
             'partner_address' => $this->address,
             'quotation_number' => $this->quotation_number,
             'quotation_date' => $this->quotation_date?->toDateString(),

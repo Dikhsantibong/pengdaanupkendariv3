@@ -97,6 +97,8 @@ export function ChecklistInputForm({
             values.partner_candidate_id === null
                 ? ''
                 : String(values.partner_candidate_id),
+        partner_director_name: values.partner_director_name ?? '',
+        partner_phone_number: values.partner_phone_number ?? '',
         partner_address: values.partner_address ?? '',
         bank_account_number: values.bank_account_number ?? '',
         bank_name: values.bank_name ?? '',
@@ -351,8 +353,15 @@ export function ChecklistInputForm({
                                             form.setData((data) => ({
                                                 ...data,
                                                 partner_candidate_id: value,
-                                                // The candidate's address,
-                                                // to correct here if needed.
+                                                // The candidate's director,
+                                                // phone and address, to
+                                                // correct here if needed.
+                                                partner_director_name:
+                                                    picked?.director_name ??
+                                                    data.partner_director_name,
+                                                partner_phone_number:
+                                                    picked?.phone_number ??
+                                                    data.partner_phone_number,
                                                 partner_address:
                                                     picked?.address ??
                                                     data.partner_address,
@@ -390,7 +399,47 @@ export function ChecklistInputForm({
                                 )}
                             </Field>
                         </div>
-                        <div className="sm:col-span-3">
+                        <Field
+                            id={`director-${checklistId}`}
+                            label="Nama Direktur"
+                            error={form.errors.partner_director_name}
+                        >
+                            <Input
+                                id={`director-${checklistId}`}
+                                className="h-8"
+                                value={form.data.partner_director_name}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'partner_director_name',
+                                        event.target.value,
+                                    )
+                                }
+                                placeholder="Terisi dari calon mitra"
+                                autoComplete="off"
+                            />
+                        </Field>
+                        <Field
+                            id={`phone-${checklistId}`}
+                            label="Nomor HP"
+                            error={form.errors.partner_phone_number}
+                        >
+                            <Input
+                                id={`phone-${checklistId}`}
+                                type="tel"
+                                inputMode="tel"
+                                className="tabular h-8"
+                                value={form.data.partner_phone_number}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'partner_phone_number',
+                                        event.target.value,
+                                    )
+                                }
+                                placeholder="08xx xxxx xxxx"
+                                autoComplete="off"
+                            />
+                        </Field>
+                        <div className="sm:col-span-1">
                             <Field
                                 id={`address-${checklistId}`}
                                 label="Alamat Pelaksana"

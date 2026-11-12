@@ -29,7 +29,7 @@ class PartnerSuggestionController extends Controller
             ->orderByRaw('CASE WHEN name LIKE ? THEN 0 ELSE 1 END', [addcslashes($search, '%_\\').'%'])
             ->orderBy('name')
             ->limit(8)
-            ->get(['id', 'name', 'vendor_code', 'director_name', 'address']);
+            ->get(['id', 'name', 'vendor_code', 'director_name', 'phone_number', 'address']);
 
         return response()->json([
             'partners' => $partners->map(fn (Partner $partner): array => [
@@ -37,6 +37,7 @@ class PartnerSuggestionController extends Controller
                 'name' => $partner->name,
                 'vendor_code' => $partner->vendor_code,
                 'director_name' => $partner->director_name,
+                'phone_number' => $partner->phone_number,
                 'address' => $partner->address,
             ])->all(),
         ]);

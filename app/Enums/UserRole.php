@@ -12,6 +12,7 @@ enum UserRole: string
     case DireksiPekerjaan = 'direksi_pekerjaan';
     case Pengusul = 'pengusul';
     case Keuangan = 'keuangan';
+    case Anggaran = 'anggaran';
 
     /**
      * Get the human readable label for the role.
@@ -27,6 +28,7 @@ enum UserRole: string
             self::DireksiPekerjaan => 'Direksi Pekerjaan (Asman/TL)',
             self::Pengusul => 'Pengusul (Staf/TL Bidang)',
             self::Keuangan => 'Keuangan',
+            self::Anggaran => 'Anggaran',
         };
     }
 

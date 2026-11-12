@@ -390,6 +390,8 @@ class EndToEndFlowTest extends TestCase
             // The executor picks the partner from the calon mitra.
             'bank_account' => [
                 'partner_candidate_id' => $procurement->partnerCandidates()->where('name', 'CV Teknik Pendingin')->value('id'),
+                'partner_director_name' => 'Rahmat Hidayat',
+                'partner_phone_number' => '0812 3456 7890',
                 'partner_address' => 'Jl. Ahmad Yani No. 10, Kendari',
                 'bank_account_number' => '123-456-789',
                 'bank_name' => 'Bank Mandiri',

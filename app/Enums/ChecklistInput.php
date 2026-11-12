@@ -32,7 +32,7 @@ enum ChecklistInput: string
         return match ($this) {
             self::ContractPeriod => 'Rentang waktu (tanggal mulai + jumlah hari)',
             self::Warranty => 'Masa garansi (bulan)',
-            self::BankAccount => 'Pelaksana (pilih dari calon mitra + alamat + rekening)',
+            self::BankAccount => 'Pelaksana (pilih dari calon mitra + direktur, HP, alamat + rekening)',
             self::PartnerCandidates => 'Calon mitra & penawaran harga',
             self::ProcurementMemo => 'Nomor & tanggal nota dinas ke pengadaan',
             self::ContractNumber => 'Nomor kontrak',
@@ -53,7 +53,7 @@ enum ChecklistInput: string
             self::ContractPeriod => ['execution_start_date', 'execution_duration_days'],
             self::Warranty => ['warranty_months'],
             // The partner picked from the candidates, then its account.
-            self::BankAccount => ['partner_candidate_id', 'partner_address', 'bank_account_number', 'bank_name', 'bank_account_holder'],
+            self::BankAccount => ['partner_candidate_id', 'partner_director_name', 'partner_phone_number', 'partner_address', 'bank_account_number', 'bank_name', 'bank_account_holder'],
             // Kept on the candidates themselves, not on the procurement.
             self::PartnerCandidates => [],
             // The memo once known as the Nota Dinas ke Manager / ICC.

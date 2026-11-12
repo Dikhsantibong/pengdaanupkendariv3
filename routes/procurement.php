@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ApprovalQueueController;
+use App\Http\Controllers\BudgetPlanController;
 use App\Http\Controllers\DocumentArchiveController;
 use App\Http\Controllers\ExecutionController;
 use App\Http\Controllers\MonitoringController;
@@ -158,6 +159,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('can:menu.documents')->name('documents.index');
     Route::get('documents/pekerjaan/{procurement}', [DocumentArchiveController::class, 'procurement'])
         ->middleware('can:menu.documents')->name('documents.procurement');
+
+    // Perencanaan Anggaran: read on the menu right, kept by Anggaran.
+    Route::get('perencanaan-anggaran', [BudgetPlanController::class, 'index'])
+        ->middleware('can:menu.budget-plans')->name('budget-plans.index');
+    Route::middleware('can:budget-plans.manage')->group(function () {
+        Route::post('perencanaan-anggaran', [BudgetPlanController::class, 'store'])->name('budget-plans.store');
+        Route::put('perencanaan-anggaran/{budgetPlan}', [BudgetPlanController::class, 'update'])->name('budget-plans.update');
+        Route::delete('perencanaan-anggaran/{budgetPlan}', [BudgetPlanController::class, 'destroy'])->name('budget-plans.destroy');
+    });
 
     Route::middleware('can:menu.reports')->group(function () {
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');

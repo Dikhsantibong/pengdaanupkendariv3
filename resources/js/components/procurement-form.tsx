@@ -27,7 +27,19 @@ import type { Option, PicOption } from '@/types';
 /** A contract number format, and whether it asks for a category. */
 export type ContractFormatOption = Option & { usesWorkCategory?: boolean };
 
+/** A PRK the Anggaran role entered, meant for one bidang. */
+export type BudgetPlanOption = {
+    value: string;
+    label: string;
+    description: string | null;
+    workDirectorId: number | null;
+    woNumber: string | null;
+    prNumber: string | null;
+};
+
 export type ProcurementFormOptions = {
+    /** The PRK of Perencanaan Anggaran, offered to the bidang they are for. */
+    budgetPlans?: BudgetPlanOption[];
     contractNumberFormats: ContractFormatOption[];
     /** The categories of an SPK or PJ, from the Jenis Kontrak master data. */
     contractTypes: Option[];
@@ -175,6 +187,13 @@ export function ProcurementForm({
         )?.[1];
 
     const { data, setData, errors, processing } = form;
+
+    // The PRK Anggaran pointed at the chosen bidang; none, it is typed.
+    const prkChoices = (options.budgetPlans ?? []).filter(
+        (plan) =>
+            data.work_director_id !== null &&
+            plan.workDirectorId === data.work_director_id,
+    );
 
     /**
      * Switch the kind of contract. Its category is picked by the planning
@@ -436,15 +455,39 @@ export function ProcurementForm({
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    <MultiValueField
-                        id="prk_number"
-                        label="Nomor PRK"
-                        value={data.prk_number}
-                        onChange={(value) => setData('prk_number', value)}
-                        placeholder="Contoh: 2026.AO.01.001"
-                        required={isProposal}
-                        error={errors.prk_number}
-                    />
+                    {prkChoices.length > 0 ? (
+                        <PrkPicker
+                            choices={prkChoices}
+                            value={data.prk_number}
+                            required={isProposal}
+                            error={errors.prk_number}
+                            onChange={(value) => setData('prk_number', value)}
+                            onPick={(plan) =>
+                                // The PRK's WO and PR come along with it.
+                                setData((current) => ({
+                                    ...current,
+                                    wo_number: withNumber(
+                                        current.wo_number,
+                                        plan.woNumber,
+                                    ),
+                                    pr_po_number: withNumber(
+                                        current.pr_po_number,
+                                        plan.prNumber,
+                                    ),
+                                }))
+                            }
+                        />
+                    ) : (
+                        <MultiValueField
+                            id="prk_number"
+                            label="Nomor PRK"
+                            value={data.prk_number}
+                            onChange={(value) => setData('prk_number', value)}
+                            placeholder="Contoh: 2026.AO.01.001"
+                            required={isProposal}
+                            error={errors.prk_number}
+                        />
+                    )}
                     <MultiValueField
                         id="pr_po_number"
                         label="Nomor PR"
@@ -755,6 +798,155 @@ function TextField({
  * The rows are kept locally and handed up as one comma separated list, which
  * is how the numbers are stored.
  */
+/** The numbers of a comma separated field. */
+function splitNumbers(value: string): string[] {
+    return value
+        .split(/[,;\n]+/)
+        .map((part) => part.trim())
+        .filter((part) => part !== '');
+}
+
+/** A comma separated field with one more number, unless it holds it. */
+function withNumber(value: string, number: string | null): string {
+    const numbers = splitNumbers(value);
+    const added = (number ?? '').trim();
+
+    if (added === '' || numbers.includes(added)) {
+        return value;
+    }
+
+    return [...numbers, added].join(', ');
+}
+
+/**
+ * The Nomor PRK picked from Perencanaan Anggaran: the PRK the Anggaran role
+ * pointed at this bidang. A number kept from before stays selectable.
+ */
+function PrkPicker({
+    choices,
+    value,
+    onChange,
+    onPick,
+    required = false,
+    error,
+}: {
+    choices: BudgetPlanOption[];
+    value: string;
+    onChange: (value: string) => void;
+    onPick: (plan: BudgetPlanOption) => void;
+    required?: boolean;
+    error?: string;
+}) {
+    const [rows, setRows] = useState<string[]>(() => {
+        const numbers = splitNumbers(value);
+
+        return numbers.length > 0 ? numbers : [''];
+    });
+
+    const update = (next: string[]) => {
+        setRows(next);
+        onChange(next.filter((part) => part !== '').join(', '));
+    };
+
+    return (
+        <div className="grid content-start gap-2">
+            <FieldLabel
+                htmlFor="prk_number-0"
+                label="Nomor PRK"
+                required={required}
+            />
+            {rows.map((row, index) => {
+                const known = choices.some((plan) => plan.value === row);
+
+                return (
+                    <div key={index} className="flex items-center gap-1.5">
+                        <Select
+                            value={row}
+                            onValueChange={(picked) => {
+                                update(
+                                    rows.map((current, position) =>
+                                        position === index ? picked : current,
+                                    ),
+                                );
+
+                                const plan = choices.find(
+                                    (choice) => choice.value === picked,
+                                );
+
+                                if (plan !== undefined) {
+                                    onPick(plan);
+                                }
+                            }}
+                        >
+                            <SelectTrigger
+                                id={`prk_number-${index}`}
+                                className="w-full"
+                                aria-label={`Nomor PRK ke-${index + 1}`}
+                            >
+                                <SelectValue placeholder="Pilih Nomor PRK" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {row !== '' && !known && (
+                                    <SelectItem value={row}>{row}</SelectItem>
+                                )}
+                                {choices.map((plan) => (
+                                    <SelectItem
+                                        key={plan.value}
+                                        value={plan.value}
+                                    >
+                                        <span className="tabular">
+                                            {plan.label}
+                                        </span>
+                                        {plan.description && (
+                                            <span className="text-muted-foreground">
+                                                {' '}
+                                                · {plan.description}
+                                            </span>
+                                        )}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {rows.length > 1 && (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="shrink-0 text-muted-foreground hover:text-destructive"
+                                aria-label={`Hapus Nomor PRK ke-${index + 1}`}
+                                onClick={() =>
+                                    update(
+                                        rows.filter(
+                                            (_, position) => position !== index,
+                                        ),
+                                    )
+                                }
+                            >
+                                <X className="size-4" />
+                            </Button>
+                        )}
+                    </div>
+                );
+            })}
+            {rows.length < choices.length && (
+                <button
+                    type="button"
+                    className="flex items-center gap-1 justify-self-start text-xs font-medium text-primary hover:underline"
+                    onClick={() => setRows([...rows, ''])}
+                >
+                    <Plus className="size-3.5" />
+                    Tambah Nomor PRK
+                </button>
+            )}
+            <p className="text-[11px] text-muted-foreground">
+                Daftar PRK disediakan bagian Anggaran untuk bidang ini. Nomor WO
+                dan PR-nya ikut terisi.
+            </p>
+            <InputError message={error} />
+        </div>
+    );
+}
+
 function MultiValueField({
     id,
     label,
@@ -775,13 +967,26 @@ function MultiValueField({
     error?: string;
 }) {
     const [rows, setRows] = useState<string[]>(() => {
-        const numbers = value
-            .split(/[,;\n]+/)
-            .map((part) => part.trim())
-            .filter((part) => part !== '');
+        const numbers = splitNumbers(value);
 
         return numbers.length > 0 ? numbers : [''];
     });
+    const [reported, setReported] = useState(value);
+
+    // A number filled in from outside (a picked PRK brings its WO and PR)
+    // shows up as rows too.
+    if (value !== reported) {
+        setReported(value);
+
+        if (
+            splitNumbers(value).join(', ') !==
+            splitNumbers(rows.join(',')).join(', ')
+        ) {
+            const numbers = splitNumbers(value);
+
+            setRows(numbers.length > 0 ? numbers : ['']);
+        }
+    }
 
     const update = (next: string[]) => {
         setRows(next);

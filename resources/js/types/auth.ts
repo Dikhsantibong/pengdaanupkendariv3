@@ -42,6 +42,7 @@ export type AuthPermissions = {
         monitoring: boolean;
         reports: boolean;
         'public-monitoring': boolean;
+        'budget-plans': boolean;
     };
 };
 

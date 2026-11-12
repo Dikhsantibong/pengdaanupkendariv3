@@ -141,7 +141,12 @@ class SpplExecutionTest extends TestCase
         [$procurement, $executor, $rekening] = $this->spplStep('Pelaksana');
 
         // The step picks the executor from the calon mitra.
-        $candidate = $procurement->partnerCandidates()->create(['name' => 'CV Maju Jaya', 'address' => 'Jl. Lama']);
+        $candidate = $procurement->partnerCandidates()->create([
+            'name' => 'CV Maju Jaya',
+            'director_name' => 'Direktur Lama',
+            'phone_number' => '0811111111',
+            'address' => 'Jl. Lama',
+        ]);
 
         // The address is asked for with the account.
         $this->actingAs($executor)
@@ -151,11 +156,13 @@ class SpplExecutionTest extends TestCase
                 'bank_name' => 'BRI',
                 'bank_account_holder' => 'CV Maju Jaya',
             ])
-            ->assertSessionHasErrors('partner_address');
+            ->assertSessionHasErrors(['partner_address', 'partner_director_name', 'partner_phone_number']);
 
         $this->actingAs($executor)
             ->put(route('procurements.checklists.input', [$procurement, $rekening]), [
                 'partner_candidate_id' => $candidate->id,
+                'partner_director_name' => 'Andi Pratama',
+                'partner_phone_number' => '0813-4000-1234',
                 'partner_address' => 'Jl. Malik Raya No. 5, Kendari',
                 'bank_account_number' => '0123 4567 89',
                 'bank_name' => 'BRI',
@@ -181,6 +188,11 @@ class SpplExecutionTest extends TestCase
         // The address corrected on the step is the contract's and the candidate's.
         $this->assertSame('Jl. Malik Raya No. 5, Kendari', $procurement->partner_address);
         $this->assertSame('Jl. Malik Raya No. 5, Kendari', $candidate->refresh()->address);
+        // So are the director and the mobile number.
+        $this->assertSame('Andi Pratama', $procurement->partner_director_name);
+        $this->assertSame('0813-4000-1234', $procurement->partner_phone_number);
+        $this->assertSame('Andi Pratama', $candidate->director_name);
+        $this->assertSame('0813-4000-1234', $candidate->phone_number);
         $this->assertSame(3, $procurement->warranty_months);
     }
 

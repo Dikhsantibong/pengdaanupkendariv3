@@ -50,6 +50,7 @@ import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import accessRights from '@/routes/access-rights';
 import approvals from '@/routes/approvals';
+import budgetPlans from '@/routes/budget-plans';
 import documents from '@/routes/documents';
 import execution from '@/routes/execution';
 import finance from '@/routes/finance';
@@ -86,6 +87,16 @@ export function AppSidebar() {
         {
             title: 'Pengadaan',
             items: [
+                // The PRK the proposers pick, kept by Anggaran.
+                ...(menus['budget-plans']
+                    ? [
+                          {
+                              title: 'Perencanaan Anggaran',
+                              href: budgetPlans.index(),
+                              icon: Wallet,
+                          },
+                      ]
+                    : []),
                 ...(permissions.createProcurement
                     ? [
                           {

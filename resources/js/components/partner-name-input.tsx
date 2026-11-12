@@ -9,6 +9,7 @@ export type PartnerSuggestion = {
     name: string;
     vendor_code: string | null;
     director_name: string | null;
+    phone_number: string | null;
     address: string | null;
 };
 

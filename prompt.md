@@ -2839,6 +2839,89 @@ Administrator dapat menutup aplikasi sementara saat pemeliharaan, lewat menu **A
 
 ---
 
+# Langkah Pelaksana: Alamat Pelaksana, Tanpa Nomor Surat
+
+Langkah **Pelaksana** di tahap Pelaksanaan diubah sebagai berikut.
+
+- **Daftar pilihan pelaksana** hanya menampilkan nama calon mitra. Nomor surat penawaran tidak lagi ikut tampil.
+  - Nomor surat tetap diisi di langkah Penawaran (Perencanaan) dan tampil di panel Identitas.
+- **Kolom baru "Alamat Pelaksana" (wajib):**
+  - Terisi otomatis dari alamat calon mitra yang dipilih, dan bisa dikoreksi di sini.
+  - Alamat yang disimpan dipakai dokumen kontrak (`partner_address`) dan ikut memperbarui alamat calon mitranya, supaya kedua data sama.
+- **Syarat selesai:** langkah Pelaksana baru dianggap lengkap bila alamatnya terisi. Langkah yang sudah dicentang tetap selesai.
+- **File:**
+  - `ChecklistInput::BankAccount` (field `partner_address`)
+  - `UpdateChecklistInputRequest`
+  - `ChecklistController::updateInput`
+  - `components/procurement/checklist-input-form.tsx`
+- **Test:**
+  - `SpplExecutionTest::test_the_bank_account_and_warranty_are_saved`
+  - `PartnerCandidateTest`
+  - `EndToEndFlowTest`
+
+---
+
+# Nomor HP Mitra, serta Direktur & HP di Langkah Pelaksana
+
+- **Penawaran (Perencanaan):** form calon mitra mendapat kolom **Nomor HP Mitra** (opsional, hanya angka, spasi, `+`, `-`, dan tanda kurung).
+  - Nomor ini tampil di kartu calon mitra dan ikut tersimpan ke Data Master Mitra lewat `Partner::remember`.
+  - Saat memilih mitra dari Data Master, nomornya ikut terisi.
+- **Pelaksana (Pelaksanaan):** di samping Alamat Pelaksana kini ada **Nama Direktur** dan **Nomor HP** (keduanya wajib).
+  - Terisi otomatis dari calon mitra yang dipilih, dan bisa dikoreksi.
+  - Nilai yang disimpan masuk ke pengadaan (`partner_director_name`, `partner_phone_number`) dan ikut memperbarui data calon mitranya.
+  - Langkah yang sudah dicentang tetap selesai.
+- **Migrasi:** `2026_11_12_031212_add_phone_number_to_partners_and_candidates` menambah kolom berikut, hanya bila belum ada:
+  - `partners.phone_number`
+  - `procurement_partner_candidates.phone_number`
+  - `procurements.partner_phone_number`
+- **File:**
+  - `ChecklistInput::BankAccount`
+  - `UpdateChecklistInputRequest`
+  - `ChecklistController::updateInput`
+  - `PartnerCandidateRequest`
+  - `ProcurementPartnerCandidate`
+  - `Partner`
+  - `PartnerSuggestionController`
+  - `partner-candidates-card.tsx`
+  - `checklist-input-form.tsx`
+- **Test:**
+  - `PartnerCandidateTest`
+  - `SpplExecutionTest::test_the_bank_account_and_warranty_are_saved`
+  - `EndToEndFlowTest`
+
+---
+
+# Peran Anggaran & Perencanaan Anggaran (PRK)
+
+- **Peran baru:** `UserRole::Anggaran` (`anggaran`).
+- **Akun:**
+  - Haskar Udin (`haskar.udin@upkendari.go.id`), jabatan Staf Anggaran.
+  - Kata sandi awal `password`; ganti setelah login.
+  - Dibuat oleh migrasi `2026_11_12_032427_create_anggaran_account_for_haskar_udin`, hanya bila email itu belum ada.
+- **Menu "Perencanaan Anggaran"** (`/perencanaan-anggaran`, `BudgetPlanController`, halaman `budget-plans/index.tsx`).
+  - Kolom per baris:
+    - PRK Induk
+    - Bidang (Direksi Pekerjaan)
+    - Deskripsi PRK Induk
+    - Deskripsi Sub Program
+    - Rencana AI / Nilai RAB
+    - Rencana AKI
+    - No WO
+    - No PR
+  - Tersedia ringkasan jumlah PRK, total AI, dan total AKI, serta filter bidang dan pencarian.
+  - Tabel `budget_plans` dibuat oleh migrasi `2026_11_12_032424_create_budget_plans_table`.
+- **Hak akses** (bisa diubah di Hak Akses):
+  - `budget-plans.manage` (tambah, ubah, hapus): default untuk peran Anggaran.
+  - `menu.budget-plans` (lihat): default untuk Anggaran, TL Pengadaan, dan TL ICC.
+- **Usulan Pekerjaan / Buat Perencanaan:**
+  - Bila bagian Anggaran sudah menyediakan PRK untuk bidang yang dipilih, Nomor PRK berubah menjadi daftar pilihan (`PrkPicker`; data dari `options.budgetPlans`).
+  - Memilih PRK ikut mengisi Nomor WO dan Nomor PR dari baris anggarannya.
+  - Bila bidang itu belum punya PRK, Nomor PRK tetap diketik seperti sebelumnya.
+  - Nomor PRK pengadaan lama tetap tampil.
+- **Test:** `BudgetPlanTest`.
+
+---
+
 # Teknologi
 
 Sesuai dengan `claude.md`.

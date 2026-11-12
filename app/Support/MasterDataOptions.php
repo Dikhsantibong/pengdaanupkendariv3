@@ -6,6 +6,7 @@ use App\Enums\CsmsRiskLevel;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Enums\UserRole;
+use App\Models\BudgetPlan;
 use App\Models\BudgetSource;
 use App\Models\ContractNumberFormat;
 use App\Models\ContractType;
@@ -45,6 +46,8 @@ class MasterDataOptions
             'targetUnits' => self::targetUnits(true),
             'budgetSources' => self::budgetSources(true),
             'planners' => self::planners(),
+            // The PRK the Anggaran role entered, each for one bidang.
+            'budgetPlans' => BudgetPlan::proposalOptions(),
         ];
     }
 

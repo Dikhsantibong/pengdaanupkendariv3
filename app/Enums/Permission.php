@@ -41,6 +41,7 @@ enum Permission: string
     case ViewAllProposals = 'proposal.view-all';
     case ManageVendorAssessments = 'vendor-assessments.manage';
     case ManageMasterData = 'master-data.manage';
+    case ManageBudgetPlans = 'budget-plans.manage';
     case MenuProposals = 'menu.proposals';
     case MenuPlanning = 'menu.planning';
     case MenuExecution = 'menu.execution';
@@ -52,6 +53,7 @@ enum Permission: string
     case MenuMonitoring = 'menu.monitoring';
     case MenuReports = 'menu.reports';
     case MenuPublicMonitoring = 'menu.public-monitoring';
+    case MenuBudgetPlans = 'menu.budget-plans';
 
     /**
      * The name shown on the access screen.
@@ -76,6 +78,7 @@ enum Permission: string
             self::ViewAllProposals => 'Lihat seluruh usulan',
             self::ManageVendorAssessments => 'Kelola penilaian penyedia',
             self::ManageMasterData => 'Kelola data master',
+            self::ManageBudgetPlans => 'Kelola perencanaan anggaran',
             self::MenuProposals => 'Menu Usulan Pekerjaan',
             self::MenuPlanning => 'Menu Perencanaan',
             self::MenuExecution => 'Menu Pelaksanaan',
@@ -86,6 +89,7 @@ enum Permission: string
             self::MenuMonitoring => 'Menu Monitoring',
             self::MenuReports => 'Menu Laporan',
             self::MenuPublicMonitoring => 'Menu Monitoring Publik',
+            self::MenuBudgetPlans => 'Menu Perencanaan Anggaran',
         };
     }
 
@@ -112,6 +116,7 @@ enum Permission: string
             self::ViewAllProposals => 'Di halaman Usulan Pekerjaan: melihat usulan yang menunggu persetujuan, riwayat usulan, dan riwayat keputusan dari seluruh pengusul (perlu Menu Usulan Pekerjaan).',
             self::ManageVendorAssessments => 'Membuat, mengisi, dan mengirim formulir penilaian kinerja penyedia.',
             self::ManageMasterData => 'Mengubah seluruh data master.',
+            self::ManageBudgetPlans => 'Menambah, mengubah, dan menghapus baris Perencanaan Anggaran (PRK induk, rencana AI/AKI, nomor WO dan PR).',
             self::MenuProposals => 'Menampilkan dan membuka halaman Usulan Pekerjaan (usulan sendiri dan antrean persetujuan).',
             self::MenuPlanning => 'Menampilkan dan membuka papan Perencanaan.',
             self::MenuExecution => 'Menampilkan dan membuka papan Pelaksanaan.',
@@ -122,6 +127,7 @@ enum Permission: string
             self::MenuMonitoring => 'Menampilkan dan membuka Monitoring.',
             self::MenuReports => 'Menampilkan dan membuka Laporan, termasuk ekspor.',
             self::MenuPublicMonitoring => 'Menampilkan tautan Monitoring Publik di menu. Halaman publiknya sendiri tetap terbuka untuk umum.',
+            self::MenuBudgetPlans => 'Menampilkan dan membuka halaman Perencanaan Anggaran (hanya lihat, kecuali punya hak kelola).',
         };
     }
 
@@ -147,6 +153,7 @@ enum Permission: string
             self::ViewAllProcurements,
             self::ViewAllProposals => 'Pengadaan',
             self::ManageVendorAssessments => 'Penilaian Penyedia',
+            self::ManageBudgetPlans => 'Anggaran',
             self::ManageMasterData => 'Administrasi',
             self::MenuProposals,
             self::MenuPlanning,
@@ -157,7 +164,8 @@ enum Permission: string
             self::MenuDocuments,
             self::MenuMonitoring,
             self::MenuReports,
-            self::MenuPublicMonitoring => 'Akses Menu',
+            self::MenuPublicMonitoring,
+            self::MenuBudgetPlans => 'Akses Menu',
         };
     }
 
@@ -184,6 +192,9 @@ enum Permission: string
             // Keuangan pays; it does not propose work.
             self::ProposeWork => [UserRole::Pengusul, UserRole::DireksiPekerjaan],
             self::ProcessPayment => [UserRole::Keuangan],
+            // Anggaran keeps the budget plan; the team leaders read it.
+            self::ManageBudgetPlans => [UserRole::Anggaran],
+            self::MenuBudgetPlans => [UserRole::Anggaran, UserRole::TeamLeaderPengadaan, UserRole::TeamLeaderIcc],
             // Those who approve the stages shape them.
             self::ManageProcurementSteps => [UserRole::TeamLeaderPengadaan, UserRole::TeamLeaderIcc],
             self::MenuFinance => [UserRole::Keuangan, UserRole::TeamLeaderPengadaan, UserRole::TeamLeaderIcc],
