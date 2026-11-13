@@ -2,6 +2,7 @@ import { router, useForm } from '@inertiajs/react';
 import {
     ChevronDown,
     Download,
+    Eye,
     ExternalLink,
     FileCheck2,
     Trash2,
@@ -349,6 +350,16 @@ export function UploadedFileRows<File extends UploadedFile>({
                             </p>
                         </div>
                     </div>
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 shrink-0 px-2.5 text-xs"
+                        onClick={() => onPreview(file)}
+                    >
+                        <Eye className="size-3.5" />
+                        Preview
+                    </Button>
                 </li>
             ))}
         </ul>

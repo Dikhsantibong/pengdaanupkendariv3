@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * One row of the budget plan (Perencanaan Anggaran) kept by the Anggaran
@@ -145,6 +146,84 @@ class BudgetPlan extends Model
                 'budgetType' => $plan->budget_type->value,
             ])
             ->all();
+    }
+
+    /**
+     * The PRK of a division that no active procurement or proposal has
+     * taken up yet: waiting on the division's TL and staff to follow up
+     * and propose.
+     *
+     * @return Collection<int, self>
+     */
+    public static function unproposedFor(int $workDirectorId): Collection
+    {
+        $usedPrks = Procurement::query()
+            ->where('work_director_id', $workDirectorId)
+            ->whereNotNull('prk_number')
+            ->whereDoesntHave('progressStatus', fn ($status) => $status->where('system_key', 'batal'))
+            ->pluck('prk_number')
+            ->flatMap(fn (string $numbers): array => preg_split('/[,;\n]+/', $numbers) ?: [])
+            ->map(fn (string $number): string => mb_strtolower(trim($number)))
+            ->filter()
+            ->unique()
+            ->flip();
+
+        return static::query()
+            ->where('work_director_id', $workDirectorId)
+            ->with('workDirector:id,name')
+            ->orderBy('prk_induk')
+            ->orderBy('id')
+            ->get()
+            ->reject(fn (self $plan): bool => $usedPrks->has(mb_strtolower(trim($plan->prk_induk))))
+            ->values();
+    }
+
+    /**
+     * Format the unproposed PRK of a division for the dashboard.
+     *
+     * @return list<array{id: int, prk_induk: string, budget_type: string, budget_type_label: string, description: string, division: string|null, planned_value: float, wo_number: string|null, pr_number: string|null}>
+     */
+    public static function dashboardPayload(int $workDirectorId): array
+    {
+        return static::unproposedFor($workDirectorId)
+            ->map(fn (self $plan): array => [
+                'id' => $plan->id,
+                'prk_induk' => $plan->prk_induk,
+                'budget_type' => $plan->budget_type->value,
+                'budget_type_label' => $plan->budget_type->label(),
+                'description' => $plan->description(),
+                'division' => $plan->workDirector?->name,
+                'planned_value' => $plan->plannedValue(),
+                'wo_number' => $plan->wo_number,
+                'pr_number' => $plan->pr_number,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Human-readable program / sub-program description of the PRK.
+     */
+    public function description(): string
+    {
+        $parts = array_values(array_filter(
+            array_map(fn (?string $part): string => trim((string) $part), [$this->prk_induk_description, $this->sub_program_description]),
+            fn (string $part): bool => $part !== '',
+        ));
+
+        return $parts !== [] ? implode(' — ', $parts) : $this->prk_induk;
+    }
+
+    /**
+     * Planned value (AI / RAB for Investasi, or Pagu for Operasi / Energi Primer).
+     */
+    public function plannedValue(): float
+    {
+        if ($this->ai_plan_value !== null) {
+            return (float) $this->ai_plan_value;
+        }
+
+        return $this->pagu_value !== null ? (float) $this->pagu_value : 0.0;
     }
 
     /**

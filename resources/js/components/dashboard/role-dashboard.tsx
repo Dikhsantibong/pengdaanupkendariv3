@@ -17,6 +17,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { EmptyState } from '@/components/empty-state';
 import { StatusBadge } from '@/components/status-badge';
+import { Button } from '@/components/ui/button';
 import {
     Table,
     TableBody,
@@ -66,11 +67,25 @@ export type RoleJob = {
     hpe_value: number;
 };
 
+export type BudgetPlanTaskRow = {
+    id: number;
+    prk_induk: string;
+    budget_type: string;
+    budget_type_label: string;
+    description: string;
+    division: string | null;
+    planned_value: number;
+    wo_number: string | null;
+    pr_number: string | null;
+};
+
 export type RoleDashboardData = {
     cards: FigureCard[];
     stages: StageCount[];
     jobs: RoleJob[];
     jobsTitle: string;
+    activeCard?: string | null;
+    budgetPlans?: BudgetPlanTaskRow[];
 };
 
 /** What each role's dashboard is about, shown under the greeting. */
@@ -125,8 +140,19 @@ const STAGE_ICONS: Record<string, LucideIcon> = {
 
 /**
  * The role's own figures, each with what it means for the reader.
+ * Clicking a card filters the role's jobs list and table below.
  */
-export function FigureCards({ cards }: { cards: FigureCard[] }) {
+export function FigureCards({
+    cards,
+    activeCard = null,
+    onSelect,
+}: {
+    cards: FigureCard[];
+    activeCard?: string | null;
+    onSelect?: (key: string | null) => void;
+}) {
+    const hasFilter = activeCard !== null && activeCard !== 'total';
+
     return (
         <div
             className={cn(
@@ -136,12 +162,13 @@ export function FigureCards({ cards }: { cards: FigureCard[] }) {
         >
             {cards.map((card) => {
                 const Icon = ICONS[card.key] ?? FolderKanban;
+                const isSelected =
+                    card.key === 'total'
+                        ? !hasFilter && activeCard === 'total'
+                        : activeCard === card.key;
 
-                return (
-                    <section
-                        key={card.key}
-                        className="flex items-start gap-3 rounded-md border border-border bg-card p-4"
-                    >
+                const content = (
+                    <>
                         <span
                             className={cn(
                                 'flex size-9 shrink-0 items-center justify-center rounded-md',
@@ -150,8 +177,8 @@ export function FigureCards({ cards }: { cards: FigureCard[] }) {
                         >
                             <Icon className="size-4" />
                         </span>
-                        <div className="min-w-0">
-                            <p className="section-label truncate">
+                        <div className="min-w-0 flex-1">
+                            <p className="section-label truncate group-hover:text-primary">
                                 {card.label}
                             </p>
                             <p
@@ -172,7 +199,56 @@ export function FigureCards({ cards }: { cards: FigureCard[] }) {
                                 </p>
                             )}
                         </div>
-                    </section>
+                    </>
+                );
+
+                if (!onSelect) {
+                    return (
+                        <section
+                            key={card.key}
+                            className="flex items-start gap-3 rounded-md border border-border bg-card p-4"
+                        >
+                            {content}
+                        </section>
+                    );
+                }
+
+                return (
+                    <button
+                        key={card.key}
+                        type="button"
+                        aria-pressed={isSelected}
+                        onClick={() => {
+                            if (card.key === 'total') {
+                                if (hasFilter) {
+                                    onSelect(null);
+                                } else {
+                                    document
+                                        .getElementById('role-jobs-section')
+                                        ?.scrollIntoView({
+                                            behavior: 'smooth',
+                                            block: 'nearest',
+                                        });
+                                }
+
+                                return;
+                            }
+
+                            onSelect(
+                                activeCard === card.key ? null : card.key,
+                            );
+                        }}
+                        className={cn(
+                            'group flex w-full cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-primary/50 hover:bg-accent/40 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+                            isSelected &&
+                                'border-primary bg-primary/[0.04] ring-1 ring-primary',
+                            hasFilter &&
+                                !isSelected &&
+                                'opacity-75 hover:opacity-100',
+                        )}
+                    >
+                        {content}
+                    </button>
                 );
             })}
         </div>
@@ -251,18 +327,41 @@ export function RoleJobs({
     jobs,
     allHref,
     showDivision = false,
+    activeFilterLabel = null,
+    onResetFilter,
 }: {
     title: string;
     jobs: RoleJob[];
     allHref: string | null;
     showDivision?: boolean;
+    activeFilterLabel?: string | null;
+    onResetFilter?: () => void;
 }) {
     return (
-        <section className="overflow-hidden rounded-md border border-border bg-card">
-            <header className="flex items-center justify-between border-b border-border px-4 py-3">
-                <h2 className="text-sm font-semibold text-foreground">
-                    {title}
-                </h2>
+        <section
+            id="role-jobs-section"
+            className="overflow-hidden rounded-md border border-border bg-card"
+        >
+            <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-sm font-semibold text-foreground">
+                        {title}
+                    </h2>
+                    {activeFilterLabel && (
+                        <span className="inline-flex items-center gap-1.5 rounded-sm bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                            Filter: {activeFilterLabel}
+                            {onResetFilter && (
+                                <button
+                                    type="button"
+                                    onClick={onResetFilter}
+                                    className="ml-0.5 font-semibold underline hover:text-primary/80"
+                                >
+                                    Reset
+                                </button>
+                            )}
+                        </span>
+                    )}
+                </div>
                 {allHref !== null && jobs.length > 0 && (
                     <Link
                         href={allHref}
@@ -330,6 +429,117 @@ export function RoleJobs({
                     </TableBody>
                 </Table>
             )}
+        </section>
+    );
+}
+
+/**
+ * PRK entered by the Anggaran role for this division that have not yet been
+ * turned into a work proposal.
+ */
+export function DivisionBudgetPlans({
+    plans,
+    canPropose,
+}: {
+    plans: BudgetPlanTaskRow[];
+    canPropose: boolean;
+}) {
+    if (plans.length === 0) {
+        return null;
+    }
+
+    return (
+        <section
+            id="division-budget-plans"
+            aria-label="PRK perlu ditindaklanjuti"
+            className="overflow-hidden rounded-md border border-border bg-card"
+        >
+            <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+                <div className="flex items-center gap-2.5">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                        <FilePlus2 className="size-4" />
+                    </span>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-sm font-semibold text-foreground">
+                                PRK Perlu Ditindaklanjuti / Diusulkan
+                            </h2>
+                            <span className="tabular rounded-sm bg-primary/10 px-1.5 py-0.5 text-xs font-semibold text-primary">
+                                {plans.length} PRK
+                            </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            PRK dari bagian Anggaran yang ditujukan untuk bidang
+                            Anda dan belum diajukan menjadi usulan pekerjaan.
+                        </p>
+                    </div>
+                </div>
+            </header>
+
+            <Table>
+                <TableHeader className="bg-muted/60">
+                    <TableRow className="hover:bg-transparent">
+                        <TableHead>Nomor PRK</TableHead>
+                        <TableHead>Program / Sub Program</TableHead>
+                        <TableHead>No. PR / No. WO</TableHead>
+                        <TableHead className="text-right">
+                            Nilai Rencana
+                        </TableHead>
+                        {canPropose && (
+                            <TableHead className="w-[11rem] text-right">
+                                Aksi
+                            </TableHead>
+                        )}
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {plans.map((plan) => (
+                        <TableRow key={plan.id}>
+                            <TableCell className="align-top">
+                                <span className="tabular font-semibold text-foreground">
+                                    {plan.prk_induk}
+                                </span>
+                                <span className="mt-0.5 block text-xs text-muted-foreground">
+                                    Anggaran {plan.budget_type_label}
+                                    {plan.division ? ` · ${plan.division}` : ''}
+                                </span>
+                            </TableCell>
+                            <TableCell className="align-top">
+                                <p className="max-w-[26rem] font-medium whitespace-normal text-foreground">
+                                    {plan.description}
+                                </p>
+                            </TableCell>
+                            <TableCell className="tabular align-top text-xs text-muted-foreground">
+                                <div>PR: {plan.pr_number ?? '—'}</div>
+                                <div>WO: {plan.wo_number ?? '—'}</div>
+                            </TableCell>
+                            <TableCell className="tabular text-right align-top font-medium whitespace-nowrap">
+                                {plan.planned_value > 0
+                                    ? formatCurrency(plan.planned_value)
+                                    : '—'}
+                            </TableCell>
+                            {canPropose && (
+                                <TableCell className="text-right align-top">
+                                    <Button size="sm" asChild>
+                                        <Link
+                                            href={
+                                                procurements.create({
+                                                    query: {
+                                                        prk: plan.prk_induk,
+                                                    },
+                                                }).url
+                                            }
+                                        >
+                                            <FilePlus2 className="size-3.5" />
+                                            Usulkan Pekerjaan
+                                        </Link>
+                                    </Button>
+                                </TableCell>
+                            )}
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
         </section>
     );
 }

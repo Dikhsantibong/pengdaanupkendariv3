@@ -252,14 +252,16 @@ export function ProposalDocuments({
                                             <ChevronRight className="size-3.5" />
                                         )}
                                     </Button>
-                                    {document.id !== null && (
-                                        <DocumentMenu
-                                            procurementId={procurementId}
-                                            document={document}
-                                            documentId={document.id}
-                                            canManage={canManage}
-                                        />
-                                    )}
+                                    {document.id !== null &&
+                                        (document.uploads.length > 0 ||
+                                            !document.upload_only) && (
+                                            <DocumentMenu
+                                                procurementId={procurementId}
+                                                document={document}
+                                                documentId={document.id}
+                                                canManage={canManage}
+                                            />
+                                        )}
                                 </div>
                             </li>
                         );
@@ -341,7 +343,7 @@ export function ProposalDocuments({
     );
 }
 
-/** Preview, download and edit a generated document from its row. */
+/** Preview, download and edit a document from its row. */
 function DocumentMenu({
     procurementId,
     document,
@@ -353,6 +355,40 @@ function DocumentMenu({
     documentId: number;
     canManage: boolean;
 }) {
+    const firstUpload = document.uploads[0] ?? null;
+    const previewUrl =
+        firstUpload !== null
+            ? procurements.documents.signed.show(
+                  {
+                      procurement: procurementId,
+                      document: documentId,
+                      upload: firstUpload.id,
+                  },
+                  { query: { preview: '1' } },
+              ).url
+            : procurements.documents.show(
+                  {
+                      procurement: procurementId,
+                      document: documentId,
+                  },
+                  { query: { preview: '1' } },
+              ).url;
+
+    const downloadUrl =
+        firstUpload !== null
+            ? procurements.documents.signed.show(
+                  {
+                      procurement: procurementId,
+                      document: documentId,
+                      upload: firstUpload.id,
+                  },
+                  { query: { download: '1' } },
+              ).url
+            : procurements.documents.show({
+                  procurement: procurementId,
+                  document: documentId,
+              }).url;
+
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -368,36 +404,25 @@ function DocumentMenu({
             <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
                     <a
-                        href={
-                            procurements.documents.show(
-                                {
-                                    procurement: procurementId,
-                                    document: documentId,
-                                },
-                                { query: { preview: '1' } },
-                            ).url
-                        }
+                        href={previewUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                     >
                         <Eye className="size-4" />
-                        Pratinjau PDF
+                        {firstUpload !== null
+                            ? 'Pratinjau Dokumen Terunggah'
+                            : 'Pratinjau PDF'}
                     </a>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                    <a
-                        href={
-                            procurements.documents.show({
-                                procurement: procurementId,
-                                document: documentId,
-                            }).url
-                        }
-                    >
+                    <a href={downloadUrl}>
                         <Download className="size-4" />
-                        Unduh PDF
+                        {firstUpload !== null
+                            ? 'Unduh Dokumen Terunggah'
+                            : 'Unduh PDF'}
                     </a>
                 </DropdownMenuItem>
-                {canManage && (
+                {canManage && !document.upload_only && (
                     <DropdownMenuItem asChild>
                         <a
                             href={

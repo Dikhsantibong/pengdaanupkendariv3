@@ -3,6 +3,7 @@ import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
 import { MaintenanceBanner } from '@/components/maintenance-banner';
+import { NotificationPanel } from '@/components/notification-panel';
 import { NotificationWatcher } from '@/components/notification-watcher';
 import { PortalTab } from '@/components/portal-tab';
 import type { AppLayoutProps } from '@/types';
@@ -19,6 +20,7 @@ export default function AppSidebarLayout({
                 <AppSidebarHeader breadcrumbs={breadcrumbs} />
                 <MaintenanceBanner />
                 <NotificationWatcher />
+                <NotificationPanel />
                 {children}
             </AppContent>
         </AppShell>

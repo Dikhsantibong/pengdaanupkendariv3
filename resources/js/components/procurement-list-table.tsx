@@ -108,9 +108,12 @@ export function ProcurementListTable({
                                         {row.number}
                                     </TableCell>
                                     <TableCell className="text-sm">
-                                        <span className="line-clamp-2">
+                                        <Link
+                                            href={procurements.show(row.id)}
+                                            className="line-clamp-2 font-medium text-foreground hover:text-primary hover:underline"
+                                        >
                                             {row.name}
-                                        </span>
+                                        </Link>
                                     </TableCell>
                                     <TableCell className="max-w-44 text-xs">
                                         <span className="line-clamp-2">

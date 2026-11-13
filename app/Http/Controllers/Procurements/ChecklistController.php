@@ -91,8 +91,8 @@ class ChecklistController extends Controller
             ];
         }
 
-        // Numbers are kept without the spaces typed around them.
-        foreach (['number', 'rks_number', 'hpe_number', 'upb_number'] as $field) {
+        // Numbers and bank guarantee strings are kept without surrounding spaces.
+        foreach (['number', 'rks_number', 'hpe_number', 'upb_number', 'guarantee_bank_name', 'guarantee_number'] as $field) {
             if (array_key_exists($field, $values)) {
                 $values[$field] = trim((string) $values[$field]);
             }

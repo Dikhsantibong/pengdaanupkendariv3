@@ -236,7 +236,8 @@ export type ChecklistInputKind =
     | 'contract_number'
     | 'rks_number'
     | 'hpe_number'
-    | 'upb_number';
+    | 'upb_number'
+    | 'bank_guarantee';
 
 export type ChecklistInput = {
     kind: ChecklistInputKind;
@@ -255,6 +256,12 @@ export type ChecklistInput = {
         bank_account_number: string | null;
         bank_name: string | null;
         bank_account_holder: string | null;
+        /** The bank guarantee details on the Jaminan Bank step. */
+        guarantee_bank_name: string | null;
+        guarantee_number: string | null;
+        guarantee_value: number | null;
+        guarantee_issue_date: string | null;
+        guarantee_expiry_date: string | null;
         /** The Nota Dinas ke Pengadaan. */
         icc_memo_number: string | null;
         icc_memo_date: string | null;

@@ -177,6 +177,15 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * The division (Direksi Pekerjaan) this user belongs to, directly or
+     * through their team leader.
+     */
+    public function divisionId(): ?int
+    {
+        return $this->work_director_id ?? $this->teamLeader?->work_director_id;
+    }
+
+    /**
      * Determine whether the user oversees every procurement.
      */
     public function isSupervisor(): bool

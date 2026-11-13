@@ -299,25 +299,27 @@ export function ChecklistDocumentActions({
             ) : (
                 <>
                     <div className="flex flex-wrap items-center gap-1.5">
-                        <Button asChild size="sm" variant="outline">
-                            <a
-                                href={
-                                    procurements.documents.show(
-                                        {
-                                            procurement: procurementId,
-                                            document: document.id,
-                                        },
-                                        { query: { preview: '1' } },
-                                    ).url
-                                }
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="Pratinjau PDF"
-                            >
-                                <Eye className="size-3.5" />
-                                Preview PDF
-                            </a>
-                        </Button>
+                        {document.uploads.length === 0 && (
+                            <Button asChild size="sm" variant="outline">
+                                <a
+                                    href={
+                                        procurements.documents.show(
+                                            {
+                                                procurement: procurementId,
+                                                document: document.id,
+                                            },
+                                            { query: { preview: '1' } },
+                                        ).url
+                                    }
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title="Pratinjau PDF"
+                                >
+                                    <Eye className="size-3.5" />
+                                    Preview PDF
+                                </a>
+                            </Button>
+                        )}
                         <Button asChild size="sm" variant="outline">
                             <a
                                 href={

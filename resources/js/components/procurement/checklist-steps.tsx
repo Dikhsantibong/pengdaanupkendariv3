@@ -123,6 +123,7 @@ const INPUT_LABELS: Partial<Record<ChecklistInput['kind'], string>> = {
     contract_period: 'Tanggal mulai & jumlah hari',
     warranty: 'Masa garansi (bulan)',
     bank_account: 'Pelaksana & rekening bank',
+    bank_guarantee: 'Data jaminan bank',
     procurement_memo: 'Nomor & tanggal nota dinas',
     // Given in the identity of the procurement; the step checks it is there.
     contract_number: 'Nomor kontrak (di Identitas Pengadaan)',
@@ -858,6 +859,8 @@ function StepRow({
                                 procurementId={procurementId}
                                 documentId={document.id as number}
                                 name={document.type_name ?? 'dokumen'}
+                                uploadId={document.uploads[0]?.id ?? null}
+                                uploadOnly={document.upload_only}
                             />
                         ))}
                         {editable &&
@@ -956,25 +959,58 @@ function DocumentLinks({
     procurementId,
     documentId,
     name,
+    uploadId,
+    uploadOnly,
 }: {
     procurementId: number;
     documentId: number;
     name: string;
+    uploadId: number | null;
+    uploadOnly: boolean;
 }) {
+    if (uploadOnly && uploadId === null) {
+        return null;
+    }
+
+    const previewUrl =
+        uploadId !== null
+            ? procurements.documents.signed.show(
+                  {
+                      procurement: procurementId,
+                      document: documentId,
+                      upload: uploadId,
+                  },
+                  { query: { preview: '1' } },
+              ).url
+            : procurements.documents.show(
+                  {
+                      procurement: procurementId,
+                      document: documentId,
+                  },
+                  { query: { preview: '1' } },
+              ).url;
+
+    const downloadUrl =
+        uploadId !== null
+            ? procurements.documents.signed.show(
+                  {
+                      procurement: procurementId,
+                      document: documentId,
+                      upload: uploadId,
+                  },
+                  { query: { download: '1' } },
+              ).url
+            : procurements.documents.show({
+                  procurement: procurementId,
+                  document: documentId,
+              }).url;
+
     return (
         <>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
                 <a
-                    href={
-                        procurements.documents.show(
-                            {
-                                procurement: procurementId,
-                                document: documentId,
-                            },
-                            { query: { preview: '1' } },
-                        ).url
-                    }
+                    href={previewUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                 >
@@ -983,14 +1019,7 @@ function DocumentLinks({
                 </a>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-                <a
-                    href={
-                        procurements.documents.show({
-                            procurement: procurementId,
-                            document: documentId,
-                        }).url
-                    }
-                >
+                <a href={downloadUrl}>
                     <Download className="size-4" />
                     Unduh {name}
                 </a>

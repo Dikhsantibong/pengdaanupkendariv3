@@ -119,6 +119,11 @@ use Illuminate\Support\Collection;
  * @property string|null $bank_account_number
  * @property string|null $bank_name
  * @property string|null $bank_account_holder
+ * @property string|null $guarantee_bank_name
+ * @property string|null $guarantee_number
+ * @property string|null $guarantee_value
+ * @property CarbonImmutable|null $guarantee_issue_date
+ * @property CarbonImmutable|null $guarantee_expiry_date
  * @property string|null $notes
  * @property int|null $created_by
  * @property CarbonImmutable|null $created_at
@@ -1114,6 +1119,9 @@ class Procurement extends Model
             'execution_start_date' => 'date',
             'execution_duration_days' => 'integer',
             'warranty_months' => 'integer',
+            'guarantee_value' => 'decimal:2',
+            'guarantee_issue_date' => 'date',
+            'guarantee_expiry_date' => 'date',
             'work_category' => WorkCategory::class,
             'csms_risk_level' => CsmsRiskLevel::class,
             'tor_issue_date' => 'date',

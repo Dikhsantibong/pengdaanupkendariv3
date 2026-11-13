@@ -141,6 +141,27 @@ export function ProcurementForm({
         ? (initialValues?.contract_number_format_id ?? null)
         : (initialValues?.contract_number_format_id ?? firstFormatId);
 
+    const startingWorkDirectorId =
+        initialValues?.work_director_id ??
+        (isProposal ? (proposal?.workDirectorId ?? null) : null);
+
+    // When opened from the dashboard's "PRK Perlu Ditindaklanjuti" action
+    // (?prk=...), pre-select that PRK and fill in the fields it provides.
+    const requestedPrk =
+        initialValues === undefined && typeof window !== 'undefined'
+            ? (new URLSearchParams(window.location.search).get('prk')?.trim() ??
+              '')
+            : '';
+    const preselectedPlan =
+        requestedPrk !== ''
+            ? (options.budgetPlans ?? []).find(
+                  (plan) =>
+                      plan.value === requestedPrk &&
+                      (startingWorkDirectorId === null ||
+                          plan.workDirectorId === startingWorkDirectorId),
+              )
+            : undefined;
+
     const form = useForm<ProcurementFormValues>({
         ...(withPlanner && !isProposal
             ? { planner_id: initialValues?.planner_id ?? null }
@@ -157,20 +178,29 @@ export function ProcurementForm({
         contract_number_format_id: startingFormatId,
         csms_risk_level: initialValues?.csms_risk_level ?? '',
         tor_issue_date: initialValues?.tor_issue_date ?? '',
-        name: initialValues?.name ?? '',
+        name:
+            initialValues?.name ??
+            (preselectedPlan ? nameFromPlan(preselectedPlan) : ''),
         work_director_id:
-            initialValues?.work_director_id ??
-            (isProposal ? (proposal?.workDirectorId ?? null) : null),
+            startingWorkDirectorId ?? preselectedPlan?.workDirectorId ?? null,
         target_unit_ids: initialValues?.target_unit_ids ?? [],
         budget_source_id: initialValues?.budget_source_id ?? null,
-        prk_number: initialValues?.prk_number ?? '',
+        prk_number:
+            initialValues?.prk_number ?? (preselectedPlan?.value ?? ''),
         proposal_memo_number: initialValues?.proposal_memo_number ?? '',
         proposal_memo_date: initialValues?.proposal_memo_date ?? '',
-        pr_po_number: initialValues?.pr_po_number ?? '',
+        pr_po_number:
+            initialValues?.pr_po_number ?? (preselectedPlan?.prNumber ?? ''),
         coa_number: initialValues?.coa_number ?? '',
         sr_number: initialValues?.sr_number ?? '',
-        wo_number: initialValues?.wo_number ?? '',
-        hpe_value: initialValues?.hpe_value ?? 0,
+        wo_number:
+            initialValues?.wo_number ?? (preselectedPlan?.woNumber ?? ''),
+        hpe_value:
+            initialValues?.hpe_value ??
+            (preselectedPlan?.aiValue !== null &&
+            preselectedPlan?.aiValue !== undefined
+                ? Math.round(preselectedPlan.aiValue)
+                : 0),
         value_after_negotiation: initialValues?.value_after_negotiation ?? null,
         notes: initialValues?.notes ?? '',
     });

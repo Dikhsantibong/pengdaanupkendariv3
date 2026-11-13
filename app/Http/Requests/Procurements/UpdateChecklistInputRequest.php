@@ -63,6 +63,13 @@ class UpdateChecklistInputRequest extends FormRequest
             ChecklistInput::RksNumber => ['rks_number' => ['required', 'string', 'max:255']],
             ChecklistInput::HpeNumber => ['hpe_number' => ['required', 'string', 'max:255']],
             ChecklistInput::UpbNumber => ['upb_number' => ['required', 'string', 'max:255']],
+            ChecklistInput::BankGuarantee => [
+                'guarantee_bank_name' => ['required', 'string', 'max:150'],
+                'guarantee_number' => ['required', 'string', 'max:150'],
+                'guarantee_value' => ['required', 'numeric', 'min:1'],
+                'guarantee_issue_date' => ['required', 'date'],
+                'guarantee_expiry_date' => ['required', 'date', 'after_or_equal:guarantee_issue_date'],
+            ],
             // Filled through the calon mitra themselves.
             ChecklistInput::PartnerCandidates, null => [],
         };
@@ -92,6 +99,11 @@ class UpdateChecklistInputRequest extends FormRequest
             'rks_number' => 'nomor RKS',
             'hpe_number' => 'nomor HPE',
             'upb_number' => 'nomor UPB',
+            'guarantee_bank_name' => 'nama bank penerbit',
+            'guarantee_number' => 'nomor bank garansi',
+            'guarantee_value' => 'nilai jaminan',
+            'guarantee_issue_date' => 'tanggal terbit',
+            'guarantee_expiry_date' => 'masa berlaku',
         ];
     }
 

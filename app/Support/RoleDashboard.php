@@ -7,6 +7,7 @@ use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Enums\ProposalState;
 use App\Enums\UserRole;
+use App\Models\BudgetPlan;
 use App\Models\Procurement;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -69,20 +70,27 @@ class RoleDashboard
     /**
      * The role's own dashboard content.
      *
-     * @return array{cards: list<Card>, stages: list<array{key: string, label: string, total: int}>, jobs: list<array<string, mixed>>, jobsTitle: string}
+     * @return array{cards: list<Card>, stages: list<array{key: string, label: string, total: int}>, jobs: list<array<string, mixed>>, jobsTitle: string, activeCard: string|null, budgetPlans: list<array<string, mixed>>}
      */
-    public static function for(User $user, string $profile): array
+    public static function for(User $user, string $profile, ?string $activeCard = null): array
     {
         $visible = fn (): Builder => Procurement::query()->visibleTo($user);
 
         [$cards, $jobs, $jobsTitle] = match ($profile) {
-            'pengusul' => self::proposer($user),
-            'direksi' => self::director($user, $visible),
-            'perencana' => self::planner($user),
-            'pelaksana' => self::executor($user),
-            'keuangan' => self::finance($visible),
-            default => self::general($visible),
+            'pengusul' => self::proposer($user, $activeCard),
+            'direksi' => self::director($user, $visible, $activeCard),
+            'perencana' => self::planner($user, $activeCard),
+            'pelaksana' => self::executor($user, $activeCard),
+            'keuangan' => self::finance($visible, $activeCard),
+            default => self::general($visible, $activeCard),
         };
+
+        $validKeys = array_column($cards, 'key');
+        $resolvedCard = $activeCard !== null && in_array($activeCard, $validKeys, true)
+            ? $activeCard
+            : null;
+
+        $divisionId = $user->divisionId();
 
         return [
             'cards' => $cards,
@@ -91,7 +99,92 @@ class RoleDashboard
                 : $visible()),
             'jobs' => self::jobs($jobs),
             'jobsTitle' => $jobsTitle,
+            'activeCard' => $resolvedCard,
+            'budgetPlans' => in_array($profile, ['pengusul', 'direksi'], true) && $divisionId !== null
+                ? BudgetPlan::dashboardPayload($divisionId)
+                : [],
         ];
+    }
+
+    /**
+     * Narrow a query by the clicked accumulation card on a role dashboard.
+     *
+     * @param  Builder<Procurement>  $query
+     * @return Builder<Procurement>
+     */
+    public static function applyCardFilter(Builder $query, User $user, string $profile, ?string $activeCard): Builder
+    {
+        if ($activeCard === null || $activeCard === '' || $activeCard === 'total') {
+            return $query;
+        }
+
+        return match ($profile) {
+            'pengusul' => match ($activeCard) {
+                'waiting' => $query->whereIn('proposal_state', [
+                    ProposalState::MenungguPersetujuanTl->value,
+                    ProposalState::MenungguPersetujuan->value,
+                ]),
+                'returned' => $query->where('proposal_state', ProposalState::Dikembalikan->value),
+                'running' => $query->where('proposal_state', ProposalState::Disetujui->value)->whereNull('completed_at'),
+                'done' => $query->whereNotNull('completed_at'),
+                default => $query,
+            },
+            'direksi' => match ($activeCard) {
+                'waiting' => $query
+                    ->where($query->qualifyColumn('work_director_id'), $user->work_director_id ?? 0)
+                    ->where('proposal_state', ProposalState::MenungguPersetujuan->value)
+                    ->whereNotNull('proposal_completed_at'),
+                'running', 'value' => $query
+                    ->where($query->qualifyColumn('work_director_id'), $user->work_director_id ?? 0)
+                    ->proposalApproved()
+                    ->whereNull('completed_at'),
+                'done' => $query
+                    ->where($query->qualifyColumn('work_director_id'), $user->work_director_id ?? 0)
+                    ->whereNotNull('completed_at'),
+                default => $query,
+            },
+            'perencana' => match ($activeCard) {
+                'todo' => $query->inProgress()->where('planning_approval_state', PlanningApprovalState::BelumDiajukan->value),
+                'waiting' => $query->where('planning_approval_state', PlanningApprovalState::MenungguPersetujuan->value),
+                'returned' => $query->where('planning_approval_state', PlanningApprovalState::Ditolak->value),
+                'approved' => $query->where('planning_approval_state', PlanningApprovalState::Disetujui->value),
+                default => $query,
+            },
+            'pelaksana' => match ($activeCard) {
+                'running' => $query->where('planning_approval_state', PlanningApprovalState::Disetujui->value)
+                    ->whereNull('finance_submitted_at')
+                    ->whereNull('completed_at'),
+                'ready' => $query->where('planning_approval_state', PlanningApprovalState::Disetujui->value)
+                    ->whereNull('finance_submitted_at')
+                    ->whereNull('completed_at')
+                    ->whereIn('execution_approval_state', [PlanningApprovalState::BelumDiajukan->value, PlanningApprovalState::Ditolak->value])
+                    ->whereDoesntHave('checklists', fn (Builder $checklists) => $checklists
+                        ->where('stage', ProcurementStage::Pelaksanaan->value)
+                        ->where('is_completed', false)
+                        ->whereHas('checklistItem', fn (Builder $item) => $item->where('is_optional', false))),
+                'review' => $query->where('planning_approval_state', PlanningApprovalState::Disetujui->value)
+                    ->whereNull('finance_submitted_at')
+                    ->whereNull('completed_at')
+                    ->where('execution_approval_state', PlanningApprovalState::MenungguPersetujuan->value),
+                'finance' => $query->whereNotNull('finance_submitted_at')->whereNull('payment_completed_at'),
+                'done' => $query->whereNotNull('completed_at'),
+                default => $query,
+            },
+            'keuangan' => match ($activeCard) {
+                'waiting', 'value' => $query->whereNotNull('finance_submitted_at')
+                    ->where('handover_approval_state', PlanningApprovalState::Disetujui->value)
+                    ->whereNull('payment_completed_at'),
+                'month' => $query->whereNotNull('payment_completed_at')
+                    ->where('payment_completed_at', '>=', now()->startOfMonth()),
+                'paid' => $query->whereNotNull('payment_completed_at'),
+                default => $query,
+            },
+            default => match ($activeCard) {
+                'running' => $query->whereNull('completed_at'),
+                'done' => $query->whereNotNull('completed_at'),
+                default => $query,
+            },
+        };
     }
 
     /**
@@ -99,7 +192,7 @@ class RoleDashboard
      *
      * @return Section
      */
-    protected static function proposer(User $user): array
+    protected static function proposer(User $user, ?string $activeCard = null): array
     {
         $mine = fn (): Builder => Procurement::query()->where('created_by', $user->id);
 
@@ -114,16 +207,23 @@ class RoleDashboard
             self::card('done', 'Selesai', $mine()->whereNotNull('completed_at')->count(), 'Sudah dibayar dan ditutup', 'emerald'),
         ];
 
+        $teamQuery = fn (): Builder => Procurement::query()
+            ->where('proposal_state', ProposalState::MenungguPersetujuanTl->value)
+            ->whereNotNull('proposal_completed_at')
+            ->whereIn('created_by', User::query()->select('id')->where('team_leader_id', $user->id));
+
         // A team leader also follows the proposals of their staff.
         if ($user->leadsTeam()) {
-            $cards[] = self::card('team', 'Usulan Tim Menunggu Anda', Procurement::query()
-                ->where('proposal_state', ProposalState::MenungguPersetujuanTl->value)
-                ->whereNotNull('proposal_completed_at')
-                ->whereIn('created_by', User::query()->select('id')->where('team_leader_id', $user->id))
-                ->count(), 'Perlu persetujuan Anda sebagai TL', 'violet');
+            $cards[] = self::card('team', 'Usulan Tim Menunggu Anda', $teamQuery()->count(), 'Perlu persetujuan Anda sebagai TL', 'violet');
         }
 
-        return [$cards, $mine()->latest('updated_at'), 'Usulan Saya'];
+        if ($activeCard === 'team' && $user->leadsTeam()) {
+            return [$cards, $teamQuery()->latest('updated_at'), 'Usulan Tim Menunggu Anda'];
+        }
+
+        $jobsQuery = self::applyCardFilter($mine(), $user, 'pengusul', $activeCard)->latest('updated_at');
+
+        return [$cards, $jobsQuery, 'Usulan Saya'];
     }
 
     /**
@@ -132,9 +232,13 @@ class RoleDashboard
      * @param  callable(): Builder<Procurement>  $visible
      * @return Section
      */
-    protected static function director(User $user, callable $visible): array
+    protected static function director(User $user, callable $visible, ?string $activeCard = null): array
     {
         $division = fn (): Builder => $visible()->where('work_director_id', $user->work_director_id ?? 0);
+
+        $jobsQuery = $activeCard !== null && in_array($activeCard, ['waiting', 'running', 'done', 'value'], true)
+            ? self::applyCardFilter($division(), $user, 'direksi', $activeCard)->latest('updated_at')
+            : $division()->whereNull('completed_at')->latest('updated_at');
 
         return [[
             self::card('waiting', 'Usulan Menunggu Anda', $division()
@@ -144,7 +248,7 @@ class RoleDashboard
             self::card('running', 'Pengadaan Bidang Berjalan', $division()->proposalApproved()->whereNull('completed_at')->count(), 'Di perencanaan, pelaksanaan, atau keuangan', 'sky'),
             self::card('done', 'Selesai', $division()->whereNotNull('completed_at')->count(), 'Sudah dibayar dan ditutup', 'emerald'),
             self::card('value', 'Nilai HPE Berjalan', (float) $division()->proposalApproved()->whereNull('completed_at')->sum('hpe_value'), 'Pengadaan bidang yang belum selesai', 'primary', 'currency'),
-        ], $division()->whereNull('completed_at')->latest('updated_at'), 'Pengadaan Bidang Anda'];
+        ], $jobsQuery, 'Pengadaan Bidang Anda'];
     }
 
     /**
@@ -152,9 +256,18 @@ class RoleDashboard
      *
      * @return Section
      */
-    protected static function planner(User $user): array
+    protected static function planner(User $user, ?string $activeCard = null): array
     {
         $mine = fn (): Builder => Procurement::query()->where('planner_id', $user->id);
+
+        $jobsQuery = $activeCard !== null && in_array($activeCard, ['todo', 'waiting', 'returned', 'approved'], true)
+            ? self::applyCardFilter($mine(), $user, 'perencana', $activeCard)->latest('updated_at')
+            : $mine()->whereNull('completed_at')
+                ->orderByRaw('case when planning_approval_state = ? then 0 when planning_approval_state = ? then 1 else 2 end', [
+                    PlanningApprovalState::Ditolak->value,
+                    PlanningApprovalState::BelumDiajukan->value,
+                ])
+                ->latest('updated_at');
 
         return [[
             self::card('todo', 'Perlu Dilengkapi', $mine()->inProgress()
@@ -169,12 +282,7 @@ class RoleDashboard
             self::card('approved', 'Disetujui', $mine()
                 ->where('planning_approval_state', PlanningApprovalState::Disetujui->value)
                 ->count(), 'Diteruskan ke pelaksanaan', 'emerald'),
-        ], $mine()->whereNull('completed_at')
-            ->orderByRaw('case when planning_approval_state = ? then 0 when planning_approval_state = ? then 1 else 2 end', [
-                PlanningApprovalState::Ditolak->value,
-                PlanningApprovalState::BelumDiajukan->value,
-            ])
-            ->latest('updated_at'), 'Pengadaan yang Anda Rencanakan'];
+        ], $jobsQuery, 'Pengadaan yang Anda Rencanakan'];
     }
 
     /**
@@ -182,7 +290,7 @@ class RoleDashboard
      *
      * @return Section
      */
-    protected static function executor(User $user): array
+    protected static function executor(User $user, ?string $activeCard = null): array
     {
         $running = fn (): Builder => Procurement::query()
             ->where('executor_id', $user->id)
@@ -200,6 +308,14 @@ class RoleDashboard
 
         $mine = fn (): Builder => Procurement::query()->where('executor_id', $user->id);
 
+        $jobsQuery = $activeCard !== null && in_array($activeCard, ['running', 'ready', 'review', 'finance', 'done'], true)
+            ? self::applyCardFilter($mine(), $user, 'pelaksana', $activeCard)
+                ->orderByRaw('target_completion_date is null')
+                ->orderBy('target_completion_date')
+            : $mine()->whereNull('completed_at')
+                ->orderByRaw('target_completion_date is null')
+                ->orderBy('target_completion_date');
+
         return [[
             self::card('running', 'Pekerjaan Berjalan', $running()->count(), 'Planning disetujui, sedang Anda laksanakan', 'sky'),
             self::card('ready', 'Siap Diajukan', $ready, 'Tahapan wajib selesai, ajukan ke TL Pengadaan', 'emerald'),
@@ -208,9 +324,7 @@ class RoleDashboard
                 ->count(), 'Sudah diajukan, menunggu keputusan', 'violet'),
             self::card('finance', 'Penyerahan & Pembayaran', $mine()->whereNotNull('finance_submitted_at')->whereNull('payment_completed_at')->count(), 'Pelaksanaan disetujui, belum lunas', 'amber'),
             self::card('done', 'Selesai', $mine()->whereNotNull('completed_at')->count(), 'Sudah dibayar dan ditutup', 'primary'),
-        ], $mine()->whereNull('completed_at')
-            ->orderByRaw('target_completion_date is null')
-            ->orderBy('target_completion_date'), 'Pengadaan yang Anda Laksanakan'];
+        ], $jobsQuery, 'Pengadaan yang Anda Laksanakan'];
     }
 
     /**
@@ -219,7 +333,7 @@ class RoleDashboard
      * @param  callable(): Builder<Procurement>  $visible
      * @return Section
      */
-    protected static function finance(callable $visible): array
+    protected static function finance(callable $visible, ?string $activeCard = null): array
     {
         // Its to pay: the hand-over TL Pengadaan approved, not yet paid.
         $waiting = fn (): Builder => $visible()
@@ -231,12 +345,16 @@ class RoleDashboard
         $waitingValue = (float) $waiting()->get(['value_after_negotiation', 'hpe_value'])
             ->sum(fn (Procurement $procurement): float => (float) ($procurement->value_after_negotiation ?? $procurement->hpe_value));
 
+        $jobsQuery = $activeCard !== null && in_array($activeCard, ['month', 'paid'], true)
+            ? self::applyCardFilter($visible(), new User, 'keuangan', $activeCard)->latest('payment_completed_at')
+            : $waiting()->oldest('handover_reviewed_at');
+
         return [[
             self::card('waiting', 'Menunggu Pembayaran', $waiting()->count(), 'Penyerahan disetujui TL Pengadaan', 'amber'),
             self::card('value', 'Nilai Tagihan Menunggu', $waitingValue, 'Nilai setelah nego (atau HPE)', 'primary', 'currency'),
             self::card('month', 'Dibayar Bulan Ini', $paid()->where('payment_completed_at', '>=', now()->startOfMonth())->count(), now()->translatedFormat('F Y'), 'emerald'),
             self::card('paid', 'Total Sudah Dibayar', $paid()->count(), 'Seluruh pengadaan lunas', 'sky'),
-        ], $waiting()->oldest('handover_reviewed_at'), 'Tagihan Menunggu Pembayaran'];
+        ], $jobsQuery, 'Tagihan Menunggu Pembayaran'];
     }
 
     /**
@@ -245,13 +363,17 @@ class RoleDashboard
      * @param  callable(): Builder<Procurement>  $visible
      * @return Section
      */
-    protected static function general(callable $visible): array
+    protected static function general(callable $visible, ?string $activeCard = null): array
     {
+        $jobsQuery = $activeCard !== null && in_array($activeCard, ['total', 'running', 'done'], true)
+            ? self::applyCardFilter($visible(), new User, 'umum', $activeCard)->latest('updated_at')
+            : $visible()->whereNull('completed_at')->latest('updated_at');
+
         return [[
             self::card('total', 'Pengadaan Saya', $visible()->count(), 'Yang Anda usulkan atau tangani'),
             self::card('running', 'Berjalan', $visible()->whereNull('completed_at')->count(), null, 'sky'),
             self::card('done', 'Selesai', $visible()->whereNotNull('completed_at')->count(), null, 'emerald'),
-        ], $visible()->whereNull('completed_at')->latest('updated_at'), 'Pengadaan Saya'];
+        ], $jobsQuery, 'Pengadaan Saya'];
     }
 
     /**

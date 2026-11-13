@@ -184,8 +184,8 @@ class ProcurementController extends Controller
         return [
             'enabled' => ! $user->hasPermission(Permission::CreateProcurement)
                 && $user->mayProposeWork(),
-            'workDirectorId' => $user->work_director_id,
-            'division' => $user->workDirector?->name,
+            'workDirectorId' => $user->divisionId(),
+            'division' => ($user->workDirector ?? $user->teamLeader?->workDirector)?->name,
         ];
     }
 
@@ -933,7 +933,7 @@ class ProcurementController extends Controller
     /**
      * The current values of every step input, end date included.
      *
-     * @return array<string, string|int|null>
+     * @return array<string, string|int|float|null>
      */
     protected function inputValues(Procurement $procurement): array
     {
@@ -949,6 +949,11 @@ class ProcurementController extends Controller
             'bank_account_number' => $procurement->bank_account_number,
             'bank_name' => $procurement->bank_name,
             'bank_account_holder' => $procurement->bank_account_holder,
+            'guarantee_bank_name' => $procurement->guarantee_bank_name,
+            'guarantee_number' => $procurement->guarantee_number,
+            'guarantee_value' => $procurement->guarantee_value === null ? null : (float) $procurement->guarantee_value,
+            'guarantee_issue_date' => $procurement->guarantee_issue_date?->toDateString(),
+            'guarantee_expiry_date' => $procurement->guarantee_expiry_date?->toDateString(),
             'icc_memo_number' => $procurement->icc_memo_number,
             'icc_memo_date' => $procurement->icc_memo_date?->toDateString(),
             'rks_number' => $procurement->rks_number,

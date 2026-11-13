@@ -1,5 +1,6 @@
 import { useForm } from '@inertiajs/react';
 import { CheckCircle2, Save } from 'lucide-react';
+import { CurrencyInput } from '@/components/currency-input';
 import InputError from '@/components/input-error';
 import { focusContractNumber } from '@/components/procurement/contract-number-field';
 import { PartnerCandidatesCard } from '@/components/procurement/partner-candidates-card';
@@ -103,6 +104,14 @@ export function ChecklistInputForm({
         bank_account_number: values.bank_account_number ?? '',
         bank_name: values.bank_name ?? '',
         bank_account_holder: values.bank_account_holder ?? '',
+        guarantee_bank_name: values.guarantee_bank_name ?? '',
+        guarantee_number: values.guarantee_number ?? '',
+        guarantee_value:
+            values.guarantee_value === null
+                ? ''
+                : String(Math.round(values.guarantee_value)),
+        guarantee_issue_date: values.guarantee_issue_date ?? '',
+        guarantee_expiry_date: values.guarantee_expiry_date ?? '',
         icc_memo_number: values.icc_memo_number ?? '',
         icc_memo_date: values.icc_memo_date ?? '',
         number: values.number ?? '',
@@ -508,6 +517,107 @@ export function ChecklistInputForm({
                                 onChange={(event) =>
                                     form.setData(
                                         'bank_account_holder',
+                                        event.target.value,
+                                    )
+                                }
+                            />
+                        </Field>
+                    </>
+                )}
+
+                {input.kind === 'bank_guarantee' && (
+                    <>
+                        <Field
+                            id={`guarantee-bank-${checklistId}`}
+                            label="Nama Bank Penerbit"
+                            error={form.errors.guarantee_bank_name}
+                        >
+                            <Input
+                                id={`guarantee-bank-${checklistId}`}
+                                className="h-8"
+                                value={form.data.guarantee_bank_name}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'guarantee_bank_name',
+                                        event.target.value,
+                                    )
+                                }
+                                placeholder="Contoh: Bank Mandiri"
+                                autoComplete="off"
+                            />
+                        </Field>
+                        <Field
+                            id={`guarantee-number-${checklistId}`}
+                            label="Nomor Bank Garansi"
+                            error={form.errors.guarantee_number}
+                        >
+                            <Input
+                                id={`guarantee-number-${checklistId}`}
+                                className="tabular h-8"
+                                value={form.data.guarantee_number}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'guarantee_number',
+                                        event.target.value,
+                                    )
+                                }
+                                placeholder="Contoh: BG/2026/00123"
+                                autoComplete="off"
+                            />
+                        </Field>
+                        <Field
+                            id={`guarantee-value-${checklistId}`}
+                            label="Nilai Jaminan"
+                            error={form.errors.guarantee_value}
+                        >
+                            <CurrencyInput
+                                id={`guarantee-value-${checklistId}`}
+                                className="h-8"
+                                value={
+                                    form.data.guarantee_value === ''
+                                        ? 0
+                                        : Number(form.data.guarantee_value)
+                                }
+                                onValueChange={(value) =>
+                                    form.setData(
+                                        'guarantee_value',
+                                        value === 0 ? '' : String(value),
+                                    )
+                                }
+                            />
+                        </Field>
+                        <Field
+                            id={`guarantee-issue-${checklistId}`}
+                            label="Tanggal Terbit"
+                            error={form.errors.guarantee_issue_date}
+                        >
+                            <Input
+                                id={`guarantee-issue-${checklistId}`}
+                                type="date"
+                                className="tabular h-8"
+                                value={form.data.guarantee_issue_date}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'guarantee_issue_date',
+                                        event.target.value,
+                                    )
+                                }
+                            />
+                        </Field>
+                        <Field
+                            id={`guarantee-expiry-${checklistId}`}
+                            label="Masa Berlaku"
+                            error={form.errors.guarantee_expiry_date}
+                        >
+                            <Input
+                                id={`guarantee-expiry-${checklistId}`}
+                                type="date"
+                                min={form.data.guarantee_issue_date || undefined}
+                                className="tabular h-8"
+                                value={form.data.guarantee_expiry_date}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'guarantee_expiry_date',
                                         event.target.value,
                                     )
                                 }

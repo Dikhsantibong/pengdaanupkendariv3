@@ -169,6 +169,9 @@ class ProposalFlowTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->has('proposal.documents', 1)
                 ->where('proposal.documents.0.id', $document->id)
+                ->where('proposal.documents.0.is_signed', true)
+                ->where('proposal.documents.0.preview_url', null)
+                ->has('proposal.documents.0.uploads', 1)
                 ->where('can.editDocuments', true)
             );
 

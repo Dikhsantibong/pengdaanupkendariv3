@@ -4,6 +4,9 @@ namespace Tests\Feature;
 
 use App\Enums\UserRole;
 use App\Models\BudgetPlan;
+use App\Models\BudgetSource;
+use App\Models\ContractNumberFormat;
+use App\Models\TargetUnit;
 use App\Models\User;
 use App\Models\WorkDirector;
 use App\Services\AccessRights;
@@ -394,5 +397,119 @@ class BudgetPlanTest extends TestCase
                 ->has('options.budgetPlans.0.aiValue'));
 
         $this->assertNotNull($plan->id);
+    }
+
+    public function test_division_subordinates_from_tl_to_staff_see_unproposed_prk_on_dashboard(): void
+    {
+        $otherDivision = WorkDirector::factory()->create(['name' => 'Asman Pemeliharaan']);
+
+        // 1. Role Anggaran creates PRK via POST /perencanaan-anggaran for Asman Operasi and Asman Pemeliharaan.
+        $this->actingAs($this->budgeter)
+            ->post(route('budget-plans.store'), [
+                'budget_type' => 'investasi',
+                'prk_induk' => '2026.AO.01.001',
+                'work_director_id' => $this->division->id,
+                'prk_induk_description' => 'Pemeliharaan Mesin Pembangkit',
+                'sub_program_description' => 'Overhaul Mesin PLTD',
+                'ai_plan_value' => 1500000000,
+                'wo_number' => 'WO-2026-0042',
+                'pr_number' => '1000012345',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($this->budgeter)
+            ->post(route('budget-plans.store'), [
+                'budget_type' => 'operasi',
+                'prk_induk' => '2026.AO.01.002',
+                'work_director_id' => $this->division->id,
+                'prk_induk_description' => 'Pengadaan Pelumas Mesin',
+                'pagu_value' => 450000000,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($this->budgeter)
+            ->post(route('budget-plans.store'), [
+                'budget_type' => 'operasi',
+                'prk_induk' => '2026.HAR.02.001',
+                'work_director_id' => $otherDivision->id,
+                'prk_induk_description' => 'Perbaikan Trafo',
+                'pagu_value' => 250000000,
+            ])
+            ->assertSessionHasNoErrors();
+
+        // 2. Team Leader and Staff under Asman Operasi (including staff whose
+        // division is inherited from their TL).
+        $tlOperasi = User::factory()->proposer($this->division)->create([
+            'position' => 'TL Operasi',
+        ]);
+        $staffOperasi = User::factory()->proposer($this->division)->create([
+            'position' => 'Staf Operasi',
+            'team_leader_id' => $tlOperasi->id,
+        ]);
+        $staffViaTlOnly = User::factory()->role(UserRole::Pengusul)->create([
+            'position' => 'Staf Energi Primer',
+            'work_director_id' => null,
+            'team_leader_id' => $tlOperasi->id,
+        ]);
+        $otherStaff = User::factory()->proposer($otherDivision)->create([
+            'position' => 'Staf Pemeliharaan Mesin',
+        ]);
+
+        foreach ([$tlOperasi, $staffOperasi, $staffViaTlOnly] as $subordinate) {
+            $this->actingAs($subordinate)
+                ->get(route('dashboard'))
+                ->assertOk()
+                ->assertInertia(fn (Assert $page) => $page
+                    ->where('tasks.budgetPlans.total', 2)
+                    ->where('tasks.budgetPlans.items.0.number', '2026.AO.01.001')
+                    ->where('tasks.budgetPlans.items.1.number', '2026.AO.01.002')
+                    ->has('role.budgetPlans', 2)
+                    ->where('role.budgetPlans.0.prk_induk', '2026.AO.01.001')
+                    ->where('role.budgetPlans.1.prk_induk', '2026.AO.01.002'));
+        }
+
+        // Staff of Asman Pemeliharaan only sees their own division's PRK.
+        $this->actingAs($otherStaff)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('tasks.budgetPlans.total', 1)
+                ->where('tasks.budgetPlans.items.0.number', '2026.HAR.02.001')
+                ->has('role.budgetPlans', 1)
+                ->where('role.budgetPlans.0.prk_induk', '2026.HAR.02.001'));
+
+        // 3. Staf Operasi follows up and proposes 2026.AO.01.001 via POST /procurements.
+        $unit = TargetUnit::factory()->create();
+        $budgetSource = BudgetSource::factory()->create();
+        $format = ContractNumberFormat::factory()->create();
+
+        $this->actingAs($staffOperasi)
+            ->post(route('procurements.store'), [
+                'contract_number_format_id' => $format->id,
+                'name' => 'Pemeliharaan Mesin Pembangkit - Overhaul Mesin PLTD',
+                'work_director_id' => $this->division->id,
+                'target_unit_ids' => [$unit->id],
+                'budget_source_id' => $budgetSource->id,
+                'prk_number' => '2026.AO.01.001',
+                'pr_po_number' => '1000012345',
+                'coa_number' => '5110100000',
+                'wo_number' => 'WO-2026-0042',
+                'proposal_memo_number' => 'ND-001/OPS/2026',
+                'proposal_memo_date' => '2026-11-13',
+                'hpe_value' => 1500000000,
+            ])
+            ->assertSessionHasNoErrors();
+
+        // 4. Only 2026.AO.01.002 remains as unproposed on the dashboard of Asman Operasi's team.
+        foreach ([$tlOperasi, $staffOperasi, $staffViaTlOnly] as $subordinate) {
+            $this->actingAs($subordinate)
+                ->get(route('dashboard'))
+                ->assertOk()
+                ->assertInertia(fn (Assert $page) => $page
+                    ->where('tasks.budgetPlans.total', 1)
+                    ->where('tasks.budgetPlans.items.0.number', '2026.AO.01.002')
+                    ->has('role.budgetPlans', 1)
+                    ->where('role.budgetPlans.0.prk_induk', '2026.AO.01.002'));
+        }
     }
 }

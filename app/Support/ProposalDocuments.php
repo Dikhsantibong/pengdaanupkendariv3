@@ -115,7 +115,9 @@ class ProposalDocuments
                 'upload_only' => $type->upload_only,
                 'is_alternative' => false,
                 // The drafted TOR, readable before anything is uploaded.
-                'preview_url' => $document !== null && $document->document_template_id !== null
+                'preview_url' => $document !== null
+                    && $document->document_template_id !== null
+                    && ! $document->isSigned()
                     ? route('procurements.documents.show', [$procurement, $document, 'preview' => 1])
                     : null,
             ];

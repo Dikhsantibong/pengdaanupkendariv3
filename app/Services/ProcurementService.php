@@ -55,8 +55,8 @@ class ProcurementService
             if ($isProposal) {
                 $plannerId = null;
 
-                if ($author->work_director_id !== null) {
-                    $attributes['work_director_id'] = $author->work_director_id;
+                if ($author->divisionId() !== null) {
+                    $attributes['work_director_id'] = $author->divisionId();
                 }
             }
 

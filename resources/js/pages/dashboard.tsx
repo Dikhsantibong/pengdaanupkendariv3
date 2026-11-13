@@ -44,6 +44,7 @@ import type {
     TableQuery,
 } from '@/components/dashboard/analytics';
 import {
+    DivisionBudgetPlans,
     FigureCards,
     PROFILE_DESCRIPTIONS,
     RoleJobs,
@@ -84,12 +85,15 @@ type TaskList = { total: number; items: TaskItem[] };
 
 type DashboardTasks = {
     proposals: TaskList | null;
+    budgetPlans?: TaskList | null;
     myProposals: TaskList;
     finance: TaskList | null;
     approvals: TaskList | null;
     executionApprovals: TaskList | null;
     handoverApprovals: TaskList | null;
     paymentApprovals: TaskList | null;
+    amendmentApprovals: TaskList | null;
+    deliveryOrderApprovals: TaskList | null;
     assignments: TaskList | null;
     planning: TaskList;
     execution: TaskList;
@@ -133,6 +137,12 @@ export default function Dashboard(props: DashboardProps) {
     } = props;
     const [loading, setLoading] = useState(false);
     const isManagement = profile === 'manajemen' || role === undefined;
+    const selectCard = (card: string | null) =>
+        visitDashboard(
+            queryOf(filters, tableQuery, { card, table_page: null }),
+            setLoading,
+            ['role', 'table', 'tableQuery'],
+        );
 
     return (
         <>
@@ -200,7 +210,11 @@ export default function Dashboard(props: DashboardProps) {
                         afterKpis={
                             <>
                                 {!isManagement && role !== undefined && (
-                                    <FigureCards cards={role.cards} />
+                                    <FigureCards
+                                        cards={role.cards}
+                                        activeCard={role.activeCard ?? null}
+                                        onSelect={selectCard}
+                                    />
                                 )}
                                 <TaskInbox
                                     tasks={tasks}
@@ -220,6 +234,10 @@ export default function Dashboard(props: DashboardProps) {
                                     profile={profile}
                                     role={role}
                                     menus={auth.permissions.menus}
+                                    canPropose={
+                                        auth.permissions.createProcurement
+                                    }
+                                    onResetFilter={() => selectCard(null)}
                                 />
                             ) : undefined
                         }
@@ -330,6 +348,16 @@ function AnalyticsSections({
                 ) : (
                     <SectionError />
                 ))}
+
+            {beforeTable}
+
+            <RecentProcurementTable
+                page={table}
+                filters={filters}
+                options={filterOptions}
+                tableQuery={tableQuery}
+                setLoading={setLoading}
+            />
 
             <FilledGrid>
                 {shows('trend') && (
@@ -572,16 +600,6 @@ function AnalyticsSections({
                 )}
             </FilledGrid>
 
-            {beforeTable}
-
-            <RecentProcurementTable
-                page={table}
-                filters={filters}
-                options={filterOptions}
-                tableQuery={tableQuery}
-                setLoading={setLoading}
-            />
-
             {(shows('activities') || hasSideColumn) && (
                 <div
                     className={cn(
@@ -716,10 +734,14 @@ function RoleJobsSection({
     profile,
     role,
     menus,
+    canPropose,
+    onResetFilter,
 }: {
     profile: RoleProfile;
     role: RoleDashboardData;
     menus: Auth['permissions']['menus'];
+    canPropose: boolean;
+    onResetFilter?: () => void;
 }) {
     // Where "Lihat semua" leads for each role's list.
     const allHref: Record<RoleProfile, string | null> = {
@@ -732,13 +754,27 @@ function RoleJobsSection({
         umum: procurements.index().url,
     };
 
+    const activeFilterLabel =
+        role.activeCard && role.activeCard !== 'total'
+            ? (role.cards.find((card) => card.key === role.activeCard)?.label ??
+              null)
+            : null;
+
     return (
-        <RoleJobs
-            title={role.jobsTitle}
-            jobs={role.jobs}
-            allHref={allHref[profile]}
-            showDivision={profile !== 'pengusul' && profile !== 'direksi'}
-        />
+        <>
+            <DivisionBudgetPlans
+                plans={role.budgetPlans ?? []}
+                canPropose={canPropose}
+            />
+            <RoleJobs
+                title={role.jobsTitle}
+                jobs={role.jobs}
+                allHref={allHref[profile]}
+                showDivision={profile !== 'pengusul' && profile !== 'direksi'}
+                activeFilterLabel={activeFilterLabel}
+                onResetFilter={onResetFilter}
+            />
+        </>
     );
 }
 
@@ -799,6 +835,22 @@ function TaskInbox({
                 item.date ? `Diajukan ${formatDateTime(item.date)}` : null,
             allHref: menus.proposals ? proposals.index().url : null,
             tone: 'bg-violet-500/10 text-violet-700 dark:text-violet-400',
+        });
+    }
+
+    if (tasks.budgetPlans !== null && tasks.budgetPlans !== undefined) {
+        cards.push({
+            key: 'budgetPlans',
+            title: 'PRK Perlu Ditindaklanjuti',
+            icon: FilePlus2,
+            list: tasks.budgetPlans,
+            emptyText: 'Semua PRK bidang Anda sudah ditindaklanjuti.',
+            itemHref: (item) =>
+                procurements.create({ query: { prk: item.number } }).url,
+            dateLabel: (item) =>
+                item.date ? `Dibuat ${formatDate(item.date)}` : null,
+            allHref: null,
+            tone: 'bg-primary/10 text-primary',
         });
     }
 
@@ -899,6 +951,42 @@ function TaskInbox({
                 item.date ? `Diajukan ${formatDateTime(item.date)}` : null,
             allHref: menus.approvals ? approvals.index().url : null,
             tone: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+        });
+    }
+
+    if (tasks.amendmentApprovals !== null) {
+        cards.push({
+            key: 'amendmentApprovals',
+            title: 'Amandemen Menunggu Persetujuan Anda',
+            icon: ClipboardCheck,
+            list: tasks.amendmentApprovals,
+            emptyText: 'Tidak ada amandemen yang menunggu persetujuan.',
+            itemHref: (item) =>
+                procurements.show(item.id, { query: { tab: 'amandemen' } }).url,
+            dateLabel: (item) =>
+                item.date ? `Diajukan ${formatDateTime(item.date)}` : null,
+            allHref: menus.approvals
+                ? approvals.index({ query: { queue: 'amendment' } }).url
+                : null,
+            tone: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+        });
+    }
+
+    if (tasks.deliveryOrderApprovals !== null) {
+        cards.push({
+            key: 'deliveryOrderApprovals',
+            title: 'Delivery Order Menunggu Persetujuan Anda',
+            icon: ClipboardCheck,
+            list: tasks.deliveryOrderApprovals,
+            emptyText: 'Tidak ada Delivery Order yang menunggu persetujuan.',
+            itemHref: (item) =>
+                procurements.show(item.id, { query: { tab: 'do' } }).url,
+            dateLabel: (item) =>
+                item.date ? `Diajukan ${formatDateTime(item.date)}` : null,
+            allHref: menus.approvals
+                ? approvals.index({ query: { queue: 'delivery-order' } }).url
+                : null,
+            tone: 'bg-sky-500/10 text-sky-700 dark:text-sky-400',
         });
     }
 

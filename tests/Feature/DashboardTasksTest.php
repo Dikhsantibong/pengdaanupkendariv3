@@ -2,8 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Enums\AmendmentState;
+use App\Enums\DeliveryOrderState;
 use App\Models\Procurement;
+use App\Models\ProcurementAmendment;
+use App\Models\ProcurementDeliveryOrder;
 use App\Models\User;
+use App\Models\WorkDirector;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -125,5 +130,43 @@ class DashboardTasksTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where('tasks.execution.total', 1)
                 ->where('tasks.execution.items.0.id', $ready->id));
+    }
+
+    public function test_work_director_sees_amendment_and_delivery_order_approvals_in_dashboard_tasks(): void
+    {
+        $division = WorkDirector::factory()->create(['name' => 'Asman Pemeliharaan']);
+        $director = User::factory()->workDirector($division)->create(['name' => 'Asman Pemeliharaan']);
+        $proposer = User::factory()->proposer($division)->create(['name' => 'Staf Har']);
+
+        $procurement = Procurement::factory()->create([
+            'work_director_id' => $division->id,
+            'created_by' => $proposer->id,
+        ]);
+
+        ProcurementAmendment::query()->forceCreate([
+            'procurement_id' => $procurement->id,
+            'sequence' => 1,
+            'state' => AmendmentState::MenungguPersetujuanAsman,
+            'created_by' => $proposer->id,
+            'submitted_at' => now(),
+        ]);
+
+        ProcurementDeliveryOrder::query()->forceCreate([
+            'procurement_id' => $procurement->id,
+            'sequence' => 4,
+            'state' => DeliveryOrderState::MenungguPersetujuanAsman,
+            'created_by' => $proposer->id,
+            'submitted_at' => now(),
+        ]);
+
+        $this->actingAs($director)
+            ->get(route('dashboard'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('tasks.amendmentApprovals.total', 1)
+                ->where('tasks.amendmentApprovals.items.0.id', $procurement->id)
+                ->where('tasks.amendmentApprovals.items.0.note', 'Amandemen I · diajukan oleh Staf Har · Menunggu Persetujuan Direksi Pekerjaan')
+                ->where('tasks.deliveryOrderApprovals.total', 1)
+                ->where('tasks.deliveryOrderApprovals.items.0.id', $procurement->id)
+                ->where('tasks.deliveryOrderApprovals.items.0.note', 'DO ke-4 · diajukan oleh Staf Har · Menunggu Persetujuan Direksi Pekerjaan'));
     }
 }

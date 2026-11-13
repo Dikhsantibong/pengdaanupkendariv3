@@ -2,6 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import { Bell } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { ImpersonationSwitcher } from '@/components/impersonation-switcher';
+import { toggleNotificationPanel } from '@/components/notification-panel';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useNotificationFeed } from '@/lib/notification-feed';
 import notifications from '@/routes/notifications';
@@ -41,18 +42,28 @@ export function AppSidebarHeader({
                     </p>
                 </div>
 
-                <Link
-                    href={notifications.index()}
-                    className="relative inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-                    aria-label="Notifikasi"
-                >
-                    <Bell className="size-4" />
-                    {unread > 0 && (
-                        <span className="absolute -top-0.5 -right-0.5 inline-flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[0.625rem] leading-4 font-semibold text-white">
-                            {unread > 9 ? '9+' : unread}
+                {unread > 0 ? (
+                    <button
+                        type="button"
+                        onClick={toggleNotificationPanel}
+                        className="relative inline-flex h-8 items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 text-primary transition-colors hover:bg-primary/15 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+                        aria-label={`Notifikasi (${unread} belum dibaca)`}
+                        title="Tampilkan / sembunyikan panel notifikasi"
+                    >
+                        <Bell className="size-4" />
+                        <span className="tabular inline-flex min-w-4 items-center justify-center rounded-full bg-destructive px-1.5 text-[0.6875rem] leading-4 font-semibold text-white">
+                            {unread > 99 ? '99+' : unread}
                         </span>
-                    )}
-                </Link>
+                    </button>
+                ) : (
+                    <Link
+                        href={notifications.index()}
+                        className="relative inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                        aria-label="Notifikasi"
+                    >
+                        <Bell className="size-4" />
+                    </Link>
+                )}
             </div>
         </header>
     );

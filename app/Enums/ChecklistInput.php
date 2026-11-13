@@ -23,6 +23,7 @@ enum ChecklistInput: string
     case RksNumber = 'rks_number';
     case HpeNumber = 'hpe_number';
     case UpbNumber = 'upb_number';
+    case BankGuarantee = 'bank_guarantee';
 
     /**
      * The name shown when choosing the input on the master data screen.
@@ -39,6 +40,7 @@ enum ChecklistInput: string
             self::RksNumber => 'Nomor RKS',
             self::HpeNumber => 'Nomor HPE',
             self::UpbNumber => 'Nomor UPB',
+            self::BankGuarantee => 'Jaminan bank (nama bank penerbit, nomor garansi, nilai, tanggal terbit & masa berlaku)',
         };
     }
 
@@ -64,6 +66,13 @@ enum ChecklistInput: string
             self::RksNumber => ['rks_number'],
             self::HpeNumber => ['hpe_number'],
             self::UpbNumber => ['upb_number'],
+            self::BankGuarantee => [
+                'guarantee_bank_name',
+                'guarantee_number',
+                'guarantee_value',
+                'guarantee_issue_date',
+                'guarantee_expiry_date',
+            ],
         };
     }
 
@@ -90,6 +99,10 @@ enum ChecklistInput: string
             if ($value === null || $value === '') {
                 return false;
             }
+        }
+
+        if ($this === self::BankGuarantee && (float) $procurement->guarantee_value <= 0) {
+            return false;
         }
 
         return true;

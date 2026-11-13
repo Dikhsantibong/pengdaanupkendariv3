@@ -8,7 +8,10 @@ use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Enums\ProposalState;
+use App\Models\BudgetPlan;
 use App\Models\Procurement;
+use App\Models\ProcurementAmendment;
+use App\Models\ProcurementDeliveryOrder;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -37,6 +40,9 @@ class DashboardTasks
             'proposals' => $user->hasPermission(Permission::ApproveProposal) || $user->leadsTeam()
                 ? self::proposalsToApprove($user)
                 : null,
+            'budgetPlans' => $user->divisionId() !== null && ($user->mayProposeWork() || $user->leadsTeam())
+                ? self::budgetPlans($user)
+                : null,
             'finance' => $user->hasPermission(Permission::ProcessPayment)
                 ? self::payments($user)
                 : null,
@@ -52,6 +58,12 @@ class DashboardTasks
                 : null,
             'paymentApprovals' => PaymentQueue::involves($user)
                 ? self::paymentApprovals($user)
+                : null,
+            'amendmentApprovals' => ContractRequestQueue::involvesIn($user, 'amendment')
+                ? self::amendmentApprovals($user)
+                : null,
+            'deliveryOrderApprovals' => ContractRequestQueue::involvesIn($user, 'delivery-order')
+                ? self::deliveryOrderApprovals($user)
                 : null,
             'assignments' => $user->hasPermission(Permission::AssignPlanner) || $user->hasPermission(Permission::AssignExecutor)
                 ? self::assignments($user)
@@ -139,6 +151,64 @@ class DashboardTasks
     }
 
     /**
+     * Contract amendments waiting on the user as TL, Asman, or Laksdan.
+     *
+     * @return array{total: int, items: array<int, array{id: int, number: string, name: string, note: string, date: string|null}>}
+     */
+    protected static function amendmentApprovals(User $user): array
+    {
+        $query = ContractRequestQueue::amendmentsAwaiting($user)
+            ->with(['procurement', 'creator'])
+            ->oldest('submitted_at')
+            ->oldest('id');
+
+        $total = (clone $query)->count();
+
+        $items = $query->limit(self::LIMIT)->get()
+            ->map(fn (ProcurementAmendment $amendment): array => [
+                'id' => $amendment->procurement_id,
+                'number' => $amendment->procurement->number,
+                'name' => $amendment->procurement->name,
+                'note' => 'Amandemen '.$amendment->roman()
+                    .' · diajukan oleh '.($amendment->creator->name ?? 'Pengusul')
+                    .' · '.$amendment->state->label(),
+                'date' => $amendment->submitted_at?->toDateTimeString(),
+            ])
+            ->all();
+
+        return ['total' => $total, 'items' => $items];
+    }
+
+    /**
+     * Delivery Orders waiting on the user as TL, Asman, Rendan, or Laksdan.
+     *
+     * @return array{total: int, items: array<int, array{id: int, number: string, name: string, note: string, date: string|null}>}
+     */
+    protected static function deliveryOrderApprovals(User $user): array
+    {
+        $query = ContractRequestQueue::deliveryOrdersAwaiting($user)
+            ->with(['procurement', 'creator'])
+            ->oldest('submitted_at')
+            ->oldest('id');
+
+        $total = (clone $query)->count();
+
+        $items = $query->limit(self::LIMIT)->get()
+            ->map(fn (ProcurementDeliveryOrder $order): array => [
+                'id' => $order->procurement_id,
+                'number' => $order->procurement->number,
+                'name' => $order->procurement->name,
+                'note' => 'DO ke-'.$order->sequence
+                    .' · diajukan oleh '.($order->creator->name ?? 'Pengusul')
+                    .' · '.$order->state->label(),
+                'date' => $order->submitted_at?->toDateTimeString(),
+            ])
+            ->all();
+
+        return ['total' => $total, 'items' => $items];
+    }
+
+    /**
      * Unfinished procurements still missing the PIC the user appoints.
      *
      * The PIC Perencana is appointed (by TL ICC) once the Asman approved the
@@ -193,6 +263,33 @@ class DashboardTasks
                 .($procurement->proposal_state === ProposalState::MenungguPersetujuanTl ? ' · persetujuan TL' : ' · persetujuan Direksi Pekerjaan'),
             fn (Procurement $procurement): ?string => $procurement->proposal_submitted_at?->toDateTimeString(),
         );
+    }
+
+    /**
+     * PRK entered by Anggaran for the user's division that still need to be
+     * followed up and proposed as a work proposal.
+     *
+     * @return array{total: int, items: array<int, array{id: int, number: string, name: string, note: string, date: string|null}>}
+     */
+    protected static function budgetPlans(User $user): array
+    {
+        $divisionId = $user->divisionId();
+        $plans = $divisionId !== null ? BudgetPlan::unproposedFor($divisionId) : collect();
+
+        $items = $plans->take(self::LIMIT)
+            ->map(fn (BudgetPlan $plan): array => [
+                'id' => $plan->id,
+                'number' => $plan->prk_induk,
+                'name' => $plan->description(),
+                'note' => 'PRK '.$plan->budget_type->label()
+                    .($plan->workDirector !== null ? ' · '.$plan->workDirector->name : '')
+                    .' · Perlu diusulkan',
+                'date' => $plan->created_at?->toDateTimeString(),
+            ])
+            ->values()
+            ->all();
+
+        return ['total' => $plans->count(), 'items' => $items];
     }
 
     /**

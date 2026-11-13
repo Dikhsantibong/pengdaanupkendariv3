@@ -179,6 +179,71 @@ class RoleDashboardTest extends TestCase
                 ->has('role.jobs', 1));
     }
 
+    public function test_proposer_accumulation_cards_filter_jobs_and_table_when_clicked(): void
+    {
+        $division = WorkDirector::factory()->create();
+        $proposer = User::factory()->proposer($division)->create();
+
+        $waiting = $this->proposal($proposer, ProposalState::MenungguPersetujuanTl);
+        $returned = $this->proposal($proposer, ProposalState::Dikembalikan);
+        $running = $this->proposal($proposer, ProposalState::Disetujui);
+        $done = $this->proposal($proposer, ProposalState::Disetujui, ['completed_at' => now()]);
+
+        $cases = [
+            'waiting' => $waiting->id,
+            'returned' => $returned->id,
+            'running' => $running->id,
+            'done' => $done->id,
+        ];
+
+        foreach ($cases as $cardKey => $expectedId) {
+            $this->actingAs($proposer)
+                ->get(route('dashboard', ['card' => $cardKey]))
+                ->assertInertia(fn (Assert $page) => $page
+                    ->where('role.activeCard', $cardKey)
+                    ->has('role.jobs', 1)
+                    ->where('role.jobs.0.id', $expectedId)
+                    ->where('table.total', 1)
+                    ->where('table.data.0.id', $expectedId));
+        }
+    }
+
+    public function test_director_accumulation_cards_filter_jobs_and_table_when_clicked(): void
+    {
+        $division = WorkDirector::factory()->create();
+        $director = User::factory()->workDirector($division)->create();
+        $proposer = User::factory()->proposer($division)->create();
+
+        $waiting = $this->proposal($proposer, ProposalState::MenungguPersetujuan, [
+            'proposal_completed_at' => now(),
+        ]);
+        $running = $this->proposal($proposer, ProposalState::Disetujui, [
+            'hpe_value' => 50_000_000,
+        ]);
+        $done = $this->proposal($proposer, ProposalState::Disetujui, [
+            'completed_at' => now(),
+        ]);
+
+        $cases = [
+            'waiting' => $waiting->id,
+            'running' => $running->id,
+            'value' => $running->id,
+            'done' => $done->id,
+        ];
+
+        foreach ($cases as $cardKey => $expectedId) {
+            $this->actingAs($director)
+                ->get(route('dashboard', ['card' => $cardKey]))
+                ->assertInertia(fn (Assert $page) => $page
+                    ->where('profile', 'direksi')
+                    ->where('role.activeCard', $cardKey)
+                    ->has('role.jobs', 1)
+                    ->where('role.jobs.0.id', $expectedId)
+                    ->where('table.total', 1)
+                    ->where('table.data.0.id', $expectedId));
+        }
+    }
+
     /**
      * A work proposal raised by a proposer.
      *

@@ -42,6 +42,10 @@ class DashboardController extends Controller
             ? fn () => Procurement::query()->where('procurements.created_by', $user->id)
             : $base;
         $filters = DashboardFilters::fromRequest($request);
+        $card = $request->string('card')->trim()->value() ?: null;
+        $tableScope = $profile !== 'manajemen' && $card !== null
+            ? fn () => RoleDashboard::applyCardFilter($scope(), $user, $profile, $card)
+            : $scope;
 
         $shared = [
             'profile' => $profile,
@@ -54,7 +58,7 @@ class DashboardController extends Controller
             'filters' => $filters->toArray(),
             'filterOptions' => fn () => $this->filterOptions($profile, $scope),
             'analytics' => fn () => $analytics->build($scope, $filters, $profile),
-            'table' => fn () => $analytics->table($scope, $filters, $request),
+            'table' => fn () => $analytics->table($tableScope, $filters, $request),
             'tableQuery' => [
                 'search' => (string) $request->query('search', ''),
                 'sort' => (string) $request->query('sort', 'created_at'),
@@ -65,7 +69,7 @@ class DashboardController extends Controller
         if ($profile !== 'manajemen') {
             return Inertia::render('dashboard', [
                 ...$shared,
-                'role' => fn () => RoleDashboard::for($user, $profile),
+                'role' => fn () => RoleDashboard::for($user, $profile, $card),
             ]);
         }
 

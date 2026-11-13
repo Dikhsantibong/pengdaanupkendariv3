@@ -318,7 +318,7 @@ export default function ProposalShow({
 }) {
     const viewerItems: ViewerItem[] = [
         ...proposal.documents.flatMap((document) => [
-            ...(document.preview_url !== null
+            ...(document.preview_url !== null && document.uploads.length === 0
                 ? [
                       {
                           key: `draft-${document.type_id}`,

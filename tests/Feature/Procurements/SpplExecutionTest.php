@@ -705,6 +705,81 @@ HTML;
         }
     }
 
+    public function test_jaminan_bank_step_requires_guarantee_inputs_and_document_upload(): void
+    {
+        Storage::fake('local');
+
+        $this->seed(MasterDataSeeder::class);
+
+        $executor = User::factory()->executor()->create();
+        $procurement = Procurement::factory()->create([
+            'procurement_method_id' => null,
+            'contract_number_format_id' => ContractNumberFormat::query()->where('code', 'SPK')->value('id'),
+            'executor_id' => $executor->id,
+            'planning_approval_state' => PlanningApprovalState::Disetujui,
+        ]);
+
+        app(ProcurementService::class)->syncChecklists($procurement);
+
+        $checklist = $procurement->checklists()
+            ->whereHas('checklistItem', fn ($query) => $query->where('name', 'Jaminan Bank'))
+            ->firstOrFail();
+
+        $this->assertSame(ChecklistInput::BankGuarantee, $checklist->checklistItem->inputFor($procurement));
+
+        $type = DocumentType::query()->where('code', 'jaminan-bank')->firstOrFail();
+
+        // Uploading the document alone is not enough when bank guarantee fields are empty.
+        $this->actingAs($executor)
+            ->post(route('procurements.documents.upload', $procurement), [
+                'document_type_id' => $type->id,
+                'files' => [UploadedFile::fake()->create('jaminan-bank.pdf', 80, 'application/pdf')],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($executor)
+            ->put(route('procurements.checklists.update', [$procurement, $checklist]), ['is_completed' => true])
+            ->assertSessionHasErrors('is_completed');
+
+        // Expiry date earlier than issue date is rejected.
+        $this->actingAs($executor)
+            ->put(route('procurements.checklists.input', [$procurement, $checklist]), [
+                'guarantee_bank_name' => 'Bank Mandiri',
+                'guarantee_number' => 'BG/2026/0099',
+                'guarantee_value' => 25000000,
+                'guarantee_issue_date' => '2026-10-15',
+                'guarantee_expiry_date' => '2026-10-01',
+            ])
+            ->assertSessionHasErrors('guarantee_expiry_date');
+
+        // Valid bank guarantee inputs save cleanly.
+        $this->actingAs($executor)
+            ->put(route('procurements.checklists.input', [$procurement, $checklist]), [
+                'guarantee_bank_name' => '  Bank Mandiri  ',
+                'guarantee_number' => '  BG/2026/0099  ',
+                'guarantee_value' => 25000000,
+                'guarantee_issue_date' => '2026-10-15',
+                'guarantee_expiry_date' => '2027-01-15',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $procurement->refresh();
+
+        $this->assertSame('Bank Mandiri', $procurement->guarantee_bank_name);
+        $this->assertSame('BG/2026/0099', $procurement->guarantee_number);
+        $this->assertSame(25000000.0, (float) $procurement->guarantee_value);
+        $this->assertSame('2026-10-15', $procurement->guarantee_issue_date?->toDateString());
+        $this->assertSame('2027-01-15', $procurement->guarantee_expiry_date?->toDateString());
+        $this->assertTrue(ChecklistInput::BankGuarantee->isFilledOn($procurement));
+
+        // Now the Jaminan Bank step can be completed.
+        $this->actingAs($executor)
+            ->put(route('procurements.checklists.update', [$procurement, $checklist]), ['is_completed' => true])
+            ->assertSessionHasNoErrors();
+
+        $this->assertTrue($checklist->refresh()->is_completed);
+    }
+
     /**
      * The execution step names a format goes through, in order.
      *
