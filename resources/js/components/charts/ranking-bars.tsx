@@ -65,12 +65,13 @@ export function RankingBars({
                                     </span>
                                 </span>
                             </div>
-                            <div className="mt-1 ml-6 h-2 overflow-hidden rounded-[2px] bg-muted">
+                            <div className="mt-1 ml-6 h-2.5 overflow-hidden rounded-[3px] bg-muted shadow-[inset_0_1px_2px_rgba(0,0,0,0.14)]">
                                 <div
-                                    className="h-full rounded-[2px] transition-opacity group-hover:opacity-80"
+                                    className="h-full rounded-[3px] transition-opacity group-hover:opacity-85"
                                     style={{
                                         width: `${(row.total / max) * 100}%`,
-                                        backgroundColor: color,
+                                        background: `linear-gradient(180deg, color-mix(in srgb, ${color} 72%, white) 0%, ${color} 45%, color-mix(in srgb, ${color} 68%, black) 100%)`,
+                                        boxShadow: `inset 0 -1px 0 color-mix(in srgb, ${color} 55%, black)`,
                                     }}
                                 />
                             </div>
@@ -138,12 +139,13 @@ export function PairedBars({
                                     key={series.key}
                                     className="flex items-center gap-2"
                                 >
-                                    <span className="h-2 min-w-0 flex-1 overflow-hidden rounded-[2px] bg-muted">
+                                    <span className="h-2.5 min-w-0 flex-1 overflow-hidden rounded-[3px] bg-muted shadow-[inset_0_1px_2px_rgba(0,0,0,0.14)]">
                                         <span
-                                            className="block h-full rounded-[2px]"
+                                            className="block h-full rounded-[3px]"
                                             style={{
                                                 width: `${(row[series.key] / max) * 100}%`,
-                                                backgroundColor: series.color,
+                                                background: `linear-gradient(180deg, color-mix(in srgb, ${series.color} 72%, white) 0%, ${series.color} 45%, color-mix(in srgb, ${series.color} 68%, black) 100%)`,
+                                                boxShadow: `inset 0 -1px 0 color-mix(in srgb, ${series.color} 55%, black)`,
                                             }}
                                         />
                                     </span>

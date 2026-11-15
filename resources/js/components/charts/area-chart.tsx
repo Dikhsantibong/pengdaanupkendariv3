@@ -10,8 +10,10 @@ import {
 import type { ChartSeries } from '@/components/charts/chart-kit';
 
 const HEIGHT = 260;
-const PADDING = { top: 12, right: 12, bottom: 28, left: 56 };
+const PADDING = { top: 14, right: 16, bottom: 28, left: 56 };
 const TICKS = 4;
+const DEPTH_X = 7;
+const DEPTH_Y = 5;
 
 /**
  * Lines over months with a light fill under each, a value axis, a guide
@@ -140,27 +142,86 @@ export function AreaChart({
                                 ),
                         )}
 
+                        <defs>
+                            {visible.map((entry) => (
+                                <linearGradient
+                                    key={`grad-${entry.key}`}
+                                    id={`area-3d-${entry.key}`}
+                                    x1="0"
+                                    y1="0"
+                                    x2="0"
+                                    y2="1"
+                                >
+                                    <stop
+                                        offset="0%"
+                                        stopColor={entry.color}
+                                        stopOpacity={0.34}
+                                    />
+                                    <stop
+                                        offset="100%"
+                                        stopColor={entry.color}
+                                        stopOpacity={0.04}
+                                    />
+                                </linearGradient>
+                            ))}
+                        </defs>
+
+                        {/* 3D baseline stage */}
+                        <polygon
+                            points={`${PADDING.left},${y(0)} ${PADDING.left + DEPTH_X},${y(0) - DEPTH_Y} ${width - PADDING.right + DEPTH_X},${y(0) - DEPTH_Y} ${width - PADDING.right},${y(0)}`}
+                            fill={VIZ.grid}
+                            fillOpacity={0.35}
+                        />
+
                         {visible.map((entry) => {
-                            const line = entry.values
+                            const points = entry.values.map((value, index) => ({
+                                px: x(index),
+                                py: y(value),
+                            }));
+                            const line = points
                                 .map(
-                                    (value, index) =>
-                                        `${index === 0 ? 'M' : 'L'}${x(index)},${y(value)}`,
+                                    ({ px, py }, index) =>
+                                        `${index === 0 ? 'M' : 'L'}${px},${py}`,
                                 )
                                 .join(' ');
-                            const area = `${line} L${x(entry.values.length - 1)},${y(0)} L${x(0)},${y(0)} Z`;
+                            const backLineReversed = [...points]
+                                .reverse()
+                                .map(
+                                    ({ px, py }) =>
+                                        `L${px + DEPTH_X},${py - DEPTH_Y}`,
+                                )
+                                .join(' ');
+                            const ribbon = `${line} ${backLineReversed} Z`;
+                            const last = points[points.length - 1];
+                            const first = points[0];
+                            const rightWall = `${`M${last.px},${last.py}`} L${last.px + DEPTH_X},${last.py - DEPTH_Y} L${last.px + DEPTH_X},${y(0) - DEPTH_Y} L${last.px},${y(0)} Z`;
+                            const area = `${line} L${last.px},${y(0)} L${first.px},${y(0)} Z`;
 
                             return (
                                 <g key={entry.key}>
                                     <path
                                         d={area}
-                                        fill={entry.color}
-                                        fillOpacity={0.1}
+                                        fill={`url(#area-3d-${entry.key})`}
+                                    />
+                                    <path
+                                        d={rightWall}
+                                        style={{
+                                            fill: `color-mix(in srgb, ${entry.color} 68%, black)`,
+                                        }}
+                                        fillOpacity={0.45}
+                                    />
+                                    <path
+                                        d={ribbon}
+                                        style={{
+                                            fill: `color-mix(in srgb, ${entry.color} 72%, white)`,
+                                        }}
+                                        fillOpacity={0.85}
                                     />
                                     <path
                                         d={line}
                                         fill="none"
                                         stroke={entry.color}
-                                        strokeWidth={2}
+                                        strokeWidth={2.25}
                                         strokeLinejoin="round"
                                     />
                                 </g>

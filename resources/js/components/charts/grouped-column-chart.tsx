@@ -109,6 +109,13 @@ export function GroupedColumnChart({
                             );
                         })}
 
+                        {/* 3D baseline stage */}
+                        <polygon
+                            points={`${PADDING.left},${y(0)} ${PADDING.left + 4},${y(0) - 3} ${width - PADDING.right},${y(0) - 3} ${width - PADDING.right - 4},${y(0)}`}
+                            fill={VIZ.grid}
+                            fillOpacity={0.35}
+                        />
+
                         {labels.map((label, index) => {
                             const groupX = PADDING.left + index * groupWidth;
                             const start =
@@ -123,29 +130,55 @@ export function GroupedColumnChart({
                                             y={PADDING.top}
                                             width={groupWidth}
                                             height={plotHeight}
-                                            className="fill-muted"
+                                            className="fill-muted/70"
                                         />
                                     )}
                                     {visible.map((entry, position) => {
                                         const value = entry.values[index] ?? 0;
+                                        const bx = start + position * barWidth;
+                                        const by = y(value);
+                                        const bw = Math.max(1.5, barWidth - 2);
+                                        const bh =
+                                            PADDING.top + plotHeight - by;
+
+                                        if (bh <= 0.5) {
+                                            return null;
+                                        }
+
+                                        const dx = Math.max(
+                                            1.5,
+                                            Math.min(5, bw * 0.42),
+                                        );
+                                        const dy = Math.max(
+                                            1.5,
+                                            Math.min(4, bw * 0.34),
+                                        );
 
                                         return (
-                                            <rect
-                                                key={entry.key}
-                                                x={start + position * barWidth}
-                                                y={y(value)}
-                                                width={Math.max(
-                                                    1,
-                                                    barWidth - 1.5,
-                                                )}
-                                                height={
-                                                    PADDING.top +
-                                                    plotHeight -
-                                                    y(value)
-                                                }
-                                                rx={1.5}
-                                                fill={entry.color}
-                                            />
+                                            <g key={entry.key}>
+                                                {/* Right 3D side face */}
+                                                <polygon
+                                                    points={`${bx + bw},${by} ${bx + bw + dx},${by - dy} ${bx + bw + dx},${by + bh - dy} ${bx + bw},${by + bh}`}
+                                                    style={{
+                                                        fill: `color-mix(in srgb, ${entry.color} 68%, black)`,
+                                                    }}
+                                                />
+                                                {/* Top 3D cap */}
+                                                <polygon
+                                                    points={`${bx},${by} ${bx + dx},${by - dy} ${bx + bw + dx},${by - dy} ${bx + bw},${by}`}
+                                                    style={{
+                                                        fill: `color-mix(in srgb, ${entry.color} 70%, white)`,
+                                                    }}
+                                                />
+                                                {/* Front face */}
+                                                <rect
+                                                    x={bx}
+                                                    y={by}
+                                                    width={bw}
+                                                    height={bh}
+                                                    fill={entry.color}
+                                                />
+                                            </g>
                                         );
                                     })}
                                     {index % labelEvery === 0 && (
