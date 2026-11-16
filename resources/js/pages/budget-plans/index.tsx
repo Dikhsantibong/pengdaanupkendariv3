@@ -42,9 +42,20 @@ import type { Option } from '@/types';
 
 type BudgetPlanType = 'investasi' | 'operasi' | 'energi_primer';
 
+type BudgetTypeOption = {
+    value: string;
+    budget_source_id: number | null;
+    budget_type: BudgetPlanType;
+    code: string;
+    name: string;
+    label: string;
+    layout: 'investasi' | 'operasi';
+};
+
 type BudgetPlan = {
     id: number;
     budget_type: BudgetPlanType;
+    budget_source_id: number | null;
     district: string | null;
     prk_induk: string;
     work_director_id: number | null;
@@ -123,6 +134,7 @@ type MoneyKey =
 type BudgetPlanFormValues = Record<TextKey, string> &
     Record<MoneyKey, number> & {
         budget_type: BudgetPlanType;
+        budget_source_id: number | null;
         work_director_id: string;
         po_stock_type: string;
         allocation: string;
@@ -166,23 +178,51 @@ export default function BudgetPlansIndex({
     totals,
     filters,
     activeType = 'investasi',
+    budgetTypes = [],
     workDirectors,
     canManage,
 }: {
     plans: BudgetPlan[];
     totals: Totals;
     filters: { cari: string; bidang: number | null; jenis?: string };
-    activeType?: BudgetPlanType;
-    budgetTypes?: Array<{ value: string; label: string }>;
+    activeType?: string;
+    budgetTypes?: BudgetTypeOption[];
     workDirectors: Option[];
     canManage: boolean;
 }) {
     const [search, setSearch] = useState(filters.cari);
     const [editing, setEditing] = useState<BudgetPlan | null>(null);
-    const [createType, setCreateType] = useState<BudgetPlanType>(activeType);
+    const [createType, setCreateType] = useState<string>(activeType);
     const [open, setOpen] = useState(false);
 
-    const switchType = (nextType: BudgetPlanType) => {
+    const resolvedTypes: BudgetTypeOption[] =
+        budgetTypes.length > 0
+            ? budgetTypes
+            : [
+                  {
+                      value: 'investasi',
+                      budget_source_id: null,
+                      budget_type: 'investasi',
+                      code: 'AI',
+                      name: 'AI',
+                      label: TYPE_LABELS.investasi,
+                      layout: 'investasi',
+                  },
+                  {
+                      value: 'operasi',
+                      budget_source_id: null,
+                      budget_type: 'operasi',
+                      code: 'AO',
+                      name: 'AO',
+                      label: TYPE_LABELS.operasi,
+                      layout: 'operasi',
+                  },
+              ];
+
+    const activeOption =
+        resolvedTypes.find((t) => t.value === activeType) ?? resolvedTypes[0];
+
+    const switchType = (nextType: string) => {
         router.get(
             budgetPlans.index.url({
                 query: {
@@ -225,27 +265,26 @@ export default function BudgetPlansIndex({
         }
     };
 
-    const openCreateModal = (type: BudgetPlanType) => {
+    const openCreateModal = (typeValue: string) => {
         setEditing(null);
-        setCreateType(type);
+        setCreateType(typeValue);
         setOpen(true);
     };
 
     const money = (value: number | null) =>
         value === null ? '—' : formatCurrency(value);
 
-    const isOperationView =
-        activeType === 'operasi' || activeType === 'energi_primer';
+    const isOperationView = activeOption.layout === 'operasi';
 
     return (
         <>
-            <Head title={`Perencanaan Anggaran - ${TYPE_LABELS[activeType]}`} />
+            <Head title={`Perencanaan Anggaran - ${activeOption.label}`} />
 
             <div className="flex min-w-0 flex-col gap-5 p-4 md:p-6">
                 <PageHeader
                     eyebrow="Anggaran"
                     title="Perencanaan Anggaran"
-                    description="Program, kontrak, progres fisik/BA, dan pembayaran tiap PRK induk. Tersedia pilihan Anggaran Operasi (AO), Anggaran Investasi (AI), dan Anggaran Pendukung Energi Primer."
+                    description="Program, kontrak, progres fisik/BA, dan pembayaran tiap PRK induk. Jenis anggaran mengikuti Data Master Sumber Anggaran."
                     actions={
                         <div className="flex flex-wrap gap-2">
                             <Button variant="outline" asChild>
@@ -278,21 +317,16 @@ export default function BudgetPlansIndex({
                                             Pilih Jenis Anggaran
                                         </DropdownMenuLabel>
                                         <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                            onClick={() => openCreateModal('operasi')}
-                                        >
-                                            Anggaran Operasi (AO PEMELIHARAAN)
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            onClick={() => openCreateModal('investasi')}
-                                        >
-                                            Anggaran Investasi (AI)
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                            onClick={() => openCreateModal('energi_primer')}
-                                        >
-                                            Anggaran Pendukung Energi Primer
-                                        </DropdownMenuItem>
+                                        {resolvedTypes.map((option) => (
+                                            <DropdownMenuItem
+                                                key={option.value}
+                                                onClick={() =>
+                                                    openCreateModal(option.value)
+                                                }
+                                            >
+                                                {option.label}
+                                            </DropdownMenuItem>
+                                        ))}
                                     </DropdownMenuContent>
                                 </DropdownMenu>
                             )}
@@ -302,20 +336,16 @@ export default function BudgetPlansIndex({
 
                 {/* Tabs Kategori sesuai spesifikasi DESIGN.md 4.6 */}
                 <Tabs
-                    defaultValue={activeType}
-                    value={activeType}
-                    onValueChange={(val) => switchType(val as BudgetPlanType)}
+                    defaultValue={activeOption.value}
+                    value={activeOption.value}
+                    onValueChange={switchType}
                 >
                     <TabsList className="w-full justify-start overflow-x-auto">
-                        <TabsTrigger value="investasi">
-                            Anggaran Investasi (AI)
-                        </TabsTrigger>
-                        <TabsTrigger value="operasi">
-                            Anggaran Operasi (AO PEMELIHARAAN)
-                        </TabsTrigger>
-                        <TabsTrigger value="energi_primer">
-                            Anggaran Pendukung Energi Primer
-                        </TabsTrigger>
+                        {resolvedTypes.map((option) => (
+                            <TabsTrigger key={option.value} value={option.value}>
+                                {option.label}
+                            </TabsTrigger>
+                        ))}
                     </TabsList>
                 </Tabs>
 
@@ -412,11 +442,11 @@ export default function BudgetPlansIndex({
                             title={
                                 filters.cari !== '' || filters.bidang !== null
                                     ? 'Tidak ada PRK yang cocok'
-                                    : `Belum ada data ${TYPE_LABELS[activeType]}`
+                                    : `Belum ada data ${activeOption.label}`
                             }
                             description={
                                 canManage
-                                    ? `Klik "Tambah PRK" untuk menambahkan data ${TYPE_LABELS[activeType]}.`
+                                    ? `Klik "Tambah PRK" untuk menambahkan data ${activeOption.label}.`
                                     : 'Data PRK diisi oleh akun Anggaran.'
                             }
                         />
@@ -505,7 +535,11 @@ export default function BudgetPlansIndex({
                                                     variant="ghost"
                                                     onClick={() => {
                                                         setEditing(plan);
-                                                        setCreateType(plan.budget_type);
+                                                        setCreateType(
+                                                            plan.budget_source_id !== null
+                                                                ? String(plan.budget_source_id)
+                                                                : plan.budget_type,
+                                                        );
                                                         setOpen(true);
                                                     }}
                                                 >
@@ -679,7 +713,11 @@ export default function BudgetPlansIndex({
                                                     variant="ghost"
                                                     onClick={() => {
                                                         setEditing(plan);
-                                                        setCreateType(plan.budget_type);
+                                                        setCreateType(
+                                                            plan.budget_source_id !== null
+                                                                ? String(plan.budget_source_id)
+                                                                : plan.budget_type,
+                                                        );
                                                         setOpen(true);
                                                     }}
                                                 >
@@ -732,6 +770,7 @@ export default function BudgetPlansIndex({
                             key={editing?.id ?? `new-${createType}`}
                             plan={editing}
                             initialType={createType}
+                            budgetTypes={resolvedTypes}
                             workDirectors={workDirectors}
                             onDone={() => setOpen(false)}
                         />
@@ -832,18 +871,34 @@ function Summary({
 function BudgetPlanForm({
     plan,
     initialType,
+    budgetTypes,
     workDirectors,
     onDone,
 }: {
     plan: BudgetPlan | null;
-    initialType: BudgetPlanType;
+    initialType: string;
+    budgetTypes: BudgetTypeOption[];
     workDirectors: Option[];
     onDone: () => void;
 }) {
-    const selectedType: BudgetPlanType = plan?.budget_type ?? initialType;
+    const initialOption =
+        budgetTypes.find(
+            (opt) =>
+                (plan !== null &&
+                    plan.budget_source_id !== null &&
+                    opt.budget_source_id === plan.budget_source_id) ||
+                opt.value === initialType ||
+                opt.budget_type === (plan?.budget_type ?? initialType),
+        ) ?? budgetTypes[0];
+
+    const [selectedOptionValue, setSelectedOptionValue] = useState<string>(
+        initialOption.value,
+    );
 
     const form = useForm<BudgetPlanFormValues>({
-        budget_type: selectedType,
+        budget_type: plan?.budget_type ?? initialOption.budget_type,
+        budget_source_id:
+            plan?.budget_source_id ?? initialOption.budget_source_id,
         district: plan?.district ?? 'UPKD',
         prk_induk: plan?.prk_induk ?? '',
         work_director_id:
@@ -878,9 +933,11 @@ function BudgetPlanForm({
         payment_progress: plan?.payment_progress ?? '',
     });
 
-    const isOperationType =
-        form.data.budget_type === 'operasi' ||
-        form.data.budget_type === 'energi_primer';
+    const selectedOption =
+        budgetTypes.find((opt) => opt.value === selectedOptionValue) ??
+        initialOption;
+
+    const isOperationType = selectedOption.layout === 'operasi';
 
     // Live calculation: Sisa Pagu = Pagu - Realisasi
     const computedRemainingPagu =
@@ -1015,7 +1072,7 @@ function BudgetPlanForm({
             <DialogHeader>
                 <DialogTitle>
                     {plan === null
-                        ? `Tambah PRK - ${TYPE_LABELS[form.data.budget_type]}`
+                        ? `Tambah PRK - ${selectedOption.label}`
                         : `Ubah PRK ${plan.prk_induk}`}
                 </DialogTitle>
                 <DialogDescription>
@@ -1033,37 +1090,53 @@ function BudgetPlanForm({
                     submit();
                 }}
             >
-                {/* Pilihan Jenis Anggaran memakai Select standar */}
+                {/* Pilihan Jenis Anggaran ditarik dari Data Master Sumber Anggaran */}
                 <div className="grid content-start gap-1.5">
                     <Label className="section-label">Jenis Anggaran</Label>
                     <Select
-                        value={form.data.budget_type}
-                        onValueChange={(value) =>
-                            form.setData('budget_type', value as BudgetPlanType)
-                        }
+                        value={selectedOptionValue}
+                        onValueChange={(value) => {
+                            setSelectedOptionValue(value);
+                            const nextOption = budgetTypes.find(
+                                (opt) => opt.value === value,
+                            );
+
+                            if (nextOption) {
+                                form.setData((current) => ({
+                                    ...current,
+                                    budget_type: nextOption.budget_type,
+                                    budget_source_id:
+                                        nextOption.budget_source_id,
+                                }));
+                            }
+                        }}
                         disabled={plan !== null}
                     >
                         <SelectTrigger className="w-full">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="operasi">
-                                Anggaran Operasi (AO PEMELIHARAAN)
-                            </SelectItem>
-                            <SelectItem value="investasi">
-                                Anggaran Investasi (AI)
-                            </SelectItem>
-                            <SelectItem value="energi_primer">
-                                Anggaran Pendukung Energi Primer
-                            </SelectItem>
+                            {budgetTypes.map((option) => (
+                                <SelectItem
+                                    key={option.value}
+                                    value={option.value}
+                                >
+                                    {option.label}
+                                </SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
-                    <InputError message={form.errors.budget_type} />
+                    <InputError
+                        message={
+                            form.errors.budget_source_id ??
+                            form.errors.budget_type
+                        }
+                    />
                 </div>
 
                 {isOperationType ? (
-                    /* Form Anggaran Operasi & Pendukung Energi Primer */
-                    <Section title={TYPE_LABELS[form.data.budget_type]}>
+                    /* Form Anggaran Operasi & Sumber Anggaran Non-Investasi */
+                    <Section title={selectedOption.label}>
                         {text('prk_induk', 'Nomor PRK', {
                             placeholder: 'Contoh: KD262G0101',
                             required: true,

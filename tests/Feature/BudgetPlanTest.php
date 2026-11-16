@@ -512,4 +512,71 @@ class BudgetPlanTest extends TestCase
                     ->where('role.budgetPlans.0.prk_induk', '2026.AO.01.002'));
         }
     }
+
+    public function test_budget_types_are_pulled_from_master_data_budget_sources(): void
+    {
+        $ai = BudgetSource::factory()->create([
+            'code' => 'AI',
+            'name' => 'AI',
+            'description' => 'Anggaran Investasi.',
+            'sort_order' => 1,
+            'is_active' => true,
+        ]);
+        $ao = BudgetSource::factory()->create([
+            'code' => 'AO',
+            'name' => 'AO',
+            'description' => 'Anggaran Operasi.',
+            'sort_order' => 2,
+            'is_active' => true,
+        ]);
+        $custom = BudgetSource::factory()->create([
+            'code' => 'EP',
+            'name' => 'Energi Primer',
+            'description' => 'Anggaran Pendukung Energi Primer.',
+            'sort_order' => 3,
+            'is_active' => true,
+        ]);
+        BudgetSource::factory()->create([
+            'code' => 'NONAKTIF',
+            'name' => 'Nonaktif',
+            'sort_order' => 4,
+            'is_active' => false,
+        ]);
+
+        // Only active master BudgetSource records appear as Jenis Anggaran options.
+        $this->actingAs($this->budgeter)
+            ->get(route('budget-plans.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('budgetTypes', 3)
+                ->where('budgetTypes.0.budget_source_id', $ai->id)
+                ->where('budgetTypes.1.budget_source_id', $ao->id)
+                ->where('budgetTypes.2.budget_source_id', $custom->id)
+                ->where('budgetTypes.2.code', 'EP'));
+
+        // Creating a PRK with budget_source_id links it and derives budget_type.
+        $this->actingAs($this->budgeter)
+            ->post(route('budget-plans.store'), [
+                'budget_source_id' => $custom->id,
+                'prk_induk' => '2026.EP.01.001',
+                'work_director_id' => $this->division->id,
+                'prk_induk_description' => 'Pengadaan Bahan Bakar',
+                'pagu_value' => 750000000,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $created = BudgetPlan::query()->where('prk_induk', '2026.EP.01.001')->sole();
+        $this->assertSame($custom->id, $created->budget_source_id);
+        $this->assertSame('energi_primer', $created->budget_type->value);
+
+        // Filtering by that BudgetSource tab shows the created PRK.
+        $this->actingAs($this->budgeter)
+            ->get(route('budget-plans.index', ['jenis' => $custom->id]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('activeType', (string) $custom->id)
+                ->has('plans', 1)
+                ->where('plans.0.prk_induk', '2026.EP.01.001')
+                ->where('plans.0.budget_source_id', $custom->id));
+    }
 }

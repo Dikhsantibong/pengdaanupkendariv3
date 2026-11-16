@@ -6,11 +6,13 @@ use App\Enums\BudgetType;
 use App\Enums\Permission;
 use App\Http\Requests\BudgetPlanRequest;
 use App\Models\BudgetPlan;
+use App\Models\BudgetSource;
 use App\Models\WorkDirector;
 use App\Support\BudgetPlanExport;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -27,11 +29,14 @@ class BudgetPlanController extends Controller
      */
     public function index(Request $request): Response
     {
-        $type = BudgetType::tryFrom((string) $request->query('jenis', '')) ?? BudgetType::Investasi;
+        [$budgetTypes, $active] = $this->resolveSelection($request);
+        $type = BudgetType::tryFrom($active['budget_type']) ?? BudgetType::Investasi;
         $search = trim((string) $request->query('cari', ''));
         $workDirectorId = (int) $request->query('bidang', 0);
 
-        $plans = $this->filtered($request)->with(['updater:id,name', 'workDirector:id,name'])->get();
+        $plans = $this->filtered($request, $active)
+            ->with(['updater:id,name', 'workDirector:id,name', 'budgetSource:id,code,name,description'])
+            ->get();
 
         $totals = $type === BudgetType::Investasi
             ? [
@@ -52,6 +57,7 @@ class BudgetPlanController extends Controller
             'plans' => $plans->map(fn (BudgetPlan $plan): array => [
                 'id' => $plan->id,
                 'budget_type' => $plan->budget_type?->value ?? BudgetType::Investasi->value,
+                'budget_source_id' => $plan->budget_source_id,
                 'district' => $plan->district,
                 'prk_induk' => $plan->prk_induk,
                 'work_director_id' => $plan->work_director_id,
@@ -86,15 +92,12 @@ class BudgetPlanController extends Controller
                 'updated_at' => $plan->updated_at?->toIso8601String(),
             ])->all(),
             'totals' => $totals,
-            'activeType' => $type->value,
-            'budgetTypes' => array_map(
-                fn (BudgetType $t): array => ['value' => $t->value, 'label' => $t->label()],
-                BudgetType::cases()
-            ),
+            'activeType' => $active['value'],
+            'budgetTypes' => $budgetTypes,
             'filters' => [
                 'cari' => $search,
                 'bidang' => $workDirectorId > 0 ? $workDirectorId : null,
-                'jenis' => $type->value,
+                'jenis' => $active['value'],
             ],
             'workDirectors' => WorkDirector::query()->active()->ordered()->get()
                 ->map(fn (WorkDirector $director): array => ['value' => $director->id, 'label' => $director->name])
@@ -108,10 +111,7 @@ class BudgetPlanController extends Controller
      */
     public function store(BudgetPlanRequest $request): RedirectResponse
     {
-        $data = $request->validated();
-        if (empty($data['budget_type'])) {
-            $data['budget_type'] = BudgetType::Investasi->value;
-        }
+        $data = $this->syncBudgetClassification($request->validated());
 
         BudgetPlan::query()->create([
             ...$data,
@@ -129,8 +129,10 @@ class BudgetPlanController extends Controller
      */
     public function update(BudgetPlanRequest $request, BudgetPlan $budgetPlan): RedirectResponse
     {
+        $data = $this->syncBudgetClassification($request->validated());
+
         $budgetPlan->update([
-            ...$request->validated(),
+            ...$data,
             'updated_by' => $request->user()->id,
         ]);
 
@@ -156,31 +158,164 @@ class BudgetPlanController extends Controller
      */
     public function export(Request $request, BudgetPlanExport $export): BinaryFileResponse
     {
-        $type = BudgetType::tryFrom((string) $request->query('jenis', '')) ?? BudgetType::Investasi;
+        [, $active] = $this->resolveSelection($request);
+        $type = BudgetType::tryFrom($active['budget_type']) ?? BudgetType::Investasi;
         $path = tempnam(sys_get_temp_dir(), 'anggaran');
 
-        $export->write($this->filtered($request)->with('workDirector:id,name')->get(), $path, $type);
+        $export->write(
+            $this->filtered($request, $active)->with('workDirector:id,name')->get(),
+            $path,
+            $type,
+            $active['name'],
+        );
 
         return response()
-            ->download($path, 'perencanaan-anggaran-'.$type->value.'-'.now()->format('Ymd-His').'.xlsx', [
+            ->download($path, 'perencanaan-anggaran-'.strtolower($active['code']).'-'.now()->format('Ymd-His').'.xlsx', [
                 'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             ])
             ->deleteFileAfterSend();
     }
 
     /**
-     * The plan narrowed by bidang and by a search over its text columns.
+     * Build the budget type options from Master Data Sumber Anggaran and resolve
+     * which tab is currently active.
      *
+     * @return array{
+     *     0: list<array{value: string, budget_source_id: int|null, budget_type: string, code: string, name: string, label: string, layout: string}>,
+     *     1: array{value: string, budget_source_id: int|null, budget_type: string, code: string, name: string, label: string, layout: string}
+     * }
+     */
+    private function resolveSelection(Request $request): array
+    {
+        /** @var Collection<int, BudgetSource> $sources */
+        $sources = BudgetSource::query()->active()->ordered()->get();
+
+        $options = $sources->isNotEmpty()
+            ? $sources->map(function (BudgetSource $source): array {
+                $type = BudgetPlan::typeForSource($source);
+
+                return [
+                    'value' => (string) $source->id,
+                    'budget_source_id' => $source->id,
+                    'budget_type' => $type->value,
+                    'code' => $source->code,
+                    'name' => $source->name,
+                    'label' => $source->description
+                        ? "{$source->name} — ".rtrim($source->description, '.')
+                        : $source->name,
+                    'layout' => $type === BudgetType::Investasi ? 'investasi' : 'operasi',
+                ];
+            })->values()->all()
+            : array_map(fn (BudgetType $t): array => [
+                'value' => $t->value,
+                'budget_source_id' => null,
+                'budget_type' => $t->value,
+                'code' => $t->value,
+                'name' => $t->label(),
+                'label' => $t->label(),
+                'layout' => $t === BudgetType::Investasi ? 'investasi' : 'operasi',
+            ], BudgetType::cases());
+
+        $requested = trim((string) $request->query('jenis', ''));
+        $matched = null;
+
+        if ($requested !== '') {
+            $lower = strtolower($requested);
+
+            $matched = collect($options)->first(fn (array $opt): bool => $opt['value'] === $requested
+                || strtolower($opt['code']) === $lower
+                || $opt['budget_type'] === $lower);
+
+            if ($matched === null && BudgetType::tryFrom($lower) !== null) {
+                $fallback = BudgetType::from($lower);
+                $matched = [
+                    'value' => $fallback->value,
+                    'budget_source_id' => null,
+                    'budget_type' => $fallback->value,
+                    'code' => $fallback->value,
+                    'name' => $fallback->label(),
+                    'label' => $fallback->label(),
+                    'layout' => $fallback === BudgetType::Investasi ? 'investasi' : 'operasi',
+                ];
+            }
+        }
+
+        $active = $matched
+            ?? collect($options)->first(fn (array $opt): bool => $opt['budget_type'] === BudgetType::Investasi->value)
+            ?? $options[0];
+
+        return [$options, $active];
+    }
+
+    /**
+     * Keep budget_source_id and budget_type in sync when saving a PRK.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function syncBudgetClassification(array $data): array
+    {
+        if (! empty($data['budget_source_id'])) {
+            $source = BudgetSource::query()->find((int) $data['budget_source_id']);
+
+            if ($source !== null) {
+                $data['budget_type'] = BudgetPlan::typeForSource($source)->value;
+
+                return $data;
+            }
+        }
+
+        if (empty($data['budget_type'])) {
+            $data['budget_type'] = BudgetType::Investasi->value;
+        }
+
+        $matchingSource = BudgetSource::query()->active()->ordered()->get()
+            ->first(fn (BudgetSource $source): bool => BudgetPlan::typeForSource($source)->value === $data['budget_type']);
+
+        if ($matchingSource !== null) {
+            $data['budget_source_id'] = $matchingSource->id;
+        }
+
+        return $data;
+    }
+
+    /**
+     * The plan narrowed by budget source/type, bidang, and search over its text columns.
+     *
+     * @param  array{value: string, budget_source_id: int|null, budget_type: string, code: string, name: string, label: string, layout: string}|null  $active
      * @return Builder<BudgetPlan>
      */
-    private function filtered(Request $request): Builder
+    private function filtered(Request $request, ?array $active = null): Builder
     {
-        $type = BudgetType::tryFrom((string) $request->query('jenis', '')) ?? BudgetType::Investasi;
+        if ($active === null) {
+            [, $active] = $this->resolveSelection($request);
+        }
+
+        $type = BudgetType::tryFrom($active['budget_type']) ?? BudgetType::Investasi;
+        $sourceId = $active['budget_source_id'];
         $search = trim((string) $request->query('cari', ''));
         $workDirectorId = (int) $request->query('bidang', 0);
 
         return BudgetPlan::query()
-            ->where(function (Builder $query) use ($type): void {
+            ->where(function (Builder $query) use ($sourceId, $type): void {
+                if ($sourceId !== null) {
+                    $query->where('budget_source_id', $sourceId)
+                        ->orWhere(function (Builder $legacy) use ($type): void {
+                            $legacy->whereNull('budget_source_id');
+
+                            if ($type === BudgetType::Investasi) {
+                                $legacy->where(function (Builder $inv): void {
+                                    $inv->where('budget_type', BudgetType::Investasi->value)
+                                        ->orWhereNull('budget_type');
+                                });
+                            } else {
+                                $legacy->where('budget_type', $type->value);
+                            }
+                        });
+
+                    return;
+                }
+
                 if ($type === BudgetType::Investasi) {
                     $query->where('budget_type', BudgetType::Investasi->value)
                         ->orWhereNull('budget_type');

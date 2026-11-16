@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Enums\AmendmentState;
 use App\Enums\DeliveryOrderState;
+use App\Enums\UserRole;
+use App\Models\BudgetPlan;
 use App\Models\Procurement;
 use App\Models\ProcurementAmendment;
 use App\Models\ProcurementDeliveryOrder;
@@ -168,5 +170,48 @@ class DashboardTasksTest extends TestCase
                 ->where('tasks.deliveryOrderApprovals.total', 1)
                 ->where('tasks.deliveryOrderApprovals.items.0.id', $procurement->id)
                 ->where('tasks.deliveryOrderApprovals.items.0.note', 'DO ke-4 · diajukan oleh Staf Har · Menunggu Persetujuan Direksi Pekerjaan'));
+    }
+
+    public function test_tl_keuangan_has_no_proposal_access_and_sees_all_procurements(): void
+    {
+        $division = WorkDirector::factory()->create(['name' => 'Asman Business Support']);
+        $otherDivision = WorkDirector::factory()->create(['name' => 'Asman Operasi']);
+
+        $tlKeuangan = User::factory()->role(UserRole::Keuangan)->create([
+            'position' => 'TL Keuangan',
+            'work_director_id' => $division->id,
+        ]);
+        User::factory()->role(UserRole::Keuangan)->create([
+            'position' => 'Staf Keuangan',
+            'work_director_id' => $division->id,
+            'team_leader_id' => $tlKeuangan->id,
+        ]);
+
+        BudgetPlan::factory()->create([
+            'work_director_id' => $division->id,
+            'prk_induk' => '2026.BS.01.001',
+        ]);
+
+        Procurement::factory()->count(2)->create(['work_director_id' => $division->id]);
+        Procurement::factory()->count(3)->create(['work_director_id' => $otherDivision->id]);
+
+        $this->actingAs($tlKeuangan)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('auth.permissions.menus.proposals', false)
+                ->where('tasks.proposals', null)
+                ->where('tasks.budgetPlans', null));
+
+        $this->actingAs($tlKeuangan)
+            ->get(route('proposals.index'))
+            ->assertForbidden();
+
+        $this->actingAs($tlKeuangan)
+            ->get(route('procurements.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('auth.permissions.viewAllProcurements', true)
+                ->where('procurements.meta.total', 5));
     }
 }

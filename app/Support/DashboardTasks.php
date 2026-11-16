@@ -8,6 +8,7 @@ use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Enums\ProposalState;
+use App\Enums\UserRole;
 use App\Models\BudgetPlan;
 use App\Models\Procurement;
 use App\Models\ProcurementAmendment;
@@ -37,10 +38,12 @@ class DashboardTasks
     public static function for(User $user): array
     {
         return [
-            'proposals' => $user->hasPermission(Permission::ApproveProposal) || $user->leadsTeam()
+            'proposals' => $user->hasPermission(Permission::ApproveProposal)
+                || ($user->role !== UserRole::Keuangan && $user->leadsTeam())
                 ? self::proposalsToApprove($user)
                 : null,
-            'budgetPlans' => $user->divisionId() !== null && ($user->mayProposeWork() || $user->leadsTeam())
+            'budgetPlans' => $user->divisionId() !== null
+                && ($user->mayProposeWork() || ($user->role !== UserRole::Keuangan && $user->leadsTeam()))
                 ? self::budgetPlans($user)
                 : null,
             'finance' => $user->hasPermission(Permission::ProcessPayment)
@@ -281,7 +284,7 @@ class DashboardTasks
                 'id' => $plan->id,
                 'number' => $plan->prk_induk,
                 'name' => $plan->description(),
-                'note' => 'PRK '.$plan->budget_type->label()
+                'note' => 'PRK '.$plan->budgetTypeLabel()
                     .($plan->workDirector !== null ? ' · '.$plan->workDirector->name : '')
                     .' · Perlu diusulkan',
                 'date' => $plan->created_at?->toDateTimeString(),

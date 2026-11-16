@@ -772,7 +772,7 @@ class MasterDataSeeder extends Seeder
             ->whereIn('code', [
                 // The TOR is generated when the work is proposed.
                 'nota-dinas-usulan', 'penawaran', 'csms', 'nota-dinas-perintah-pekerjaan',
-                'penyusunan-hps', 'proses-smart-scm', 'jaminan-bank', 'amandemen', 'masa-pemeliharaan',
+                'proses-smart-scm', 'jaminan-bank', 'amandemen', 'masa-pemeliharaan',
             ])
             ->update(['upload_only' => true]);
     }

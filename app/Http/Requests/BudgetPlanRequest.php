@@ -3,6 +3,8 @@
 namespace App\Http\Requests;
 
 use App\Enums\BudgetType;
+use App\Models\BudgetPlan;
+use App\Models\BudgetSource;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -17,9 +19,18 @@ class BudgetPlanRequest extends FormRequest
      */
     public function rules(): array
     {
-        $type = BudgetType::tryFrom((string) $this->input('budget_type', '')) ?? BudgetType::Investasi;
+        $sourceId = $this->input('budget_source_id');
+        $source = is_numeric($sourceId) ? BudgetSource::query()->find((int) $sourceId) : null;
+        $type = $source !== null
+            ? BudgetPlan::typeForSource($source)
+            : (BudgetType::tryFrom((string) $this->input('budget_type', '')) ?? BudgetType::Investasi);
 
         return [
+            'budget_source_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('budget_sources', 'id')->whereNull('deleted_at'),
+            ],
             'budget_type' => ['nullable', new Enum(BudgetType::class)],
             'district' => ['nullable', 'string', 'max:50'],
             'prk_induk' => ['required', 'string', 'max:100'],
@@ -71,6 +82,7 @@ class BudgetPlanRequest extends FormRequest
     public function attributes(): array
     {
         return [
+            'budget_source_id' => 'jenis anggaran',
             'budget_type' => 'jenis anggaran',
             'district' => 'distrik',
             'prk_induk' => 'PRK induk',

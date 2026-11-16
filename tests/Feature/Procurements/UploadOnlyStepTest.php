@@ -32,14 +32,14 @@ class UploadOnlyStepTest extends TestCase
             [
                 'amandemen', 'bast', 'bukti-pembayaran', 'csms', 'faktur-pajak', 'invoice', 'jaminan-bank',
                 'kuitansi', 'masa-pemeliharaan', 'nota-dinas-perintah-pekerjaan', 'nota-dinas-usulan',
-                'penawaran', 'pengajuan-pembayaran', 'penyusunan-hps', 'proses-smart-scm',
+                'penawaran', 'pengajuan-pembayaran', 'proses-smart-scm',
             ],
             DocumentType::query()->where('upload_only', true)->orderBy('code')->pluck('code')->all(),
         );
 
-        // HPE, UPB, RKS and the Evaluasi Harga in planning, and the Berita
-        // Acara and Kontrak documents in execution, are still generated.
-        foreach (['tor', 'rab', 'hpe', 'upb', 'rks', 'ba-aanwijzing', 'spk', 'ba-negosiasi', 'surat-pesanan'] as $code) {
+        // HPE, UPB, RKS, Evaluasi Harga, and Penyusunan HPS in planning/execution,
+        // and the Berita Acara and Kontrak documents in execution, are generated.
+        foreach (['tor', 'rab', 'hpe', 'upb', 'rks', 'penyusunan-hps', 'ba-aanwijzing', 'spk', 'ba-negosiasi', 'surat-pesanan'] as $code) {
             $this->assertFalse(DocumentType::query()->where('code', $code)->firstOrFail()->upload_only, $code);
         }
     }

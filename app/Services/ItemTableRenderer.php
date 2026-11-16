@@ -35,7 +35,7 @@ class ItemTableRenderer
         'hpe' => 'hpe',
         'upb' => 'upb',
         'rab' => 'evaluasi',
-        'penyusunan-hps' => 'standard',
+        'penyusunan-hps' => 'hps',
         'penawaran' => 'standard',
         'lampiran-spk' => 'standard',
     ];
@@ -49,6 +49,7 @@ class ItemTableRenderer
         'hpe' => 'Harga HPE',
         'upb' => 'Tgl Dibutuhkan',
         'evaluasi' => 'Harga Lalu',
+        'hps' => 'Nama Barang dan Spesifikasi',
         'standard' => 'Harga Satuan (Rp)',
         'surat-pesanan' => 'PERHATIAN',
     ];
@@ -117,6 +118,7 @@ class ItemTableRenderer
             'hpe' => $this->replaceTable($html, self::SIGNATURES['hpe'], fn (string $table): string => $this->hpe($table, $items)),
             'upb' => $this->replaceTable($html, self::SIGNATURES['upb'], fn (string $table): string => $this->upb($table, $items)),
             'evaluasi' => $this->replaceTable($html, self::SIGNATURES['evaluasi'], fn (string $table): string => $this->evaluation($table, $items, $partners ?? new Collection)),
+            'hps' => $this->hps($html, $items, $partners ?? new Collection),
             'standard' => $this->replaceTable($html, self::SIGNATURES['standard'], fn (string $table): string => $this->standard($table, $items, $typeCode === 'lampiran-spk')),
         };
     }
@@ -507,6 +509,228 @@ class ItemTableRenderer
         $drawn[] = '<tr><td colspan="6"><b>Terbilang:</b> '.e(Str::ucfirst(IndonesianNumber::spellRupiah($total))).'</td></tr>';
 
         return $this->rebuild($table, [$rows[0], ...$drawn]);
+    }
+
+    /**
+     * Draw all three HPS tables (Formulir HPS, Perhitungan Harga Satuan,
+     * and Perhitungan Jumlah Harga) from the procurement's items and partner quotes.
+     *
+     * @param  Collection<int, ProcurementContractItem>  $items
+     * @param  Collection<int, ProcurementPartnerCandidate>  $partners
+     */
+    protected function hps(string $html, Collection $items, Collection $partners): string
+    {
+        if (! $this->hasPrice($items, 'unit_price') && ! $this->hasPrice($items, 'price_before')) {
+            return $html;
+        }
+
+        $html = $this->replaceTable($html, 'Nama Barang dan Spesifikasi', fn (string $table): string => $this->hpsMain($table, $items, $partners));
+        $html = $this->replaceTable($html, 'HARGA SATUAN', fn (string $table): string => $this->hpsCalculation($table, $items, $partners, false));
+
+        return $this->replaceTable($html, 'JUMLAH HARGA', fn (string $table): string => $this->hpsCalculation($table, $items, $partners, true));
+    }
+
+    /**
+     * Page 1 of HPS (SMT-FM-DAN-01.01): items with HPE, HPS, Total and summary rows.
+     *
+     * @param  Collection<int, ProcurementContractItem>  $items
+     * @param  Collection<int, ProcurementPartnerCandidate>  $partners
+     */
+    protected function hpsMain(string $table, Collection $items, Collection $partners): string
+    {
+        $rows = $this->tableRows($table);
+
+        if ($rows === []) {
+            return $table;
+        }
+
+        $header = [$rows[0]];
+
+        if (isset($rows[1]) && str_contains($rows[1], 'job-title')) {
+            $header[] = $rows[1];
+        }
+
+        $drawn = [];
+        $jumlah = 0.0;
+
+        foreach ($this->rows($items) as $row) {
+            if ($row['item'] === null) {
+                $drawn[] = '<tr class="group"><td class="center"><b>'.$row['label'].'</b></td><td></td>'
+                    .'<td colspan="7"><b>'.e($row['name']).'</b></td></tr>';
+
+                continue;
+            }
+
+            $item = $row['item'];
+            $hpsUnit = $this->hpsUnitPrice($item, $partners);
+            $lineTotal = $hpsUnit !== null ? (float) $item->volume * $hpsUnit : 0.0;
+            $jumlah += $lineTotal;
+
+            $drawn[] = '<tr><td class="center">'.$row['label'].'</td>'
+                .'<td>'.e($item->part_number ?? '').'</td>'
+                .'<td>'.$this->description($item).'</td>'
+                .'<td class="center">'.$this->quantity($item).'</td>'
+                .'<td class="center">'.e(Str::upper($item->unit)).'</td>'
+                .'<td class="right">'.($item->price_before !== null ? 'Rp '.$this->money($item->price_before).',00' : '').'</td>'
+                .'<td class="right">'.($hpsUnit !== null ? 'Rp '.$this->money($hpsUnit).',00' : '').'</td>'
+                .'<td class="right">Rp '.$this->money($lineTotal).'</td>'
+                .'<td></td></tr>';
+        }
+
+        $dpp = (float) round($jumlah * 11 / 12);
+        $ppn = (float) round($dpp * 0.12);
+        $total = $jumlah + $ppn;
+
+        $drawn[] = '<tr class="sum-row sum-jumlah"><td colspan="7" class="right">JUMLAH</td><td class="right">Rp '.$this->money($jumlah).'</td><td></td></tr>';
+        $drawn[] = '<tr class="sum-row sum-dpp"><td colspan="7" class="right">DPP NILAI LAIN</td><td class="right">Rp '.$this->money($dpp).'</td><td></td></tr>';
+        $drawn[] = '<tr class="sum-row sum-ppn"><td colspan="7" class="right">PPN 12%</td><td class="right">Rp '.$this->money($ppn).'</td><td></td></tr>';
+        $drawn[] = '<tr class="sum-row sum-total"><td colspan="7" class="right">TOTAL HARGA</td><td class="right">Rp '.$this->money($total).'</td><td></td></tr>';
+
+        return $this->rebuild($table, [...$header, ...$drawn]);
+    }
+
+    /**
+     * Pages 2 & 3 of HPS: Harga Satuan and Jumlah Harga calculation sheets.
+     *
+     * @param  Collection<int, ProcurementContractItem>  $items
+     * @param  Collection<int, ProcurementPartnerCandidate>  $partners
+     */
+    protected function hpsCalculation(string $table, Collection $items, Collection $partners, bool $multiplied): string
+    {
+        $hasPrevRef = $items->contains(fn (ProcurementContractItem $item): bool => filled($item->previous_po_number) || $item->previous_price !== null);
+        $refCount = max(2, $partners->count()) + ($hasPrevRef ? 1 : 0);
+        $totalSpan = 3 + $refCount;
+
+        $partnerHeaders = '';
+        if ($partners->isNotEmpty()) {
+            foreach ($partners as $partner) {
+                $partnerHeaders .= '<th>'.e(Str::upper($partner->name)).'</th>';
+            }
+        } else {
+            $partnerHeaders .= '<th>CALON MITRA 1</th><th>CALON MITRA 2</th>';
+        }
+
+        if ($hasPrevRef) {
+            $partnerHeaders .= '<th>KONTRAK REFERENSI</th>';
+        }
+
+        $colNumbers = '<tr><th><i>1</i></th><th><i>2</i></th><th><i>3</i></th><th><i>4</i></th>';
+        for ($col = 5; $col <= 4 + $totalSpan; $col++) {
+            $isLast = $col === 4 + $totalSpan;
+            $colNumbers .= '<th'.($isLast ? ' class="col-green"' : '').'><i>'.$col.'</i></th>';
+        }
+        $colNumbers .= '</tr>';
+
+        $head = [
+            '<tr><th rowspan="3" style="width: 4%;">NO.</th>'
+                .'<th rowspan="3" style="width: 24%;">URAIAN PEKERJAAN</th>'
+                .'<th rowspan="3" style="width: 5%;">SAT.</th>'
+                .'<th rowspan="3" style="width: 6%;">VOLUME</th>'
+                .'<th colspan="'.$totalSpan.'">'.($multiplied ? 'JUMLAH HARGA' : 'HARGA SATUAN').'</th></tr>',
+            '<tr><th rowspan="2">PAGU SKK</th><th rowspan="2">HPE</th>'
+                .'<th colspan="'.$refCount.'">REFERENSI</th>'
+                .'<th rowspan="2" class="col-green">HPS</th></tr>',
+            '<tr>'.$partnerHeaders.'</tr>',
+            $colNumbers,
+        ];
+
+        $drawn = [];
+        $sumHpe = 0.0;
+        $sumHps = 0.0;
+        $sumPrev = 0.0;
+        $sumPartners = array_fill(0, max(2, $partners->count()), 0.0);
+
+        foreach ($this->rows($items) as $row) {
+            if ($row['item'] === null) {
+                $drawn[] = '<tr class="group"><td class="center"><b>'.$row['label'].'</b></td>'
+                    .'<td colspan="'.(3 + $totalSpan).'"><b>'.e($row['name']).'</b></td></tr>';
+
+                continue;
+            }
+
+            $item = $row['item'];
+            $vol = (float) $item->volume;
+            $factor = $multiplied ? $vol : 1.0;
+            $hpeVal = $item->price_before !== null ? (float) $item->price_before * $factor : null;
+            $hpsUnit = $this->hpsUnitPrice($item, $partners);
+            $hpsVal = $hpsUnit !== null ? $hpsUnit * $factor : null;
+
+            $sumHpe += (float) ($item->price_before ?? 0) * $vol;
+            $sumHps += (float) ($hpsUnit ?? 0) * $vol;
+
+            $cells = '<td class="center">'.$row['label'].'</td>'
+                .'<td>'.$this->description($item).'</td>'
+                .'<td class="center">'.e(Str::upper($item->unit)).'</td>'
+                .'<td class="center">'.$this->quantity($item).'</td>'
+                .'<td class="right col-yellow">'.($hpeVal !== null ? 'Rp '.$this->money($hpeVal) : '').'</td>'
+                .'<td class="right col-yellow">'.($hpeVal !== null ? 'Rp '.$this->money($hpeVal) : '').'</td>';
+
+            if ($partners->isNotEmpty()) {
+                foreach ($partners->values() as $idx => $partner) {
+                    $quote = $item->quotedBy($partner->id);
+                    $qVal = $quote !== null ? (float) $quote * $factor : null;
+                    $sumPartners[$idx] += (float) ($quote ?? 0) * $vol;
+                    $cells .= '<td class="right">'.($qVal !== null ? 'Rp '.$this->money($qVal) : '').'</td>';
+                }
+            } else {
+                $cells .= '<td></td><td></td>';
+            }
+
+            if ($hasPrevRef) {
+                $prevVal = $item->previous_price !== null ? (float) $item->previous_price * $factor : null;
+                $sumPrev += (float) ($item->previous_price ?? 0) * $vol;
+                $cells .= '<td class="right">'.($prevVal !== null ? 'Rp '.$this->money($prevVal) : '').'</td>';
+            }
+
+            $cells .= '<td class="right col-green">'.($hpsVal !== null ? 'Rp '.$this->money($hpsVal) : '').'</td>';
+            $drawn[] = '<tr>'.$cells.'</tr>';
+        }
+
+        if ($multiplied) {
+            $totalRow = '<tr class="total"><td colspan="4" class="right"><b>Total</b></td>'
+                .'<td class="right"><b>Rp '.$this->money($sumHpe).'</b></td>'
+                .'<td class="right"><b>Rp '.$this->money($sumHpe).'</b></td>';
+
+            if ($partners->isNotEmpty()) {
+                foreach ($partners->values() as $idx => $partner) {
+                    $totalRow .= '<td class="right"><b>Rp '.$this->money($sumPartners[$idx]).'</b></td>';
+                }
+            } else {
+                $totalRow .= '<td></td><td></td>';
+            }
+
+            if ($hasPrevRef) {
+                $totalRow .= '<td class="right"><b>Rp '.$this->money($sumPrev).'</b></td>';
+            }
+
+            $totalRow .= '<td class="right col-green"><b>Rp '.$this->money($sumHps).'</b></td></tr>';
+            $drawn[] = $totalRow;
+        }
+
+        return $this->rebuild($table, [...$head, ...$drawn]);
+    }
+
+    /**
+     * Resolve an item's HPS unit price: its explicit unit_price, or lowest partner quote, or price_before.
+     *
+     * @param  Collection<int, ProcurementPartnerCandidate>  $partners
+     */
+    protected function hpsUnitPrice(ProcurementContractItem $item, Collection $partners): ?float
+    {
+        if ($item->unit_price !== null) {
+            return (float) $item->unit_price;
+        }
+
+        $lowest = $partners
+            ->map(fn (ProcurementPartnerCandidate $partner): ?string => $item->quotedBy($partner->id))
+            ->filter(fn (?string $quote): bool => $quote !== null)
+            ->min(fn (string $quote): float => (float) $quote);
+
+        if ($lowest !== null) {
+            return (float) $lowest;
+        }
+
+        return $item->price_before !== null ? (float) $item->price_before : null;
     }
 
     /**

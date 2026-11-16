@@ -20,6 +20,7 @@ use Illuminate\Support\Collection;
  * @property int $id
  * @property string|null $district
  * @property BudgetType $budget_type
+ * @property int|null $budget_source_id
  * @property string $prk_induk
  * @property int|null $work_director_id
  * @property string|null $prk_induk_description
@@ -53,12 +54,14 @@ use Illuminate\Support\Collection;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read WorkDirector|null $workDirector
+ * @property-read BudgetSource|null $budgetSource
  * @property-read User|null $creator
  * @property-read User|null $updater
  */
 #[Fillable([
     'district',
     'budget_type',
+    'budget_source_id',
     'prk_induk',
     'work_director_id',
     'prk_induk_description',
@@ -103,6 +106,52 @@ class BudgetPlan extends Model
     public function workDirector(): BelongsTo
     {
         return $this->belongsTo(WorkDirector::class);
+    }
+
+    /**
+     * The master data budget source (Sumber Anggaran) this PRK belongs to.
+     *
+     * @return BelongsTo<BudgetSource, $this>
+     */
+    public function budgetSource(): BelongsTo
+    {
+        return $this->belongsTo(BudgetSource::class);
+    }
+
+    /**
+     * Derive the internal BudgetType (sheet/form layout) for a master BudgetSource.
+     */
+    public static function typeForSource(?BudgetSource $source): BudgetType
+    {
+        if ($source === null) {
+            return BudgetType::Investasi;
+        }
+
+        $haystack = strtolower(trim($source->code.' '.$source->name.' '.($source->description ?? '')));
+
+        if (strtoupper($source->code) === 'AI' || str_contains($haystack, 'investasi')) {
+            return BudgetType::Investasi;
+        }
+
+        if (str_contains($haystack, 'energi') && str_contains($haystack, 'primer')) {
+            return BudgetType::EnergiPrimer;
+        }
+
+        return BudgetType::Operasi;
+    }
+
+    /**
+     * Human-readable budget type label, preferring the master BudgetSource when linked.
+     */
+    public function budgetTypeLabel(): string
+    {
+        if ($this->budgetSource !== null) {
+            return $this->budgetSource->description
+                ? "{$this->budgetSource->name} — ".rtrim($this->budgetSource->description, '.')
+                : $this->budgetSource->name;
+        }
+
+        return $this->budget_type->label();
     }
 
     protected static function booted(): void
@@ -170,7 +219,7 @@ class BudgetPlan extends Model
 
         return static::query()
             ->where('work_director_id', $workDirectorId)
-            ->with('workDirector:id,name')
+            ->with(['workDirector:id,name', 'budgetSource:id,code,name,description'])
             ->orderBy('prk_induk')
             ->orderBy('id')
             ->get()
@@ -190,7 +239,7 @@ class BudgetPlan extends Model
                 'id' => $plan->id,
                 'prk_induk' => $plan->prk_induk,
                 'budget_type' => $plan->budget_type->value,
-                'budget_type_label' => $plan->budget_type->label(),
+                'budget_type_label' => $plan->budgetTypeLabel(),
                 'description' => $plan->description(),
                 'division' => $plan->workDirector?->name,
                 'planned_value' => $plan->plannedValue(),

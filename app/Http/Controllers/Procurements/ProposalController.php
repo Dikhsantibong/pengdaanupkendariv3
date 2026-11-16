@@ -53,7 +53,7 @@ class ProposalController extends Controller
         }
 
         $leadsDivision = $user->hasPermission(Permission::ApproveProposal);
-        $leadsTeam = $user->leadsTeam();
+        $leadsTeam = $user->role !== UserRole::Keuangan && $user->leadsTeam();
         $canApprove = $leadsDivision || $leadsTeam || $user->role === UserRole::Administrator;
 
         $awaiting = $canApprove

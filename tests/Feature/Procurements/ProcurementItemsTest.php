@@ -371,12 +371,16 @@ Baris dua', DocumentGenerator::cellLines('<div>Baris satu</div><div>Baris&nbsp;d
         $this->assertStringContainsString('>JUMLAH<', $spk);
         $this->assertStringNotContainsString('............', substr($spk, (int) strpos($spk, 'BATAS WAKTU/ PENYERAHAN'), 4000));
 
-        // HPS: before negotiation, closed by Sub Total, PPN, Total and words.
+        // HPS: 3-page SMT-FM-DAN-01.01 form + Harga Satuan & Jumlah Harga calculation sheets.
         $hps = $renderer->apply((string) file_get_contents(resource_path('document-templates/standar/penyusunan-hps.html')), 'penyusunan-hps', $items);
-        $this->assertStringContainsString('<td><b>Sub Total</b></td>', str_replace(' colspan="5"', '', $hps));
-        $this->assertStringContainsString('<b>Total HPS</b>', $hps);
-        $this->assertStringContainsString('<td>1.344.000</td>', $hps);
-        $this->assertStringContainsString('satu juta tiga ratus empat puluh empat ribu', mb_strtolower($hps));
+        $this->assertStringContainsString('SMT-FM-DAN-01.01', $hps);
+        $this->assertStringContainsString('JUMLAH', $hps);
+        $this->assertStringContainsString('DPP NILAI LAIN', $hps);
+        $this->assertStringContainsString('PPN 12%', $hps);
+        $this->assertStringContainsString('TOTAL HARGA', $hps);
+        $this->assertStringContainsString('Rp 950.000', $hps);
+        $this->assertStringContainsString('HARGA SATUAN', $hps);
+        $this->assertStringContainsString('JUMLAH HARGA', $hps);
 
         // Nothing to draw yet: the template's table stays as it is.
         $empty = new Collection([new ProcurementContractItem(['sort_order' => 1, 'description' => 'X', 'volume' => 1, 'unit' => 'Lot'])]);

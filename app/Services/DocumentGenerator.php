@@ -7,6 +7,7 @@ use App\Enums\AmendmentFileKind;
 use App\Enums\Permission;
 use App\Enums\ProcurementStage;
 use App\Enums\UnitManagerLevel;
+use App\Enums\UserRole;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
 use App\Models\Procurement;
@@ -76,6 +77,9 @@ class DocumentGenerator
             'nomor_hpe' => 'Nomor HPE yang diisi pada checklist HPE; bila kosong: nomor nota dinas usulan-HPE(A)',
             'nomor_upb' => 'Nomor UPB yang diisi pada checklist UPB; bila kosong: nomor nota dinas usulan',
             'nama_manager' => 'Nama Manager UP Kendari',
+            'nama_pelaksana' => 'Nama PIC Pelaksana / Junior Officer Pengadaan',
+            'nama_tl_pengadaan' => 'Nama Team Leader Pelaksana Pengadaan',
+            'nama_asman_business_support' => 'Nama Assistant Manager Business Support',
             'nomor_surat_penawaran' => 'Nomor surat penawaran',
             'tanggal_surat_penawaran' => 'Tanggal surat penawaran',
             'nomor_nota_dinas_manager' => 'Nomor nota dinas ke manager',
@@ -236,6 +240,12 @@ class DocumentGenerator
             'user' => $procurement->creator->name ?? self::UNSIGNED,
             'asman' => $this->asmanOf($procurement->work_director_id)->name ?? self::UNSIGNED,
             'engineering' => $this->asmanOf($this->engineeringDirectorId())->name ?? self::UNSIGNED,
+            'pelaksana' => $procurement->executor?->name ?? self::UNSIGNED,
+            'tlPengadaan' => User::query()
+                ->where('role', UserRole::TeamLeaderPengadaan->value)
+                ->where('is_active', true)
+                ->value('name') ?? self::UNSIGNED,
+            'asmanBusinessSupport' => $this->asmanOf($this->businessSupportDirectorId())?->name ?? self::UNSIGNED,
         ];
 
         $partnerAddress = ! empty(trim((string) $procurement->partner_address))
@@ -252,6 +262,9 @@ class DocumentGenerator
             'alamat_perusahaan' => $partnerAddress ?? '-',
             'direksi_pekerjaan' => $procurement->workDirector?->name ?? '-',
             'nama_manager' => $managerName,
+            'nama_pelaksana' => $signatories['pelaksana'],
+            'nama_tl_pengadaan' => $signatories['tlPengadaan'],
+            'nama_asman_business_support' => $signatories['asmanBusinessSupport'],
             'unit_tujuan' => $procurement->targetUnitNames(),
             // The method the planning PIC picked; the internal one until then.
             'metode_pengadaan' => match (true) {
@@ -504,6 +517,16 @@ class DocumentGenerator
     protected function engineeringDirectorId(): ?int
     {
         $id = WorkDirector::query()->where('name', 'like', '%engineering%')->orderBy('id')->value('id');
+
+        return $id === null ? null : (int) $id;
+    }
+
+    /**
+     * The Business Support division on the Direksi Pekerjaan master data.
+     */
+    protected function businessSupportDirectorId(): ?int
+    {
+        $id = WorkDirector::query()->where('name', 'like', '%business support%')->orderBy('id')->value('id');
 
         return $id === null ? null : (int) $id;
     }

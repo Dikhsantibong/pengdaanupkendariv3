@@ -97,10 +97,10 @@ class BudgetPlanExport
      *
      * @param  Collection<int, BudgetPlan>  $plans
      */
-    public function write(Collection $plans, string $path, BudgetType $type = BudgetType::Investasi): void
+    public function write(Collection $plans, string $path, BudgetType $type = BudgetType::Investasi, ?string $sheetTitle = null): void
     {
         if ($type !== BudgetType::Investasi) {
-            $this->writeOperation($plans, $path, $type);
+            $this->writeOperation($plans, $path, $type, $sheetTitle);
 
             return;
         }
@@ -145,7 +145,7 @@ class BudgetPlanExport
      *
      * @param  Collection<int, BudgetPlan>  $plans
      */
-    private function writeOperation(Collection $plans, string $path, BudgetType $type): void
+    private function writeOperation(Collection $plans, string $path, BudgetType $type, ?string $sheetTitle = null): void
     {
         $options = new Options;
 
@@ -155,7 +155,8 @@ class BudgetPlanExport
 
         $writer = new Writer($options);
         $writer->openToFile($path);
-        $sheetName = $type === BudgetType::Operasi ? 'AO Pemeliharaan' : 'Energi Primer';
+        $fallbackName = $type === BudgetType::Operasi ? 'AO Pemeliharaan' : 'Energi Primer';
+        $sheetName = substr(preg_replace('/[\\\\\\/?*\\[\\]:]/', '', $sheetTitle ?: $fallbackName) ?: $fallbackName, 0, 31);
         $writer->getCurrentSheet()->setName($sheetName);
         $writer->getCurrentSheet()->setSheetView(
             (new SheetView)->withFreezeRow(2)->withFreezeColumn('C'),
