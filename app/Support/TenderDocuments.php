@@ -3,7 +3,6 @@
 namespace App\Support;
 
 use App\Enums\UserRole;
-use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementPartnerCandidate;
 use App\Models\User;
@@ -76,6 +75,7 @@ class TenderDocuments
             'tabel_evaluasi_teknis' => self::technical($candidates),
             'tabel_evaluasi_harga' => self::price($candidates, $ranked),
             'tabel_pemasukan_penawaran' => self::submissions($candidates),
+            'tabel_hasil_pembukaan_harga' => self::priceOpening($candidates),
             'tabel_hasil_administrasi' => self::results($candidates, ''),
             'tabel_hasil_keuangan' => self::results($candidates, ''),
             'tabel_hasil_teknis' => self::results($candidates, 'LULUS'),
@@ -108,6 +108,7 @@ class TenderDocuments
             'tabel_evaluasi_teknis' => 'BA Evaluasi Teknis: tabel dokumen per calon mitra',
             'tabel_evaluasi_harga' => 'BA Evaluasi Harga: tabel hasil evaluasi penawaran per calon mitra',
             'tabel_pemasukan_penawaran' => 'BA Hasil Evaluasi: tabel pemasukan dan pembukaan penawaran',
+            'tabel_hasil_pembukaan_harga' => 'Hasil Pembukaan Penawaran Harga (SPK): tabel penyedia dan total penawaran (termasuk PPN)',
             'tabel_hasil_administrasi' => 'BA Hasil Evaluasi: tabel hasil evaluasi administrasi',
             'tabel_hasil_keuangan' => 'BA Hasil Evaluasi: tabel hasil evaluasi keuangan',
             'tabel_hasil_teknis' => 'BA Hasil Evaluasi: tabel hasil evaluasi teknis',
@@ -152,8 +153,8 @@ class TenderDocuments
      */
     protected static function rksDate(Procurement $procurement): string
     {
-        $type = DocumentType::query()->where('code', 'rks')->value('id');
-        $document = $type === null ? null : $procurement->documentFor((int) $type);
+        // Whichever variant of the RKS it was drawn as.
+        $document = $procurement->documentOfFamily('rks');
 
         return $document?->generated_at?->translatedFormat('d F Y') ?? self::BLANK;
     }
@@ -362,6 +363,33 @@ class TenderDocuments
             .'<td class="r">'.self::money($candidate?->quotation_value).'</td><td class="c">'.($candidate === null ? '' : 'LENGKAP').'</td></tr>');
 
         return '<table class="ba-grid"><tr><th class="c" style="width:6%; white-space: nowrap;">No</th><th class="c">Nama Perusahaan</th><th class="c" style="width:24%">Harga Penawaran</th><th class="c" style="width:26%">Hasil Pembukaan Penawaran</th></tr>'.$rows.'</table>';
+    }
+
+    /**
+     * The Hasil Pembukaan Penawaran Harga form (SMT-FM-DAN-01.02): each calon
+     * mitra with its total offer, PPN included, then empty rows to write on,
+     * fifteen rows in all as on the printed form.
+     *
+     * @param  Collection<int, ProcurementPartnerCandidate>  $candidates
+     */
+    protected static function priceOpening(Collection $candidates): string
+    {
+        $rows = '';
+        $listed = array_values($candidates->all());
+
+        foreach ($listed as $index => $candidate) {
+            $value = $candidate->quotation_value === null ? '' : number_format((float) $candidate->quotation_value, 2, ',', '.');
+
+            $rows .= '<tr><td class="no">'.($index + 1).'</td><td>'.self::name($candidate).'</td>'
+                .'<td class="rp">'.($value === '' ? '' : 'Rp').'</td><td class="amount">'.$value.'</td>'
+                .'<td class="note">LENGKAP</td></tr>';
+        }
+
+        $rows .= str_repeat('<tr><td class="no"></td><td></td><td class="rp"></td><td class="amount"></td><td class="note"></td></tr>', max(0, 15 - count($listed)));
+
+        return '<table class="offers"><tr><th style="width: 6%;">NO</th><th style="width: 42%;">NAMA PENYEDIA BARANG/ JASA</th>'
+            .'<th colspan="2" style="width: 26%;">TOTAL PENAWARAN HARGA<br>(TERMASUK PPN)</th><th style="width: 26%;">KETERANGAN</th></tr>'
+            .$rows.'</table>';
     }
 
     /**

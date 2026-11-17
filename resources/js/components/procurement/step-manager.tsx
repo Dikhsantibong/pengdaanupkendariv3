@@ -3,6 +3,7 @@ import { History, Plus, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -11,6 +12,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     Select,
@@ -19,9 +21,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { formatDateTime } from '@/lib/format';
 import procurements from '@/routes/procurements';
-import type { AdjustableStage, AvailableStep, RemovedStep } from '@/types';
+import type {
+    AdjustableStage,
+    AvailableStep,
+    RemovedStep,
+    StepSuggestion,
+} from '@/types';
 
 /** Adjusting one stage's steps on this procurement alone. */
 export type StepManager = {
@@ -33,7 +41,70 @@ export type StepManager = {
     removed: RemovedStep[];
     /** Data Master steps of the stage the procurement does not have. */
     available: AvailableStep[];
+    /** Penyerahan and Pembayaran: names recommended while typing. */
+    suggestions: StepSuggestion[];
 };
+
+/** The words of a name, lower case, for loose matching. */
+function wordsOf(text: string): string[] {
+    return text
+        .toLowerCase()
+        .split(/[^\p{L}\p{N}]+/u)
+        .filter((word) => word.length > 1);
+}
+
+/**
+ * The recommended names for what is typed: those holding every typed word
+ * (or, failing that, most of them), those starting with it first, then the
+ * most used. Nothing typed yet, the most used.
+ */
+function recommend(
+    suggestions: StepSuggestion[],
+    typed: string,
+): StepSuggestion[] {
+    const query = typed.trim().toLowerCase();
+    const words = wordsOf(query);
+
+    // Nothing typed yet: the contract's own list, then the most used.
+    if (words.length === 0) {
+        return [
+            ...suggestions.filter((suggestion) => suggestion.from_contract),
+            ...suggestions
+                .filter((suggestion) => !suggestion.from_contract)
+                .slice(0, 5),
+        ];
+    }
+
+    return suggestions
+        .map((suggestion) => {
+            const name = suggestion.name.toLowerCase();
+            const nameWords = wordsOf(name);
+            const matched = words.filter((word) =>
+                nameWords.some((candidate) => candidate.startsWith(word)),
+            ).length;
+
+            return {
+                suggestion,
+                score:
+                    (name.startsWith(query) ? 2 : 0) +
+                    (name.includes(query) ? 1 : 0) +
+                    (suggestion.from_contract ? 0.5 : 0) +
+                    matched / words.length,
+                matched,
+            };
+        })
+        .filter(
+            ({ matched }) =>
+                matched >= Math.max(1, Math.ceil(words.length * 0.6)),
+        )
+        .filter(({ suggestion }) => suggestion.name.toLowerCase() !== query)
+        .sort(
+            (a, b) =>
+                b.score - a.score || b.suggestion.uses - a.suggestion.uses,
+        )
+        .slice(0, 8)
+        .map(({ suggestion }) => suggestion);
+}
 
 const STAGE_LABELS: Record<AdjustableStage, string> = {
     perencanaan: 'Perencanaan',
@@ -113,7 +184,215 @@ export function StepManagerBar({
     );
 }
 
+/** The stages whose new steps are typed by hand, not picked. */
+const TYPED_STAGES: AdjustableStage[] = ['penyerahan', 'pembayaran'];
+
 function AddStepDialog({
+    open,
+    onOpenChange,
+    procurementId,
+    manager,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    procurementId: number;
+    manager: StepManager;
+}) {
+    if (TYPED_STAGES.includes(manager.stage)) {
+        return (
+            <TypedStepDialog
+                open={open}
+                onOpenChange={onOpenChange}
+                procurementId={procurementId}
+                manager={manager}
+            />
+        );
+    }
+
+    return (
+        <PickedStepDialog
+            open={open}
+            onOpenChange={onOpenChange}
+            procurementId={procurementId}
+            manager={manager}
+        />
+    );
+}
+
+/**
+ * Penyerahan and Pembayaran: the step's name is typed by hand, for this
+ * procurement only.
+ */
+function TypedStepDialog({
+    open,
+    onOpenChange,
+    procurementId,
+    manager,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    procurementId: number;
+    manager: StepManager;
+}) {
+    const form = useForm({
+        stage: manager.stage as string,
+        name: '',
+        description: '',
+        is_optional: false,
+    });
+    const recommended = recommend(manager.suggestions, form.data.name);
+
+    const submit = () =>
+        form.post(procurements.steps.store(procurementId).url, {
+            preserveScroll: true,
+            onSuccess: () => {
+                form.reset();
+                onOpenChange(false);
+            },
+        });
+
+    return (
+        <Dialog
+            open={open}
+            onOpenChange={(next) => {
+                if (!next) {
+                    form.clearErrors();
+                }
+
+                onOpenChange(next);
+            }}
+        >
+            <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>
+                        Tambah Tahapan {STAGE_LABELS[manager.stage]}
+                    </DialogTitle>
+                    <DialogDescription>
+                        Ketik nama tahapan baru. Tahapan ditambahkan pada
+                        pengadaan ini saja, di urutan paling akhir.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <form
+                    id="add-step-form"
+                    className="space-y-4"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        submit();
+                    }}
+                >
+                    <div className="grid gap-2">
+                        <Label htmlFor="step-name">Nama Tahapan</Label>
+                        <Input
+                            id="step-name"
+                            value={form.data.name}
+                            onChange={(event) =>
+                                form.setData('name', event.target.value)
+                            }
+                            placeholder="Contoh: Berita Acara Uji Fungsi"
+                            autoComplete="off"
+                            autoFocus
+                        />
+                        {recommended.length > 0 && (
+                            <div className="max-h-64 overflow-y-auto rounded-md border border-border bg-muted/30 p-1.5">
+                                <p className="px-1.5 pb-1 text-[11px] text-muted-foreground">
+                                    {form.data.name.trim() === ''
+                                        ? 'Rekomendasi dari kontrak dan tahapan yang sering digunakan'
+                                        : 'Rekomendasi tahapan serupa'}
+                                </p>
+                                <ul className="grid gap-0.5">
+                                    {recommended.map((suggestion) => (
+                                        <li key={suggestion.name}>
+                                            <button
+                                                type="button"
+                                                className="flex w-full items-center justify-between gap-3 rounded-sm px-1.5 py-1 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                                                onClick={() =>
+                                                    form.setData(
+                                                        'name',
+                                                        suggestion.name,
+                                                    )
+                                                }
+                                            >
+                                                <span>{suggestion.name}</span>
+                                                <span className="shrink-0 text-[11px] text-muted-foreground">
+                                                    {[
+                                                        suggestion.from_contract &&
+                                                            'dari kontrak',
+                                                        suggestion.uses > 0 &&
+                                                            `${suggestion.uses}× dipakai`,
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join(' · ')}
+                                                </span>
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                        <InputError
+                            message={form.errors.name ?? form.errors.stage}
+                        />
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="step-description">
+                            Keterangan (opsional)
+                        </Label>
+                        <Textarea
+                            id="step-description"
+                            rows={2}
+                            value={form.data.description}
+                            onChange={(event) =>
+                                form.setData('description', event.target.value)
+                            }
+                        />
+                        <InputError message={form.errors.description} />
+                    </div>
+                    <label className="flex items-start gap-2 text-sm">
+                        <Checkbox
+                            checked={form.data.is_optional}
+                            onCheckedChange={(checked) =>
+                                form.setData('is_optional', checked === true)
+                            }
+                            className="mt-0.5"
+                        />
+                        <span>
+                            Opsional
+                            <span className="block text-xs text-muted-foreground">
+                                Tahapan opsional tidak menahan pengajuan.
+                            </span>
+                        </span>
+                    </label>
+                </form>
+
+                <DialogFooter>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => onOpenChange(false)}
+                    >
+                        Batal
+                    </Button>
+                    <Button
+                        type="submit"
+                        form="add-step-form"
+                        disabled={
+                            form.processing || form.data.name.trim() === ''
+                        }
+                    >
+                        <Plus className="size-4" />
+                        Tambah Tahapan
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+/**
+ * Perencanaan and Pelaksanaan: a Data Master step the procurement lacks.
+ */
+function PickedStepDialog({
     open,
     onOpenChange,
     procurementId,

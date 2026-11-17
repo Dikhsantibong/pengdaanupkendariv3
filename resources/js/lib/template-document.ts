@@ -76,11 +76,13 @@ function editorStylesheet(setup: PageSetup, fullDocument: boolean): string {
         .signature td, .lampiran-head td, table.plain td, table.plain th { outline: 1px dashed #cbd5e1; outline-offset: -1px; }
         td:focus-within, th:focus-within { background-color: #f5f9ff; }
         img { max-width: 100%; }
-        /* Off-screen chapters of long documents are not laid out until seen. */
-        .cover, .bab, .lampiran { content-visibility: auto; contain-intrinsic-size: auto 1100px; }
+        /* Keep absolute cover footers and running PDF headers in normal flow in the
+           visual editor so multi-page templates or long placeholder chips never overlap. */
+        .cover-page { display: flex !important; flex-direction: column !important; min-height: 262mm !important; }
+        .cover-footer { position: static !important; margin-top: auto !important; padding-top: 24px !important; }
+        .header-logo { position: static !important; top: auto !important; height: auto !important; margin-bottom: 10px !important; }
         /* The RKS cover's artwork runs past the cover to the edge of the
            paper, but never over the page after it. */
-        .cover:has(> .rks-cover) { content-visibility: visible; }
         .rks-cover { clip-path: inset(-${setup.margins.top}mm -${right}mm 0 -${left}mm); }`;
 }
 
@@ -340,6 +342,14 @@ export const SAMPLE_VALUES: Record<string, string> = {
         '<tr><td class="c">1.</td><td>Packing Oil Cooler</td><td class="c">37739-10200</td><td class="c">1</td><td class="c">Bh</td><td></td></tr>' +
         '<tr><td class="c">2.</td><td>O Ring</td><td class="c">05507-10140</td><td class="c">16</td><td class="c">Bh</td><td></td></tr></table>',
 };
+
+/** A template body with every placeholder filled with its sample value. */
+export function fillSampleValues(body: string): string {
+    return body.replace(
+        PLACEHOLDER_PATTERN,
+        (match, key: string) => SAMPLE_VALUES[key.toLowerCase()] ?? match,
+    );
+}
 
 /** Render a template body with sample values as a standalone page. */
 export function renderPreviewHtml(

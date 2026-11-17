@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Enums\ActivityType;
-use App\Enums\FinanceSection;
 use App\Enums\PaymentApprovalState;
 use App\Enums\Permission;
 use App\Enums\PlanningApprovalState;
@@ -29,7 +28,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Throwable;
 
 class ProcurementService
 {
@@ -405,14 +403,18 @@ class ProcurementService
      */
     public function syncChecklists(Procurement $procurement): void
     {
-        $this->readContractRequirements($procurement);
+        $existing = $procurement->checklists()->pluck('checklist_item_id');
 
-        // The requirements read from this procurement's own contract.
+        // The Penyerahan and Pembayaran steps are typed by hand on each
+        // procurement (see ProcurementStepService::addTyped): neither the
+        // contract nor the Data Master adds any. Steps a procurement already
+        // has, read from its contract or taken from the Data Master before,
+        // stay as they are, so no work in progress is lost.
         $own = ChecklistItem::query()
             ->active()
             ->where('procurement_id', $procurement->id)
             ->where('is_custom', false)
-            ->ordered()
+            ->whereIn('id', $existing)
             ->get();
 
         // The steps added to this procurement by hand, and those removed
@@ -432,24 +434,17 @@ class ProcurementService
             ->whereIn('id', $procurement->stepAdditions()->select('checklist_item_id'))
             ->get();
 
-        $readSections = $own->map(fn (ChecklistItem $item): ?string => $item->section?->value)->filter()->unique();
-
         $applicable = ChecklistItem::query()
             ->shared()
             ->active()
             ->forProcurementMethod($procurement->procurement_method_id)
             ->forContractNumberFormat($procurement->contract_number_format_id)
             ->forWorkCategory($procurement->work_category)
-            // The Penyerahan and Pembayaran requirements are those of one
-            // contract, so they wait until the contract format is known.
-            ->when(
-                $procurement->contract_number_format_id === null,
-                fn ($query) => $query->whereNull('section'),
-            )
             ->ordered()
             ->get()
-            // A section read from the contract replaces the template's list.
-            ->reject(fn (ChecklistItem $item): bool => $item->section !== null && $readSections->contains($item->section->value))
+            // A Data Master Penyerahan or Pembayaran step is only kept where
+            // the procurement already has it.
+            ->reject(fn (ChecklistItem $item): bool => $item->section !== null && ! $existing->contains($item->id))
             ->concat($own)
             ->concat($custom);
 
@@ -457,9 +452,7 @@ class ProcurementService
             ->concat($added->whereNotIn('id', $applicable->pluck('id')))
             ->reject(fn (ChecklistItem $item): bool => $excluded->contains($item->id));
 
-        $existing = $procurement->checklists()->pluck('checklist_item_id')->all();
-
-        foreach ($applicable->whereNotIn('id', $existing) as $item) {
+        foreach ($applicable->whereNotIn('id', $existing->all()) as $item) {
             $procurement->checklists()->create([
                 'checklist_item_id' => $item->id,
                 'stage' => $item->stage,
@@ -476,90 +469,6 @@ class ProcurementService
 
         // Which steps the job goes through decides part of its status.
         app(ProgressStatusResolver::class)->sync($procurement);
-    }
-
-    /**
-     * Keep the Penyerahan and Pembayaran requirements in step with the
-     * procurement's own contract.
-     *
-     * Each list found in the contract becomes checklist items owned by this
-     * procurement. An item whose wording is unchanged is the same item, so
-     * its tick survives a re-read; one the contract no longer lists is
-     * switched off, its tick kept as history. A list the contract does not
-     * have (no contract drawn yet, or worded beyond recognition) falls back
-     * to the template's requirements. Once paid, the list is final.
-     */
-    public function readContractRequirements(Procurement $procurement): void
-    {
-        if ($procurement->payment_completed_at !== null || ! $procurement->exists) {
-            return;
-        }
-
-        try {
-            $read = app(ContractRequirementReader::class)->read($procurement);
-        } catch (Throwable $exception) {
-            // A contract that cannot be read must never take the page down:
-            // the requirements already read stay, or the template's stand in.
-            report($exception);
-
-            return;
-        }
-
-        DB::transaction(function () use ($procurement, $read): void {
-            // Two people opening the job at once must not both add the same
-            // requirements: the second waits for the first, then finds them.
-            Procurement::query()->whereKey($procurement->id)->lockForUpdate()->first();
-
-            $this->storeContractRequirements($procurement, $read);
-        });
-    }
-
-    /**
-     * Write the requirements read from a contract as the procurement's own
-     * checklist items.
-     *
-     * @param  array<string, list<array{name: string, is_optional: bool, description: string}>>  $read
-     */
-    protected function storeContractRequirements(Procurement $procurement, array $read): void
-    {
-        // Steps added by hand are not the contract's to switch off.
-        $existing = ChecklistItem::query()
-            ->where('procurement_id', $procurement->id)
-            ->where('is_custom', false)
-            ->get();
-
-        foreach (FinanceSection::cases() as $section) {
-            $current = $existing->filter(fn (ChecklistItem $item): bool => $item->section === $section);
-            $kept = [];
-
-            foreach ($read[$section->value] ?? [] as $index => $requirement) {
-                $item = $current->first(
-                    fn (ChecklistItem $candidate): bool => $candidate->name === $requirement['name'] && ! in_array($candidate->id, $kept, true),
-                ) ?? new ChecklistItem([
-                    'procurement_id' => $procurement->id,
-                    'stage' => ProcurementStage::Keuangan,
-                    'section' => $section,
-                    'name' => $requirement['name'],
-                ]);
-
-                $item->fill([
-                    'description' => $requirement['description'],
-                    'is_optional' => $requirement['is_optional'],
-                    'sort_order' => $index + 1,
-                    'is_active' => true,
-                ]);
-
-                if ($item->isDirty()) {
-                    $item->save();
-                }
-
-                $kept[] = $item->id;
-            }
-
-            $current
-                ->reject(fn (ChecklistItem $item): bool => in_array($item->id, $kept, true) || ! $item->is_active)
-                ->each(fn (ChecklistItem $item) => $item->update(['is_active' => false]));
-        }
     }
 
     /**

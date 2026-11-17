@@ -7,6 +7,7 @@ use App\Enums\ChecklistInput;
 use App\Enums\FinanceSection;
 use App\Enums\ProcurementStage;
 use App\Enums\WorkCategory;
+use App\Support\DocumentTypeVariants;
 use Database\Factories\ChecklistItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -123,15 +124,17 @@ class ChecklistItem extends Model
 
     /**
      * The documents this step asks for on one procurement, leaving out
-     * those that belong to another contract format.
+     * those that belong to another contract format, method or category, and
+     * of a family's variants keeping the one that fits it best.
      *
      * @return Collection<int, DocumentType>
      */
     public function documentTypesFor(?Procurement $procurement): Collection
     {
-        return $this->documentTypes
-            ->filter(fn (DocumentType $type): bool => $type->appliesTo($procurement))
-            ->values();
+        return DocumentTypeVariants::bestOf(
+            $this->documentTypes->filter(fn (DocumentType $type): bool => $type->appliesTo($procurement))->values(),
+            $procurement,
+        );
     }
 
     /**

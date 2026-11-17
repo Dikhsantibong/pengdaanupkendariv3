@@ -77,6 +77,7 @@ class ReopenIncompleteHandoverTest extends TestCase
         ]);
 
         app(ProcurementService::class)->syncChecklists($procurement);
+        $this->addHandoverAndPaymentSteps($procurement);
 
         return $procurement;
     }

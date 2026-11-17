@@ -2969,6 +2969,152 @@ Langkah **Pelaksana** di tahap Pelaksanaan diubah sebagai berikut.
 
 ---
 
+# Tahapan Penyerahan & Pembayaran: Diketik Manual, Kontrak dan Riwayat Hanya Rekomendasi
+
+- **Tidak dibaca dari kontrak dan tidak diambil dari Data Master.**
+  - `ProcurementService::syncChecklists` tidak lagi menambahkan tahapan Penyerahan maupun Pembayaran, baik dari dokumen kontrak maupun dari item Data Master bagian itu.
+  - `readContractRequirements` dan `storeContractRequirements` dihapus.
+  - Pengadaan baru mulai dengan tab Penyerahan dan Pembayaran yang kosong.
+  - Perencanaan dan Pelaksanaan tidak berubah: tetap memakai Data Master.
+- **Data lama aman.**
+  - Tahapan Penyerahan/Pembayaran yang sudah ada di sebuah pengadaan tetap disimpan apa adanya, beserta centang, berkas, dan catatannya. Ini berlaku untuk tahapan hasil baca kontrak maupun dari Data Master sebelumnya.
+  - Untuk pengadaan lama, keterangan di tab menyebut asal daftarnya (`requirements_source`).
+  - `requirements_waiting_for` selalu kosong, karena tidak ada lagi yang menunggu format kontrak.
+- **Tambah tahapan diketik manual** (`ProcurementStepService::TYPED_STAGES` = penyerahan dan pembayaran, `addTyped`).
+  - Isian: Nama Tahapan (wajib), Keterangan, dan Opsional.
+  - Tahapan dibuat sebagai milik pengadaan itu saja (`is_custom`), di urutan paling akhir.
+  - Nama yang sama tidak boleh dimasukkan dua kali.
+  - Tahapan ini bisa dihapus dan dipulihkan seperti tahapan lain.
+- **Rekomendasi saat mengetik** (`ProcurementStepService::suggestions`, prop `stepSettings.suggestions`, `recommend()` di `step-manager.tsx`).
+  1. Daftar dari dokumen kontrak pengadaan itu, ditandai "dari kontrak". Daftar ini hanya ditawarkan, tidak pernah ditambahkan otomatis. Kontrak yang tidak terbaca tidak merusak halaman.
+  2. Nama tahapan bagian itu yang pernah dipakai di pengadaan lain, diurutkan dari yang paling sering, dengan jumlah pemakaiannya. Item Data Master yang belum pernah dipakai tidak ditawarkan.
+  - Nama yang sudah ada di pengadaan ini tidak ditawarkan.
+  - Saat mengetik, tampil nama yang kata-katanya cocok.
+- **Pengajuan butuh minimal satu tahapan.**
+  - `Procurement::hasFinanceChecklists` dipakai di `ProcurementPolicy::submitHandover` dan `submitPayment`.
+  - Tab tanpa tahapan tidak bisa diajukan dan menampilkan catatan "Belum dapat diajukan: belum ada tahapan …" (`has_steps`, `NoStepsNote` di `finance-card.tsx`).
+- **Seeder demo:** `DemoProcurementSeeder::typeFinanceSteps` mengetik tahapan Penyerahan/Pembayaran untuk data demo (nama dari template kontraknya).
+- **Test:**
+  - `ContractRequirementTest`: tidak ada tahapan dari kontrak maupun Data Master; kontrak yang diubah tidak berpengaruh; isi kontrak hanya rekomendasi; tahapan yang sudah ada tetap disimpan.
+  - `FinanceRequirementTest`: tidak ada tahapan otomatis untuk semua format kontrak, dan tidak ada lagi yang menunggu format kontrak.
+  - `FinanceStageTest::test_a_tab_without_any_step_cannot_be_submitted`.
+  - `ProcurementStepTest`: tahapan yang diketik dan rekomendasinya.
+  - `EndToEndFlowTest`: alur penuh sampai pembayaran dengan tahapan yang diketik. Isian Jaminan Bank ditambahkan ke data test karena langkah itu baru punya isian sejak commit `bd7e4c3`.
+  - Helper test `TestCase::addHandoverAndPaymentSteps` dipakai test surat mitra, unggah berkas, dan alur keuangan untuk menyiapkan tahapan seperti yang diketik PIC.
+
+---
+
+# HPS Satu Lembar, Tahapan Hasil Pembukaan Penawaran Harga (SPK), Menu Dokumen & Template
+
+## HPS satu lembar, A4 portrait
+- Template `standar/penyusunan-hps.html` kini hanya Formulir HPS SMT-FM-DAN-01.01. Lembar Perhitungan Harga Satuan dan Jumlah Harga (landscape) dihapus.
+- Isinya mengikuti contoh:
+  - Dasar Usulan = `{{nomor_prk}}`;
+  - penanda tangan kiri "OFFICER PENGADAAN";
+  - angka rupiah dan kode formulir tidak terlipat;
+  - lebar kolom disesuaikan.
+- Migrasi `2026_11_17_065518_use_one_page_hps_template` memperbarui template HPS di database (`force`). Dokumen yang sudah digenerate tidak berubah.
+
+## Tahapan Pelaksanaan "Hasil Pembukaan Penawaran Harga" (khusus SPK)
+- **Sebelumnya tidak ada tahapan ini**, jadi tahapan dan dokumen untuk metode atau format lain tidak tersentuh.
+- **Tahapan baru** `MasterDataSeeder::PRICE_OPENING_STEP`:
+  - posisinya tepat setelah Penyusunan HPS;
+  - wajib;
+  - PJ dan SPPL dikecualikan (`checklist_item_format_exclusions`).
+- **Jenis dokumen baru** `hasil-pembukaan-penawaran-harga`, dengan template `standar/hasil-pembukaan-penawaran-harga.html` (lingkup format SPK). Template ini satu lembar A4 portrait sesuai formulir SMT-FM-DAN-01.02:
+  - Hari/Tanggal;
+  - Permintaan Penawaran `……….PP/612/UPKD/{tahun}`;
+  - Judul Pengadaan;
+  - tabel penyedia dengan total penawaran (termasuk PPN) dan keterangan LENGKAP, 15 baris;
+  - catatan;
+  - tanda tangan TL Pengadaan dan Officer Pengadaan.
+- **Placeholder baru** `{{tabel_hasil_pembukaan_harga}}` (`TenderDocuments::priceOpening`).
+- **Migrasi** `2026_11_17_065745_add_the_spk_price_opening_step` membuat jenis dokumen, tahapan, kaitan dokumen, pengecualian PJ/SPPL, urutan (tahapan sesudahnya digeser +1), dan memasang template.
+  - Pengadaan yang Pelaksanaannya sudah diajukan, disetujui, diteruskan ke keuangan, atau selesai mendapat pengecualian untuk tahapan ini (`procurement_step_exclusions`), sehingga tidak terbuka kembali.
+- **Test:** `SpkPriceOpeningTest`. Test yang disesuaikan karena SPK mendapat satu tahapan Pelaksanaan lagi: `SpplExecutionTest`, `ProcurementManagementTest`, `PublicMonitoringTest` (tampilan login kini 5 tahapan Pelaksanaan).
+
+## Menu Data Master "Dokumen & Template" (gabungan Jenis Dokumen + Template Dokumen)
+- **Sidebar:** dua menu digabung menjadi satu, "Dokumen & Template" (`master-data.document-types.index`, halaman `master-data/documents.tsx`).
+- **Layout baru:**
+  - Kiri: daftar dokumen per tahap, dengan pencarian (dokumen, template, atau tahapan) dan filter tahap. Dokumen tanpa template diberi tanda merah.
+  - Kanan: detail jenis dokumen (kode, cara dibuat, format kontrak, metode, status, jumlah dokumen dibuat), daftar "Diminta pada Tahapan", dan daftar template (status, asal bawaan/diubah/kustom, lingkup, jumlah pemakaian).
+  - Tombol yang tersedia: Ubah Jenis, Nonaktifkan, Tambah Template, Tampilkan, Editor Lengkap, Arsipkan.
+- **Pratinjau langsung di kanan:** begitu sebuah dokumen diklik, panel "Pratinjau Template" di kanan memuat template aktifnya (prop on-demand `workbench` via `?template=`, `DocumentTemplateController::workbench`). Panel ini punya dua tab:
+  - **Pratinjau PDF** (tab awal): PDF asli dengan contoh data.
+  - **Editor Visual**: `TemplateEditor`, dengan tombol "Simpan Template".
+  - Bila sebuah dokumen punya lebih dari satu template, tombol "Tampilkan" di daftar template mengganti template yang dipratinjau.
+  - Dokumen "hanya diunggah" tidak memiliki pratinjau.
+- **Endpoint baru** `POST master-data/document-templates/pratinjau-pdf` (`DocumentTemplateController::pdfPreview`, throttle 30/menit) merender PDF dengan mesin yang sama tanpa menyimpan apa pun. `fillSampleValues()` mengisi contoh data di frontend.
+- **Dialog Pratinjau** di editor template kini punya tab Pratinjau PDF dan Tampilan Cepat (HTML).
+- **Halaman lama tetap berfungsi:** daftar template lama (`document-templates.index`) dan editor tetap ada. Tombol kembali di editor menuju Dokumen & Template, dengan dokumen yang sama terpilih (`?jenis=`).
+- **Test:** `DocumentsAndTemplatesPageTest`.
+
+---
+
+# Pakta Integritas (SPK), Menu Aspek & Lembar Penilai, Satu Jenis Dokumen = Satu Template
+
+## Tahapan Pelaksanaan "Pakta Integritas" (khusus SPK, hanya unggah)
+- Tahapan `MasterDataSeeder::INTEGRITY_PACT_STEP`:
+  - posisinya tepat setelah Hasil Pembukaan Penawaran Harga;
+  - wajib;
+  - PJ dan SPPL dikecualikan.
+- Jenis dokumen `pakta-integritas` bersifat `upload_only`: tanpa template dan tanpa generate. Penyedia menandatangani, lalu PIC mengunggah scan-nya.
+- Migrasi `2026_11_17_072803_add_the_spk_integrity_pact_step`:
+  - menggeser urutan tahapan sesudahnya;
+  - pengadaan yang Pelaksanaannya sudah diajukan, disetujui, atau selesai mendapat pengecualian sehingga tidak terbuka kembali.
+- Test:
+  - `SpkPriceOpeningTest`: Pakta Integritas dan migrasinya.
+  - Hitungan tahapan SPK disesuaikan di `SpplExecutionTest`, `ProcurementManagementTest`, dan `PublicMonitoringTest` (login kini 6 tahapan Pelaksanaan).
+
+## Menu Data Master "Aspek & Lembar Penilai" (gabungan Aspek Penilaian + Lembar Penilai)
+- **Hanya menyatukan tampilan.** Tidak ada fungsi baru: simpan, ubah, dan nonaktifkan aspek maupun lembar tetap memakai endpoint lama (`assessment-aspects.*`, `assessment-forms.*`) dengan isian dan validasi yang sama.
+- **Satu layar** `master-data/assessments.tsx`, dirender oleh `AssessmentFormController` dengan prop tambahan `aspects` (`AssessmentAspectController::aspectRecords()`).
+  - Alamat lama `master-data/assessment-aspects` (GET) menampilkan layar yang sama.
+  - Route `Route::redirect` sengaja tidak dipakai, karena menangkap semua metode termasuk POST simpan aspek.
+- **Layout:**
+  - Kiri: daftar lembar penilai dan "Semua Aspek" (dengan total bobot aktif).
+  - Kanan: detail lembar (kode, kedudukan, pilihan nama beserta tanggal sembunyi, status), lalu aspek yang dinilai lembar itu lengkap dengan bobot, kalimat pembuka, dan indikator a/b/c.
+  - Tiap aspek bisa langsung diubah atau dinonaktifkan di tempat. Dialog memberi tahu bila aspek dipakai di lebih dari satu lembar.
+- `FieldControl` dan `RowDates` di `master-data-page.tsx` kini di-export (perilakunya tidak berubah) untuk dipakai dialog layar gabungan.
+- Halaman lama `assessment-aspects.tsx` dan `assessment-forms.tsx` dihapus; sidebar menjadi satu menu.
+- Test: `AssessmentMasterDataTest`, termasuk layar gabungan dan aspek yang disimpan dari layar gabungan kembali ke layar itu.
+
+## Satu jenis dokumen = satu template
+- **Sebelumnya** RKS (4 template), SPK (2), dan SPK Pasal (2) punya lebih dari satu template per jenis. Sekarang tiap template menjadi **jenis dokumen sendiri (varian)**:
+  - `rks` (umum), `rks-spk` (Metode SPK), `rks-tender` (Metode Tender), `rks-pj-jasa` (PJ + Jasa);
+  - `spk` (format SPK), `spk-pj` (Surat Perjanjian PJ);
+  - `spk-pasal` (Jasa), `spk-pasal-barang` (Barang).
+
+  Konfigurasinya ada di `App\Support\DocumentTypeVariants::FAMILIES`.
+- **Kolom baru `document_types`:**
+  - `family`: kode keluarga; untuk semua jenis lain sama dengan `code`;
+  - `procurement_method_id`;
+  - `work_category`.
+
+  `DocumentType::appliesTo` kini juga memeriksa metode dan kategori.
+- **Pemilihan varian** (`DocumentTypeVariants::bestOf`, dipakai `ChecklistItem::documentTypesFor`) mengikuti urutan prioritas yang sama dengan pemilihan template sebelumnya: format, lalu kategori, lalu metode. Setiap tahapan hanya meminta satu varian per keluarga.
+- **Kompatibel ke belakang:**
+  - Logika yang membaca kode dokumen kini memakai kode keluarga (`familyCode()`): ItemTableRenderer, footer PDF SPK, amandemen (`CONTRACT_DOCUMENTS`), pembaca kontrak, tanggal RKS, status otomatis, dan item layout di editor.
+  - `DocumentGenerator::generate` otomatis memakai varian yang cocok, walaupun dipanggil dengan jenis `rks` atau `spk`.
+  - Judul dokumen dan nama berkas tetap seperti dulu, misalnya "RKS (Rencana Kerja dan Syarat) - …", "Surat Perjanjian (PJ) - …", dan `…-rks.html`.
+  - `Procurement::documentOfFamily()` mengambil dokumen terbaru sebuah keluarga.
+- **Migrasi** `2026_11_17_073717_split_document_types_into_one_template_each`:
+  - menambah kolom, mengisi `family`, lalu menjalankan `DocumentTypeVariants::split()`;
+  - `split()` membuat varian, menyalin kaitan tahapan dan metode pemilihan, memindah tiap template ke varian yang sesuai lingkupnya, dan memindah setiap dokumen yang sudah dibuat ke varian yang diminta pengadaannya;
+  - aman dijalankan ulang;
+  - `MasterDataSeeder` juga memanggil `split()` untuk database baru;
+  - manifest template diarahkan ke kode varian.
+- **Diverifikasi di database lokal:** semua dokumen per varian sama dengan pemakaian template sebelumnya (29, 8, 9, 16, 11, 7, 10). Pemeriksaan 159 tahapan dan pengadaan menemukan 0 masalah: tidak ada dua varian per tahapan, template yang terpilih identik dengan sebelumnya, dan dokumen lama berada di varian yang diminta.
+- **Ke depan:**
+  - `DocumentTemplateController::ensureScopeIsFree` menolak template kedua pada jenis yang sudah punya template.
+  - Halaman template baru hanya menawarkan jenis yang belum punya template.
+  - Tombol "Tambah Template" di Dokumen & Template hanya muncul untuk jenis tanpa template.
+  - Detail jenis menampilkan "Khusus untuk" (metode dan kategori).
+- **Catatan teknis:** `DocumentType` mengisi `family` saat dibuat hanya bila kolomnya sudah ada (migrasi lama juga membuat jenis dokumen). Migrasi pemecahan mereset cek itu (`forgetSchema`).
+- **Test:** `OneTemplatePerDocumentTypeTest`, mencakup satu template per varian, varian yang diminta per format/kategori/metode, generate lewat kode keluarga, penolakan template kedua, dan pemecahan database lama tanpa kehilangan dokumen.
+
+---
+
 # Teknologi
 
 Sesuai dengan `claude.md`.

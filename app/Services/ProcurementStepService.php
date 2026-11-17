@@ -13,7 +13,9 @@ use App\Models\ProcurementChecklist;
 use App\Models\ProcurementStepAddition;
 use App\Models\ProcurementStepExclusion;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 /**
  * Adjusting the steps of one procurement: adding a Data Master step it
@@ -46,6 +48,14 @@ class ProcurementStepService
      *
      * @var array<string, string>
      */
+    /**
+     * The stages whose new steps are typed by hand instead of picked from
+     * the Data Master.
+     *
+     * @var list<string>
+     */
+    public const TYPED_STAGES = ['penyerahan', 'pembayaran'];
+
     private const LABELS = [
         'perencanaan' => 'Perencanaan',
         'pelaksanaan' => 'Pelaksanaan',
@@ -53,7 +63,10 @@ class ProcurementStepService
         'pembayaran' => 'Pembayaran',
     ];
 
-    public function __construct(protected ProcurementService $procurements) {}
+    public function __construct(
+        protected ProcurementService $procurements,
+        protected ContractRequirementReader $contracts,
+    ) {}
 
     /**
      * Whether a stage's steps may still be adjusted: until the stage is
@@ -141,6 +154,146 @@ class ProcurementStepService
         $this->procurements->syncChecklists($procurement);
 
         return $item;
+    }
+
+    /**
+     * Add a step typed by hand to the Penyerahan or Pembayaran stage of this
+     * procurement only. It is placed after the steps already there, and is
+     * removed and restored like any other step.
+     */
+    public function addTyped(Procurement $procurement, User $actor, string $stage, string $name, ?string $description, bool $isOptional): ChecklistItem
+    {
+        [$procurementStage, $section] = self::STAGES[$stage];
+        $name = trim((string) preg_replace('/\s+/u', ' ', $name));
+
+        $present = $procurement->checklists()
+            ->with('checklistItem')
+            ->get()
+            ->map(fn (ProcurementChecklist $checklist): ChecklistItem => $checklist->checklistItem)
+            ->filter(fn (ChecklistItem $item): bool => $item->stage === $procurementStage && $item->section === $section);
+
+        if (! in_array($stage, self::TYPED_STAGES, true) || $section === null) {
+            throw ValidationException::withMessages([
+                'name' => 'Tahapan '.self::LABELS[$stage].' dipilih dari Data Master.',
+            ]);
+        }
+
+        if ($present->contains(fn (ChecklistItem $item): bool => mb_strtolower($item->name) === mb_strtolower($name))) {
+            throw ValidationException::withMessages([
+                'name' => "Tahapan {$name} sudah ada pada ".self::LABELS[$stage].' pengadaan ini.',
+            ]);
+        }
+
+        $item = ChecklistItem::query()->create([
+            'procurement_id' => $procurement->id,
+            'is_custom' => true,
+            'stage' => $procurementStage,
+            'section' => $section,
+            'name' => $name,
+            'description' => $description === null || trim($description) === '' ? null : trim($description),
+            'is_optional' => $isOptional,
+            'sort_order' => ((int) $present->max('sort_order')) + 1,
+            'is_active' => true,
+        ]);
+
+        $this->procurements->recordActivity(
+            $procurement,
+            $actor,
+            ActivityType::ChecklistDiperbarui,
+            "Tahapan {$item->name} ditambahkan ke ".self::LABELS[$stage].'.',
+            ['stage' => $item->stage->value, 'step' => 'added', 'checklist_item_id' => $item->id],
+        );
+
+        $this->procurements->syncChecklists($procurement);
+
+        return $item;
+    }
+
+    /**
+     * The names to recommend while a Penyerahan or Pembayaran step is typed:
+     * first the requirements listed in this procurement's own contract,
+     * then every name that stage has used on other procurements, the most
+     * used first. Nothing is added by itself: these are only offered. Names
+     * already on this procurement are left out; the same name in another
+     * case counts once.
+     *
+     * @return list<array{name: string, uses: int, from_contract: bool}>
+     */
+    public function suggestions(Procurement $procurement, string $stage): array
+    {
+        [$procurementStage, $section] = self::STAGES[$stage];
+
+        if (! in_array($stage, self::TYPED_STAGES, true) || $section === null) {
+            return [];
+        }
+
+        $present = $procurement->checklists()
+            ->join('checklist_items', 'checklist_items.id', '=', 'procurement_checklists.checklist_item_id')
+            ->where('checklist_items.section', $section->value)
+            ->pluck('checklist_items.name')
+            ->map(fn (string $name): string => mb_strtolower(trim($name)))
+            ->all();
+
+        $names = [];
+
+        // The contract's own list, as it reads now.
+        try {
+            $contract = $this->contracts->read($procurement)[$section->value] ?? [];
+        } catch (Throwable $exception) {
+            // An unreadable contract only means no recommendation from it.
+            report($exception);
+            $contract = [];
+        }
+
+        foreach ($contract as $requirement) {
+            $name = trim((string) preg_replace('/\s+/u', ' ', $requirement['name']));
+            $key = mb_strtolower($name);
+
+            if ($name !== '' && ! in_array($key, $present, true)) {
+                $names[$key] ??= ['name' => $name, 'uses' => 0, 'from_contract' => true];
+            }
+        }
+
+        $used = [];
+
+        DB::table('checklist_items')
+            ->leftJoin('procurement_checklists', 'procurement_checklists.checklist_item_id', '=', 'checklist_items.id')
+            ->where('checklist_items.stage', $procurementStage->value)
+            ->where('checklist_items.section', $section->value)
+            ->where('checklist_items.is_active', true)
+            ->whereNull('checklist_items.deleted_at')
+            ->groupBy('checklist_items.name')
+            ->selectRaw('checklist_items.name as name, count(procurement_checklists.id) as uses')
+            // Only names actually used on a procurement: an unused Data
+            // Master entry is not a recommendation.
+            ->havingRaw('count(procurement_checklists.id) > 0')
+            ->get()
+            ->each(function (object $row) use (&$used, $present): void {
+                $name = trim((string) preg_replace('/\s+/u', ' ', (string) $row->name));
+                $key = mb_strtolower($name);
+
+                if ($name === '' || in_array($key, $present, true)) {
+                    return;
+                }
+
+                $used[$key] = [
+                    'name' => $used[$key]['name'] ?? $name,
+                    'uses' => ($used[$key]['uses'] ?? 0) + (int) $row->uses,
+                    'from_contract' => false,
+                ];
+            });
+
+        // A contract requirement also used before shows how often.
+        foreach ($used as $key => $suggestion) {
+            if (isset($names[$key])) {
+                $names[$key]['uses'] = $suggestion['uses'];
+                unset($used[$key]);
+            }
+        }
+
+        usort($used, fn (array $a, array $b): int => [$b['uses'], $a['name']] <=> [$a['uses'], $b['name']]);
+
+        return array_slice([...array_values($names), ...$used], 0, 200);
     }
 
     /**

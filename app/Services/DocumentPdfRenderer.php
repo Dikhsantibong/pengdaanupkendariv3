@@ -380,7 +380,7 @@ class DocumentPdfRenderer
         }
 
         $docTitle = $document?->documentType?->name ?? 'Dokumen Pengadaan';
-        $docTypeCode = $document?->documentType?->code ?? '';
+        $docTypeCode = $document?->documentType?->familyCode() ?? '';
         $body = $document?->rendered_body ?? '';
         $hasCover = str_contains($body, 'cover-page') || str_contains($body, 'class="cover"');
         // The footer is measured from the foot and the right edge of the

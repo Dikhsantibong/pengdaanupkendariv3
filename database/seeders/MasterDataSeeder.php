@@ -19,6 +19,7 @@ use App\Models\TargetUnit;
 use App\Models\UnitManager;
 use App\Models\WorkDirector;
 use App\Services\ProgressStatusResolver;
+use App\Support\DocumentTypeVariants;
 use App\Support\TenderBeritaAcara;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -27,6 +28,12 @@ use Illuminate\Support\Str;
 class MasterDataSeeder extends Seeder
 {
     use WithoutModelEvents;
+
+    /** The SPK's step for the prices opened (form SMT-FM-DAN-01.02). */
+    public const PRICE_OPENING_STEP = 'Hasil Pembukaan Penawaran Harga';
+
+    /** The SPK's step for the partner's signed Pakta Integritas, uploaded. */
+    public const INTEGRITY_PACT_STEP = 'Pakta Integritas';
 
     /**
      * Seed the modular master data tables with the UP Kendari reference data.
@@ -52,6 +59,10 @@ class MasterDataSeeder extends Seeder
         $this->seedChecklistItems();
         // The Keuangan stage that follows execution.
         $this->call(FinanceStageSeeder::class);
+
+        // One document type, one template: the RKS, the SPK and its Pasal
+        // get a variant per method, format or category.
+        DocumentTypeVariants::split();
     }
 
     /**
@@ -382,6 +393,10 @@ class MasterDataSeeder extends Seeder
         $execution = [
             ['Evaluasi Dokumen', false],
             ['Penyusunan HPS', false],
+            // SPK only: the prices opened, on form SMT-FM-DAN-01.02.
+            [self::PRICE_OPENING_STEP, false],
+            // SPK only: the partner's signed Pakta Integritas, uploaded.
+            [self::INTEGRITY_PACT_STEP, false],
             // One step for the SMART SCM document and every Berita Acara.
             ['Proses SMART SCM & Berita Acara', false],
             ['BA Negosiasi', false],
@@ -519,6 +534,8 @@ class MasterDataSeeder extends Seeder
             ],
             ProcurementStage::Pelaksanaan->value => [
                 'Penyusunan HPS' => ['penyusunan-hps'],
+                self::PRICE_OPENING_STEP => ['hasil-pembukaan-penawaran-harga'],
+                self::INTEGRITY_PACT_STEP => ['pakta-integritas'],
                 // One step: the SMART SCM document and the berita acara,
                 // all of which have to be signed and filed before the step
                 // counts as finished; each selection method asks for its
@@ -666,6 +683,14 @@ class MasterDataSeeder extends Seeder
             ], [$formats['SPPL']]);
         }
 
+        // The Hasil Pembukaan Penawaran Harga and the Pakta Integritas are
+        // the SPK's alone.
+        $skip(
+            ProcurementStage::Pelaksanaan,
+            [self::PRICE_OPENING_STEP, self::INTEGRITY_PACT_STEP],
+            array_values(array_filter([$formats['PJ'] ?? null, $formats['SPPL'] ?? null])),
+        );
+
         // The SPPL execution steps are not part of SPK or PJ, except the bank
         // account and warranty the SPK also states (Pasal 5 and Pasal 9).
         $skip(
@@ -694,6 +719,8 @@ class MasterDataSeeder extends Seeder
             ['inisiasi-smart-scm', 'Inisiasi SMART SCM', ProcurementStage::Perencanaan],
             ['pr-ro', 'PR / RO', ProcurementStage::Perencanaan],
             ['penyusunan-hps', 'Penyusunan HPS', ProcurementStage::Pelaksanaan],
+            ['hasil-pembukaan-penawaran-harga', 'Hasil Pembukaan Penawaran Harga', ProcurementStage::Pelaksanaan],
+            ['pakta-integritas', 'Pakta Integritas', ProcurementStage::Pelaksanaan],
             ['proses-smart-scm', 'Proses SMART SCM', ProcurementStage::Pelaksanaan],
             ['berita-acara', 'Berita Acara', ProcurementStage::Pelaksanaan],
             ['penyusunan-kontrak', 'Penyusunan Kontrak', ProcurementStage::Pelaksanaan],
@@ -773,6 +800,8 @@ class MasterDataSeeder extends Seeder
                 // The TOR is generated when the work is proposed.
                 'nota-dinas-usulan', 'penawaran', 'csms', 'nota-dinas-perintah-pekerjaan',
                 'proses-smart-scm', 'jaminan-bank', 'amandemen', 'masa-pemeliharaan',
+                // The partner signs its Pakta Integritas; the scan is uploaded.
+                'pakta-integritas',
             ])
             ->update(['upload_only' => true]);
     }

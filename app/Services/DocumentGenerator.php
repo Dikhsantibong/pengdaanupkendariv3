@@ -540,7 +540,7 @@ class DocumentGenerator
 
         $body = $this->fillPlaceholders($template->body, $values);
 
-        $typeCode = $template->documentType?->code ?? $template->documentType()->value('code');
+        $typeCode = ($template->documentType ?? $template->documentType()->first())?->familyCode();
 
         // The Rincian Item, once filled in, draws the item table.
         if ($procurement->contractItems()->exists()) {
@@ -761,7 +761,7 @@ class DocumentGenerator
     {
         $document->loadMissing('documentType');
 
-        if (! in_array($document->documentType->code, self::ITEM_TABLE_TYPES, true)) {
+        if (! in_array($document->documentType->familyCode(), self::ITEM_TABLE_TYPES, true)) {
             return '';
         }
 
@@ -1281,6 +1281,9 @@ class DocumentGenerator
      */
     public function generate(Procurement $procurement, DocumentType $documentType, User $author): ProcurementDocument
     {
+        // Of a family (an RKS, an SPK, ...), the variant the job is asked for.
+        $documentType = $documentType->variantFor($procurement);
+
         $template = DocumentTemplate::resolveFor(
             $documentType->id,
             $procurement->procurement_method_id,
@@ -1296,7 +1299,7 @@ class DocumentGenerator
             'document_type_id' => $documentType->id,
             'document_template_id' => $template->id,
             'title' => "{$documentType->nameFor($procurement)} - {$procurement->name}",
-            'file_name' => Str::slug("{$procurement->number}-{$documentType->code}").'.html',
+            'file_name' => Str::slug("{$procurement->number}-{$documentType->familyCode()}").'.html',
             'template_version' => $template->version,
             'rendered_body' => $this->render($template, $procurement),
             'generated_by' => $author->id,
@@ -1402,7 +1405,7 @@ class DocumentGenerator
      */
     public function hasItemTable(ProcurementDocument $document): bool
     {
-        $code = $document->documentType->code;
+        $code = $document->documentType->familyCode();
 
         return in_array($code, self::ITEM_TABLE_TYPES, true)
             && $this->itemTables->hasTable($document->rendered_body, $code);
@@ -1433,7 +1436,7 @@ class DocumentGenerator
 
         $documents = $procurement->documents()
             ->with(['documentType', 'signedUploads'])
-            ->whereHas('documentType', fn ($query) => $query->whereIn('code', self::ITEM_TABLE_TYPES))
+            ->whereHas('documentType', fn ($query) => $query->inFamily(self::ITEM_TABLE_TYPES))
             ->get();
 
         foreach ($documents as $document) {
@@ -1443,7 +1446,7 @@ class DocumentGenerator
             }
 
             // Drawn with the headings of groups still without items.
-            $body = $this->applyItemTables($document->rendered_body, $document->documentType->code, $procurement, $rows);
+            $body = $this->applyItemTables($document->rendered_body, $document->documentType->familyCode(), $procurement, $rows);
 
             if ($body !== $document->rendered_body) {
                 $document->rendered_body = $body;

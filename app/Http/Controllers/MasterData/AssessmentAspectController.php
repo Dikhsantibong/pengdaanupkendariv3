@@ -56,6 +56,16 @@ class AssessmentAspectController extends MasterDataController
     }
 
     /**
+     * The aspects as the Aspek & Lembar Penilai screen lists them.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function aspectRecords(): array
+    {
+        return $this->records();
+    }
+
+    /**
      * Get the records shown on the management screen.
      *
      * @return array<int, array<string, mixed>>

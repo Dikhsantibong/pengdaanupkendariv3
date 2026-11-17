@@ -53,7 +53,8 @@ class AssessmentFormController extends MasterDataController
      */
     protected function page(): string
     {
-        return 'master-data/assessment-forms';
+        // One screen for the sheets and the aspects they rate.
+        return 'master-data/assessments';
     }
 
     /**
@@ -106,6 +107,8 @@ class AssessmentFormController extends MasterDataController
     protected function extraProps(): array
     {
         return [
+            // Every aspect with its indicators, edited on the same screen.
+            'aspects' => app(AssessmentAspectController::class)->aspectRecords(),
             'aspectOptions' => AssessmentAspect::query()
                 ->active()
                 ->ordered()

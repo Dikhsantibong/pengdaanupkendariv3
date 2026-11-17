@@ -146,15 +146,25 @@ export default function DocumentTemplateEditor({
                     <div className="flex min-w-0 items-center gap-3">
                         <Button variant="ghost" size="icon" asChild>
                             <Link
-                                href={masterData.documentTemplates.index().url}
-                                aria-label="Kembali ke daftar template"
+                                href={
+                                    masterData.documentTypes.index({
+                                        query:
+                                            form.data.document_type_id === null
+                                                ? {}
+                                                : {
+                                                      jenis: form.data
+                                                          .document_type_id,
+                                                  },
+                                    }).url
+                                }
+                                aria-label="Kembali ke Dokumen & Template"
                             >
                                 <ArrowLeft className="size-4" />
                             </Link>
                         </Button>
                         <div className="min-w-0">
                             <p className="section-label">
-                                Data Master · Template Dokumen
+                                Data Master · Dokumen & Template
                             </p>
                             <h1 className="truncate text-lg font-semibold tracking-tight">
                                 {template === null

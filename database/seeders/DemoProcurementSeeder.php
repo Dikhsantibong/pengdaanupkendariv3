@@ -10,6 +10,7 @@ use App\Enums\ProcurementStage;
 use App\Enums\ProposalState;
 use App\Enums\UserRole;
 use App\Models\BudgetSource;
+use App\Models\ChecklistItem;
 use App\Models\ContractNumberFormat;
 use App\Models\ContractType;
 use App\Models\DocumentType;
@@ -576,6 +577,7 @@ trailer<</Root 1 0 R>>
         ])->save();
         $this->log($procurement, $people['procurement'], ActivityType::PelaksanaanDisetujui, 'Pelaksanaan disetujui TL Pengadaan dan diteruskan ke Penyerahan dan Pembayaran (Keuangan).', $at);
         $this->procurements->syncChecklists($procurement);
+        $this->typeFinanceSteps($procurement);
 
         if ($track === 'keuangan') {
             $this->tick($procurement, ProcurementStage::Keuangan, fake()->randomFloat(2, 0.4, 1.0), $at, $people['finance'], FinanceSection::Penyerahan);
@@ -601,6 +603,45 @@ trailer<</Root 1 0 R>>
     /**
      * Tick a share of a stage's checklist, the timestamps spread after a start.
      */
+    /**
+     * Type the job's Penyerahan and Pembayaran steps, as its PIC would:
+     * neither the contract nor the Data Master adds them by itself. The
+     * names typed are those of the contract's template.
+     */
+    protected function typeFinanceSteps(Procurement $procurement): void
+    {
+        ChecklistItem::query()
+            ->shared()
+            ->active()
+            ->whereNotNull('section')
+            ->forContractNumberFormat($procurement->contract_number_format_id)
+            ->forWorkCategory($procurement->work_category)
+            ->ordered()
+            ->get()
+            ->values()
+            ->each(function (ChecklistItem $template, int $index) use ($procurement): void {
+                $item = ChecklistItem::query()->create([
+                    'procurement_id' => $procurement->id,
+                    'is_custom' => true,
+                    'stage' => ProcurementStage::Keuangan,
+                    'section' => $template->section,
+                    'name' => $template->name,
+                    'description' => $template->description,
+                    'is_optional' => $template->is_optional,
+                    'sort_order' => $index + 1,
+                    'is_active' => true,
+                ]);
+
+                $procurement->checklists()->create([
+                    'checklist_item_id' => $item->id,
+                    'stage' => ProcurementStage::Keuangan,
+                    'is_completed' => false,
+                ]);
+            });
+
+        $procurement->unsetRelation('checklists');
+    }
+
     protected function tick(
         Procurement $procurement,
         ProcurementStage $stage,

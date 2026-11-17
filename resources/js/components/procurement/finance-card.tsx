@@ -46,6 +46,8 @@ export type FinanceDetail = {
         note: string | null;
         revision: number;
         pending: string[];
+        /** The tab has steps (typed by hand); none, nothing to submit. */
+        has_steps?: boolean;
     };
     /** Pembayaran: Keuangan submits, TL Keuangan then the Asman decide. */
     payment_approval: {
@@ -62,6 +64,8 @@ export type FinanceDetail = {
         note: string | null;
         revision: number;
         pending: string[];
+        /** The tab has steps (typed by hand); none, nothing to submit. */
+        has_steps?: boolean;
     };
     /** Per tab: the contract the requirements were read from, or null for the template. */
     requirements_source: Record<'penyerahan' | 'pembayaran', string | null>;
@@ -410,6 +414,10 @@ export function HandoverApproval({
                 </p>
             )}
 
+            {!isWaiting && approval.has_steps === false && (
+                <NoStepsNote stage="Penyerahan" />
+            )}
+
             {!isWaiting && approval.pending.length > 0 && (
                 <PendingList
                     title={`Belum dapat diajukan: ${approval.pending.length} tahapan wajib Penyerahan belum selesai`}
@@ -560,6 +568,10 @@ export function PaymentApproval({
                 </div>
             )}
 
+            {!isWaiting && approval.has_steps === false && (
+                <NoStepsNote stage="Pembayaran" />
+            )}
+
             {!isWaiting && approval.pending.length > 0 && (
                 <PendingList
                     title={`Belum dapat diajukan: ${approval.pending.length} tahapan wajib Pembayaran belum selesai`}
@@ -655,6 +667,20 @@ export function FinanceStatus({ finance }: { finance: FinanceDetail }) {
                     Asman mencatat lunas dan menutup pengadaan.
                 </span>
             </span>
+        </p>
+    );
+}
+
+/**
+ * A Penyerahan or Pembayaran tab without any step yet: its steps are typed
+ * by hand, so it cannot be submitted until some are added.
+ */
+function NoStepsNote({ stage }: { stage: 'Penyerahan' | 'Pembayaran' }) {
+    return (
+        <p className="rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+            Belum dapat diajukan: belum ada tahapan {stage}. Tambahkan tahapan
+            lewat tombol Tambah Tahapan pada tab {stage}; isi kontrak dan
+            tahapan yang sering dipakai muncul sebagai rekomendasi.
         </p>
     );
 }

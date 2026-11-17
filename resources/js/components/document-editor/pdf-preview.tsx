@@ -88,10 +88,13 @@ export function PdfPreview({
     endpoint,
     title,
     body,
+    documentTypeId = null,
 }: {
     endpoint: string;
     title: string;
     body: string;
+    /** A template's document type, for the footer of its PDF. */
+    documentTypeId?: number | null;
 }) {
     const [draft, setDraft] = useState<Draft>(() => ({ title, body }));
     const [rendered, setRendered] = useState<Rendered | null>(null);
@@ -113,7 +116,11 @@ export function PdfPreview({
                 'X-Requested-With': 'XMLHttpRequest',
                 ...xsrfHeader(),
             },
-            body: JSON.stringify(draft),
+            body: JSON.stringify(
+                documentTypeId === null
+                    ? draft
+                    : { ...draft, document_type_id: documentTypeId },
+            ),
             signal: controller.signal,
         })
             .then(async (response) => {
@@ -146,7 +153,7 @@ export function PdfPreview({
                 URL.revokeObjectURL(objectUrl);
             }
         };
-    }, [endpoint, draft]);
+    }, [endpoint, draft, documentTypeId]);
 
     const refresh = () => setDraft({ title, body });
 

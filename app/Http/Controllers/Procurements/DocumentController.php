@@ -194,7 +194,7 @@ class DocumentController extends Controller
                 ? fn (): array => $this->editorItems($procurement, $document)
                 : null,
             // The grid shows the columns this document's item table prints.
-            'itemLayout' => $document->documentType->code,
+            'itemLayout' => $document->documentType->familyCode(),
             // The Evaluasi Harga adds a price column per calon mitra.
             'itemPartners' => $document->documentType->code === 'rab'
                 ? fn (): array => $this->items->partners($procurement)
@@ -514,7 +514,7 @@ class DocumentController extends Controller
         }
 
         return response()->json([
-            'body' => $this->generator->applyItemTables($draft, $document->documentType->code, $procurement, $items),
+            'body' => $this->generator->applyItemTables($draft, $document->documentType->familyCode(), $procurement, $items),
         ]);
     }
 

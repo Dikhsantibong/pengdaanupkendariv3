@@ -640,13 +640,14 @@ class ProcurementPolicy
 
     /**
      * Determine whether the user may submit the hand-over to TL Pengadaan:
-     * the execution PIC, like the execution itself, once every mandatory
-     * Penyerahan step is done.
+     * the execution PIC, like the execution itself, once the tab has its
+     * steps (typed by hand) and every mandatory one is done.
      */
     public function submitHandover(User $user, Procurement $procurement): bool
     {
         return $this->updateHandoverChecklist($user, $procurement)
             && $procurement->executor_id === $user->id
+            && $procurement->hasFinanceChecklists(FinanceSection::Penyerahan)
             && $procurement->pendingFinanceChecklists(FinanceSection::Penyerahan)->isEmpty();
     }
 
@@ -676,11 +677,12 @@ class ProcurementPolicy
 
     /**
      * Determine whether the user may submit the payment to their TL, once
-     * every mandatory Pembayaran step is done.
+     * the tab has its steps (typed by hand) and every mandatory one is done.
      */
     public function submitPayment(User $user, Procurement $procurement): bool
     {
         return $this->updatePaymentChecklist($user, $procurement)
+            && $procurement->hasFinanceChecklists(FinanceSection::Pembayaran)
             && $procurement->pendingFinanceChecklists(FinanceSection::Pembayaran)->isEmpty();
     }
 

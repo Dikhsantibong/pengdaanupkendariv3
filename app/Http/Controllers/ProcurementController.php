@@ -335,6 +335,8 @@ class ProcurementController extends Controller
                             ->map(fn ($checklist): string => $checklist->checklistItem->name)
                             ->values()
                             ->all(),
+                        // The steps are typed by hand: none yet, nothing to submit.
+                        'has_steps' => $procurement->hasFinanceChecklists(FinanceSection::Penyerahan),
                     ],
                     // Pembayaran: Keuangan submits, TL Keuangan then the Asman decide.
                     'payment_approval' => [
@@ -354,18 +356,16 @@ class ProcurementController extends Controller
                             ->map(fn ($checklist): string => $checklist->checklistItem->name)
                             ->values()
                             ->all(),
+                        'has_steps' => $procurement->hasFinanceChecklists(FinanceSection::Pembayaran),
                     ],
                     // The Penyerahan and Pembayaran requirements follow the
                     // contract, so they wait for what decides which contract.
                     // Per tab: the contract the requirements were read from,
                     // or null when the template's list stands in for it.
                     'requirements_source' => $this->requirementsSource($procurement),
-                    'requirements_waiting_for' => array_values(array_filter([
-                        $procurement->contract_number_format_id === null ? 'format kontrak' : null,
-                        $procurement->contractNumberFormat?->uses_work_category && $procurement->work_category === null
-                            ? 'kategori pekerjaan (barang / jasa)'
-                            : null,
-                    ])),
+                    // The steps are typed by hand, so nothing waits for the
+                    // contract format any more.
+                    'requirements_waiting_for' => [],
                 ],
             ],
             'checklists' => [
@@ -862,11 +862,16 @@ class ProcurementController extends Controller
         $can = [];
         $removed = [];
         $available = [];
+        $suggestions = [];
 
         foreach (array_keys(ProcurementStepService::STAGES) as $stage) {
             $can[$stage] = $user->can('manageSteps', [$procurement, $stage]);
             $removed[$stage] = $user->hasPermission(Permission::ManageProcurementSteps) ? $steps->removed($procurement, $stage) : [];
-            $available[$stage] = $can[$stage] ? $steps->available($procurement, $stage) : [];
+            // Penyerahan and Pembayaran steps are typed, with recommendations;
+            // the other stages pick from the Data Master.
+            $typed = in_array($stage, ProcurementStepService::TYPED_STAGES, true);
+            $available[$stage] = $can[$stage] && ! $typed ? $steps->available($procurement, $stage) : [];
+            $suggestions[$stage] = $can[$stage] && $typed ? $steps->suggestions($procurement, $stage) : [];
         }
 
         return [
@@ -875,6 +880,7 @@ class ProcurementController extends Controller
             'can' => $can,
             'removed' => $removed,
             'available' => $available,
+            'suggestions' => $suggestions,
         ];
     }
 

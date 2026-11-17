@@ -404,7 +404,7 @@ export function MasterDataPage<T extends MasterRecord>({
  * order matters and is edited here rather than typed as one blob of text.
  */
 /** The dates kept beside a list's rows, in another field of the form. */
-type RowDates = {
+export type RowDates = {
     value: MasterFormValue;
     onChange: (value: MasterFormValue) => void;
 };
@@ -578,7 +578,7 @@ function ListControl({
     );
 }
 
-function FieldControl({
+export function FieldControl({
     field,
     value,
     error,

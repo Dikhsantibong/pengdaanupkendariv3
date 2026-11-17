@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Enums\FinanceSection;
-use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementDocument;
 use DOMDocument;
@@ -67,15 +66,10 @@ class ContractRequirementReader
             return null;
         }
 
-        $typeId = DocumentType::query()->where('code', $code)->value('id');
-
-        if ($typeId === null) {
-            return null;
-        }
-
         $procurement->loadMissing('documents');
 
-        $document = $procurement->documentFor((int) $typeId);
+        // Whichever variant of the contract it was drawn as.
+        $document = $procurement->documentOfFamily($code);
 
         return $document !== null && trim((string) $document->rendered_body) !== '' ? $document : null;
     }
@@ -104,7 +98,7 @@ class ContractRequirementReader
                 self::MARKERS[$section->value],
                 // Kept even once retired (withTrashed), so always there. The
                 // SPK's articles are cited as the SPK they belong to.
-                $document->documentType->code === 'spk-pasal'
+                $document->documentType->familyCode() === 'spk-pasal'
                     ? 'SPK (Surat Perintah Kerja)'
                     : $document->documentType->nameFor($procurement),
             );

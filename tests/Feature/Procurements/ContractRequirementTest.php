@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\ContractRequirementReader;
 use App\Services\DocumentGenerator;
 use App\Services\ProcurementService;
+use App\Services\ProcurementStepService;
 use Database\Seeders\FinanceRequirementSeeder;
 use Database\Seeders\KontrakTemplateSeeder;
 use Database\Seeders\MasterDataSeeder;
@@ -24,8 +25,9 @@ use Illuminate\Support\Collection;
 use Tests\TestCase;
 
 /**
- * The Penyerahan and Pembayaran requirements are read from each
- * procurement's own contract, so they follow what is actually signed.
+ * The Penyerahan and Pembayaran steps are typed by hand on each procurement:
+ * neither the contract nor the Data Master adds any. The contract's list is
+ * only offered as recommendations, and steps already there are kept.
  */
 class ContractRequirementTest extends TestCase
 {
@@ -42,45 +44,39 @@ class ContractRequirementTest extends TestCase
         $this->seed(SpplDocumentTemplateSeeder::class);
     }
 
-    public function test_an_spk_jasa_reads_its_requirements_from_its_own_contract(): void
+    public function test_neither_the_contract_nor_the_data_master_adds_handover_or_payment_steps(): void
     {
-        $procurement = $this->procurement('SPK', 'jasa');
-        $this->contract($procurement, 'spk-pasal');
+        foreach (['SPK' => 'jasa', 'PJ' => 'barang', 'SPPL' => null] as $format => $category) {
+            $procurement = $this->procurement($format, $category);
+            $this->contract($procurement, ['SPK' => 'spk-pasal', 'PJ' => 'spk', 'SPPL' => 'lampiran-sp'][$format]);
 
-        $this->sync($procurement);
+            $this->sync($procurement);
 
-        $template = FinanceRequirementSeeder::SOURCES['SPK Jasa']['items'];
-
-        $this->assertSame(array_column($template['penyerahan'], 0), $this->names($procurement, FinanceSection::Penyerahan));
-        $this->assertSame(array_column($template['pembayaran'], 0), $this->names($procurement, FinanceSection::Pembayaran));
-
-        $csms = $this->item($procurement, 'Sertifikat CSMS dengan klasifikasi minimal Moderat');
-        $this->assertSame('SPK (Surat Perintah Kerja) Pasal 6 ayat (8) huruf f', $csms->description);
-        $this->assertSame($procurement->id, $csms->procurement_id);
-
-        $addendum = $this->item($procurement, 'Salinan Addendum Pengadaan Barang/Jasa (apabila ada)');
-        $this->assertSame('SPK (Surat Perintah Kerja) Pasal 5 ayat (1) huruf l', $addendum->description);
-        $this->assertTrue($addendum->is_optional);
-
-        // The template's requirements are not laid out beside them.
-        $this->assertSame(0, $this->rows($procurement)->filter(fn ($row) => $row->checklistItem->procurement_id === null)->count());
+            // The Data Master has steps for these tabs, and the contract
+            // lists requirements, yet none becomes a step by itself.
+            $this->assertGreaterThan(0, ChecklistItem::query()->shared()->whereNotNull('section')->count());
+            $this->assertSame([], $this->names($procurement, FinanceSection::Penyerahan), $format);
+            $this->assertSame([], $this->names($procurement, FinanceSection::Pembayaran), $format);
+            $this->assertSame(0, ChecklistItem::query()->where('procurement_id', $procurement->id)->count(), $format);
+        }
     }
 
-    public function test_an_edited_contract_changes_the_checklist_and_keeps_the_ticks(): void
+    public function test_planning_and_execution_still_take_their_data_master_steps(): void
+    {
+        $planning = ChecklistItem::query()->shared()->where('stage', ProcurementStage::Perencanaan)->exists();
+        $procurement = $this->procurement('SPK', 'jasa');
+        $this->sync($procurement);
+
+        $this->assertTrue($planning);
+        $this->assertGreaterThan(0, $procurement->checklists()->where('stage', ProcurementStage::Perencanaan)->count());
+    }
+
+    public function test_editing_the_contract_changes_nothing_on_the_tabs(): void
     {
         $procurement = $this->procurement('SPK', 'jasa');
         $document = $this->contract($procurement, 'spk-pasal');
-        $this->sync($procurement);
+        app(ProcurementStepService::class)->addTyped($procurement, User::factory()->administrator()->create(), 'penyerahan', 'Laporan Pekerjaan', null, false);
 
-        $kept = $this->row($procurement, 'Laporan Pekerjaan');
-        $kept->update(['is_completed' => true]);
-
-        $dropped = $this->row($procurement, 'Dokumentasi Foto Pelaksanaan Pekerjaan');
-        $dropped->update(['is_completed' => true]);
-
-        $untouched = $this->row($procurement, 'Sertifikat CSMS dengan klasifikasi minimal Moderat');
-
-        // The PIC rewrites Pasal 6 ayat (8): one paper out, one paper in.
         $document->update(['rendered_body' => str_replace(
             '<li><b>Dokumentasi Foto Pelaksanaan Pekerjaan</b></li>',
             '<li><b>Berita Acara Uji Fungsi</b></li>',
@@ -90,106 +86,90 @@ class ContractRequirementTest extends TestCase
 
         $this->sync($procurement);
 
-        $names = $this->names($procurement, FinanceSection::Penyerahan);
-        $this->assertContains('Berita Acara Uji Fungsi', $names);
-        $this->assertSame(
-            7,
-            $this->rows($procurement)
-                ->filter(fn ($row): bool => $row->checklistItem->section === FinanceSection::Penyerahan && $row->checklistItem->is_active)
-                ->count(),
-        );
-
-        // An unchanged requirement is the same step, tick and all.
-        $this->assertTrue($kept->refresh()->is_completed);
-        $this->assertSame($untouched->id, $this->row($procurement, 'Sertifikat CSMS dengan klasifikasi minimal Moderat')->id);
-
-        // A ticked requirement the contract dropped stays as history.
-        $this->assertTrue(ProcurementChecklist::query()->whereKey($dropped->id)->exists());
-        $this->assertFalse($dropped->checklistItem->refresh()->is_active);
+        $this->assertSame(['Laporan Pekerjaan'], $this->names($procurement, FinanceSection::Penyerahan));
+        $this->assertSame([], $this->names($procurement, FinanceSection::Pembayaran));
     }
 
-    public function test_the_template_stands_in_until_the_contract_is_drawn(): void
+    public function test_the_contract_s_list_is_only_a_recommendation(): void
     {
-        $procurement = $this->procurement('SPK', 'barang');
+        $procurement = $this->procurement('SPK', 'jasa');
+        $this->contract($procurement, 'spk-pasal');
         $this->sync($procurement);
 
-        $template = FinanceRequirementSeeder::SOURCES['SPK Barang']['items'];
+        $steps = app(ProcurementStepService::class);
+        $handover = $steps->suggestions($procurement, 'penyerahan');
+        $payment = $steps->suggestions($procurement, 'pembayaran');
 
-        $this->assertSame(array_column($template['penyerahan'], 0), $this->names($procurement, FinanceSection::Penyerahan));
-        $this->assertSame(0, ChecklistItem::query()->where('procurement_id', $procurement->id)->count());
+        // The contract's requirements come first, marked as such.
+        $contractHandover = array_values(array_filter($handover, fn (array $suggestion): bool => $suggestion['from_contract']));
+        $this->assertNotEmpty($contractHandover);
+        $this->assertSame($contractHandover, array_slice($handover, 0, count($contractHandover)));
+        $this->assertContains('Laporan Pekerjaan', array_column($contractHandover, 'name'));
+        $this->assertNotEmpty(array_filter($payment, fn (array $suggestion): bool => $suggestion['from_contract']));
 
-        $this->actingAs(User::factory()->administrator()->create())
-            ->get(route('procurements.show', $procurement))
-            ->assertInertia(fn ($page) => $page->where('detail.finance.requirements_source', ['penyerahan' => null, 'pembayaran' => null]));
+        // Recommending adds nothing.
+        $this->assertSame([], $this->names($procurement, FinanceSection::Penyerahan));
 
-        // Drawing the contract switches both tabs to it.
-        $document = $this->contract($procurement, 'spk-pasal');
-
-        $this->actingAs(User::factory()->administrator()->create())
-            ->get(route('procurements.show', $procurement))
-            ->assertInertia(fn ($page) => $page->where('detail.finance.requirements_source', [
-                'penyerahan' => $document->title,
-                'pembayaran' => $document->title,
-            ]));
-
-        $this->assertSame(0, $this->rows($procurement)->filter(fn ($row) => $row->checklistItem->procurement_id === null)->count());
+        // Once typed, the name is no longer recommended.
+        $steps->addTyped($procurement, User::factory()->administrator()->create(), 'penyerahan', 'Laporan Pekerjaan', null, false);
+        $this->assertNotContains('Laporan Pekerjaan', array_column($steps->suggestions($procurement, 'penyerahan'), 'name'));
+        $this->assertSame(['Laporan Pekerjaan'], $this->names($procurement, FinanceSection::Penyerahan));
     }
 
-    public function test_a_surat_perjanjian_keeps_long_items_whole_and_mandatory(): void
+    public function test_an_unused_data_master_step_is_not_recommended(): void
     {
-        $procurement = $this->procurement('PJ', 'barang');
-        $this->contract($procurement, 'spk');
+        $procurement = $this->procurement('SPK', 'jasa');
         $this->sync($procurement);
 
-        $names = $this->names($procurement, FinanceSection::Pembayaran);
-        $this->assertCount(8, $names);
-        $this->assertCount(7, $this->names($procurement, FinanceSection::Penyerahan));
+        ChecklistItem::query()->create([
+            'stage' => ProcurementStage::Keuangan,
+            'section' => FinanceSection::Penyerahan,
+            'name' => 'Tahapan Data Master Tak Terpakai',
+            'sort_order' => 99,
+            'is_active' => true,
+        ]);
 
-        // Its "(jika ada)" qualifies a detail mid-sentence, not the paper.
-        $minutes = $this->item($procurement, $names[4]);
-        $this->assertStringEndsWith('dilengkapi dengan tanda tangan elektronik yang telah tersertifikasi', $minutes->name);
-        $this->assertFalse($minutes->is_optional);
-        $this->assertSame('Surat Perjanjian (PJ) Pasal 10 ayat (1) huruf e', $minutes->description);
-
-        $this->assertTrue($this->item($procurement, 'Surat keterangan bebas potong (jika ada)')->is_optional);
-    }
-
-    public function test_a_surat_pesanan_reads_its_payment_list_and_keeps_the_template_delivery_list(): void
-    {
-        $procurement = $this->procurement('SPPL', null);
-        $this->contract($procurement, 'lampiran-sp');
-        $this->sync($procurement);
-
-        $payment = $this->names($procurement, FinanceSection::Pembayaran);
-        $this->assertCount(15, $payment);
-        $this->assertSame('Kwitansi tagihan bermaterai 3 (tiga) rangkap', $payment[1]);
-        $this->assertSame('Lampiran SP Barang dan Jasa Bagian D huruf b', $this->item($procurement, $payment[1])->description);
-
-        // Its delivery papers are written as sentences, so the template's
-        // list of them is used.
-        $this->assertSame(
-            array_column(FinanceRequirementSeeder::SOURCES['Lampiran Surat Pesanan']['items']['penyerahan'], 0),
-            $this->names($procurement, FinanceSection::Penyerahan),
+        $this->assertNotContains(
+            'Tahapan Data Master Tak Terpakai',
+            array_column(app(ProcurementStepService::class)->suggestions($procurement, 'penyerahan'), 'name'),
         );
     }
 
-    public function test_the_requirements_are_frozen_once_paid(): void
+    public function test_steps_a_procurement_already_has_are_kept(): void
     {
         $procurement = $this->procurement('SPK', 'jasa');
         $document = $this->contract($procurement, 'spk-pasal');
+
+        // Read from the contract before the change, ticked and unticked.
+        $this->readStep($procurement, FinanceSection::Penyerahan, 'Laporan Pekerjaan (dari kontrak)', true);
+        $this->readStep($procurement, FinanceSection::Penyerahan, 'Berita Acara (dari kontrak)', false);
+
+        // Taken from the Data Master before the change.
+        $master = ChecklistItem::query()->shared()
+            ->forContractNumberFormat($procurement->contract_number_format_id)
+            ->forWorkCategory('jasa')
+            ->where('section', FinanceSection::Pembayaran->value)
+            ->firstOrFail();
+        $procurement->checklists()->create(['checklist_item_id' => $master->id, 'stage' => ProcurementStage::Keuangan, 'is_completed' => false]);
+
         $this->sync($procurement);
 
-        $procurement->forceFill(['payment_completed_at' => now()])->save();
-        $document->update(['rendered_body' => str_replace('Laporan Pekerjaan</b>', 'Laporan Akhir</b>', $document->rendered_body)]);
-        $procurement->unsetRelation('documents');
+        $this->assertSame(
+            ['Laporan Pekerjaan (dari kontrak)', 'Berita Acara (dari kontrak)'],
+            $this->names($procurement, FinanceSection::Penyerahan),
+        );
+        $this->assertTrue($this->row($procurement, 'Laporan Pekerjaan (dari kontrak)')->is_completed);
+        $this->assertSame([$master->name], $this->names($procurement, FinanceSection::Pembayaran));
 
-        $this->sync($procurement);
-
-        $this->assertContains('Laporan Pekerjaan', $this->names($procurement, FinanceSection::Penyerahan));
-        $this->assertNotContains('Laporan Akhir', $this->names($procurement, FinanceSection::Penyerahan));
+        $this->actingAs(User::factory()->administrator()->create())
+            ->get(route('procurements.show', $procurement))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('detail.finance.requirements_source.penyerahan', $document->title)
+                ->where('detail.finance.requirements_waiting_for', []));
     }
 
-    public function test_an_unreadable_contract_falls_back_without_breaking_the_page(): void
+    public function test_an_unreadable_contract_does_not_break_the_page_or_the_recommendations(): void
     {
         $procurement = $this->procurement('SPK', 'jasa');
         $document = $this->contract($procurement, 'spk-pasal');
@@ -200,23 +180,19 @@ class ContractRequirementTest extends TestCase
             ->get(route('procurements.show', $procurement))
             ->assertOk();
 
-        $this->assertSame(
-            array_column(FinanceRequirementSeeder::SOURCES['SPK Jasa']['items']['penyerahan'], 0),
-            $this->names($procurement, FinanceSection::Penyerahan),
-        );
+        $this->assertIsArray(app(ProcurementStepService::class)->suggestions($procurement, 'penyerahan'));
+        $this->assertSame([], $this->names($procurement, FinanceSection::Penyerahan));
     }
 
-    public function test_a_contract_s_requirements_stay_with_its_procurement(): void
+    public function test_a_procurement_s_own_steps_stay_out_of_the_data_master(): void
     {
         $first = $this->procurement('SPK', 'jasa');
-        $this->contract($first, 'spk-pasal');
-        $this->sync($first);
+        $own = app(ProcurementStepService::class)->addTyped($first, User::factory()->administrator()->create(), 'penyerahan', 'Laporan Khusus', null, false);
 
         $second = $this->procurement('SPK', 'jasa');
         $this->sync($second);
 
-        // The second has no contract yet: it gets the template, not the first's items.
-        $this->assertSame(0, $this->rows($second)->filter(fn ($row) => $row->checklistItem->procurement_id !== null)->count());
+        $this->assertSame([], $this->names($second, FinanceSection::Penyerahan));
 
         $administrator = User::factory()->administrator()->create();
 
@@ -225,8 +201,6 @@ class ContractRequirementTest extends TestCase
             ->assertInertia(fn ($page) => $page->where('records', fn ($records) => collect($records)->pluck('id')
                 ->intersect(ChecklistItem::query()->whereNotNull('procurement_id')->pluck('id'))
                 ->isEmpty()));
-
-        $own = ChecklistItem::query()->where('procurement_id', $first->id)->firstOrFail();
 
         $this->actingAs($administrator)
             ->delete(route('master-data.checklist-items.destroy', $own))
@@ -280,6 +254,30 @@ class ContractRequirementTest extends TestCase
         $procurement->unsetRelation('documents');
 
         return $document;
+    }
+
+    /**
+     * A step read from the procurement's contract before the steps came from
+     * the Data Master, with its checklist row.
+     */
+    protected function readStep(Procurement $procurement, FinanceSection $section, string $name, bool $ticked): ChecklistItem
+    {
+        $item = ChecklistItem::query()->create([
+            'procurement_id' => $procurement->id,
+            'stage' => ProcurementStage::Keuangan,
+            'section' => $section,
+            'name' => $name,
+            'sort_order' => ChecklistItem::query()->where('procurement_id', $procurement->id)->count() + 1,
+            'is_active' => true,
+        ]);
+
+        $procurement->checklists()->create([
+            'checklist_item_id' => $item->id,
+            'stage' => ProcurementStage::Keuangan,
+            'is_completed' => $ticked,
+        ]);
+
+        return $item;
     }
 
     protected function sync(Procurement $procurement): void

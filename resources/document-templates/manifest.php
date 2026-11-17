@@ -123,6 +123,16 @@ return [
         'work_category' => null,
         'name' => 'Penyusunan HPS - Template Standar UP Kendari',
     ],
+    // Hasil Pembukaan Penawaran Harga (SMT-FM-DAN-01.02): SPK only.
+    'standar.hasil-pembukaan-penawaran-harga' => [
+        'group' => 'standar',
+        'file' => 'standar/hasil-pembukaan-penawaran-harga.html',
+        'document_type' => 'hasil-pembukaan-penawaran-harga',
+        'procurement_method' => null,
+        'contract_format' => 'SPK',
+        'work_category' => null,
+        'name' => 'Hasil Pembukaan Penawaran Harga (SPK) - Template Standar UP Kendari',
+    ],
     'standar.proses-smart-scm' => [
         'group' => 'standar',
         'file' => 'standar/proses-smart-scm.html',
@@ -245,7 +255,7 @@ return [
     'kontrak.spk-barang' => [
         'group' => 'kontrak',
         'file' => 'kontrak/spk-barang.html',
-        'document_type' => 'spk-pasal',
+        'document_type' => 'spk-pasal-barang',
         'procurement_method' => null,
         'contract_format' => null,
         'work_category' => 'barang',
@@ -292,7 +302,7 @@ return [
     'rks.spk' => [
         'group' => 'rks-spk',
         'file' => 'rks/metode-spk.html',
-        'document_type' => 'rks',
+        'document_type' => 'rks-spk',
         'procurement_method' => 'spk',
         'contract_format' => null,
         'work_category' => null,
@@ -301,7 +311,7 @@ return [
     'rks.tender' => [
         'group' => 'rks-tender',
         'file' => 'rks/metode-tender.html',
-        'document_type' => 'rks',
+        'document_type' => 'rks-tender',
         'procurement_method' => 'tender',
         'contract_format' => null,
         'work_category' => null,
@@ -347,7 +357,7 @@ return [
     'pj.rks-jasa' => [
         'group' => 'pj',
         'file' => 'pj/rks-jasa.html',
-        'document_type' => 'rks',
+        'document_type' => 'rks-pj-jasa',
         'procurement_method' => null,
         'contract_format' => 'PJ',
         'work_category' => 'jasa',
@@ -359,7 +369,7 @@ return [
     'pj.surat-perjanjian' => [
         'group' => 'pj',
         'file' => 'pj/surat-perjanjian.html',
-        'document_type' => 'spk',
+        'document_type' => 'spk-pj',
         'procurement_method' => null,
         'contract_format' => 'PJ',
         'work_category' => null,

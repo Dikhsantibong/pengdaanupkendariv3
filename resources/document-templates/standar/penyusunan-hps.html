@@ -1,8 +1,8 @@
 <section class="hps-doc">
     <style>
         @page { size: A4 portrait; margin: 10mm 12mm 12mm 12mm; }
-        @page hps-landscape { size: A4 landscape; margin: 12mm 12mm 14mm 12mm; }
         .hps-doc { font-family: Arial, Helvetica, sans-serif; font-size: 8.5pt; line-height: 1.3; color: #000; }
+        .hps-doc table.hps-main, .hps-doc table.hps-sign { page-break-inside: avoid; }
         .hps-doc table { border-collapse: collapse; width: 100%; margin: 0; }
         .hps-doc .center { text-align: center; }
         .hps-doc .right { text-align: right; }
@@ -17,45 +17,39 @@
         .hps-doc table.hps-main { margin-top: 6px; border: 1.5px solid #000; font-size: 8pt; }
         .hps-doc table.hps-main th { border: 1px solid #000; padding: 4px 4px; font-weight: bold; text-align: center; vertical-align: middle; background: #fff; }
         .hps-doc table.hps-main td { border: 1px solid #000; padding: 3px 4px; vertical-align: top; }
+        .hps-doc table.hps-main { font-size: 7.5pt; }
+        .hps-doc table.hps-main td.right { white-space: nowrap; }
+        .hps-doc table.ims-head td.ims-value { white-space: nowrap; }
         .hps-doc table.hps-main tr.job-title td { font-weight: bold; background: #f8f9fa; padding: 4px 6px; }
         .hps-doc table.hps-main tr.sum-row td { font-weight: bold; font-style: italic; padding: 3px 4px; }
         .hps-doc table.hps-sign { margin-top: 14px; page-break-inside: avoid; font-size: 8pt; }
         .hps-doc table.hps-sign td { border: none; padding: 1px 0; vertical-align: top; }
-        .hps-doc .calc-page { page: hps-landscape; break-before: page; page-break-before: always; padding-top: 4px; }
-        .hps-doc .calc-brand { font-weight: bold; font-size: 9pt; line-height: 1.2; padding-bottom: 4px; border-bottom: 2px solid #555; margin-bottom: 8px; }
-        .hps-doc .calc-title { text-align: center; font-weight: bold; font-size: 9.5pt; margin-bottom: 8px; line-height: 1.3; }
-        .hps-doc table.hps-calc { border: 1.5px solid #000; font-size: 8pt; }
-        .hps-doc table.hps-calc th { border: 1px solid #000; padding: 3px 4px; font-weight: bold; text-align: center; vertical-align: middle; }
-        .hps-doc table.hps-calc td { border: 1px solid #000; padding: 2.5px 4px; vertical-align: middle; }
-        .hps-doc .col-yellow { background: #ffe047; }
-        .hps-doc .col-green { background: #b8d967; }
-        .hps-doc .ref-note { margin-top: 8px; font-size: 8pt; line-height: 1.35; }
     </style>
 
-    <!-- HALAMAN 1: FORMULIR HARGA PERHITUNGAN SENDIRI (HPS) -->
+    <!-- FORMULIR HARGA PERHITUNGAN SENDIRI (HPS): satu lembar, A4 portrait -->
     <table class="ims-head">
         <tr>
-            <td rowspan="4" style="width: 15%; text-align: center;">
+            <td rowspan="4" style="width: 18%; text-align: center;">
                 <img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 36px; width: auto;">
             </td>
-            <td class="ims-title" style="width: 57%;">PT PLN NUSANTARA POWER UP KENDARI</td>
-            <td style="width: 13%;">Nomor</td>
-            <td style="width: 15%;">: <b>SMT-FM-DAN-01.01</b></td>
+            <td class="ims-title" style="width: 46%;">PT PLN NUSANTARA POWER UP KENDARI</td>
+            <td class="ims-value" style="width: 17%;">Nomor</td>
+            <td class="ims-value" style="width: 19%;">: <b>SMT-FM-DAN-01.01</b></td>
         </tr>
         <tr>
             <td class="ims-title">INTEGRATED MANAGEMENT SYSTEM</td>
             <td>No. Revisi</td>
-            <td>: 00</td>
+            <td class="ims-value">: 00</td>
         </tr>
         <tr>
             <td class="ims-title">FORMULIR</td>
             <td>Tanggal Berlaku</td>
-            <td>: 5 April 2023</td>
+            <td class="ims-value">: <b>5 April 2023</b></td>
         </tr>
         <tr>
             <td class="ims-title">HARGA PERHITUNGAN SENDIRI (HPS)</td>
             <td>Halaman</td>
-            <td>: 1 dari 1</td>
+            <td class="ims-value">: 1 dari 1</td>
         </tr>
     </table>
 
@@ -64,7 +58,7 @@
         <tr><td class="label">Kepada</td><td class="colon">:</td><td>Manager PT PLN Nusantara Power UP Kendari</td></tr>
         <tr><td class="label">Dari</td><td class="colon">:</td><td>Pelaksana Pengadaan</td></tr>
         <tr><td class="label">Perihal</td><td class="colon">:</td><td>Harga Perhitungan Sendiri (HPS)</td></tr>
-        <tr><td class="label">Dasar Usulan</td><td class="colon">:</td><td>{{nomor_nota_dinas_usulan}}</td></tr>
+        <tr><td class="label">Dasar Usulan</td><td class="colon">:</td><td>{{nomor_prk}}</td></tr>
     </table>
 
     <p style="margin: 6px 0 4px;">Dengan ini kami sampaikan Harga Perhitungan Sendiri (HPS) untuk kebutuhan PT PLN NUSANTARA POWER UP Kendari sebagai berikut :</p>
@@ -72,14 +66,14 @@
     <table class="hps-main">
         <tr>
             <th style="width: 4%;">No.</th>
-            <th style="width: 9%;">Stock Code</th>
-            <th style="width: 26%;">Nama Barang dan Spesifikasi</th>
-            <th style="width: 5%;">Qty</th>
+            <th style="width: 8%;">Stock Code</th>
+            <th style="width: 24%;">Nama Barang dan Spesifikasi</th>
+            <th style="width: 4%;">Qty</th>
             <th style="width: 7%;">Satuan</th>
-            <th style="width: 12%;">HPE</th>
-            <th style="width: 12%;">HPS</th>
-            <th style="width: 13%;">Total</th>
-            <th style="width: 12%;">Keterangan</th>
+            <th style="width: 15%;">HPE</th>
+            <th style="width: 15%;">HPS</th>
+            <th style="width: 14%;">Total</th>
+            <th style="width: 9%;">Keterangan</th>
         </tr>
         <tr class="job-title">
             <td colspan="9">{{nama_pengadaan}}</td>
@@ -122,7 +116,7 @@
             <td style="width: 52%;">
                 Diusulkan di : Kendari<br>
                 Tanggal &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: {{tanggal_dokumen}}<br><br>
-                JUNIOR OFFICER PENGADAAN<br><br><br>
+                OFFICER PENGADAAN<br><br><br>
                 <b class="upper">{{nama_pelaksana}}</b>
             </td>
             <td style="width: 48%;">
@@ -137,131 +131,4 @@
             </td>
         </tr>
     </table>
-
-    <!-- HALAMAN 2: PERHITUNGAN HPS - HARGA SATUAN -->
-    <div class="calc-page">
-        <div class="calc-brand">PT PLN<br>Nusantara Power<br>UP KENDARI</div>
-        <div class="calc-title">PERHITUNGAN HARGA PERKIRAAN SENDIRI (HPS)<br>HARGA SATUAN</div>
-
-        <table class="hps-calc hps-unit">
-            <tr>
-                <th rowspan="3" style="width: 4%;">NO.</th>
-                <th rowspan="3" style="width: 24%;">URAIAN PEKERJAAN</th>
-                <th rowspan="3" style="width: 5%;">SAT.</th>
-                <th rowspan="3" style="width: 6%;">VOLUME</th>
-                <th colspan="5">HARGA SATUAN</th>
-            </tr>
-            <tr>
-                <th rowspan="2" style="width: 11%;">PAGU SKK</th>
-                <th rowspan="2" style="width: 11%;">HPE</th>
-                <th colspan="2">REFERENSI</th>
-                <th rowspan="2" class="col-green" style="width: 12%;">HPS</th>
-            </tr>
-            <tr>
-                <th style="width: 13%;">CALON MITRA 1</th>
-                <th style="width: 14%;">CALON MITRA 2</th>
-            </tr>
-            <tr>
-                <th><i>1</i></th>
-                <th><i>2</i></th>
-                <th><i>3</i></th>
-                <th><i>4</i></th>
-                <th><i>5</i></th>
-                <th><i>6</i></th>
-                <th><i>7</i></th>
-                <th><i>8</i></th>
-                <th class="col-green"><i>9</i></th>
-            </tr>
-            <tr>
-                <td class="center">1</td>
-                <td>{{nama_pengadaan}}</td>
-                <td class="center">LOT</td>
-                <td class="center">1</td>
-                <td class="right col-yellow">Rp {{nilai_hpe_angka}}</td>
-                <td class="right col-yellow">Rp {{nilai_hpe_angka}}</td>
-                <td class="right"></td>
-                <td class="right"></td>
-                <td class="right col-green">Rp {{nilai_hpe_angka}}</td>
-            </tr>
-        </table>
-
-        <div class="ref-note">
-            <b><u>KETERANGAN REFERENSI:</u></b><br>
-            1 &nbsp;- Belum Termasuk Pajak Yang Berlaku
-        </div>
-    </div>
-
-    <!-- HALAMAN 3: PERHITUNGAN HPS - JUMLAH HARGA -->
-    <div class="calc-page">
-        <div class="calc-brand">PT PLN<br>Nusantara Power<br>UP KENDARI</div>
-        <div class="calc-title">PERHITUNGAN HARGA PERKIRAAN SENDIRI (HPS)<br>JUMLAH HARGA</div>
-
-        <table class="hps-calc hps-total">
-            <tr>
-                <th rowspan="3" style="width: 4%;">NO.</th>
-                <th rowspan="3" style="width: 24%;">URAIAN PEKERJAAN</th>
-                <th rowspan="3" style="width: 5%;">SAT.</th>
-                <th rowspan="3" style="width: 6%;">VOLUME</th>
-                <th colspan="5">JUMLAH HARGA</th>
-            </tr>
-            <tr>
-                <th rowspan="2" style="width: 11%;">PAGU SKK</th>
-                <th rowspan="2" style="width: 11%;">HPE</th>
-                <th colspan="2">REFERENSI</th>
-                <th rowspan="2" class="col-green" style="width: 12%;">HPS</th>
-            </tr>
-            <tr>
-                <th style="width: 13%;">CALON MITRA 1</th>
-                <th style="width: 14%;">CALON MITRA 2</th>
-            </tr>
-            <tr>
-                <th><i>1</i></th>
-                <th><i>2</i></th>
-                <th><i>3</i></th>
-                <th><i>4</i></th>
-                <th><i>5</i></th>
-                <th><i>6</i></th>
-                <th><i>7</i></th>
-                <th><i>8</i></th>
-                <th class="col-green"><i>9</i></th>
-            </tr>
-            <tr>
-                <td class="center">1</td>
-                <td>{{nama_pengadaan}}</td>
-                <td class="center">LOT</td>
-                <td class="center">1</td>
-                <td class="right col-yellow">Rp {{nilai_hpe_angka}}</td>
-                <td class="right col-yellow">Rp {{nilai_hpe_angka}}</td>
-                <td class="right"></td>
-                <td class="right"></td>
-                <td class="right col-green">Rp {{nilai_hpe_angka}}</td>
-            </tr>
-            <tr class="total">
-                <td colspan="4" class="right"><b>Total</b></td>
-                <td class="right"><b>Rp {{nilai_hpe_angka}}</b></td>
-                <td class="right"><b>Rp {{nilai_hpe_angka}}</b></td>
-                <td class="right"></td>
-                <td class="right"></td>
-                <td class="right col-green"><b>Rp {{nilai_hpe_angka}}</b></td>
-            </tr>
-        </table>
-
-        <div class="ref-note">
-            <b><u>KETERANGAN REFERENSI:</u></b><br>
-            1 &nbsp;- Belum Termasuk Pajak Yang Berlaku
-        </div>
-
-        <table style="margin-top: 24px; width: 100%; border-collapse: collapse; page-break-inside: avoid;">
-            <tr>
-                <td style="width: 62%; border: none;"></td>
-                <td style="width: 38%; border: none; text-align: center;">
-                    {{tanggal_dokumen}}<br>
-                    Dibuat Oleh<br>
-                    PELAKSANA PENGADAAN BARANG/JASA<br><br><br><br>
-                    <b class="upper">{{nama_tl_pengadaan}}</b><br>
-                    PEJABAT PELAKSANA
-                </td>
-            </tr>
-        </table>
-    </div>
 </section>

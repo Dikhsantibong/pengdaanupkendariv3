@@ -279,6 +279,7 @@ export default function ShowProcurement({
         hasRight: stepSettings.hasRight,
         removed: stepSettings.removed[stage],
         available: stepSettings.available[stage],
+        suggestions: stepSettings.suggestions[stage],
     });
 
     const progressOf = (rows: ChecklistRow[]): string => {
@@ -534,23 +535,28 @@ export default function ShowProcurement({
                 <span>
                     {detail.finance.requirements_source[section] ? (
                         <>
-                            Daftar ini dibaca langsung dari pasal{' '}
-                            {section === 'penyerahan'
-                                ? 'penyerahan'
-                                : 'cara pembayaran'}{' '}
-                            pada{' '}
+                            Sebagian tahapan di sini dibaca dari{' '}
                             <b className="text-foreground">
                                 {detail.finance.requirements_source[section]}
                             </b>{' '}
-                            dan ikut berubah bila dokumen kontrak itu diubah,
-                            sampai pembayaran dicatat.
+                            sebelum perubahan dan tetap disimpan. Tahapan{' '}
+                            {section === 'penyerahan'
+                                ? 'Penyerahan'
+                                : 'Pembayaran'}{' '}
+                            tidak lagi dibaca dari kontrak atau diambil dari
+                            Data Master; tahapan baru diketik lewat tombol
+                            Tambah Tahapan.
                         </>
                     ) : (
                         <>
-                            Dokumen kontrak pengadaan ini belum dibuat atau
-                            daftarnya tidak terbaca, jadi yang dipakai adalah
-                            syarat dari template standar. Begitu dokumen kontrak
-                            dibuat, daftar ini mengikuti isi kontrak.
+                            Tahapan{' '}
+                            {section === 'penyerahan'
+                                ? 'Penyerahan'
+                                : 'Pembayaran'}{' '}
+                            tidak dibaca dari kontrak dan tidak diambil dari
+                            Data Master. Ketik tahapan lewat tombol Tambah
+                            Tahapan; isi kontrak dan tahapan yang sering dipakai
+                            muncul sebagai rekomendasi.
                         </>
                     )}
                 </span>

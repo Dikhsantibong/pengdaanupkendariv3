@@ -17,6 +17,7 @@ use App\Models\ProgressStatus;
 use App\Models\TargetUnit;
 use App\Models\User;
 use App\Models\WorkDirector;
+use App\Services\ProcurementStepService;
 use Database\Seeders\DocumentTemplateLibrarySeeder;
 use Database\Seeders\FinanceRequirementSeeder;
 use Database\Seeders\MasterDataSeeder;
@@ -249,6 +250,17 @@ class EndToEndFlowTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page->where('counts.waiting', 0));
 
+        // Neither the contract nor the Data Master lays out the hand-over
+        // and payment steps: they are typed, the contract's list offered.
+        $this->assertSame(0, $procurement->checklists()->where('stage', ProcurementStage::Keuangan)->count());
+        $this->assertNotEmpty(collect(app(ProcurementStepService::class)->suggestions($procurement, 'penyerahan'))->where('from_contract', true));
+
+        foreach (['penyerahan' => 'Berita Acara Serah Terima Pekerjaan', 'pembayaran' => 'Kwitansi Tagihan'] as $stage => $name) {
+            $this->actingAs($teamLeader)
+                ->post(route('procurements.steps.store', $procurement), ['stage' => $stage, 'name' => $name])
+                ->assertSessionHasNoErrors();
+        }
+
         $this->completeStage($procurement, ProcurementStage::Keuangan, $executor, FinanceSection::Penyerahan);
 
         $this->actingAs($executor)
@@ -382,6 +394,13 @@ class EndToEndFlowTest extends TestCase
         $values = match ($checklist->checklistItem->input_kind?->value) {
             'contract_period' => ['execution_start_date' => '2026-11-01', 'execution_duration_days' => 60],
             'warranty' => ['warranty_months' => 6],
+            'bank_guarantee' => [
+                'guarantee_bank_name' => 'Bank Mandiri',
+                'guarantee_number' => 'BG-031/2026',
+                'guarantee_value' => 5000000,
+                'guarantee_issue_date' => '2026-10-01',
+                'guarantee_expiry_date' => '2027-04-01',
+            ],
             'procurement_memo' => ['icc_memo_number' => 'ND-031/ICC/2026', 'icc_memo_date' => '2026-09-10'],
             // The number of each planning document.
             'rks_number' => ['rks_number' => '031.RKS-SPK/612/UPKD/2026'],

@@ -9,7 +9,6 @@ import {
     FilePen,
     FileSignature,
     FileStack,
-    FileText,
     Gauge,
     Handshake,
     Hash,
@@ -322,24 +321,18 @@ export function AppSidebar() {
                               icon: ListChecks,
                           },
                           {
-                              title: 'Jenis Dokumen',
+                              // Jenis dokumen, templatenya, dan tahapan
+                              // yang memintanya, dalam satu layar.
+                              title: 'Dokumen & Template',
                               href: masterData.documentTypes.index(),
                               icon: FileStack,
                           },
                           {
-                              title: 'Template Dokumen',
-                              href: masterData.documentTemplates.index(),
-                              icon: FileText,
-                          },
-                          {
-                              title: 'Aspek Penilaian',
-                              href: masterData.assessmentAspects.index(),
-                              icon: ClipboardList,
-                          },
-                          {
-                              title: 'Lembar Penilai',
+                              // Lembar penilai dan aspek yang dinilainya,
+                              // dalam satu layar.
+                              title: 'Aspek & Lembar Penilai',
                               href: masterData.assessmentForms.index(),
-                              icon: ClipboardCheck,
+                              icon: ClipboardList,
                           },
                       ],
                   },

@@ -194,6 +194,16 @@ export type StepSettings = {
     can: Record<AdjustableStage, boolean>;
     removed: Record<AdjustableStage, RemovedStep[]>;
     available: Record<AdjustableStage, AvailableStep[]>;
+    /** Names recommended while a Penyerahan or Pembayaran step is typed. */
+    suggestions: Record<AdjustableStage, StepSuggestion[]>;
+};
+
+/** A step name used before, and on how many procurements. */
+export type StepSuggestion = {
+    name: string;
+    uses: number;
+    /** Listed in this procurement's own contract. */
+    from_contract: boolean;
 };
 
 /** A file uploaded on a checklist step. */

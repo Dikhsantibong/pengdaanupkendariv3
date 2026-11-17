@@ -1,0 +1,83 @@
+<section class="hpph-doc">
+    <style>
+        @page { size: A4 portrait; margin: 12mm 12mm 14mm 12mm; }
+        .hpph-doc { font-family: Arial, Helvetica, sans-serif; font-size: 9pt; line-height: 1.3; color: #000; }
+        .hpph-doc table { border-collapse: collapse; width: 100%; margin: 0; }
+        .hpph-doc .upper { text-transform: uppercase; }
+        .hpph-doc table.ims-head { border: 1.5px solid #000; }
+        .hpph-doc table.ims-head td { border: 1px solid #000; padding: 2px 6px; vertical-align: middle; font-size: 8pt; }
+        .hpph-doc table.ims-head .ims-title { text-align: center; font-weight: bold; font-size: 9.5pt; }
+        .hpph-doc .frame { border: 1.5px solid #000; border-top: none; padding: 10px 6px 12px; }
+        .hpph-doc table.meta td { border: none; padding: 2px 0; vertical-align: top; font-weight: bold; }
+        .hpph-doc table.meta td.label { width: 200px; white-space: nowrap; }
+        .hpph-doc table.ims-head td.ims-value { white-space: nowrap; }
+        .hpph-doc table.meta td.colon { width: 12px; }
+        .hpph-doc table.offers { margin-top: 10px; border: 1.5px solid #000; }
+        .hpph-doc table.offers th { border: 1px solid #000; padding: 4px; font-weight: bold; text-align: center; vertical-align: middle; background: #a9d4ef; }
+        .hpph-doc table.offers td { border: 1px solid #000; padding: 3px 5px; height: 17px; vertical-align: middle; }
+        .hpph-doc table.offers td.no { text-align: center; }
+        .hpph-doc table.offers td.rp { width: 5%; border-right: none; }
+        .hpph-doc table.offers td.amount { text-align: right; border-left: none; }
+        .hpph-doc table.offers td.note { text-align: center; font-style: italic; }
+        .hpph-doc .catatan { margin-top: 14px; font-size: 8.5pt; }
+        .hpph-doc .catatan b { text-decoration: underline; font-style: italic; }
+        .hpph-doc table.sign { margin-top: 26px; page-break-inside: avoid; }
+        .hpph-doc table.sign td { border: none; padding: 2px 0; vertical-align: bottom; }
+    </style>
+
+    <!-- FORMULIR HASIL PEMBUKAAN PENAWARAN HARGA (SPK): satu lembar, A4 portrait -->
+    <table class="ims-head">
+        <tr>
+            <td rowspan="4" style="width: 22%; text-align: center;">
+                <img src="/logo/sidebar-logo.png" alt="PT PLN Nusantara Power" style="height: 38px; width: auto;">
+            </td>
+            <td class="ims-title" style="width: 48%;">PT PLN NUSANTARA POWER UP KENDARI</td>
+            <td style="width: 11%;">No. Dok</td>
+            <td class="ims-value" style="width: 19%;">: SMT-FM-DAN-01.02</td>
+        </tr>
+        <tr>
+            <td class="ims-title">INTEGRATED MANAGEMENT SYSTEM</td>
+            <td>No Rev</td>
+            <td class="ims-value">: 00</td>
+        </tr>
+        <tr>
+            <td class="ims-title">FORMULIR</td>
+            <td>Tgl Berlaku</td>
+            <td class="ims-value">: 5 April 2023</td>
+        </tr>
+        <tr>
+            <td class="ims-title">HASIL PEMBUKAAN PENAWARAN HARGA</td>
+            <td>Halaman</td>
+            <td class="ims-value">: 1 dari 1</td>
+        </tr>
+    </table>
+
+    <div class="frame">
+        <table class="meta">
+            <tr><td class="label">HARI/TANGGAL</td><td class="colon">:</td><td class="upper">{{hari_dokumen}}, {{tanggal_dokumen}}</td></tr>
+            <tr><td class="label">PERMINTAAN PENAWARAN</td><td class="colon">:</td><td><span class="fill">..........</span>.PP/612/UPKD/{{tahun}}</td></tr>
+            <tr><td class="label">JUDUL PENGADAAN</td><td class="colon">:</td><td class="upper">{{nama_pengadaan}}</td></tr>
+        </table>
+
+        {{tabel_hasil_pembukaan_harga}}
+
+        <div class="catatan">
+            <b>CATATAN :</b><br>
+            <i>- &nbsp;Hasil Pembukaan Penawaran ini belum dilakukan evaluasi, sehingga penawaran terendah bukan merupakan jaminan untuk ditunjuk sebagai pemenang</i>
+        </div>
+    </div>
+
+    <table class="sign">
+        <tr><td colspan="3" style="font-weight: bold; padding-bottom: 14px;">PELAKSANA PENGADAAN BARANG &amp; JASA</td></tr>
+        <tr>
+            <td style="width: 26%; height: 40px;">TL PENGADAAN</td>
+            <td style="width: 34%;">: <span class="upper">{{nama_tl_pengadaan}}</span></td>
+            <td style="width: 40%;">.......................................</td>
+        </tr>
+        <tr>
+            <td style="height: 40px;">OFFICER PENGADAAN</td>
+            <td>: <span class="upper">{{nama_pelaksana}}</span></td>
+            <td>.......................................</td>
+        </tr>
+    </table>
+</section>

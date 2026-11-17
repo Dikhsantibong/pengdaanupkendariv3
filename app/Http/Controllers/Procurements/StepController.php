@@ -25,12 +25,21 @@ class StepController extends Controller
      */
     public function store(StoreProcurementStepRequest $request, Procurement $procurement): RedirectResponse
     {
-        $item = $this->steps->add(
-            $procurement,
-            $request->user(),
-            $request->string('stage')->value(),
-            $request->integer('checklist_item_id'),
-        );
+        $item = $request->typesItsSteps()
+            ? $this->steps->addTyped(
+                $procurement,
+                $request->user(),
+                $request->string('stage')->value(),
+                $request->string('name')->value(),
+                $request->input('description'),
+                $request->boolean('is_optional'),
+            )
+            : $this->steps->add(
+                $procurement,
+                $request->user(),
+                $request->string('stage')->value(),
+                $request->integer('checklist_item_id'),
+            );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => "Tahapan {$item->name} ditambahkan."]);
 

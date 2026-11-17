@@ -270,6 +270,7 @@ class FinanceLettersTest extends TestCase
         ]);
 
         app(ProcurementService::class)->syncChecklists($procurement);
+        $this->addHandoverAndPaymentSteps($procurement);
 
         // The contract the letters refer to, drawn on 30 July 2026.
         $procurement->documents()->create([

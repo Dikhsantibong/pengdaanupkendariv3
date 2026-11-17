@@ -16,6 +16,7 @@ use App\Models\WorkDirector;
 use App\Notifications\ProcurementAssigned;
 use App\Notifications\ProcurementMilestone;
 use App\Services\ProcurementService;
+use App\Services\ProcurementStepService;
 use Database\Seeders\FinanceRequirementSeeder;
 use Database\Seeders\FinanceStageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -76,6 +77,7 @@ class FinanceStageTest extends TestCase
             ]);
 
         app(ProcurementService::class)->syncChecklists($this->procurement);
+        $this->addHandoverAndPaymentSteps($this->procurement);
     }
 
     public function test_the_generic_keuangan_steps_are_switched_off(): void
@@ -255,6 +257,36 @@ class FinanceStageTest extends TestCase
 
         $this->assertTrue($this->procurement->refresh()->isInPayment());
         Notification::assertSentTo($this->finance, ProcurementMilestone::class);
+    }
+
+    public function test_a_tab_without_any_step_cannot_be_submitted(): void
+    {
+        // The steps are typed by hand; none typed yet on either tab.
+        $this->procurement->checklists()->where('stage', ProcurementStage::Keuangan)->delete();
+        $this->handOver();
+
+        $this->actingAs($this->executor)
+            ->post(route('procurements.handover-approval.store', $this->procurement))
+            ->assertForbidden();
+
+        $this->actingAs($this->executor)
+            ->get(route('procurements.show', $this->procurement))
+            ->assertInertia(fn ($page) => $page->where('detail.finance.handover_approval.has_steps', false));
+
+        // One step typed and filed: the hand-over can go.
+        app(ProcurementStepService::class)->addTyped($this->procurement, $this->executor, 'penyerahan', 'Berita Acara Serah Terima', null, false);
+        $this->file(FinanceSection::Penyerahan);
+
+        $this->actingAs($this->executor)
+            ->post(route('procurements.handover-approval.store', $this->procurement))
+            ->assertRedirect();
+        $this->assertSame(PlanningApprovalState::MenungguPersetujuan, $this->procurement->refresh()->handover_approval_state);
+
+        // Pembayaran without any step cannot be submitted either.
+        $this->actingAs(User::factory()->teamLeaderPengadaan()->create())
+            ->put(route('procurements.handover-approval.update', $this->procurement), ['approved' => true])
+            ->assertRedirect();
+        $this->assertFalse($this->finance->can('submitPayment', $this->procurement->refresh()));
     }
 
     public function test_the_payment_goes_through_tl_keuangan_and_the_asman_and_closes_the_job(): void

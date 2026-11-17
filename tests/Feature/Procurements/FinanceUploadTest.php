@@ -56,6 +56,7 @@ class FinanceUploadTest extends TestCase
         ]);
 
         app(ProcurementService::class)->syncChecklists($this->procurement);
+        $this->addHandoverAndPaymentSteps($this->procurement);
     }
 
     public function test_a_requirement_is_ticked_only_once_its_paper_is_uploaded(): void

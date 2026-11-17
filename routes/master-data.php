@@ -37,8 +37,15 @@ Route::middleware(['auth', 'verified', 'can:manage-master-data'])
         Route::resource('progress-statuses', ProgressStatusController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('checklist-items', ChecklistItemController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('document-types', DocumentTypeController::class)->only(['index', 'store', 'update', 'destroy']);
+        // The PDF of a template with sample data, as it will print.
+        Route::post('document-templates/pratinjau-pdf', [DocumentTemplateController::class, 'pdfPreview'])
+            ->middleware('throttle:30,1')
+            ->name('document-templates.pdf-preview');
         Route::resource('document-templates', DocumentTemplateController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
-        Route::resource('assessment-aspects', AssessmentAspectController::class)->only(['index', 'store', 'update', 'destroy']);
+        // Aspek Penilaian and Lembar Penilai share one screen, the Lembar
+        // Penilai's; the aspects keep their own save, change and switch-off.
+        Route::get('assessment-aspects', [AssessmentFormController::class, 'index'])->name('assessment-aspects.index');
+        Route::resource('assessment-aspects', AssessmentAspectController::class)->only(['store', 'update', 'destroy']);
         Route::resource('assessment-forms', AssessmentFormController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('partners', PartnerController::class)->only(['index', 'store', 'update', 'destroy']);
     });

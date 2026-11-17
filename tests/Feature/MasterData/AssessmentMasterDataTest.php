@@ -232,26 +232,49 @@ class AssessmentMasterDataTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_the_screens_render_their_records(): void
+    public function test_one_screen_shows_the_sheets_and_the_aspects_they_rate(): void
     {
         $this->seed(VendorAssessmentSeeder::class);
 
         $administrator = User::factory()->administrator()->create();
 
-        $this->actingAs($administrator)
-            ->get(route('master-data.assessment-aspects.index'))
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->component('master-data/assessment-aspects')
-                ->has('records', 9));
+        // Both menu addresses open the same screen: the sheets, with every
+        // aspect and its indicators to edit in place.
+        foreach (['master-data.assessment-forms.index', 'master-data.assessment-aspects.index'] as $route) {
+            $this->actingAs($administrator)
+                ->get(route($route))
+                ->assertOk()
+                ->assertInertia(fn ($page) => $page
+                    ->component('master-data/assessments')
+                    ->has('records', 5)
+                    ->has('aspects', 9)
+                    ->has('aspects.0.indicators')
+                    ->has('aspects.0.weight')
+                    ->has('aspectOptions', 9));
+        }
+    }
 
-        $this->actingAs($administrator)
-            ->get(route('master-data.assessment-forms.index'))
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->component('master-data/assessment-forms')
-                ->has('records', 5)
-                ->has('aspectOptions', 9));
+    public function test_an_aspect_saved_from_the_combined_screen_goes_back_to_it(): void
+    {
+        $this->seed(VendorAssessmentSeeder::class);
+
+        $aspect = AssessmentAspect::query()->ordered()->firstOrFail();
+
+        $this->actingAs(User::factory()->administrator()->create())
+            ->from(route('master-data.assessment-forms.index'))
+            ->put(route('master-data.assessment-aspects.update', $aspect), [
+                'name' => $aspect->name,
+                'code' => $aspect->code,
+                'preamble' => $aspect->preamble,
+                'indicators' => ['Indikator diubah dari layar gabungan'],
+                'weight' => $aspect->weight,
+                'sort_order' => $aspect->sort_order,
+                'is_active' => true,
+            ])
+            ->assertRedirect(route('master-data.assessment-forms.index'))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(['Indikator diubah dari layar gabungan'], $aspect->refresh()->indicators);
     }
 
     /**

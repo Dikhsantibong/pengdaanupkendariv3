@@ -48,9 +48,18 @@ class FinanceRequirementTest extends TestCase
     }
 
     #[DataProvider('contracts')]
-    public function test_each_contract_gets_the_requirements_of_its_own_template(string $format, ?string $category, string $source): void
+    public function test_no_contract_gets_handover_or_payment_steps_by_itself(string $format, ?string $category, string $source): void
     {
         $procurement = $this->procurement($format, $category);
+
+        // The Data Master holds this contract's template, yet none of it
+        // becomes a step: the PIC types the steps.
+        $this->assertNotEmpty(FinanceRequirementSeeder::SOURCES[$source]['items']['penyerahan']);
+        $this->assertSame(0, $procurement->checklists()->where('stage', ProcurementStage::Keuangan)->count(), $source);
+
+        // Steps given by hand are kept as they are.
+        $this->addHandoverAndPaymentSteps($procurement);
+        app(ProcurementService::class)->syncChecklists($procurement);
         $expected = FinanceRequirementSeeder::SOURCES[$source]['items'];
 
         foreach (FinanceSection::cases() as $section) {
@@ -68,31 +77,21 @@ class FinanceRequirementTest extends TestCase
         }
     }
 
-    public function test_requirements_wait_until_the_contract_is_known(): void
+    public function test_nothing_waits_for_the_contract_format_any_more(): void
     {
-        // No contract format: no contract's requirements at all.
         $unknown = $this->procurement(null, null);
-
         $this->assertSame(0, $unknown->checklists()->where('stage', ProcurementStage::Keuangan)->count());
 
-        // An SPK without its category: neither the goods nor the services list.
+        // Filling in the format and category adds no step either.
         $spk = $this->procurement('SPK', null);
-
-        $this->assertSame(0, $spk->checklists()->where('stage', ProcurementStage::Keuangan)->count());
-
-        // Once the category is filled in, the services list appears.
         $spk->forceFill(['work_category' => 'jasa'])->save();
         app(ProcurementService::class)->syncChecklists($spk);
 
-        $items = FinanceRequirementSeeder::SOURCES['SPK Jasa']['items'];
-        $this->assertSame(
-            count($items['penyerahan']) + count($items['pembayaran']),
-            $spk->checklists()->where('stage', ProcurementStage::Keuangan)->count(),
-        );
+        $this->assertSame(0, $spk->checklists()->where('stage', ProcurementStage::Keuangan)->count());
 
         $this->actingAs(User::factory()->administrator()->create())
             ->get(route('procurements.show', $unknown))
-            ->assertInertia(fn ($page) => $page->where('detail.finance.requirements_waiting_for', ['format kontrak']));
+            ->assertInertia(fn ($page) => $page->where('detail.finance.requirements_waiting_for', []));
     }
 
     public function test_every_requirement_fits_the_name_column(): void
@@ -126,6 +125,7 @@ class FinanceRequirementTest extends TestCase
     {
         $finance = User::factory()->create(['role' => UserRole::Keuangan]);
         $procurement = $this->procurement('PJ', 'barang');
+        $this->addHandoverAndPaymentSteps($procurement);
         $procurement->forceFill(['finance_submitted_at' => now()])->save();
 
         $this->actingAs($finance)

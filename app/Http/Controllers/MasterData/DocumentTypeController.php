@@ -3,14 +3,18 @@
 namespace App\Http\Controllers\MasterData;
 
 use App\Enums\ProcurementStage;
+use App\Models\ChecklistItem;
 use App\Models\ContractNumberFormat;
+use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
 use App\Models\SelectionMethod;
+use App\Services\DocumentTemplateLibrary;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
 
 class DocumentTypeController extends MasterDataController
 {
@@ -76,7 +80,7 @@ class DocumentTypeController extends MasterDataController
      */
     protected function page(): string
     {
-        return 'master-data/document-types';
+        return 'master-data/documents';
     }
 
     /**
@@ -94,8 +98,22 @@ class DocumentTypeController extends MasterDataController
      */
     protected function records(): array
     {
+        $library = app(DocumentTemplateLibrary::class);
+
         return DocumentType::query()
-            ->with(['activeTemplate', 'contractNumberFormat', 'selectionMethods'])
+            ->with([
+                'activeTemplate',
+                'procurementMethod',
+                'contractNumberFormat',
+                'selectionMethods',
+                'templates' => fn ($query) => $query
+                    ->with(['procurementMethod', 'contractNumberFormat'])
+                    ->withCount('procurementDocuments')
+                    ->orderByDesc('is_active')
+                    ->orderBy('procurement_method_id')
+                    ->orderByDesc('version'),
+                'checklistItems' => fn ($query) => $query->whereNull('procurement_id')->orderBy('stage')->orderBy('sort_order'),
+            ])
             ->withCount(['templates', 'procurementDocuments'])
             ->orderBy('stage')
             ->ordered()
@@ -109,6 +127,11 @@ class DocumentTypeController extends MasterDataController
                 // "none" is the select's way of saying every format.
                 'contract_number_format_id' => $record->contract_number_format_id === null ? 'none' : (string) $record->contract_number_format_id,
                 'contract_number_format' => $record->contractNumberFormat?->code,
+                // A variant of a family (an RKS, an SPK, ...) is scoped like
+                // its one template.
+                'family' => $record->familyCode(),
+                'procurement_method' => $record->procurementMethod?->name,
+                'work_category' => $record->work_category?->label(),
                 'selection_method_ids' => $record->selectionMethods->pluck('id')->all(),
                 'selection_methods' => $record->selectionMethods->pluck('name')->all(),
                 'stage_label' => $record->stage->label(),
@@ -122,6 +145,27 @@ class DocumentTypeController extends MasterDataController
                     'version' => $record->activeTemplate->version,
                 ],
                 'usage_count' => $record->procurement_documents_count,
+                // Every template of the document, and the steps asking for it.
+                'templates' => $record->templates->map(fn (DocumentTemplate $template): array => [
+                    'id' => $template->id,
+                    'name' => $template->name,
+                    'version' => $template->version,
+                    'procurement_method' => $template->procurementMethod?->name,
+                    'contract_number_format' => $template->contractNumberFormat?->code,
+                    'work_category' => $template->work_category?->label(),
+                    'origin' => $template->library_key === null
+                        ? 'custom'
+                        : ($library->checksum($template->body) === $template->library_checksum ? 'default' : 'modified'),
+                    'is_active' => $template->is_active,
+                    'usage_count' => $template->procurement_documents_count,
+                    'updated_at' => $template->updated_at?->toDateTimeString(),
+                ])->values()->all(),
+                'steps' => $record->checklistItems->map(fn (ChecklistItem $item): array => [
+                    'id' => $item->id,
+                    'name' => $item->name,
+                    'stage_label' => $item->stage->label(),
+                    'is_active' => $item->is_active,
+                ])->values()->all(),
             ])
             ->all();
     }
@@ -142,6 +186,10 @@ class DocumentTypeController extends MasterDataController
     protected function extraProps(): array
     {
         return [
+            // The template opened for editing and its PDF, on demand.
+            'workbench' => Inertia::optional(fn (): ?array => DocumentTemplateController::workbench(
+                DocumentTemplate::query()->find(request()->integer('template')),
+            )),
             'stages' => ProcurementStage::options(),
             'selectionMethods' => SelectionMethod::query()->active()->ordered()->get()
                 ->map(fn (SelectionMethod $method): array => ['value' => (string) $method->id, 'label' => $method->name])

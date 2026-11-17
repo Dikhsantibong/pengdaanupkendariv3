@@ -7,12 +7,15 @@ use App\Http\Controllers\Controller;
 use App\Models\ContractNumberFormat;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
+use App\Models\ProcurementDocument;
 use App\Models\ProcurementMethod;
 use App\Services\DocumentGenerator;
+use App\Services\DocumentPdfRenderer;
 use App\Services\DocumentTemplateLibrary;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -141,6 +144,12 @@ class DocumentTemplateController extends Controller
 
         return Inertia::render('master-data/document-template-editor', [
             ...$this->editorOptions(),
+            // One document type, one template: only the types without one.
+            'documentTypes' => DocumentType::query()->ordered()->whereDoesntHave('templates')->get()
+                ->map(fn (DocumentType $type): array => [
+                    'value' => $type->id,
+                    'label' => $type->name,
+                ])->all(),
             'template' => null,
             'initialDocumentTypeId' => DocumentType::query()->whereKey($documentTypeId)->exists()
                 ? $documentTypeId
@@ -213,6 +222,69 @@ class DocumentTemplateController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Template dokumen diperbarui.']);
 
         return back();
+    }
+
+    /**
+     * The PDF of a template being looked at or edited, filled with sample
+     * data, laid out by the same engine as a generated document. Nothing is
+     * saved.
+     */
+    public function pdfPreview(Request $request, DocumentPdfRenderer $pdf): HttpResponse
+    {
+        $validated = $request->validate([
+            'title' => ['nullable', 'string', 'max:255'],
+            'body' => ['required', 'string', 'max:400000'],
+            'document_type_id' => ['nullable', 'integer', Rule::exists('document_types', 'id')],
+        ]);
+
+        $draft = new ProcurementDocument;
+        $draft->forceFill([
+            'title' => $validated['title'] ?? 'Pratinjau Template',
+            'rendered_body' => $validated['body'],
+            'file_name' => 'pratinjau-template.html',
+        ]);
+
+        if (isset($validated['document_type_id'])) {
+            $draft->setRelation('documentType', DocumentType::query()->find($validated['document_type_id']));
+        }
+
+        return response($pdf->render($draft), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="pratinjau-template.pdf"',
+            'Cache-Control' => 'no-store, max-age=0',
+        ]);
+    }
+
+    /**
+     * The template opened from the document list: its scope and body with
+     * what the visual editor needs, loaded only when asked for.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function workbench(?DocumentTemplate $template): ?array
+    {
+        if ($template === null) {
+            return null;
+        }
+
+        return [
+            'template' => [
+                'id' => $template->id,
+                'document_type_id' => $template->document_type_id,
+                'procurement_method_id' => $template->procurement_method_id,
+                'contract_number_format_id' => $template->contract_number_format_id,
+                'work_category' => $template->work_category?->value,
+                'name' => $template->name,
+                'version' => $template->version,
+                'body' => $template->body,
+                'is_active' => $template->is_active,
+            ],
+            'placeholderCatalog' => collect(DocumentGenerator::placeholderCatalog())
+                ->map(fn (string $label, string $key): array => ['key' => $key, 'label' => $label])
+                ->values()
+                ->all(),
+            'documentStylesheet' => DocumentGenerator::documentStylesheet(),
+        ];
     }
 
     /**
@@ -290,8 +362,10 @@ class DocumentTemplateController extends Controller
     }
 
     /**
-     * Refuse a second template for a scope that already has one (an
-     * archived template does not count).
+     * Refuse a second template for a document type that already has one
+     * (an archived template does not count): one document type, one
+     * template. A document drawn differently per method, format or category
+     * is a document type of its own.
      *
      * @param  array<string, mixed>  $validated
      *
@@ -301,15 +375,12 @@ class DocumentTemplateController extends Controller
     {
         $existing = DocumentTemplate::query()
             ->where('document_type_id', $validated['document_type_id'])
-            ->where('procurement_method_id', $validated['procurement_method_id'] ?? null)
-            ->where('contract_number_format_id', $validated['contract_number_format_id'] ?? null)
-            ->where('work_category', $validated['work_category'] ?? null)
             ->when($except !== null, fn ($query) => $query->whereKeyNot($except?->getKey()))
             ->first();
 
         if ($existing !== null) {
             throw ValidationException::withMessages([
-                'document_type_id' => "Dokumen ini sudah punya template ({$existing->name}). Ubah template itu saja; satu dokumen hanya memakai satu template.",
+                'document_type_id' => "Jenis dokumen ini sudah punya template ({$existing->name}). Satu jenis dokumen hanya memiliki satu template: ubah template itu, atau buat jenis dokumen baru untuk isi yang berbeda.",
             ]);
         }
     }

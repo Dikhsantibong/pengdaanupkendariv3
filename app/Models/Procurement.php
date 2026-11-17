@@ -550,6 +550,18 @@ class Procurement extends Model
     }
 
     /**
+     * Whether one Keuangan tab has any step at all. Its steps are typed by
+     * hand, so an empty tab has nothing to hand over or pay yet. A step
+     * without a tab belongs to Pembayaran.
+     */
+    public function hasFinanceChecklists(FinanceSection $section): bool
+    {
+        return $this->checklists
+            ->where('stage', ProcurementStage::Keuangan)
+            ->contains(fn (ProcurementChecklist $checklist): bool => ($checklist->checklistItem->section ?? FinanceSection::Pembayaran) === $section);
+    }
+
+    /**
      * The mandatory steps of one Keuangan tab still outstanding. A step
      * without a tab belongs to Pembayaran.
      *
@@ -996,6 +1008,20 @@ class Procurement extends Model
     {
         return $this->documents
             ->where('document_type_id', $documentTypeId)
+            ->sortByDesc('generated_at')
+            ->first();
+    }
+
+    /**
+     * The latest document drawn of a family (an RKS, an SPK, ...), whichever
+     * of its variants it was drawn as.
+     */
+    public function documentOfFamily(string $family): ?ProcurementDocument
+    {
+        $typeIds = DocumentType::query()->withTrashed()->inFamily($family)->pluck('id')->all();
+
+        return $this->documents
+            ->whereIn('document_type_id', $typeIds)
             ->sortByDesc('generated_at')
             ->first();
     }

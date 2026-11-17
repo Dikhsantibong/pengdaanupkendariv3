@@ -60,7 +60,7 @@ class AmendmentService
     {
         return $procurement->documents()
             ->whereNull('procurement_amendment_id')
-            ->whereHas('documentType', fn ($query) => $query->whereIn('code', self::CONTRACT_DOCUMENTS))
+            ->whereHas('documentType', fn ($query) => $query->inFamily(self::CONTRACT_DOCUMENTS))
             ->exists();
     }
 
