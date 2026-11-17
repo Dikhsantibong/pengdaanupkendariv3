@@ -58,7 +58,7 @@ class UnitManagerController extends MasterDataController
      */
     protected function label(): string
     {
-        return 'Manager UP Kendari';
+        return 'Pejabat unit';
     }
 
     /**
@@ -82,6 +82,7 @@ class UnitManagerController extends MasterDataController
                 'target_unit_id' => $record->level->holdsOneUnit() && $record->targetUnits->isNotEmpty()
                     ? (string) $record->targetUnits->first()->id
                     : null,
+                'unit_ids' => $record->targetUnits->pluck('id')->map(fn ($id): string => (string) $id)->all(),
                 'unit_names' => $record->targetUnits->pluck('name')->all(),
                 'description' => $record->description,
                 'sort_order' => $record->sort_order,
@@ -91,11 +92,21 @@ class UnitManagerController extends MasterDataController
     }
 
     /**
-     * The ranks, bidang and units an official can be given.
+     * Expose unit official rows for the merged screen.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function managerRecords(): array
+    {
+        return $this->records();
+    }
+
+    /**
+     * The ranks, bidang, units, and Direksi Pekerjaan on one screen.
      *
      * @return array<string, mixed>
      */
-    protected function extraProps(): array
+    public function sharedExtraProps(): array
     {
         return [
             'levelOptions' => UnitManagerLevel::options(),
@@ -109,7 +120,17 @@ class UnitManagerController extends MasterDataController
                     'label' => $unit->name,
                 ])
                 ->all(),
+            'directors' => app(WorkDirectorController::class)->directorRecords(),
+            'initialTab' => request()->query('tab') === 'directors' ? 'directors' : 'officials',
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function extraProps(): array
+    {
+        return $this->sharedExtraProps();
     }
 
     /**

@@ -106,7 +106,20 @@ class SelectionMethodTest extends TestCase
         $this->actingAs($administrator)
             ->get(route('master-data.selection-methods.index'))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->component('master-data/selection-methods')->has('records', 4));
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('master-data/selection-methods')
+                ->has('records', 4)
+                ->has('internalMethods')
+                ->where('initialTab', 'selection'));
+
+        $this->actingAs($administrator)
+            ->get(route('master-data.procurement-methods.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('master-data/selection-methods')
+                ->has('records', 4)
+                ->has('internalMethods')
+                ->where('initialTab', 'internal'));
 
         $this->actingAs($administrator)
             ->post(route('master-data.selection-methods.store'), [

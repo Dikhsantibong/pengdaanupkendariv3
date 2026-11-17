@@ -8,9 +8,23 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class ProcurementMethodController extends MasterDataController
 {
+    /**
+     * Direct visits to Metode Internal open the merged screen on its tab.
+     */
+    public function index(Request $request): Response
+    {
+        return Inertia::render('master-data/selection-methods', [
+            'records' => app(SelectionMethodController::class)->methodRecords(),
+            'internalMethods' => $this->methodRecords(),
+            'initialTab' => 'internal',
+        ]);
+    }
+
     /**
      * Update an existing metode pengadaan.
      */
@@ -32,7 +46,17 @@ class ProcurementMethodController extends MasterDataController
      */
     protected function page(): string
     {
-        return 'master-data/procurement-methods';
+        return 'master-data/selection-methods';
+    }
+
+    /**
+     * Expose internal method rows for the merged method screen.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function methodRecords(): array
+    {
+        return $this->records();
     }
 
     /**

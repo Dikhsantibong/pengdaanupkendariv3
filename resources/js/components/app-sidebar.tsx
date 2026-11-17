@@ -23,7 +23,6 @@ import {
     PinOff,
     Play,
     Settings2,
-    ShieldCheck,
     Truck,
     UserCheck,
     UserCog,
@@ -265,14 +264,9 @@ export function AppSidebar() {
                       title: 'Data Master',
                       items: [
                           {
-                              title: 'Manager Unit',
+                              title: 'Pejabat Unit & Direksi',
                               href: masterData.unitManagers.index(),
                               icon: UserCheck,
-                          },
-                          {
-                              title: 'Direksi Pekerjaan',
-                              href: masterData.workDirectors.index(),
-                              icon: ShieldCheck,
                           },
                           {
                               title: 'Mitra',
@@ -287,12 +281,6 @@ export function AppSidebar() {
                           {
                               title: 'Metode Pengadaan',
                               href: masterData.selectionMethods.index(),
-                              icon: Workflow,
-                          },
-                          {
-                              // Follows the format; picks the templates.
-                              title: 'Metode Internal (Template)',
-                              href: masterData.procurementMethods.index(),
                               icon: Workflow,
                           },
                           {

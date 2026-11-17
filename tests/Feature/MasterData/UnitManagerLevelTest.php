@@ -40,7 +40,18 @@ class UnitManagerLevelTest extends TestCase
                 ->where('levelOptions.3.label', 'TL OPHAR — memegang 1 unit')
                 ->has('fieldOptions', 3)
                 ->where('unitOptions.0.value', (string) $unit->id)
+                ->has('directors')
+                ->where('initialTab', 'officials')
             );
+
+        $this->actingAs(User::factory()->administrator()->create())
+            ->get(route('master-data.work-directors.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('master-data/unit-managers')
+                ->has('records')
+                ->has('directors')
+                ->where('initialTab', 'directors'));
     }
 
     public function test_a_tl_leads_one_bidang_across_several_units(): void

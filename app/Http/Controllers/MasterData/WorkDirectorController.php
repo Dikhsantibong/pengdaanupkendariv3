@@ -7,9 +7,26 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class WorkDirectorController extends MasterDataController
 {
+    /**
+     * Direct visits to Direksi Pekerjaan open the merged Pejabat Unit & Direksi
+     * screen directly on its Direksi Pekerjaan tab.
+     */
+    public function index(Request $request): Response
+    {
+        $unitManagers = app(UnitManagerController::class);
+
+        return Inertia::render('master-data/unit-managers', [
+            'records' => $unitManagers->managerRecords(),
+            ...$unitManagers->sharedExtraProps(),
+            'initialTab' => 'directors',
+        ]);
+    }
+
     /**
      * Update an existing direksi pekerjaan.
      */
@@ -31,7 +48,17 @@ class WorkDirectorController extends MasterDataController
      */
     protected function page(): string
     {
-        return 'master-data/work-directors';
+        return 'master-data/unit-managers';
+    }
+
+    /**
+     * Expose Direksi Pekerjaan rows for the merged screen.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function directorRecords(): array
+    {
+        return $this->records();
     }
 
     /**

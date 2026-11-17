@@ -79,6 +79,29 @@ class SelectionMethodController extends MasterDataController
     }
 
     /**
+     * Expose selection method rows for the merged method screen.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function methodRecords(): array
+    {
+        return $this->records();
+    }
+
+    /**
+     * Also ship the internal template methods on the same screen.
+     *
+     * @return array<string, mixed>
+     */
+    protected function extraProps(): array
+    {
+        return [
+            'internalMethods' => app(ProcurementMethodController::class)->methodRecords(),
+            'initialTab' => request()->query('tab') === 'internal' ? 'internal' : 'selection',
+        ];
+    }
+
+    /**
      * Create a new empty record for this resource.
      */
     protected function newRecord(): Model
