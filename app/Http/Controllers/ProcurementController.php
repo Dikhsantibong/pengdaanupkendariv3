@@ -6,6 +6,7 @@ use App\Concerns\GroupsByPartner;
 use App\Enums\ActivityType;
 use App\Enums\AmendmentFileKind;
 use App\Enums\AmendmentState;
+use App\Enums\ChecklistInput;
 use App\Enums\DeliveryOrderState;
 use App\Enums\FinanceSection;
 use App\Enums\Permission;
@@ -39,6 +40,7 @@ use App\Support\RoleDashboard;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
@@ -228,6 +230,7 @@ class ProcurementController extends Controller
             'selectionMethod',
             'checklists.completedBy',
             'checklists.files.uploader',
+            'beritaAcaras',
             'documents.documentType',
             'documents.generatedBy',
             'documents.editedBy',
@@ -797,11 +800,14 @@ class ProcurementController extends Controller
                 // Empty for steps that are plain ticks, which is what tells the
                 // panel whether to offer the document actions at all.
                 $documents = [];
+                $documentTypes = $item->documentTypesFor($procurement);
 
                 // A document of another contract format is not asked for.
-                foreach ($item->documentTypesFor($procurement) as $type) {
+                foreach ($documentTypes as $type) {
                     $documents[] = $this->checklistDocumentPayload($procurement, $type, $resolvable);
                 }
+
+                $input = $item->inputFor($procurement);
 
                 return [
                     'id' => $checklist->id,
@@ -838,11 +844,14 @@ class ProcurementController extends Controller
                             'url' => route('procurements.checklists.files.show', [$procurement, $checklist, $file]),
                         ])->values()->all()
                         : [],
-                    'input' => ($input = $item->inputFor($procurement)) === null ? null : [
+                    'input' => $input === null ? null : [
                         'kind' => $input->value,
                         'label' => $input->label(),
-                        'is_filled' => $input->isFilledOn($procurement),
-                        'values' => $this->inputValues($procurement),
+                        'is_filled' => $input->isFilledOn($procurement, $item),
+                        'values' => $this->inputValues(
+                            $procurement,
+                            $input === ChecklistInput::BeritaAcara ? $documentTypes : null,
+                        ),
                     ],
                 ];
             })
@@ -939,9 +948,10 @@ class ProcurementController extends Controller
     /**
      * The current values of every step input, end date included.
      *
-     * @return array<string, string|int|float|null>
+     * @param  Collection<int, DocumentType>|null  $beritaAcaraTypes
+     * @return array<string, mixed>
      */
-    protected function inputValues(Procurement $procurement): array
+    protected function inputValues(Procurement $procurement, ?Collection $beritaAcaraTypes = null): array
     {
         return [
             'execution_start_date' => $procurement->execution_start_date?->toDateString(),
@@ -964,6 +974,19 @@ class ProcurementController extends Controller
             'icc_memo_date' => $procurement->icc_memo_date?->toDateString(),
             'smart_scm_ba_number' => $procurement->smart_scm_ba_number,
             'smart_scm_ba_date' => $procurement->smart_scm_ba_date?->toDateString(),
+            'berita_acaras' => ($beritaAcaraTypes ?? collect())
+                ->map(function (DocumentType $type) use ($procurement): array {
+                    $entry = $procurement->beritaAcaraFor($type->id);
+
+                    return [
+                        'document_type_id' => $type->id,
+                        'document_type_name' => $type->nameFor($procurement),
+                        'ba_number' => $entry?->ba_number,
+                        'ba_date' => $entry?->ba_date?->toDateString(),
+                    ];
+                })
+                ->values()
+                ->all(),
             'rks_number' => $procurement->rks_number,
             'hpe_number' => $procurement->hpe_number,
             'upb_number' => $procurement->upb_number,

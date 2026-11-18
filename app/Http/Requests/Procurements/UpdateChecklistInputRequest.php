@@ -56,10 +56,7 @@ class UpdateChecklistInputRequest extends FormRequest
                 'icc_memo_number' => ['required', 'string', 'max:255'],
                 'icc_memo_date' => ['required', 'date'],
             ],
-            ChecklistInput::BeritaAcara => [
-                'smart_scm_ba_number' => ['required', 'string', 'max:255'],
-                'smart_scm_ba_date' => ['required', 'date'],
-            ],
+            ChecklistInput::BeritaAcara => $this->beritaAcaraRules($checklist, $procurement),
             // Given in the identity now; kept here for a step still asking.
             ChecklistInput::ContractNumber => [
                 'number' => UpdateContractNumberRequest::numberRules($checklist->procurement_id),
@@ -101,6 +98,9 @@ class UpdateChecklistInputRequest extends FormRequest
             'icc_memo_date' => 'tanggal nota dinas ke pengadaan',
             'smart_scm_ba_number' => 'nomor BA',
             'smart_scm_ba_date' => 'tanggal BA',
+            'berita_acaras.*.document_type_id' => 'dokumen',
+            'berita_acaras.*.ba_number' => 'nomor BA',
+            'berita_acaras.*.ba_date' => 'tanggal BA',
             'number' => 'nomor kontrak',
             'rks_number' => 'nomor RKS',
             'hpe_number' => 'nomor HPE',
@@ -123,6 +123,36 @@ class UpdateChecklistInputRequest extends FormRequest
         return [
             'bank_account_number.regex' => 'Nomor rekening hanya boleh berisi angka.',
             'number.not_regex' => 'Isi dengan nomor kontrak, bukan nomor registrasi pengadaan.',
+        ];
+    }
+
+    /**
+     * Rules for the SMART SCM & Berita Acara step: one BA number and date per
+     * document on the step, or one shared pair when the step has no documents.
+     *
+     * @return array<string, ValidationRule|array<mixed>|string>
+     */
+    protected function beritaAcaraRules(mixed $checklist, mixed $procurement): array
+    {
+        if ($checklist instanceof ProcurementChecklist && $procurement instanceof Procurement) {
+            $checklist->checklistItem->loadMissing('documentTypes.selectionMethods');
+            $allowedIds = $checklist->checklistItem->documentTypesFor($procurement)->pluck('id')->all();
+        } else {
+            $allowedIds = [];
+        }
+
+        if ($allowedIds !== []) {
+            return [
+                'berita_acaras' => ['required', 'array', 'min:1'],
+                'berita_acaras.*.document_type_id' => ['required', 'integer', Rule::in($allowedIds)],
+                'berita_acaras.*.ba_number' => ['nullable', 'required_with:berita_acaras.*.ba_date', 'string', 'max:255'],
+                'berita_acaras.*.ba_date' => ['nullable', 'required_with:berita_acaras.*.ba_number', 'date'],
+            ];
+        }
+
+        return [
+            'smart_scm_ba_number' => ['required', 'string', 'max:255'],
+            'smart_scm_ba_date' => ['required', 'date'],
         ];
     }
 }

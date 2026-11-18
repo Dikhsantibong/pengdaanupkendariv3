@@ -424,6 +424,14 @@ class ChecklistDocumentRequirementTest extends TestCase
         // The step asks for the documents of the job's method only.
         $types = $item->load('documentTypes.selectionMethods')->documentTypesFor($procurement);
 
+        foreach ($types as $type) {
+            $procurement->beritaAcaras()->create([
+                'document_type_id' => $type->id,
+                'ba_number' => '0012/BAPP/612/UPKD/2026',
+                'ba_date' => '2026-11-10',
+            ]);
+        }
+
         // File all but the last, then check the step is still refused and the
         // message names the one that is missing.
         foreach ($types->slice(0, -1) as $type) {

@@ -60,7 +60,54 @@ class ChecklistController extends Controller
         $kind = $checklist->checklistItem->inputFor($procurement);
 
         // A kind without fields of its own (the calon mitra) is not saved here.
-        abort_if($kind === null || $kind->fields() === [], 404);
+        abort_if($kind === null || ($kind !== ChecklistInput::BeritaAcara && $kind->fields() === []), 404);
+
+        if ($kind === ChecklistInput::BeritaAcara && $request->has('berita_acaras')) {
+            /** @var array<int, array{document_type_id: int|string, ba_number: string|null, ba_date: string|null}> $entries */
+            $entries = $request->validated('berita_acaras');
+
+            foreach ($entries as $entry) {
+                $typeId = (int) $entry['document_type_id'];
+                $number = trim((string) ($entry['ba_number'] ?? ''));
+                $date = $entry['ba_date'] ?? null;
+
+                if ($number === '' && ($date === null || $date === '')) {
+                    $procurement->beritaAcaras()->where('document_type_id', $typeId)->delete();
+
+                    continue;
+                }
+
+                $procurement->beritaAcaras()->updateOrCreate(
+                    ['document_type_id' => $typeId],
+                    ['ba_number' => $number, 'ba_date' => $date],
+                );
+            }
+
+            // Keep the first recorded BA number & date on the procurement itself so
+            // step-level placeholders keep working as a fallback.
+            $first = $procurement->beritaAcaras()
+                ->whereNotNull('ba_number')
+                ->whereNotNull('ba_date')
+                ->orderBy('id')
+                ->first();
+
+            $procurement->forceFill([
+                'smart_scm_ba_number' => $first?->ba_number,
+                'smart_scm_ba_date' => $first?->ba_date?->toDateString(),
+            ])->save();
+
+            $this->procurements->recordActivity(
+                $procurement,
+                $request->user(),
+                ActivityType::ChecklistDiperbarui,
+                "Isian {$checklist->checklistItem->name} diperbarui.",
+                ['stage' => $checklist->stage->value, 'checklist_id' => $checklist->id],
+            );
+
+            Inertia::flash('toast', ['type' => 'success', 'message' => 'Isian tersimpan.']);
+
+            return back();
+        }
 
         $values = $request->safe()->only($kind->fields());
 
@@ -92,7 +139,7 @@ class ChecklistController extends Controller
         }
 
         // Numbers and bank guarantee strings are kept without surrounding spaces.
-        foreach (['number', 'rks_number', 'hpe_number', 'upb_number', 'guarantee_bank_name', 'guarantee_number'] as $field) {
+        foreach (['number', 'rks_number', 'hpe_number', 'upb_number', 'smart_scm_ba_number', 'guarantee_bank_name', 'guarantee_number'] as $field) {
             if (array_key_exists($field, $values)) {
                 $values[$field] = trim((string) $values[$field]);
             }
@@ -160,7 +207,7 @@ class ChecklistController extends Controller
         // A step that asks for data is only finished once that data is in.
         $input = $checklist->checklistItem->inputFor($procurement);
 
-        if ($isCompleted && $input !== null && ! $input->isFilledOn($procurement)) {
+        if ($isCompleted && $input !== null && ! $input->isFilledOn($procurement, $checklist->checklistItem)) {
             throw ValidationException::withMessages([
                 'is_completed' => 'Lengkapi isian '.mb_lcfirst($input->label())
                     .' sebelum menandai tahapan ini selesai.',

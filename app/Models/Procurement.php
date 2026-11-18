@@ -810,6 +810,16 @@ class Procurement extends Model
     }
 
     /**
+     * Per-document Berita Acara numbers and dates recorded on this job.
+     *
+     * @return HasMany<ProcurementBeritaAcara, $this>
+     */
+    public function beritaAcaras(): HasMany
+    {
+        return $this->hasMany(ProcurementBeritaAcara::class);
+    }
+
+    /**
      * The partner candidates (calon mitra) listed in planning.
      *
      * @return HasMany<ProcurementPartnerCandidate, $this>
@@ -1014,6 +1024,16 @@ class Procurement extends Model
             ->where('document_type_id', $documentTypeId)
             ->sortByDesc('generated_at')
             ->first();
+    }
+
+    /**
+     * The Berita Acara number and date recorded for a document type on this job.
+     */
+    public function beritaAcaraFor(int $documentTypeId): ?ProcurementBeritaAcara
+    {
+        $this->loadMissing('beritaAcaras');
+
+        return $this->beritaAcaras->firstWhere('document_type_id', $documentTypeId);
     }
 
     /**

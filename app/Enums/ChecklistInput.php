@@ -2,6 +2,8 @@
 
 namespace App\Enums;
 
+use App\Models\ChecklistItem;
+use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementPartnerCandidate;
 
@@ -83,7 +85,7 @@ enum ChecklistInput: string
     /**
      * Whether every field of this input has been filled in.
      */
-    public function isFilledOn(Procurement $procurement): bool
+    public function isFilledOn(Procurement $procurement, ?ChecklistItem $item = null): bool
     {
         // At least one candidate, each with its full offer.
         if ($this === self::PartnerCandidates) {
@@ -95,6 +97,42 @@ enum ChecklistInput: string
 
         if ($this === self::ContractNumber) {
             return $procurement->hasContractNumber();
+        }
+
+        if ($this === self::BeritaAcara) {
+            $item ??= $procurement->checklists()
+                ->whereHas('checklistItem', fn ($query) => $query->where('input_kind', self::BeritaAcara->value))
+                ->with('checklistItem.documentTypes.selectionMethods')
+                ->first()
+                ?->checklistItem;
+
+            $item?->loadMissing('documentTypes.selectionMethods');
+            $types = $item?->documentTypesFor($procurement) ?? collect();
+
+            if ($types->isNotEmpty()) {
+                $procurement->loadMissing('beritaAcaras');
+
+                $isComplete = function (DocumentType $type) use ($procurement): bool {
+                    $entry = $procurement->beritaAcaraFor($type->id);
+
+                    return $entry !== null
+                        && trim((string) $entry->ba_number) !== ''
+                        && $entry->ba_date !== null;
+                };
+
+                $required = $types->reject(fn (DocumentType $type): bool => $type->isAlternative());
+                $alternatives = $types->filter(fn (DocumentType $type): bool => $type->isAlternative());
+
+                if (! $required->every($isComplete)) {
+                    return false;
+                }
+
+                if ($alternatives->isNotEmpty() && ! $alternatives->contains($isComplete)) {
+                    return false;
+                }
+
+                return true;
+            }
         }
 
         foreach ($this->fields() as $field) {

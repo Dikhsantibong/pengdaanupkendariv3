@@ -394,7 +394,18 @@ class EndToEndFlowTest extends TestCase
         $values = match ($checklist->checklistItem->input_kind?->value) {
             'contract_period' => ['execution_start_date' => '2026-11-01', 'execution_duration_days' => 60],
             'warranty' => ['warranty_months' => 6],
-            'berita_acara' => ['smart_scm_ba_number' => '0031/BAPP/612/UPKD/2026', 'smart_scm_ba_date' => '2026-10-20'],
+            'berita_acara' => [
+                'berita_acaras' => $checklist->checklistItem
+                    ->loadMissing('documentTypes.selectionMethods')
+                    ->documentTypesFor($procurement)
+                    ->values()
+                    ->map(fn (DocumentType $type, int $index): array => [
+                        'document_type_id' => $type->id,
+                        'ba_number' => sprintf('%04d/BAPP/612/UPKD/2026', 31 + $index),
+                        'ba_date' => '2026-10-20',
+                    ])
+                    ->all(),
+            ],
             'bank_guarantee' => [
                 'guarantee_bank_name' => 'Bank Mandiri',
                 'guarantee_number' => 'BG-031/2026',

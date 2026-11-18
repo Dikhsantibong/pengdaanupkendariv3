@@ -13,6 +13,7 @@ use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementAmendment;
 use App\Models\ProcurementAmendmentChange;
+use App\Models\ProcurementBeritaAcara;
 use App\Models\ProcurementChecklist;
 use App\Models\ProcurementContractItem;
 use App\Models\ProcurementDeliveryOrder;
@@ -196,7 +197,7 @@ class DocumentGenerator
      *
      * @return array<string, string>
      */
-    public function placeholderValues(Procurement $procurement, ?CarbonInterface $issuedAt = null): array
+    public function placeholderValues(Procurement $procurement, ?CarbonInterface $issuedAt = null, ?int $documentTypeId = null): array
     {
         // The issue date of a document stays the day it was generated, even
         // when the document is later rebuilt to follow changed data.
@@ -217,7 +218,14 @@ class DocumentGenerator
             'planningReviewer',
             'executionReviewer',
             'checklists.checklistItem',
+            'beritaAcaras',
         ]);
+
+        $baEntry = $documentTypeId !== null
+            ? $procurement->beritaAcaraFor($documentTypeId)
+            : $procurement->beritaAcaras->first(
+                fn (ProcurementBeritaAcara $entry): bool => filled($entry->ba_number) && $entry->ba_date !== null,
+            );
 
         $hpe = (float) $procurement->hpe_value;
         $hpeDpp = (float) round($hpe * 11 / 12);
@@ -297,8 +305,8 @@ class DocumentGenerator
             'tanggal_nota_dinas_usulan' => $procurement->proposal_memo_date?->translatedFormat('d F Y') ?? '-',
             'nomor_nota_dinas_icc' => $procurement->icc_memo_number ?? $procurement->manager_memo_number ?? '-',
             'tanggal_nota_dinas_icc' => $procurement->icc_memo_date?->translatedFormat('d F Y') ?? '-',
-            'nomor_ba_smart_scm' => $procurement->smart_scm_ba_number ?? '-',
-            'tanggal_ba_smart_scm' => $procurement->smart_scm_ba_date?->translatedFormat('d F Y') ?? '-',
+            'nomor_ba_smart_scm' => $baEntry?->ba_number ?? $procurement->smart_scm_ba_number ?? '-',
+            'tanggal_ba_smart_scm' => ($baEntry?->ba_date ?? $procurement->smart_scm_ba_date)?->translatedFormat('d F Y') ?? '-',
             'tanggal_nota_dinas_manager' => $procurement->icc_memo_date?->translatedFormat('d F Y') ?? $procurement->proposal_memo_date?->translatedFormat('d F Y') ?? '-',
             'nomor_surat_penawaran' => $procurement->quotation_number ?? '-',
             'tanggal_surat_penawaran' => $procurement->quotation_date?->translatedFormat('d F Y') ?? '-',
@@ -540,7 +548,7 @@ class DocumentGenerator
      */
     public function render(DocumentTemplate $template, Procurement $procurement, ?CarbonInterface $issuedAt = null): string
     {
-        $values = $this->placeholderValues($procurement, $issuedAt);
+        $values = $this->placeholderValues($procurement, $issuedAt, $template->document_type_id);
 
         $body = $this->fillPlaceholders($template->body, $values);
 
@@ -702,9 +710,9 @@ class DocumentGenerator
             return false;
         }
 
-        $document->loadMissing(['procurement', 'documentTemplate']);
+        $document->loadMissing(['procurement', 'documentTemplate', 'documentType']);
 
-        $values ??= $this->placeholderValues($document->procurement);
+        $values ??= $this->placeholderValues($document->procurement, $document->generated_at, $document->document_type_id);
         $unedited = (int) $document->revision === 0;
         $template = $unedited ? $this->currentTemplateFor($document) : $document->documentTemplate;
 

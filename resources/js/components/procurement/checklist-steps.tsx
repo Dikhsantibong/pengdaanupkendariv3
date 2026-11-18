@@ -134,10 +134,24 @@ export function requirementsOf(row: ChecklistRow): Requirement[] {
     const requirements: Requirement[] = [];
 
     if (row.input !== null) {
-        const label =
+        const entries = row.input.values.berita_acaras ?? [];
+        let label =
             row.input.kind === 'partner_candidates'
                 ? 'Calon mitra & penawaran'
                 : shortInputLabel(row.input);
+
+        if (
+            row.input.kind === 'berita_acara' &&
+            entries.length > 0 &&
+            !row.input.is_filled
+        ) {
+            const filled = entries.filter(
+                (entry) =>
+                    Boolean(entry.ba_number?.trim()) && Boolean(entry.ba_date),
+            ).length;
+
+            label = `${label} (${filled}/${entries.length} dokumen)`;
+        }
 
         requirements.push({
             key: 'input',
@@ -383,6 +397,9 @@ export function ChecklistSteps({
     const next = nextIndex === -1 ? null : rows[nextIndex];
     const openIndex = rows.findIndex((row) => row.id === openId);
     const openRow = openIndex === -1 ? null : rows[openIndex];
+    const openHasInlinePerDocBa =
+        openRow?.input?.kind === 'berita_acara' &&
+        (openRow.input.values.berita_acaras?.length ?? 0) > 0;
 
     return (
         <section className="space-y-3">
@@ -504,7 +521,12 @@ export function ChecklistSteps({
                 }}
             >
                 <SheetContent
-                    className="w-full gap-0 sm:max-w-xl lg:max-w-2xl"
+                    className={cn(
+                        'w-full gap-0',
+                        openHasInlinePerDocBa
+                            ? 'sm:w-[92vw] sm:max-w-4xl'
+                            : 'sm:max-w-xl lg:max-w-2xl',
+                    )}
                     onPointerDownCapture={touchRememberedPanel}
                 >
                     {openRow !== null && (
@@ -1144,6 +1166,15 @@ function StepDetails({
     const requirements = requirementsOf(row);
     const missing = requirements.filter((requirement) => !requirement.done);
     const canComplete = missing.length === 0 || row.is_optional;
+    const hasInlinePerDocBa =
+        row.input?.kind === 'berita_acara' &&
+        (row.input.values.berita_acaras?.length ?? 0) > 0;
+    const baByTypeId = new Map(
+        (row.input?.values.berita_acaras ?? []).map((entry) => [
+            entry.document_type_id,
+            entry,
+        ]),
+    );
     let section = 0;
 
     return (
@@ -1162,7 +1193,7 @@ function StepDetails({
                 </SheetDescription>
             </SheetHeader>
 
-            <div className="flex-1 space-y-5 overflow-y-auto p-4">
+            <div className="min-w-0 flex-1 space-y-5 overflow-y-auto p-4">
                 {/* Read-only here: say why, so a missing upload is not a puzzle. */}
                 {!editable && lockedReason && (
                     <p className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-foreground">
@@ -1216,9 +1247,10 @@ function StepDetails({
                     </div>
                 )}
 
-                {row.input !== null && (
+                {row.input !== null && !hasInlinePerDocBa && (
                     <PanelSection number={++section} title="Isi data">
                         <ChecklistInputForm
+                            key={row.id}
                             procurementId={procurementId}
                             checklistId={row.id}
                             input={row.input}
@@ -1256,19 +1288,39 @@ function StepDetails({
                     <PanelSection
                         number={++section}
                         title="Dokumen"
-                        hint="Generate dokumen, periksa, lalu unggah salinan yang sudah ditandatangani."
+                        hint={
+                            hasInlinePerDocBa
+                                ? 'Isi nomor & tanggal BA di samping dokumen, lalu generate atau unggah salinan bertanda tangan.'
+                                : 'Generate dokumen, periksa, lalu unggah salinan yang sudah ditandatangani.'
+                        }
                     >
                         <div className="space-y-2">
                             {row.documents
                                 .filter((document) => !document.is_alternative)
-                                .map((document) => (
-                                    <ChecklistDocumentActions
-                                        key={document.type_id}
-                                        procurementId={procurementId}
-                                        document={document}
-                                        canManage={canManageDocuments}
-                                    />
-                                ))}
+                                .map((document) => {
+                                    const baEntry = baByTypeId.get(
+                                        document.type_id,
+                                    );
+
+                                    return (
+                                        <ChecklistDocumentActions
+                                            key={document.type_id}
+                                            procurementId={procurementId}
+                                            document={document}
+                                            canManage={canManageDocuments}
+                                            beritaAcara={
+                                                hasInlinePerDocBa &&
+                                                baEntry !== undefined
+                                                    ? {
+                                                          checklistId: row.id,
+                                                          entry: baEntry,
+                                                          canEdit: editable,
+                                                      }
+                                                    : undefined
+                                            }
+                                        />
+                                    );
+                                })}
                         </div>
                     </PanelSection>
                 )}
@@ -1282,14 +1334,30 @@ function StepDetails({
                         <div className="space-y-2">
                             {row.documents
                                 .filter((document) => document.is_alternative)
-                                .map((document) => (
-                                    <ChecklistDocumentActions
-                                        key={document.type_id}
-                                        procurementId={procurementId}
-                                        document={document}
-                                        canManage={canManageDocuments}
-                                    />
-                                ))}
+                                .map((document) => {
+                                    const baEntry = baByTypeId.get(
+                                        document.type_id,
+                                    );
+
+                                    return (
+                                        <ChecklistDocumentActions
+                                            key={document.type_id}
+                                            procurementId={procurementId}
+                                            document={document}
+                                            canManage={canManageDocuments}
+                                            beritaAcara={
+                                                hasInlinePerDocBa &&
+                                                baEntry !== undefined
+                                                    ? {
+                                                          checklistId: row.id,
+                                                          entry: baEntry,
+                                                          canEdit: editable,
+                                                      }
+                                                    : undefined
+                                            }
+                                        />
+                                    );
+                                })}
                         </div>
                     </PanelSection>
                 )}

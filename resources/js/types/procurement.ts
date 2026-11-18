@@ -250,6 +250,13 @@ export type ChecklistInputKind =
     | 'bank_guarantee'
     | 'berita_acara';
 
+export type BeritaAcaraInputEntry = {
+    document_type_id: number;
+    document_type_name: string;
+    ba_number: string | null;
+    ba_date: string | null;
+};
+
 export type ChecklistInput = {
     kind: ChecklistInputKind;
     label: string;
@@ -279,6 +286,8 @@ export type ChecklistInput = {
         /** The Berita Acara of the Proses SMART SCM step. */
         smart_scm_ba_number: string | null;
         smart_scm_ba_date: string | null;
+        /** Per-document BA number & date entries for Proses SMART SCM & Berita Acara. */
+        berita_acaras?: BeritaAcaraInputEntry[];
         /** The contract number, once the executor has given it. */
         number: string | null;
         /** The running number of the job's contract format, to offer. */
