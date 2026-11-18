@@ -316,12 +316,7 @@ class ProposalController extends Controller
         $this->authorize('view', $procurement);
         abort_unless($attachment->procurement_id === $procurement->id, 404);
 
-        return Storage::disk('local')->response(
-            $attachment->path,
-            $attachment->file_name,
-            UploadedFileType::headers($attachment->mime),
-            UploadedFileType::disposition($attachment->mime, $attachment->isPreviewable()),
-        );
+        return UploadedFileType::respond(Storage::disk('local'), $attachment->path, $attachment->file_name, $attachment->mime, $attachment->isPreviewable() && ! request()->boolean('download'));
     }
 
     /**

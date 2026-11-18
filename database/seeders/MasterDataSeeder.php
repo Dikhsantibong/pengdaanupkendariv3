@@ -35,6 +35,9 @@ class MasterDataSeeder extends Seeder
     /** The SPK's step for the partner's signed Pakta Integritas, uploaded. */
     public const INTEGRITY_PACT_STEP = 'Pakta Integritas';
 
+    /** The SPK's optional Integrity Due Diligence, uploaded when there is one. */
+    public const IDD_STEP = 'IDD';
+
     /**
      * Seed the modular master data tables with the UP Kendari reference data.
      */
@@ -397,6 +400,8 @@ class MasterDataSeeder extends Seeder
             [self::PRICE_OPENING_STEP, false],
             // SPK only: the partner's signed Pakta Integritas, uploaded.
             [self::INTEGRITY_PACT_STEP, false],
+            // SPK only, optional: the Integrity Due Diligence, uploaded.
+            [self::IDD_STEP, true],
             // One step for the SMART SCM document and every Berita Acara.
             ['Proses SMART SCM & Berita Acara', false],
             ['BA Negosiasi', false],
@@ -431,6 +436,8 @@ class MasterDataSeeder extends Seeder
             // that hands the job to procurement.
             'Penawaran' => ChecklistInput::PartnerCandidates,
             'Nota Dinas ke Pengadaan' => ChecklistInput::ProcurementMemo,
+            // Execution: the number and date of the SMART SCM's Berita Acara.
+            TenderBeritaAcara::STEP_NAME => ChecklistInput::BeritaAcara,
             // The number of each planning document.
             'RKS (Rencana Kerja dan Syarat)' => ChecklistInput::RksNumber,
             'HPE (Harga Perkiraan Engineer)' => ChecklistInput::HpeNumber,
@@ -536,6 +543,7 @@ class MasterDataSeeder extends Seeder
                 'Penyusunan HPS' => ['penyusunan-hps'],
                 self::PRICE_OPENING_STEP => ['hasil-pembukaan-penawaran-harga'],
                 self::INTEGRITY_PACT_STEP => ['pakta-integritas'],
+                self::IDD_STEP => ['idd'],
                 // One step: the SMART SCM document and the berita acara,
                 // all of which have to be signed and filed before the step
                 // counts as finished; each selection method asks for its
@@ -687,7 +695,7 @@ class MasterDataSeeder extends Seeder
         // the SPK's alone.
         $skip(
             ProcurementStage::Pelaksanaan,
-            [self::PRICE_OPENING_STEP, self::INTEGRITY_PACT_STEP],
+            [self::PRICE_OPENING_STEP, self::INTEGRITY_PACT_STEP, self::IDD_STEP],
             array_values(array_filter([$formats['PJ'] ?? null, $formats['SPPL'] ?? null])),
         );
 
@@ -721,6 +729,7 @@ class MasterDataSeeder extends Seeder
             ['penyusunan-hps', 'Penyusunan HPS', ProcurementStage::Pelaksanaan],
             ['hasil-pembukaan-penawaran-harga', 'Hasil Pembukaan Penawaran Harga', ProcurementStage::Pelaksanaan],
             ['pakta-integritas', 'Pakta Integritas', ProcurementStage::Pelaksanaan],
+            ['idd', 'IDD (Integrity Due Diligence)', ProcurementStage::Pelaksanaan],
             ['proses-smart-scm', 'Proses SMART SCM', ProcurementStage::Pelaksanaan],
             ['berita-acara', 'Berita Acara', ProcurementStage::Pelaksanaan],
             ['penyusunan-kontrak', 'Penyusunan Kontrak', ProcurementStage::Pelaksanaan],
@@ -802,6 +811,8 @@ class MasterDataSeeder extends Seeder
                 'proses-smart-scm', 'jaminan-bank', 'amandemen', 'masa-pemeliharaan',
                 // The partner signs its Pakta Integritas; the scan is uploaded.
                 'pakta-integritas',
+                // So is the IDD, when there is one.
+                'idd',
             ])
             ->update(['upload_only' => true]);
     }

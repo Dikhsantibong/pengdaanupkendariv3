@@ -86,9 +86,19 @@ class FinanceUploadTest extends TestCase
         $this->tick($step)->assertSessionHasNoErrors();
         $this->assertTrue($step->refresh()->is_completed);
 
-        $this->actingAs($this->finance)
+        // The upload opens in the browser's own tab, where a PDF renders...
+        $shown = $this->actingAs($this->finance)
             ->get(route('procurements.checklists.files.show', [$this->procurement, $step, $files->first()]))
             ->assertOk();
+        $this->assertStringStartsWith('inline', (string) $shown->headers->get('Content-Disposition'));
+        $this->assertStringContainsString('surat-jalan.pdf', (string) $shown->headers->get('Content-Disposition'));
+
+        // ...and downloads under a name marking it as an upload, not a
+        // generated document.
+        $downloaded = $this->actingAs($this->finance)
+            ->get(route('procurements.checklists.files.show', [$this->procurement, $step, $files->first()]).'?download=1')
+            ->assertOk();
+        $this->assertSame('attachment; filename="UNGGAHAN - surat-jalan.pdf"', $downloaded->headers->get('Content-Disposition'));
 
         // Removing every paper unticks the step again.
         foreach ($files as $file) {
@@ -165,7 +175,7 @@ class FinanceUploadTest extends TestCase
         $zip->close();
         @unlink($path);
 
-        $this->assertTrue($names->contains(fn (string $name): bool => str_starts_with($name, '5. Pembayaran/') && str_ends_with($name, 'kwitansi.pdf')));
+        $this->assertTrue($names->contains(fn (string $name): bool => str_starts_with($name, '5. Pembayaran/') && str_ends_with($name, '/UNGGAHAN - kwitansi.pdf')));
     }
 
     protected function requiredStep(FinanceSection $section = FinanceSection::Pembayaran): ProcurementChecklist

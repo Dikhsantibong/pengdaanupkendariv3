@@ -33,7 +33,7 @@ export default function ExecutionIndex({
                 <PageHeader
                     eyebrow="Tahap 2"
                     title="Pelaksanaan Pengadaan"
-                    description="Pengadaan yang dokumen perencanaannya sudah disetujui dan siap dilaksanakan. Tombol ZIP mengunduh seluruh dokumen satu pengadaan sekaligus."
+                    description="Pengadaan dengan perencanaan yang telah disetujui."
                 />
 
                 <ProcurementFilterBar

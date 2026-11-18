@@ -25,7 +25,7 @@ export default function ProgressStatuses({
     return (
         <MasterDataPage<ProgressStatus>
             title="Status Progres"
-            description="Status progres diisi otomatis oleh sistem sesuai proses setiap pengadaan (kolom Diatur Otomatis). Nama, kategori, dan urutan tetap bisa diubah di sini; status yang dinonaktifkan tidak dipakai sistem. Batal dipilih manual lewat tombol Batalkan Pengadaan."
+            description="Daftar status progres pengadaan pada sistem."
             addLabel="Tambah Status"
             records={records}
             nameKey="name"

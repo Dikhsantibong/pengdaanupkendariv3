@@ -1,5 +1,6 @@
 import { router } from '@inertiajs/react';
 import {
+    Download,
     ExternalLink,
     FileText,
     Paperclip,
@@ -8,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import InputError from '@/components/input-error';
+import { withDownload } from '@/components/procurement/signed-upload-list';
 import { Button } from '@/components/ui/button';
 import { formatDateTime } from '@/lib/format';
 import proposals from '@/routes/proposals';
@@ -175,6 +177,15 @@ export function SupportingDocuments({
                                     >
                                         <ExternalLink className="size-3.5" />
                                         Buka
+                                    </a>
+                                </Button>
+                                <Button asChild size="sm" variant="ghost">
+                                    <a
+                                        href={withDownload(document.url)}
+                                        title="Unduh berkas unggahan asli"
+                                    >
+                                        <Download className="size-3.5" />
+                                        Unduh
                                     </a>
                                 </Button>
                                 {canManage && (

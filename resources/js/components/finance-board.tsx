@@ -82,8 +82,7 @@ const BOARD: Record<
 > = {
     penyerahan: {
         title: 'Penyerahan',
-        description:
-            'PIC Pelaksana melengkapi berkas penyerahan lalu mengajukannya ke TL Pengadaan. Yang disetujui diteruskan ke Pembayaran (Keuangan).',
+        description: 'Pengajuan dan verifikasi berkas penyerahan pekerjaan.',
         waitingTab: 'Perlu Diproses',
         doneTab: 'Sudah Disetujui',
         awaiting: 'Menunggu TL Pengadaan',
@@ -105,8 +104,7 @@ const BOARD: Record<
     },
     pembayaran: {
         title: 'Pembayaran',
-        description:
-            'Keuangan melengkapi berkas pembayaran lalu mengajukannya ke TL Keuangan dan Asman. Persetujuan Asman mencatat lunas dan menutup pengadaan.',
+        description: 'Kelengkapan berkas dan persetujuan pembayaran pengadaan.',
         waitingTab: 'Menunggu Pembayaran',
         doneTab: 'Sudah Dibayar',
         awaiting: 'Menunggu Persetujuan',

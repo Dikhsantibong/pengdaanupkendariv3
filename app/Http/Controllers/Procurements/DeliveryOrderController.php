@@ -111,19 +111,14 @@ class DeliveryOrderController extends Controller
     /**
      * Open the scan of the Nota Dinas usulan.
      */
-    public function requestFile(Procurement $procurement, ProcurementDeliveryOrder $order): StreamedResponse
+    public function requestFile(Request $request, Procurement $procurement, ProcurementDeliveryOrder $order): StreamedResponse
     {
         $this->belongs($procurement, $order);
         $this->authorize('view', $procurement);
 
         abort_if($order->request_file_path === null || ! Storage::disk('local')->exists($order->request_file_path), 404);
 
-        return Storage::disk('local')->response(
-            $order->request_file_path,
-            $order->request_file_name,
-            UploadedFileType::headers($order->request_file_mime),
-            UploadedFileType::disposition($order->request_file_mime),
-        );
+        return UploadedFileType::respond(Storage::disk('local'), $order->request_file_path, (string) $order->request_file_name, $order->request_file_mime, ! $request->boolean('download'));
     }
 
     /**

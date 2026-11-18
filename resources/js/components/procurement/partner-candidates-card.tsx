@@ -11,6 +11,7 @@ import {
 import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { PartnerNameInput } from '@/components/partner-name-input';
+import { withDownload } from '@/components/procurement/signed-upload-list';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -144,15 +145,26 @@ export function PartnerCandidatesCard({
                                     </p>
                                 )}
                                 {candidate.quotation_file && (
-                                    <a
-                                        href={candidate.quotation_file.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                                    >
-                                        <FileText className="size-3.5" />
-                                        {candidate.quotation_file.name}
-                                    </a>
+                                    <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                        <a
+                                            href={candidate.quotation_file.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                                        >
+                                            <FileText className="size-3.5" />
+                                            {candidate.quotation_file.name}
+                                        </a>
+                                        <a
+                                            href={withDownload(
+                                                candidate.quotation_file.url,
+                                            )}
+                                            className="text-xs text-muted-foreground hover:text-primary hover:underline"
+                                            title="Unduh berkas unggahan asli"
+                                        >
+                                            Unduh
+                                        </a>
+                                    </span>
                                 )}
                                 {candidate.missing.length > 0 && (
                                     <p className="flex items-start gap-1 text-xs text-amber-700 dark:text-amber-400">

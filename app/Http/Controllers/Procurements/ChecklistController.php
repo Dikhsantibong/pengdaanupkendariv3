@@ -162,7 +162,7 @@ class ChecklistController extends Controller
 
         if ($isCompleted && $input !== null && ! $input->isFilledOn($procurement)) {
             throw ValidationException::withMessages([
-                'is_completed' => 'Lengkapi isian '.mb_strtolower($input->label())
+                'is_completed' => 'Lengkapi isian '.mb_lcfirst($input->label())
                     .' sebelum menandai tahapan ini selesai.',
             ]);
         }

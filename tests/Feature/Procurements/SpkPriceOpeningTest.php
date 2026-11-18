@@ -166,6 +166,62 @@ class SpkPriceOpeningTest extends TestCase
         $this->assertNotContains(MasterDataSeeder::INTEGRITY_PACT_STEP, $this->executionSteps($finished));
     }
 
+    public function test_an_spk_may_upload_an_idd_after_its_pakta_integritas(): void
+    {
+        $procurement = $this->procurement('SPK');
+        $steps = $this->executionSteps($procurement);
+
+        $this->assertSame(
+            array_search(MasterDataSeeder::INTEGRITY_PACT_STEP, $steps, true) + 1,
+            array_search(MasterDataSeeder::IDD_STEP, $steps, true),
+        );
+
+        // Uploaded only, and optional: it never holds the execution back.
+        $step = ChecklistItem::query()->shared()->where('name', MasterDataSeeder::IDD_STEP)->sole();
+        $this->assertTrue($step->is_optional);
+        $this->assertSame(['idd'], $step->documentTypes->pluck('code')->all());
+        $this->assertTrue($step->documentTypes->first()->upload_only);
+        $this->assertFalse(
+            $procurement->pendingRequiredChecklists(ProcurementStage::Pelaksanaan)
+                ->contains(fn ($checklist): bool => $checklist->checklistItem->name === MasterDataSeeder::IDD_STEP),
+        );
+
+        foreach (['PJ', 'SPPL'] as $format) {
+            $this->assertNotContains(MasterDataSeeder::IDD_STEP, $this->executionSteps($this->procurement($format)), $format);
+        }
+    }
+
+    public function test_the_idd_migration_leaves_finished_executions_alone(): void
+    {
+        $running = $this->procurement('SPK');
+        $finished = $this->procurement('SPK');
+        $finished->forceFill(['execution_approval_state' => PlanningApprovalState::Disetujui])->save();
+
+        // A database from before the step.
+        $step = ChecklistItem::query()->shared()->where('name', MasterDataSeeder::IDD_STEP)->sole();
+        DB::table('procurement_checklists')->where('checklist_item_id', $step->id)->delete();
+        DB::table('checklist_item_document_type')->where('checklist_item_id', $step->id)->delete();
+        DB::table('checklist_item_format_exclusions')->where('checklist_item_id', $step->id)->delete();
+        DB::table('checklist_items')->where('id', $step->id)->delete();
+
+        $migration = require database_path('migrations/2026_11_18_015413_add_the_spk_idd_step.php');
+        $migration->up();
+        $migration->up();
+
+        $step = ChecklistItem::query()->shared()->where('name', MasterDataSeeder::IDD_STEP)->sole();
+        $this->assertTrue($step->is_optional);
+        $this->assertSame($this->sortOrder(MasterDataSeeder::INTEGRITY_PACT_STEP) + 1, $step->sort_order);
+        $this->assertSame(['PJ', 'SPPL'], $step->excludedContractNumberFormats->pluck('code')->sort()->values()->all());
+        $this->assertTrue($step->documentTypes->sole()->upload_only);
+
+        foreach ([$running, $finished] as $procurement) {
+            app(ProcurementService::class)->syncChecklists($procurement);
+        }
+
+        $this->assertContains(MasterDataSeeder::IDD_STEP, $this->executionSteps($running));
+        $this->assertNotContains(MasterDataSeeder::IDD_STEP, $this->executionSteps($finished));
+    }
+
     protected function procurement(string $format): Procurement
     {
         $procurement = Procurement::factory()->create([

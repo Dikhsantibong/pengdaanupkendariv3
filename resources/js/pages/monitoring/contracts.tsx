@@ -139,7 +139,7 @@ export default function ContractMonitoring({
                 <PageHeader
                     eyebrow="Monitoring"
                     title="Monitoring Kontrak"
-                    description="Mitra yang sedang terkontrak: sudah bernomor kontrak dan pekerjaannya belum selesai atau batal. Klik folder untuk melihat kontrak yang sedang berjalan dengan mitra itu."
+                    description="Daftar mitra dengan kontrak aktif."
                 />
 
                 <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">

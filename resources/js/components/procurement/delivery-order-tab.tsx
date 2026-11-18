@@ -36,6 +36,7 @@ import {
     touchRememberedPanel,
     useRememberedPanel,
 } from '@/components/procurement/request-board';
+import { withDownload } from '@/components/procurement/signed-upload-list';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -1337,15 +1338,24 @@ function RequestFile({
             <div className="min-w-0">
                 <p className="font-medium">Dokumen Nota Dinas Usulan</p>
                 {order.request_file ? (
-                    <a
-                        href={order.request_file.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                    >
-                        <Paperclip className="size-3" />
-                        {order.request_file.name}
-                    </a>
+                    <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <a
+                            href={order.request_file.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                        >
+                            <Paperclip className="size-3" />
+                            {order.request_file.name}
+                        </a>
+                        <a
+                            href={withDownload(order.request_file.url)}
+                            className="text-xs text-muted-foreground hover:text-primary hover:underline"
+                            title="Unduh berkas unggahan asli"
+                        >
+                            Unduh
+                        </a>
+                    </span>
                 ) : (
                     <p className="text-xs text-muted-foreground">
                         Belum diunggah
@@ -1620,15 +1630,24 @@ function Summary({ order }: { order: DeliveryOrder }) {
                 ))}
             </dl>
             {order.request_file && (
-                <a
-                    href={order.request_file.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                >
-                    <Paperclip className="size-3" />
-                    {order.request_file.name}
-                </a>
+                <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <a
+                        href={order.request_file.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    >
+                        <Paperclip className="size-3" />
+                        {order.request_file.name}
+                    </a>
+                    <a
+                        href={withDownload(order.request_file.url)}
+                        className="text-xs text-muted-foreground hover:text-primary hover:underline"
+                        title="Unduh berkas unggahan asli"
+                    >
+                        Unduh
+                    </a>
+                </span>
             )}
             {order.items.length > 0 && <ItemTable rows={order.items} />}
         </div>

@@ -19,6 +19,9 @@ use Database\Seeders\DocumentTemplateSeeder;
 use Database\Seeders\KontrakTemplateSeeder;
 use Database\Seeders\LelangTemplateSeeder;
 use Database\Seeders\MasterDataSeeder;
+use Database\Seeders\PjTemplateSeeder;
+use Database\Seeders\RksSpkTemplateSeeder;
+use Database\Seeders\RksTenderTemplateSeeder;
 use Database\Seeders\SpplDocumentTemplateSeeder;
 use Database\Seeders\StandardDocumentTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -374,12 +377,21 @@ class ChecklistDocumentRequirementTest extends TestCase
             ->firstOrFail();
 
         // The SPK table, then its Syarat & Ketentuan (Pasal), asked for
-        // under the SPK format only.
-        $this->assertSame(['spk', 'spk-pasal'], $item->documentTypes->pluck('code')->all());
+        // under the SPK format only; each a variant per format or category,
+        // one template each.
+        $this->assertSame(['spk', 'spk-pj', 'spk-pasal', 'spk-pasal-barang'], $item->documentTypes->pluck('code')->all());
         $this->assertSame(
             ContractNumberFormat::query()->where('code', 'SPK')->value('id'),
             $item->documentTypes->firstWhere('code', 'spk-pasal')?->contract_number_format_id,
         );
+
+        // A job is asked for one variant of each: the SPK with its Pasal, or
+        // the Surat Perjanjian.
+        $spk = Procurement::factory()->create(['contract_number_format_id' => ContractNumberFormat::query()->where('code', 'SPK')->value('id'), 'work_category' => 'barang']);
+        $pj = Procurement::factory()->create(['contract_number_format_id' => ContractNumberFormat::query()->where('code', 'PJ')->value('id'), 'work_category' => 'barang']);
+
+        $this->assertSame(['spk', 'spk-pasal-barang'], $item->documentTypesFor($spk->refresh())->pluck('code')->all());
+        $this->assertSame(['spk-pj'], $item->documentTypesFor($pj->refresh())->pluck('code')->all());
     }
 
     public function test_a_multi_document_step_needs_every_signed_copy(): void
@@ -393,6 +405,9 @@ class ChecklistDocumentRequirementTest extends TestCase
         $procurement = Procurement::factory()->executedBy($executor)->create([
             'procurement_method_id' => null,
             'planning_approval_state' => PlanningApprovalState::Disetujui,
+            // The step's own input, so only its documents are left.
+            'smart_scm_ba_number' => '0012/BAPP/612/UPKD/2026',
+            'smart_scm_ba_date' => '2026-11-10',
         ]);
 
         app(ProcurementService::class)->syncChecklists($procurement);
@@ -484,6 +499,9 @@ class ChecklistDocumentRequirementTest extends TestCase
         $this->seed(StandardDocumentTemplateSeeder::class);
         $this->seed(SpplDocumentTemplateSeeder::class);
         $this->seed(LelangTemplateSeeder::class);
+        $this->seed(PjTemplateSeeder::class);
+        $this->seed(RksSpkTemplateSeeder::class);
+        $this->seed(RksTenderTemplateSeeder::class);
 
         // Uploaded documents are filed as scans and need no template.
         $linked = DocumentType::query()
@@ -499,7 +517,8 @@ class ChecklistDocumentRequirementTest extends TestCase
 
         foreach ($linked as $type) {
             $this->assertTrue(
-                collect($formats)->contains(fn (?int $format): bool => DocumentTemplate::resolveFor($type->id, null, null, $format) !== null),
+                // A variant (an RKS for one method, say) is asked within its own scope.
+                collect($formats)->contains(fn (?int $format): bool => DocumentTemplate::resolveFor($type->id, $type->procurement_method_id, $type->work_category, $format) !== null),
                 "Jenis dokumen [{$type->code}] belum punya template aktif.",
             );
         }

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Procurement;
 use App\Models\ProcurementDocument;
 use App\Support\ProposalDocuments;
+use App\Support\UploadedFileType;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -80,7 +81,7 @@ class ProcurementArchive
         foreach ($procurement->attachments as $attachment) {
             if (Storage::disk('local')->exists($attachment->path)) {
                 $zip->addFromString(
-                    $this->unique($used, '1. Usulan/Lampiran/'.$this->clean($attachment->file_name)),
+                    $this->unique($used, '1. Usulan/Lampiran/'.UploadedFileType::DOWNLOAD_PREFIX.$this->clean($attachment->file_name)),
                     (string) Storage::disk('local')->get($attachment->path),
                 );
                 $files++;
@@ -97,7 +98,7 @@ class ProcurementArchive
                 if (Storage::disk('local')->exists($file->path)) {
                     $zip->addFromString(
                         $this->unique($used, (self::FINANCE_FOLDERS[$checklist->financeSection()->value ?? ''] ?? self::FOLDERS[$checklist->stage->value]).'/'
-                            .$this->clean(Str::limit($checklist->checklistItem->name, 80, '')).'/'.$this->clean($file->file_name)),
+                            .$this->clean(Str::limit($checklist->checklistItem->name, 80, '')).'/'.UploadedFileType::DOWNLOAD_PREFIX.$this->clean($file->file_name)),
                         (string) Storage::disk('local')->get($file->path),
                     );
                     $files++;
@@ -156,7 +157,9 @@ class ProcurementArchive
                 continue;
             }
 
-            $prefix = $document->documentType->upload_only ? '' : 'TTD - ';
+            // Every uploaded file says so; a signed copy of a generated
+            // document also says it is the signed one.
+            $prefix = $document->documentType->upload_only ? UploadedFileType::DOWNLOAD_PREFIX : 'UNGGAHAN TTD - ';
 
             $zip->addFromString(
                 $this->unique($used, $folder.'/'.$prefix.$this->clean($upload->file_name)),
@@ -182,8 +185,9 @@ class ProcurementArchive
             'Jumlah file: '.$files,
             '',
             'Folder per tahap: 1. Usulan, 2. Perencanaan, 3. Pelaksanaan, 4. Penyerahan, 5. Pembayaran.',
-            'Dokumen yang digenerate disertakan sebagai PDF dengan data terbaru;',
-            'berkas berawalan "TTD - " adalah hasil tanda tangan yang diunggah.',
+            'Dokumen yang digenerate disertakan sebagai PDF dengan data terbaru.',
+            'Berkas berawalan "UNGGAHAN - " adalah berkas yang diunggah (bukan hasil generate);',
+            'berawalan "UNGGAHAN TTD - " adalah dokumen hasil generate yang sudah ditandatangani lalu diunggah.',
         ]);
     }
 

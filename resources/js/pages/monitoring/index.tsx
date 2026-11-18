@@ -214,7 +214,7 @@ export default function MonitoringIndex({
                 <PageHeader
                     eyebrow="Monitoring"
                     title="Monitoring Progress Pengadaan"
-                    description="Visualisasi tahapan pengadaan secara detail dari Usulan, Perencanaan, Pelaksanaan, hingga Penyerahan & Pembayaran, beserta pengelompokan per mitra."
+                    description="Progres tahapan pengadaan dan rekapitulasi per mitra."
                 />
 
                 {/* 1. Bar Pipeline Ringkas (Tahapan Siklus & Chip Status Detail dalam 1 Bar Hemat Ruang) */}

@@ -262,7 +262,7 @@ export default function Assessments({
                 <PageHeader
                     eyebrow="Data Master"
                     title="Aspek & Lembar Penilai"
-                    description="Lembar penilaian yang diisi tiap penilai beserta aspek yang dinilainya, dalam satu layar. Pilih lembar di kiri untuk melihat dan mengubah aspeknya langsung."
+                    description="Kelola lembar dan aspek penilaian penyedia."
                     actions={
                         <div className="flex flex-wrap gap-2">
                             <Button

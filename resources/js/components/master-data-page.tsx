@@ -315,9 +315,8 @@ export function MasterDataPage<T extends MasterRecord>({
                 )}
 
                 <p className="text-xs text-muted-foreground">
-                    Data master yang sudah dipakai pada pengadaan tidak dihapus
-                    permanen, melainkan dinonaktifkan agar riwayat pengadaan
-                    lama tetap utuh.
+                    Data yang dipakai pengadaan dinonaktifkan agar riwayat tetap
+                    utuh.
                 </p>
             </div>
 

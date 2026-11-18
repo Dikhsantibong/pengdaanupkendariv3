@@ -433,14 +433,9 @@ class DocumentController extends Controller
 
         abort_unless($upload->procurement_document_id === $document->id, 404);
 
-        $inline = $request->boolean('preview') || $request->query('disposition') === 'inline';
+        $inline = ! $request->boolean('download') && ($request->boolean('preview') || $request->query('disposition') === 'inline');
 
-        return $this->signed->disk()->response(
-            $upload->path,
-            $upload->file_name,
-            UploadedFileType::headers($upload->mime),
-            UploadedFileType::disposition($upload->mime, $inline),
-        );
+        return UploadedFileType::respond($this->signed->disk(), $upload->path, $upload->file_name, $upload->mime, $inline);
     }
 
     /**

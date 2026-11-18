@@ -20,7 +20,7 @@ export default function ContractTypes({
     return (
         <MasterDataPage<ContractType>
             title="Jenis Kontrak"
-            description="Pilihan kategori yang muncul saat memilih jenis no kontrak SPK atau PJ pada form pengadaan. Format dokumen menentukan template SPK/PJ yang dipakai (Barang atau Jasa)."
+            description="Kategori kontrak barang dan jasa untuk SPK atau PJ."
             addLabel="Tambah Jenis Kontrak"
             records={records}
             nameKey="name"

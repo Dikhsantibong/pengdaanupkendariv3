@@ -284,7 +284,7 @@ export default function BudgetPlansIndex({
                 <PageHeader
                     eyebrow="Anggaran"
                     title="Perencanaan Anggaran"
-                    description="Program, kontrak, progres fisik/BA, dan pembayaran tiap PRK induk. Jenis anggaran mengikuti Data Master Sumber Anggaran."
+                    description="Daftar program kerja dan realisasi anggaran per PRK."
                     actions={
                         <div className="flex flex-wrap gap-2">
                             <Button variant="outline" asChild>

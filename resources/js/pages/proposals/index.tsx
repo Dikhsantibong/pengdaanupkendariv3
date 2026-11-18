@@ -500,10 +500,10 @@ export default function ProposalIndex({
                     title="Usulan Pekerjaan"
                     description={
                         overview
-                            ? 'Pantau usulan pekerjaan dari seluruh pengusul: yang menunggu persetujuan, riwayat usulan, dan riwayat keputusan TL serta Direksi Pekerjaan.'
+                            ? 'Daftar seluruh usulan pekerjaan dan status persetujuannya.'
                             : canApprove
-                              ? 'Tinjau usulan pekerjaan yang menunggu keputusan Anda. Usulan staf disetujui TL lebih dulu, lalu Asman bidang, kemudian masuk perencanaan untuk penunjukan PIC.'
-                              : 'Pantau usulan pekerjaan Anda. Usulan disetujui TL Anda, lalu Asman bidang, kemudian masuk perencanaan untuk penunjukan PIC Perencana.'
+                              ? 'Tinjau usulan pekerjaan yang menunggu persetujuan Anda.'
+                              : 'Daftar usulan pekerjaan yang Anda ajukan.'
                     }
                     actions={
                         canPropose ? (

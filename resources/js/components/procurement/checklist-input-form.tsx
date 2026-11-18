@@ -114,6 +114,8 @@ export function ChecklistInputForm({
         guarantee_expiry_date: values.guarantee_expiry_date ?? '',
         icc_memo_number: values.icc_memo_number ?? '',
         icc_memo_date: values.icc_memo_date ?? '',
+        smart_scm_ba_number: values.smart_scm_ba_number ?? '',
+        smart_scm_ba_date: values.smart_scm_ba_date ?? '',
         number: values.number ?? '',
         rks_number: values.rks_number ?? '',
         hpe_number: values.hpe_number ?? '',
@@ -299,6 +301,48 @@ export function ChecklistInputForm({
                                 onChange={(event) =>
                                     form.setData(
                                         'icc_memo_date',
+                                        event.target.value,
+                                    )
+                                }
+                            />
+                        </Field>
+                    </>
+                )}
+
+                {input.kind === 'berita_acara' && (
+                    <>
+                        <Field
+                            id={`ba-number-${checklistId}`}
+                            label="Nomor BA"
+                            error={form.errors.smart_scm_ba_number}
+                        >
+                            <Input
+                                id={`ba-number-${checklistId}`}
+                                className="h-8"
+                                value={form.data.smart_scm_ba_number}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'smart_scm_ba_number',
+                                        event.target.value,
+                                    )
+                                }
+                                placeholder="Contoh: 0012/BAPP/612/UPKD/2026"
+                                autoComplete="off"
+                            />
+                        </Field>
+                        <Field
+                            id={`ba-date-${checklistId}`}
+                            label="Tanggal BA"
+                            error={form.errors.smart_scm_ba_date}
+                        >
+                            <Input
+                                id={`ba-date-${checklistId}`}
+                                type="date"
+                                className="tabular h-8"
+                                value={form.data.smart_scm_ba_date}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'smart_scm_ba_date',
                                         event.target.value,
                                     )
                                 }
@@ -612,7 +656,9 @@ export function ChecklistInputForm({
                             <Input
                                 id={`guarantee-expiry-${checklistId}`}
                                 type="date"
-                                min={form.data.guarantee_issue_date || undefined}
+                                min={
+                                    form.data.guarantee_issue_date || undefined
+                                }
                                 className="tabular h-8"
                                 value={form.data.guarantee_expiry_date}
                                 onChange={(event) =>

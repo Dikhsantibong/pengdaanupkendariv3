@@ -90,6 +90,8 @@ class DocumentGenerator
             'tanggal_nota_dinas_usulan' => 'Tanggal nota dinas usulan',
             'nomor_nota_dinas_icc' => 'Nomor nota dinas ke manager',
             'tanggal_nota_dinas_icc' => 'Tanggal nota dinas ke manager',
+            'nomor_ba_smart_scm' => 'Nomor BA (langkah Proses SMART SCM & Berita Acara)',
+            'tanggal_ba_smart_scm' => 'Tanggal BA (langkah Proses SMART SCM & Berita Acara)',
             'tanggal_nota_dinas_manager' => 'Tanggal nota dinas ke manager',
             'nomor_coa' => 'Nomor COA',
             'nomor_wo' => 'Nomor WO',
@@ -295,6 +297,8 @@ class DocumentGenerator
             'tanggal_nota_dinas_usulan' => $procurement->proposal_memo_date?->translatedFormat('d F Y') ?? '-',
             'nomor_nota_dinas_icc' => $procurement->icc_memo_number ?? $procurement->manager_memo_number ?? '-',
             'tanggal_nota_dinas_icc' => $procurement->icc_memo_date?->translatedFormat('d F Y') ?? '-',
+            'nomor_ba_smart_scm' => $procurement->smart_scm_ba_number ?? '-',
+            'tanggal_ba_smart_scm' => $procurement->smart_scm_ba_date?->translatedFormat('d F Y') ?? '-',
             'tanggal_nota_dinas_manager' => $procurement->icc_memo_date?->translatedFormat('d F Y') ?? $procurement->proposal_memo_date?->translatedFormat('d F Y') ?? '-',
             'nomor_surat_penawaran' => $procurement->quotation_number ?? '-',
             'tanggal_surat_penawaran' => $procurement->quotation_date?->translatedFormat('d F Y') ?? '-',
@@ -731,7 +735,7 @@ class DocumentGenerator
             $document->loadMissing('documentType');
             $body = $this->applyItemTables(
                 $this->refreshLiveFields($document->rendered_body, $values),
-                $document->documentType->code,
+                $document->documentType->familyCode(),
                 $document->procurement,
             );
 
@@ -806,9 +810,12 @@ class DocumentGenerator
         }
 
         $procurement = $document->procurement;
+        $document->loadMissing('documentType');
 
+        // Of its family, the variant that fits the job now (the PJ's own RKS
+        // once installed, say); the document moves with its template.
         return DocumentTemplate::resolveFor(
-            $document->document_type_id,
+            $document->documentType->variantFor($procurement)->id,
             $procurement->procurement_method_id,
             $procurement->work_category,
             $procurement->contract_number_format_id,
@@ -824,10 +831,10 @@ class DocumentGenerator
      */
     public function rebuild(ProcurementDocument $document): bool
     {
-        $document->loadMissing('procurement');
+        $document->loadMissing(['procurement', 'documentType']);
 
         $template = DocumentTemplate::resolveFor(
-            $document->document_type_id,
+            $document->documentType->variantFor($document->procurement)->id,
             $document->procurement->procurement_method_id,
             $document->procurement->work_category,
             $document->procurement->contract_number_format_id,
@@ -857,6 +864,13 @@ class DocumentGenerator
             $document->document_template_id = $template->id;
             $document->template_version = $template->version;
             $document->setRelation('documentTemplate', $template);
+
+            // A template of another variant of the family takes the document
+            // to that variant, where its step looks for it.
+            if ($template->document_type_id !== $document->document_type_id) {
+                $document->document_type_id = $template->document_type_id;
+                $document->unsetRelation('documentType');
+            }
         }
 
         $document->save();
@@ -1436,7 +1450,7 @@ class DocumentGenerator
 
         $documents = $procurement->documents()
             ->with(['documentType', 'signedUploads'])
-            ->whereHas('documentType', fn ($query) => $query->inFamily(self::ITEM_TABLE_TYPES))
+            ->whereIn('document_type_id', DocumentType::query()->withTrashed()->inFamily(self::ITEM_TABLE_TYPES)->select('id'))
             ->get();
 
         foreach ($documents as $document) {

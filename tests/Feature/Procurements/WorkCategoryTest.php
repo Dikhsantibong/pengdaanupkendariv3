@@ -133,8 +133,9 @@ class WorkCategoryTest extends TestCase
         $spk = DocumentType::query()->where('code', 'spk-pasal')->firstOrFail();
         $author = User::factory()->administrator()->create();
 
-        $goods = Procurement::factory()->create(['work_category' => 'barang']);
-        $services = Procurement::factory()->create(['work_category' => 'jasa']);
+        $format = ContractNumberFormat::query()->where('code', 'SPK')->value('id');
+        $goods = Procurement::factory()->create(['work_category' => 'barang', 'contract_number_format_id' => $format]);
+        $services = Procurement::factory()->create(['work_category' => 'jasa', 'contract_number_format_id' => $format]);
 
         $goodsSpk = app(DocumentGenerator::class)->generate($goods, $spk, $author);
         $servicesSpk = app(DocumentGenerator::class)->generate($services, $spk, $author);
@@ -180,13 +181,15 @@ class WorkCategoryTest extends TestCase
         $this->seed(MasterDataSeeder::class);
         $this->seed(KontrakTemplateSeeder::class);
         // The SPK's articles follow the category (the SPK table does not).
-        $spk = DocumentType::query()->where('code', 'spk-pasal')->firstOrFail();
-        $goods = DocumentTemplate::query()->where('document_type_id', $spk->id)->where('work_category', 'barang')->sole();
+        // Goods and services are a variant each of the SPK's Pasal.
+        $family = DocumentType::query()->where('family', 'spk-pasal')->pluck('id');
+        $goodsType = DocumentType::query()->where('code', 'spk-pasal-barang')->firstOrFail();
+        $goods = DocumentTemplate::query()->where('document_type_id', $goodsType->id)->where('work_category', 'barang')->sole();
 
         // The goods template is revised in place: a document keeps one template.
         $this->actingAs(User::factory()->administrator()->create())
             ->put(route('master-data.document-templates.update', $goods), [
-                'document_type_id' => $spk->id,
+                'document_type_id' => $goodsType->id,
                 'work_category' => 'barang',
                 'name' => 'SPK Barang Revisi',
                 'body' => '<p>{{nama_pengadaan}}</p>',
@@ -194,7 +197,7 @@ class WorkCategoryTest extends TestCase
             ])
             ->assertSessionHasNoErrors();
 
-        $active = DocumentTemplate::query()->where('document_type_id', $spk->id)->where('is_active', true)->get();
+        $active = DocumentTemplate::query()->whereIn('document_type_id', $family)->where('is_active', true)->get();
 
         $this->assertEqualsCanonicalizing(['barang', 'jasa'], $active->map(fn (DocumentTemplate $template): string => $template->work_category->value)->all());
         $this->assertSame(1, DocumentTemplate::query()->where('name', 'SPK Barang Revisi')->value('version'));

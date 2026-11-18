@@ -93,25 +93,25 @@ export const PROFILE_DESCRIPTIONS: Record<RoleProfile, string> = {
     manajemen:
         'Ringkasan seluruh pengadaan barang dan jasa yang berjalan di UP Kendari.',
     pengusul:
-        'Pantau usulan pekerjaan Anda: mana yang menunggu persetujuan, perlu diperbaiki, sedang diproses, atau sudah selesai.',
+        'Ringkasan usulan pekerjaan dan progres pengadaan Anda.',
     direksi:
-        'Usulan bidang Anda yang menunggu persetujuan, dan pengadaan bidang yang sedang berjalan.',
+        'Usulan bidang yang menunggu persetujuan dan pengadaan berjalan.',
     perencana:
-        'Pengadaan yang ditugaskan kepada Anda sebagai PIC Perencana dan posisi persetujuannya.',
+        'Pengadaan yang ditugaskan kepada Anda sebagai PIC Perencana.',
     pelaksana:
-        'Pengadaan yang ditugaskan kepada Anda sebagai PIC Pelaksana, sampai disetujui TL Pengadaan dan diteruskan ke Keuangan.',
+        'Pengadaan yang ditugaskan kepada Anda sebagai PIC Pelaksana.',
     keuangan:
         'Tagihan yang pelaksanaannya sudah disetujui TL Pengadaan dan menunggu pembayaran.',
     umum: 'Ringkasan pengadaan yang Anda usulkan atau tangani.',
 };
 
-const TONES: Record<string, string> = {
-    primary: 'bg-primary/10 text-primary',
-    sky: 'bg-sky-500/10 text-sky-700 dark:text-sky-400',
-    amber: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
-    red: 'bg-destructive/10 text-destructive',
-    emerald: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
-    violet: 'bg-violet-500/10 text-violet-700 dark:text-violet-400',
+const TONE_HEX: Record<string, string> = {
+    primary: '#2563eb',
+    sky: '#0f766e',
+    amber: '#d97706',
+    red: '#dc2626',
+    emerald: '#15803d',
+    violet: '#6d28d9',
 };
 
 const ICONS: Record<string, LucideIcon> = {
@@ -162,23 +162,39 @@ export function FigureCards({
         >
             {cards.map((card) => {
                 const Icon = ICONS[card.key] ?? FolderKanban;
+                const accent = TONE_HEX[card.tone] ?? TONE_HEX.primary;
                 const isSelected =
                     card.key === 'total'
                         ? !hasFilter && activeCard === 'total'
                         : activeCard === card.key;
+                const cardStyle = {
+                    backgroundColor: `color-mix(in srgb, ${accent} ${isSelected ? '17%' : '11%'}, var(--card))`,
+                    borderColor: `color-mix(in srgb, ${accent} ${isSelected ? '65%' : '32%'}, var(--border))`,
+                    boxShadow: isSelected
+                        ? `inset 0 0 0 1px ${accent}`
+                        : undefined,
+                };
 
                 const content = (
                     <>
                         <span
-                            className={cn(
-                                'flex size-9 shrink-0 items-center justify-center rounded-md',
-                                TONES[card.tone] ?? TONES.primary,
-                            )}
+                            className="absolute inset-x-0 top-0 h-[3px]"
+                            style={{ backgroundColor: accent }}
+                            aria-hidden
+                        />
+                        <span
+                            className="flex size-9 shrink-0 items-center justify-center rounded-md text-white"
+                            style={{ backgroundColor: accent }}
                         >
                             <Icon className="size-4" />
                         </span>
                         <div className="min-w-0 flex-1">
-                            <p className="section-label truncate group-hover:text-primary">
+                            <p
+                                className="section-label truncate font-semibold"
+                                style={{
+                                    color: `color-mix(in srgb, ${accent} 78%, var(--foreground))`,
+                                }}
+                            >
                                 {card.label}
                             </p>
                             <p
@@ -206,7 +222,8 @@ export function FigureCards({
                     return (
                         <section
                             key={card.key}
-                            className="flex items-start gap-3 rounded-md border border-border bg-card p-4"
+                            style={cardStyle}
+                            className="relative flex items-start gap-3 overflow-hidden rounded-md border p-4 pt-[1.15rem]"
                         >
                             {content}
                         </section>
@@ -218,6 +235,7 @@ export function FigureCards({
                         key={card.key}
                         type="button"
                         aria-pressed={isSelected}
+                        style={cardStyle}
                         onClick={() => {
                             if (card.key === 'total') {
                                 if (hasFilter) {
@@ -239,12 +257,10 @@ export function FigureCards({
                             );
                         }}
                         className={cn(
-                            'group flex w-full cursor-pointer items-start gap-3 rounded-md border border-border bg-card p-4 text-left transition-colors hover:border-primary/50 hover:bg-accent/40 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
-                            isSelected &&
-                                'border-primary bg-primary/[0.04] ring-1 ring-primary',
+                            'group relative flex w-full cursor-pointer items-start gap-3 overflow-hidden rounded-md border p-4 pt-[1.15rem] text-left transition-opacity hover:opacity-95 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
                             hasFilter &&
                                 !isSelected &&
-                                'opacity-75 hover:opacity-100',
+                                'opacity-70 hover:opacity-100',
                         )}
                     >
                         {content}

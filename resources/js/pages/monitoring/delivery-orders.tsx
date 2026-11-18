@@ -45,7 +45,7 @@ export default function DeliveryOrderMonitoring({
                 <PageHeader
                     eyebrow="Monitoring"
                     title="Monitoring Delivery Order"
-                    description="Seluruh Delivery Order kontrak KHS: dari permohonan pengusul, persetujuan TL dan Asman, Nota Dinas DO Rendan, hingga diterbitkan Laksdan."
+                    description="Daftar dan status Delivery Order kontrak KHS."
                 />
 
                 <ContractMonitoring<DeliveryOrderRow>

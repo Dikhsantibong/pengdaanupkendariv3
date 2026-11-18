@@ -681,7 +681,7 @@ export function KpiGrid({
             label: 'Total Pengadaan',
             value: formatNumber(kpis.total),
             icon: FolderKanban,
-            color: VIZ.blue,
+            color: '#2563eb',
             hint: `${formatNumber(kpis.pending)} masih tahap usulan / pending`,
             change: (
                 <Change current={kpis.total} previous={kpis.previous?.total} />
@@ -692,7 +692,7 @@ export function KpiGrid({
             label: 'Pengadaan Berjalan',
             value: formatNumber(kpis.running),
             icon: CircleDot,
-            color: VIZ.yellow,
+            color: '#d97706',
             hint: `Nilai HPE belum selesai ${formatCurrency(kpis.runningHpe)}`,
         },
         {
@@ -700,7 +700,7 @@ export function KpiGrid({
             label: 'Pengadaan Selesai',
             value: formatNumber(kpis.completed),
             icon: BadgeCheck,
-            color: VIZ.green,
+            color: '#15803d',
             hint: share(kpis.completed),
             change: (
                 <Change
@@ -714,7 +714,7 @@ export function KpiGrid({
             label: 'Menunggu Approval',
             value: formatNumber(kpis.awaiting),
             icon: Hourglass,
-            color: VIZ.navy,
+            color: '#6d28d9',
             hint:
                 awaitingParts.length > 0
                     ? awaitingParts.join(' · ')
@@ -730,7 +730,7 @@ export function KpiGrid({
             label: 'Total Nilai HPE',
             value: formatCurrency(kpis.totalHpe),
             icon: Wallet,
-            color: VIZ.blue,
+            color: '#0f766e',
             hint: 'Harga Perkiraan Engineer, bukan realisasi bayar',
             change: (
                 <Change
@@ -744,7 +744,7 @@ export function KpiGrid({
             label: 'Pengadaan Dibatalkan',
             value: formatNumber(kpis.cancelled),
             icon: Ban,
-            color: VIZ.red,
+            color: '#dc2626',
             hint: share(kpis.cancelled),
         },
     ];
@@ -755,12 +755,18 @@ export function KpiGrid({
                 const body = (
                     <>
                         <div className="flex items-start justify-between gap-3">
-                            <p className="section-label">{card.label}</p>
-                            <span
-                                className="flex size-8 shrink-0 items-center justify-center rounded-md"
+                            <p
+                                className="section-label font-semibold"
                                 style={{
-                                    color: card.color,
-                                    backgroundColor: `color-mix(in srgb, ${card.color} 12%, transparent)`,
+                                    color: `color-mix(in srgb, ${card.color} 78%, var(--foreground))`,
+                                }}
+                            >
+                                {card.label}
+                            </p>
+                            <span
+                                className="flex size-8 shrink-0 items-center justify-center rounded-md text-white"
+                                style={{
+                                    backgroundColor: card.color,
                                 }}
                             >
                                 <card.icon className="size-4" strokeWidth={2} />
@@ -784,11 +790,15 @@ export function KpiGrid({
                         )}
                     </>
                 );
+                const cardStyle = {
+                    backgroundColor: `color-mix(in srgb, ${card.color} 11%, var(--card))`,
+                    borderColor: `color-mix(in srgb, ${card.color} 32%, var(--border))`,
+                };
                 const className =
-                    '@container relative flex min-w-0 flex-col overflow-hidden rounded-md border border-border bg-card p-4 pt-[1.1rem]';
+                    '@container relative flex min-w-0 flex-col overflow-hidden rounded-md border p-4 pt-[1.15rem]';
                 const stripe = (
                     <span
-                        className="absolute inset-x-0 top-0 h-0.5"
+                        className="absolute inset-x-0 top-0 h-[3px]"
                         style={{ backgroundColor: card.color }}
                         aria-hidden
                     />
@@ -798,16 +808,21 @@ export function KpiGrid({
                     <Link
                         key={card.key}
                         href={card.href}
+                        style={cardStyle}
                         className={cn(
                             className,
-                            'transition-colors hover:border-primary/50',
+                            'transition-opacity hover:opacity-90',
                         )}
                     >
                         {stripe}
                         {body}
                     </Link>
                 ) : (
-                    <section key={card.key} className={className}>
+                    <section
+                        key={card.key}
+                        style={cardStyle}
+                        className={className}
+                    >
                         {stripe}
                         {body}
                     </section>

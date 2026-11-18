@@ -33,7 +33,7 @@ export default function PlanningIndex({
                 <PageHeader
                     eyebrow="Tahap 1"
                     title="Perencanaan Pengadaan"
-                    description="Pengadaan yang dokumen perencanaannya sedang disusun, diajukan, atau perlu diperbaiki."
+                    description="Pengadaan dalam tahap penyusunan dan persetujuan perencanaan."
                 />
 
                 <ProcurementFilterBar

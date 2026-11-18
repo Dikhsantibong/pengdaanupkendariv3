@@ -128,7 +128,7 @@ class AmendmentController extends Controller
     /**
      * Open a filed paper.
      */
-    public function file(Procurement $procurement, ProcurementAmendment $amendment, ProcurementAmendmentFile $file): StreamedResponse
+    public function file(Request $request, Procurement $procurement, ProcurementAmendment $amendment, ProcurementAmendmentFile $file): StreamedResponse
     {
         $this->belongs($procurement, $amendment);
         abort_unless($file->procurement_amendment_id === $amendment->id, 404);
@@ -136,12 +136,7 @@ class AmendmentController extends Controller
 
         abort_unless(Storage::disk('local')->exists($file->path), 404);
 
-        return Storage::disk('local')->response(
-            $file->path,
-            $file->file_name,
-            UploadedFileType::headers($file->mime),
-            UploadedFileType::disposition($file->mime),
-        );
+        return UploadedFileType::respond(Storage::disk('local'), $file->path, $file->file_name, $file->mime, ! $request->boolean('download'));
     }
 
     /**

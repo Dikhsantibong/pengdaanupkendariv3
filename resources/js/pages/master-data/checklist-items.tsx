@@ -342,10 +342,7 @@ export default function ChecklistItems({
                 <span className="tabular font-medium text-foreground">
                     {visible.length}
                 </span>{' '}
-                dari {records.length} item, berurutan sesuai tahap dan urutan
-                tampil.
-                {(filters.format !== ALL || filters.kategori !== ALL) &&
-                    ' Filter format dan kategori menampilkan item yang dilalui pengadaan dengan kriteria itu, termasuk item yang berlaku untuk semua.'}
+                dari {records.length} item.
             </p>
         </div>
     );
@@ -353,7 +350,7 @@ export default function ChecklistItems({
     return (
         <MasterDataPage<ChecklistItem>
             title="Item Checklist"
-            description="Daftar dokumen dan tahapan yang harus dilengkapi pada tahap perencanaan, pelaksanaan, serta penyerahan dan pembayaran (Keuangan)."
+            description="Daftar dokumen dan tahapan di perencanaan, pelaksanaan, penyerahan, dan pembayaran."
             addLabel="Tambah Item"
             records={visible}
             filtered={isFiltered}

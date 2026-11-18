@@ -60,8 +60,7 @@ const SELECTION_CONFIG: TabConfig = {
     label: 'Metode Pengadaan',
     singularLabel: 'Metode Pengadaan',
     addLabel: 'Tambah Metode Pengadaan',
-    description:
-        'Cara mitra dipilih (Penunjukan Langsung, Pengadaan Langsung, Lelang Terbuka). Dipilih PIC Perencana di detail pengadaan dan tercetak pada dokumen.',
+    description: 'Daftar metode pemilihan penyedia barang dan jasa.',
     searchPlaceholder: 'Cari metode atau kode pengadaan…',
     fields: [
         {
@@ -111,7 +110,7 @@ const INTERNAL_CONFIG: TabConfig = {
     singularLabel: 'Metode Internal',
     addLabel: 'Tambah Metode Internal',
     description:
-        'Metode internal yang mengikuti format kontrak (diatur di Format No Kontrak) untuk menentukan pilihan template dokumen dan tahapan checklist.',
+        'Metode internal acuan template dokumen dan format kontrak.',
     searchPlaceholder: 'Cari metode internal atau kode…',
     fields: [
         {
@@ -212,7 +211,7 @@ export default function SelectionMethods({
                 <PageHeader
                     eyebrow="Data Master"
                     title="Metode Pengadaan"
-                    description="Kelola Metode Pengadaan (cara pemilihan penyedia) dan Metode Internal (acuan template dokumen & format kontrak) dalam satu menu."
+                    description="Kelola metode pengadaan dan metode internal."
                     actions={
                         <Button onClick={() => openCreate(activeConfig)}>
                             <Plus className="size-4" />
@@ -280,9 +279,8 @@ export default function SelectionMethods({
                 </Tabs>
 
                 <p className="text-xs text-muted-foreground">
-                    Data master yang sudah dipakai pada pengadaan tidak dihapus
-                    permanen, melainkan dinonaktifkan agar riwayat pengadaan
-                    lama tetap utuh.
+                    Data yang dipakai pengadaan dinonaktifkan agar riwayat tetap
+                    utuh.
                 </p>
             </div>
 

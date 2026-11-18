@@ -43,8 +43,8 @@ export default function EditProcurement({
                     }
                     description={
                         isProposal
-                            ? 'Perbaiki usulan sesuai catatan Direksi Pekerjaan, lalu ajukan ulang dari halaman usulan.'
-                            : 'Perubahan pada data identitas akan tercatat pada histori aktivitas pengadaan.'
+                            ? 'Perbaiki data usulan lalu ajukan kembali.'
+                            : 'Ubah data identitas pengadaan.'
                     }
                     actions={
                         <Button

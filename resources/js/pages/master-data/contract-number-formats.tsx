@@ -31,7 +31,7 @@ export default function ContractNumberFormats({
     return (
         <MasterDataPage<ContractNumberFormat>
             title="Format No Kontrak"
-            description="Bentuk penomoran kontrak beserta urutan berjalannya. Setiap format menghitung nomornya sendiri per tahun, contoh KDD075.SPK/612/UPKD/2026."
+            description="Pengaturan format dan urutan nomor kontrak."
             addLabel="Tambah Format"
             records={records}
             nameKey="code"

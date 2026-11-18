@@ -89,6 +89,8 @@ use Illuminate\Support\Collection;
  * @property string|null $hpe_number
  * @property string|null $upb_number
  * @property CarbonImmutable|null $icc_memo_date
+ * @property string|null $smart_scm_ba_number The Berita Acara number of the SMART SCM process.
+ * @property CarbonImmutable|null $smart_scm_ba_date
  * @property string|null $coa_number
  * @property string|null $wo_number
  * @property string|null $sr_number
@@ -159,6 +161,8 @@ use Illuminate\Support\Collection;
     'proposal_memo_date',
     'icc_memo_number',
     'icc_memo_date',
+    'smart_scm_ba_number',
+    'smart_scm_ba_date',
     'rks_number',
     'hpe_number',
     'upb_number',
@@ -1141,6 +1145,7 @@ class Procurement extends Model
             'target_completion_date' => 'date',
             'proposal_memo_date' => 'date',
             'icc_memo_date' => 'date',
+            'smart_scm_ba_date' => 'date',
             'quotation_date' => 'date',
             'execution_start_date' => 'date',
             'execution_duration_days' => 'integer',

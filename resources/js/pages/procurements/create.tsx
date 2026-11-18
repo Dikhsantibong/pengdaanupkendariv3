@@ -47,8 +47,8 @@ export default function CreateProcurement({
                     }
                     description={
                         isProposal
-                            ? 'Isi kebutuhan pekerjaan dan lampirkan dokumen pendukung. Usulan akan ditinjau dan disetujui Direksi Pekerjaan bidang Anda sebelum diteruskan ke perencanaan.'
-                            : 'Data pada form ini menjadi identitas utama pengadaan dan tampil pada dashboard, monitoring, serta laporan.'
+                            ? 'Lengkapi detail usulan pekerjaan dan lampiran pendukung.'
+                            : 'Lengkapi data identitas awal pengadaan.'
                     }
                     actions={
                         <Button

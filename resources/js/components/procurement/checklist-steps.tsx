@@ -125,6 +125,7 @@ const INPUT_LABELS: Partial<Record<ChecklistInput['kind'], string>> = {
     bank_account: 'Pelaksana & rekening bank',
     bank_guarantee: 'Data jaminan bank',
     procurement_memo: 'Nomor & tanggal nota dinas',
+    berita_acara: 'Nomor & tanggal BA',
     // Given in the identity of the procurement; the step checks it is there.
     contract_number: 'Nomor kontrak (di Identitas Pengadaan)',
 };
@@ -1009,11 +1010,7 @@ function DocumentLinks({
         <>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-                <a
-                    href={previewUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                >
+                <a href={previewUrl} target="_blank" rel="noopener noreferrer">
                     <Eye className="size-4" />
                     Pratinjau {name}
                 </a>

@@ -89,12 +89,7 @@ class ChecklistFileController extends Controller
         abort_unless($checklist->procurement_id === $procurement->id && $file->procurement_checklist_id === $checklist->id, 404);
         $this->authorize('view', $procurement);
 
-        return Storage::disk('local')->response(
-            $file->path,
-            $file->file_name,
-            UploadedFileType::headers($file->mime),
-            UploadedFileType::disposition($file->mime, ! $request->boolean('download')),
-        );
+        return UploadedFileType::respond(Storage::disk('local'), $file->path, $file->file_name, $file->mime, ! $request->boolean('download'));
     }
 
     /**

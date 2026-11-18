@@ -14,6 +14,7 @@ import {
 import { useState } from 'react';
 import InputError from '@/components/input-error';
 import { ProposalDocuments } from '@/components/procurement/proposal-documents';
+import { withDownload } from '@/components/procurement/signed-upload-list';
 import {
     formatFileSize,
     SupportingDocuments,
@@ -142,6 +143,17 @@ function DocumentViewer({
                             Buka
                         </a>
                     </Button>
+                    {attachmentId !== null && (
+                        <Button asChild size="sm" variant="ghost">
+                            <a
+                                href={withDownload(active.url)}
+                                title="Unduh berkas unggahan asli"
+                            >
+                                <Download className="size-3.5" />
+                                Unduh
+                            </a>
+                        </Button>
+                    )}
                     {canRemove && attachmentId !== null && (
                         <Button
                             size="sm"

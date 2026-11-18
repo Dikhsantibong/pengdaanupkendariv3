@@ -335,7 +335,7 @@ export default function DocumentEditor({
                 <PageHeader
                     eyebrow={`${procurement.number} · ${doc.type}`}
                     title="Edit Dokumen"
-                    description="Perbaiki redaksi maupun data yang terpanggil pada dokumen. Perubahan tersimpan sebagai revisi dan langsung dipakai saat dokumen diunduh."
+                    description="Ubah isi dokumen; perubahan tersimpan sebagai revisi PDF."
                     actions={
                         <div className="flex flex-wrap items-center gap-2">
                             <Button

@@ -42,7 +42,7 @@ export default function AmendmentMonitoring({
                 <PageHeader
                     eyebrow="Monitoring"
                     title="Monitoring Amandemen"
-                    description="Seluruh amandemen kontrak: dari permohonan pengusul, persetujuan TL dan Asman, hingga diterbitkan Laksdan."
+                    description="Daftar dan status amandemen kontrak."
                 />
 
                 <ContractMonitoring<AmendmentRow>

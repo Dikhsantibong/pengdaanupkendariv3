@@ -58,10 +58,11 @@ class SpplExecutionTest extends TestCase
             'Masa Garansi',
         ];
 
-        // The SPK alone also files its Hasil Pembukaan Penawaran Harga and
-        // the partner's Pakta Integritas right after the HPS.
+        // The SPK alone also files its Hasil Pembukaan Penawaran Harga, the
+        // partner's Pakta Integritas and, when there is one, the IDD right
+        // after the HPS.
         $spk = $expected;
-        array_splice($spk, 1, 0, ['Hasil Pembukaan Penawaran Harga', 'Pakta Integritas']);
+        array_splice($spk, 1, 0, ['Hasil Pembukaan Penawaran Harga', 'Pakta Integritas', 'IDD']);
 
         $this->assertSame($spk, $this->executionSteps('SPK'));
         $this->assertSame($expected, $this->executionSteps('PJ'));

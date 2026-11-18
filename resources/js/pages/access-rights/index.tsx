@@ -91,7 +91,7 @@ export default function AccessRights({
                 <PageHeader
                     eyebrow="Administrasi"
                     title="Hak Akses"
-                    description="Atur fitur yang boleh digunakan tiap peran. Perubahan berlaku pada permintaan berikutnya, tanpa perlu login ulang."
+                    description="Pengaturan hak akses fitur setiap peran."
                     actions={
                         <div className="flex flex-wrap items-center gap-2">
                             <Button

@@ -313,7 +313,7 @@ export default function UnitManagers({
                 <PageHeader
                     eyebrow="Data Master"
                     title="Pejabat Unit & Direksi"
-                    description="Pengelolaan pejabat UP Kendari & Unit Layanan (Manager UP, Manager UL, TL Pemeliharaan, TL Operasi, TL OPHAR, TL K3L) serta Direksi Pekerjaan dalam satu menu."
+                    description="Kelola pejabat unit dan direksi pekerjaan."
                     actions={
                         tab === 'directors' ? (
                             <Button
@@ -849,9 +849,8 @@ export default function UnitManagers({
                 </Tabs>
 
                 <p className="text-xs text-muted-foreground">
-                    Data master yang sudah dipakai pada pengadaan tidak dihapus
-                    permanen, melainkan dinonaktifkan agar riwayat pengadaan
-                    lama tetap utuh.
+                    Data yang dipakai pengadaan dinonaktifkan agar riwayat tetap
+                    utuh.
                 </p>
             </div>
 

@@ -205,7 +205,7 @@ class PublicMonitoringTest extends TestCase
                 ->component('auth/login')
                 ->where('showcase.unitCount', 3)
                 ->has('showcase.planningSteps', 5)
-                ->has('showcase.executionSteps', 6)
+                ->has('showcase.executionSteps', 7)
                 ->has('showcase.units', 3)
                 ->has('showcase.summary')
                 ->has('showcase.statuses'),

@@ -113,7 +113,7 @@ export default function DocumentArchive({
                 <PageHeader
                     eyebrow="Pengadaan"
                     title="Arsip Dokumen"
-                    description="Seluruh dokumen yang pernah digenerate tersimpan apa adanya, dikelompokkan dalam folder per jenis kontrak (SPK, PJ, SPPL) lalu per pekerjaan."
+                    description="Arsip dokumen pengadaan per jenis kontrak dan pekerjaan."
                 />
 
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">

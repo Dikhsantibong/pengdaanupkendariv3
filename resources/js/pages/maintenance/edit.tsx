@@ -59,7 +59,7 @@ export default function MaintenanceEdit({
                 <PageHeader
                     eyebrow="Administrasi"
                     title="Mode Pemeliharaan"
-                    description="Tutup sementara aplikasi saat pemeliharaan. Selama aktif, halaman login menampilkan pemberitahuan dan hanya Administrator yang dapat masuk."
+                    description="Aktifkan saat pemeliharaan sistem (hanya Administrator yang dapat masuk)."
                 />
 
                 <section

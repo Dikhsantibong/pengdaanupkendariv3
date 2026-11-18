@@ -18,7 +18,7 @@ export default function BudgetSources({
     return (
         <MasterDataPage<BudgetSource>
             title="Sumber Anggaran"
-            description="Sumber pendanaan pengadaan, dipilih pada form pembuatan pengadaan dan tercetak pada dokumen."
+            description="Daftar sumber anggaran pengadaan."
             addLabel="Tambah Sumber Anggaran"
             records={records}
             nameKey="name"

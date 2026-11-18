@@ -15,7 +15,7 @@ export default function Partners({ records }: { records: Partner[] }) {
     return (
         <MasterDataPage<Partner>
             title="Mitra"
-            description="Daftar mitra (penyedia barang/jasa) yang pernah diinput di perencanaan dan penilaian penyedia. Saat mengetik nama calon mitra, sistem menyarankan mitra dari daftar ini dan mengisi kode rekanan, direktur, serta alamatnya. Mitra baru yang diinput otomatis ditambahkan ke sini."
+            description="Daftar mitra penyedia barang dan jasa."
             addLabel="Tambah Mitra"
             records={records}
             nameKey="name"

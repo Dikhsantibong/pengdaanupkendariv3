@@ -54,10 +54,10 @@ export default function PicAssignmentIndex({
 }) {
     const description =
         can.assignPlanner && can.assignExecutor
-            ? 'PIC Perencana ditunjuk setelah usulan disetujui Asman, PIC Pelaksana setelah perencanaan disetujui ICC. Akses PIC lama otomatis dicabut saat diganti.'
+            ? 'Atur PIC Perencana dan PIC Pelaksana pengadaan.'
             : can.assignPlanner
-              ? 'Tunjuk PIC Perencana untuk usulan yang sudah disetujui Asman. PIC Pelaksana ditunjuk TL Pengadaan setelah perencanaan disetujui. Akses PIC lama otomatis dicabut saat diganti.'
-              : 'Tunjuk PIC Pelaksana untuk pengadaan yang perencanaannya sudah disetujui ICC. Akses PIC lama otomatis dicabut saat diganti.';
+              ? 'Tunjuk PIC Perencana untuk usulan yang disetujui.'
+              : 'Tunjuk PIC Pelaksana untuk perencanaan yang disetujui.';
 
     return (
         <>

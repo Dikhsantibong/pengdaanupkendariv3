@@ -75,7 +75,7 @@ class DemoProcurementSeederTest extends TestCase
         // A contract job carries its contract number and its contract.
         $paid = $demo()->whereNotNull('payment_completed_at')->with(['documents.documentType', 'contractNumberFormat'])->get();
         $this->assertTrue($paid->every(fn ($job) => ! str_starts_with($job->number, 'USL/')));
-        $this->assertTrue($paid->every(fn ($job) => $job->documents->contains(fn ($document) => in_array($document->documentType->code, ['spk', 'lampiran-sp'], true))));
+        $this->assertTrue($paid->every(fn ($job) => $job->documents->contains(fn ($document) => in_array($document->documentType->familyCode(), ['spk', 'lampiran-sp'], true))));
 
         // Every Penyerahan and Pembayaran step of a paid job is ticked, and
         // the steps of contract-read jobs belong to those jobs alone.

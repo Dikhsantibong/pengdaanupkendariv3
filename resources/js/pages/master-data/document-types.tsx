@@ -34,7 +34,7 @@ export default function DocumentTypes({
     return (
         <MasterDataPage<DocumentType>
             title="Jenis Dokumen"
-            description="Jenis dokumen yang dapat digenerate. Setiap jenis mereferensikan satu template aktif yang dapat diganti secara independen."
+            description="Daftar jenis dokumen pengadaan dan template aktifnya."
             addLabel="Tambah Jenis Dokumen"
             records={records}
             nameKey="name"

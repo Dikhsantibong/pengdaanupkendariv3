@@ -203,7 +203,7 @@ export default function DocumentTemplates({
                 <PageHeader
                     eyebrow="Data Master"
                     title="Template Dokumen"
-                    description="Template standar sementara. Saat template resmi UP Kendari tersedia, cukup ubah templatenya di sini tanpa mengubah logika aplikasi. Setiap dokumen hanya memakai satu template."
+                    description="Daftar template dokumen pengadaan."
                     actions={
                         <Button asChild>
                             <Link

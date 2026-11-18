@@ -2,7 +2,9 @@
 
 namespace App\Support;
 
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Http\UploadedFile;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * What an uploaded file really is, read from its content and never from the
@@ -69,5 +71,34 @@ class UploadedFileType
     public static function disposition(?string $mime, bool $inline = true): string
     {
         return $inline && self::isInline($mime) ? 'inline' : 'attachment';
+    }
+
+    /** What a downloaded upload's name starts with, so it is told apart from a generated document. */
+    public const DOWNLOAD_PREFIX = 'UNGGAHAN - ';
+
+    /**
+     * The name an uploaded file is saved under when downloaded: its own,
+     * marked as the upload it is.
+     */
+    public static function downloadName(string $fileName): string
+    {
+        return str_starts_with($fileName, self::DOWNLOAD_PREFIX) ? $fileName : self::DOWNLOAD_PREFIX.$fileName;
+    }
+
+    /**
+     * Serve a stored upload: shown in the browser's own tab (a PDF renders
+     * there) unless a download is asked for (`?download=1`) or its type
+     * cannot be shown, in which case it downloads under its marked name.
+     */
+    public static function respond(Filesystem $disk, string $path, string $fileName, ?string $mime, bool $inline = true): StreamedResponse
+    {
+        $disposition = self::disposition($mime, $inline);
+
+        return $disk->response(
+            $path,
+            $disposition === 'attachment' ? self::downloadName($fileName) : $fileName,
+            self::headers($mime),
+            $disposition,
+        );
     }
 }

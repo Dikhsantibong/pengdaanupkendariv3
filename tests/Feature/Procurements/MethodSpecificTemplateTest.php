@@ -104,7 +104,7 @@ class MethodSpecificTemplateTest extends TestCase
         $this->assertStringNotContainsString('Template umum', $document->rendered_body);
     }
 
-    public function test_activating_a_method_template_leaves_the_general_one_active(): void
+    public function test_a_second_template_for_a_document_type_is_refused(): void
     {
         $administrator = User::factory()->administrator()->create();
         $spk = ProcurementMethod::factory()->create(['name' => 'SPK', 'code' => 'spk']);
@@ -115,6 +115,8 @@ class MethodSpecificTemplateTest extends TestCase
             'procurement_method_id' => null,
         ]);
 
+        // One document type, one template: a method's own wording is a
+        // document type of its own.
         $this->actingAs($administrator)
             ->post(route('master-data.document-templates.store'), [
                 'document_type_id' => $documentType->id,
@@ -123,12 +125,10 @@ class MethodSpecificTemplateTest extends TestCase
                 'body' => '<p>{{nama_pengadaan}}</p>',
                 'is_active' => true,
             ])
-            ->assertRedirect();
+            ->assertSessionHasErrors('document_type_id');
 
         $this->assertTrue($general->refresh()->is_active);
-        $this->assertTrue(
-            DocumentTemplate::query()->where('procurement_method_id', $spk->id)->firstOrFail()->is_active,
-        );
+        $this->assertSame(1, DocumentTemplate::query()->where('document_type_id', $documentType->id)->count());
     }
 
     public function test_versions_are_numbered_per_document_type_and_method(): void
@@ -137,8 +137,8 @@ class MethodSpecificTemplateTest extends TestCase
         $spk = ProcurementMethod::factory()->create(['name' => 'SPK', 'code' => 'spk']);
         $documentType = DocumentType::factory()->create();
 
+        // Another document type's template has its own numbering.
         DocumentTemplate::factory()->create([
-            'document_type_id' => $documentType->id,
             'procurement_method_id' => null,
             'version' => 3,
         ]);
@@ -261,8 +261,13 @@ class MethodSpecificTemplateTest extends TestCase
         $spk = ProcurementMethod::query()->where('code', 'spk')->firstOrFail();
         $tender = ProcurementMethod::query()->where('code', 'tender')->firstOrFail();
 
-        $spkTemplate = DocumentTemplate::resolveFor($rks->id, $spk->id);
-        $tenderTemplate = DocumentTemplate::resolveFor($rks->id, $tender->id);
+        // Each method's RKS is a variant of the family, with its template.
+        $spkVariant = $rks->variantFor(Procurement::factory()->create(['procurement_method_id' => $spk->id, 'contract_number_format_id' => null]));
+        $tenderVariant = $rks->variantFor(Procurement::factory()->create(['procurement_method_id' => $tender->id, 'contract_number_format_id' => null]));
+        $this->assertSame(['rks-spk', 'rks-tender'], [$spkVariant->code, $tenderVariant->code]);
+
+        $spkTemplate = DocumentTemplate::resolveFor($spkVariant->id, $spk->id);
+        $tenderTemplate = DocumentTemplate::resolveFor($tenderVariant->id, $tender->id);
 
         $this->assertNotNull($spkTemplate);
         $this->assertNotNull($tenderTemplate);

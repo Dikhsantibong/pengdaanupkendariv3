@@ -353,7 +353,7 @@ class EndToEndFlowTest extends TestCase
      */
     protected function fileDocuments(Procurement $procurement, ProcurementChecklist $checklist, User $pic): void
     {
-        foreach ($checklist->checklistItem->documentTypes as $type) {
+        foreach ($checklist->checklistItem->documentTypesFor($procurement) as $type) {
             /** @var DocumentType $type */
             $scan = [UploadedFile::fake()->create("{$type->code}.pdf", 50, 'application/pdf')];
 
@@ -394,6 +394,7 @@ class EndToEndFlowTest extends TestCase
         $values = match ($checklist->checklistItem->input_kind?->value) {
             'contract_period' => ['execution_start_date' => '2026-11-01', 'execution_duration_days' => 60],
             'warranty' => ['warranty_months' => 6],
+            'berita_acara' => ['smart_scm_ba_number' => '0031/BAPP/612/UPKD/2026', 'smart_scm_ba_date' => '2026-10-20'],
             'bank_guarantee' => [
                 'guarantee_bank_name' => 'Bank Mandiri',
                 'guarantee_number' => 'BG-031/2026',

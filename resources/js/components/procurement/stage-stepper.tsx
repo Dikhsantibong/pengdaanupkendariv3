@@ -111,57 +111,51 @@ export function StageStepper({
                                     clipPath: ribbonShape(isFirst, isLast),
                                 }}
                                 className={cn(
-                                    'relative flex min-h-20 w-full items-center gap-2.5 py-3.5 text-left transition-[filter,background-color] outline-none hover:brightness-105 focus-visible:brightness-110 2xl:gap-3.5',
+                                    'group relative flex min-h-20 w-full cursor-pointer items-center gap-2.5 py-3.5 text-left transition-[background-color,color,filter] duration-300 ease-out outline-none focus-visible:brightness-110 2xl:gap-3.5',
                                     isFirst
                                         ? 'pl-4 2xl:pl-5'
                                         : 'pl-8 2xl:pl-10',
                                     isLast ? 'pr-4 2xl:pr-5' : 'pr-7 2xl:pr-10',
-                                    stage.state === 'done' &&
-                                        'bg-[#0a5596] text-white dark:bg-[#1d5f99]',
-                                    stage.state === 'current' &&
-                                        'bg-primary text-primary-foreground',
-                                    pending &&
-                                        'bg-primary/10 text-muted-foreground hover:bg-primary/15',
+                                    selected &&
+                                        'bg-[#0f766e] text-white hover:bg-[#115e59] dark:bg-[#0d9488] dark:hover:bg-[#0f766e]',
+                                    !selected &&
+                                        stage.state === 'done' &&
+                                        'bg-[#0a5596] text-white hover:bg-[#0e7c7b] dark:bg-[#1d5f99] dark:hover:bg-[#0d9488]',
+                                    !selected &&
+                                        stage.state === 'current' &&
+                                        'bg-primary text-primary-foreground hover:bg-[#0e7c7b] dark:hover:bg-[#0d9488]',
+                                    !selected &&
+                                        pending &&
+                                        'bg-primary/10 text-muted-foreground hover:bg-[#0e7c7b] hover:text-white dark:hover:bg-[#0d9488]',
                                 )}
                             >
                                 <StageMark
                                     state={stage.state}
                                     number={index + 1}
+                                    selected={selected}
                                 />
                                 <span className="min-w-0">
                                     <span
                                         className={cn(
-                                            'block text-base leading-tight font-semibold whitespace-nowrap',
-                                            pending && 'text-foreground/70',
+                                            'block text-base leading-tight font-semibold whitespace-nowrap transition-colors duration-300 ease-out',
+                                            pending &&
+                                                !selected &&
+                                                'text-foreground/70 group-hover:text-white',
                                         )}
                                     >
                                         {stage.label}
                                     </span>
                                     <span
                                         className={cn(
-                                            'tabular mt-1 block text-xs whitespace-nowrap',
-                                            pending
-                                                ? 'text-muted-foreground'
-                                                : 'text-white/80',
+                                            'tabular mt-1 block text-xs whitespace-nowrap transition-colors duration-300 ease-out',
+                                            pending && !selected
+                                                ? 'text-muted-foreground group-hover:text-white/85'
+                                                : 'text-white/85',
                                         )}
                                     >
                                         {stage.summary}
                                     </span>
                                 </span>
-                                {selected && (
-                                    // The stage on screen: a bar along its foot.
-                                    <span
-                                        className={cn(
-                                            'absolute inset-x-0 bottom-0 h-1.5',
-                                            !isFirst && 'ml-7',
-                                            !isLast && 'mr-7',
-                                            pending
-                                                ? 'bg-primary'
-                                                : 'bg-white/85',
-                                        )}
-                                        aria-hidden="true"
-                                    />
-                                )}
                                 {stage.attention && <AttentionDot />}
                             </button>
                         </li>
@@ -207,17 +201,35 @@ export function StageStepper({
     );
 }
 
-function StageMark({ state, number }: { state: StageState; number: number }) {
+function StageMark({
+    state,
+    number,
+    selected,
+}: {
+    state: StageState;
+    number: number;
+    selected: boolean;
+}) {
     return (
         <span
             className={cn(
-                'tabular flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold 2xl:size-10',
-                state === 'done' && 'border border-white/70 text-white',
-                state === 'current' && 'bg-white text-primary',
-                state === 'todo' &&
-                    'border border-muted-foreground/40 text-muted-foreground',
-                state === 'locked' &&
-                    'border border-muted-foreground/30 text-muted-foreground/70',
+                'tabular flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition-colors duration-300 ease-out 2xl:size-10',
+                selected && state === 'current' && 'bg-white text-[#0f766e]',
+                selected &&
+                    state !== 'current' &&
+                    'border border-white/80 bg-white/15 text-white',
+                !selected &&
+                    state === 'done' &&
+                    'border border-white/70 text-white group-hover:border-white/85 group-hover:bg-white/15',
+                !selected &&
+                    state === 'current' &&
+                    'bg-white text-primary group-hover:text-[#0e7c7b]',
+                !selected &&
+                    state === 'todo' &&
+                    'border border-muted-foreground/40 text-muted-foreground group-hover:border-white/80 group-hover:bg-white/15 group-hover:text-white',
+                !selected &&
+                    state === 'locked' &&
+                    'border border-muted-foreground/30 text-muted-foreground/70 group-hover:border-white/80 group-hover:bg-white/15 group-hover:text-white',
             )}
             aria-label={
                 state === 'done'

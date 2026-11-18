@@ -18,7 +18,7 @@ export default function ProcurementMethods({
     return (
         <MasterDataPage<ProcurementMethod>
             title="Metode Internal (Template)"
-            description="Metode internal yang mengikuti format kontrak (diatur di Format No Kontrak) untuk memilih template dokumen dan tahapan. Metode pengadaan yang dipilih PIC Perencana ada di Data Master → Metode Pengadaan."
+            description="Metode internal acuan template dokumen dan format kontrak."
             addLabel="Tambah Metode"
             records={records}
             nameKey="name"

@@ -56,6 +56,10 @@ class UpdateChecklistInputRequest extends FormRequest
                 'icc_memo_number' => ['required', 'string', 'max:255'],
                 'icc_memo_date' => ['required', 'date'],
             ],
+            ChecklistInput::BeritaAcara => [
+                'smart_scm_ba_number' => ['required', 'string', 'max:255'],
+                'smart_scm_ba_date' => ['required', 'date'],
+            ],
             // Given in the identity now; kept here for a step still asking.
             ChecklistInput::ContractNumber => [
                 'number' => UpdateContractNumberRequest::numberRules($checklist->procurement_id),
@@ -95,6 +99,8 @@ class UpdateChecklistInputRequest extends FormRequest
             'bank_account_holder' => 'nama pemilik rekening',
             'icc_memo_number' => 'nomor nota dinas ke pengadaan',
             'icc_memo_date' => 'tanggal nota dinas ke pengadaan',
+            'smart_scm_ba_number' => 'nomor BA',
+            'smart_scm_ba_date' => 'tanggal BA',
             'number' => 'nomor kontrak',
             'rks_number' => 'nomor RKS',
             'hpe_number' => 'nomor HPE',

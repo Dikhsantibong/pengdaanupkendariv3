@@ -7,12 +7,12 @@ use App\Models\DocumentTemplate;
 use App\Models\DocumentType;
 use App\Models\Procurement;
 use App\Models\ProcurementDocument;
-use App\Models\ProcurementMethod;
 use App\Models\User;
 use App\Services\DocumentGenerator;
 use Database\Seeders\DocumentTemplateSeeder;
 use Database\Seeders\MasterDataSeeder;
 use Database\Seeders\PjTemplateSeeder;
+use Database\Seeders\RksTenderTemplateSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -76,21 +76,22 @@ class RksPjJasaTest extends TestCase
         $this->seed(MasterDataSeeder::class);
         $this->seed(PjTemplateSeeder::class);
 
+        $this->seed(RksTenderTemplateSeeder::class);
+
         $rks = DocumentType::query()->where('code', 'rks')->firstOrFail();
         $pj = ContractNumberFormat::query()->where('code', 'PJ')->firstOrFail();
-        $method = ProcurementMethod::query()->firstOrFail();
 
-        DocumentTemplate::factory()->create([
-            'document_type_id' => $rks->id,
-            'procurement_method_id' => $method->id,
-            'name' => 'RKS khusus metode',
-        ]);
+        // A PJ for services: its own RKS, over the method's (Tender).
+        $services = Procurement::factory()->create(['contract_number_format_id' => $pj->id, 'work_category' => 'jasa'])->refresh();
+        $variant = $rks->variantFor($services);
+        $resolved = DocumentTemplate::resolveFor($variant->id, $services->procurement_method_id, 'jasa', $pj->id);
 
-        $resolved = DocumentTemplate::resolveFor($rks->id, $method->id, 'jasa', $pj->id);
-
+        $this->assertSame('rks-pj-jasa', $variant->code);
         $this->assertSame('RKS PJ Jasa (Penunjukan Langsung) - Template Standar UP Kendari', $resolved?->name);
-        // Other formats keep the method-specific RKS.
-        $this->assertSame('RKS khusus metode', DocumentTemplate::resolveFor($rks->id, $method->id, 'jasa', null)?->name);
+
+        // A PJ for goods keeps the method's RKS.
+        $goods = Procurement::factory()->create(['contract_number_format_id' => $pj->id, 'work_category' => 'barang'])->refresh();
+        $this->assertSame('rks-tender', $rks->variantFor($goods)->code);
     }
 
     public function test_every_format_gets_the_same_latest_upb(): void

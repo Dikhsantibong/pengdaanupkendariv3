@@ -54,12 +54,12 @@ class ProcurementManagementTest extends TestCase
         $this->assertSame($teamLeader->id, $procurement->created_by);
         $this->assertMatchesRegularExpression('#^PGD/\d{4}/\d{2}/0001$#', $procurement->number);
         // The planning and execution steps above, with the SPK's Hasil
-        // Pembukaan Penawaran Harga and Pakta Integritas while no contract
-        // format rules them out. The Keuangan steps are typed by hand, and
-        // none is set up here.
-        $this->assertCount(7, $procurement->checklists->where('stage', '!=', ProcurementStage::Keuangan));
+        // Pembukaan Penawaran Harga, Pakta Integritas and IDD while no
+        // contract format rules them out. The Keuangan steps are typed by
+        // hand, and none is set up here.
+        $this->assertCount(8, $procurement->checklists->where('stage', '!=', ProcurementStage::Keuangan));
         $this->assertCount(3, $procurement->checklists->where('stage', ProcurementStage::Perencanaan));
-        $this->assertCount(4, $procurement->checklists->where('stage', ProcurementStage::Pelaksanaan));
+        $this->assertCount(5, $procurement->checklists->where('stage', ProcurementStage::Pelaksanaan));
         $this->assertCount(
             ChecklistItem::query()->forStage(ProcurementStage::Keuangan)->active()->count(),
             $procurement->checklists->where('stage', ProcurementStage::Keuangan),

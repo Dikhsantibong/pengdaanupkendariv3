@@ -30,9 +30,9 @@ class UploadOnlyStepTest extends TestCase
 
         $this->assertSame(
             [
-                'amandemen', 'bast', 'bukti-pembayaran', 'csms', 'faktur-pajak', 'invoice', 'jaminan-bank',
+                'amandemen', 'bast', 'bukti-pembayaran', 'csms', 'faktur-pajak', 'idd', 'invoice', 'jaminan-bank',
                 'kuitansi', 'masa-pemeliharaan', 'nota-dinas-perintah-pekerjaan', 'nota-dinas-usulan',
-                'penawaran', 'pengajuan-pembayaran', 'proses-smart-scm',
+                'pakta-integritas', 'penawaran', 'pengajuan-pembayaran', 'proses-smart-scm',
             ],
             DocumentType::query()->where('upload_only', true)->orderBy('code')->pluck('code')->all(),
         );

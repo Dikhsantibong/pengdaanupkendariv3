@@ -121,18 +121,13 @@ class PartnerCandidateController extends Controller
     /**
      * Show a candidate's scanned quotation, inline so it can be read in place.
      */
-    public function quotation(Procurement $procurement, ProcurementPartnerCandidate $candidate): StreamedResponse
+    public function quotation(Request $request, Procurement $procurement, ProcurementPartnerCandidate $candidate): StreamedResponse
     {
         abort_unless($candidate->procurement_id === $procurement->id, 404);
         $this->authorize('view', $procurement);
         abort_if($candidate->quotation_file_path === null, 404);
 
-        return Storage::disk('local')->response(
-            $candidate->quotation_file_path,
-            $candidate->quotation_file_name,
-            UploadedFileType::headers($candidate->quotation_file_mime),
-            UploadedFileType::disposition($candidate->quotation_file_mime),
-        );
+        return UploadedFileType::respond(Storage::disk('local'), $candidate->quotation_file_path, (string) $candidate->quotation_file_name, $candidate->quotation_file_mime, ! $request->boolean('download'));
     }
 
     /**

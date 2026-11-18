@@ -820,7 +820,7 @@ function TaskInbox({
         itemHref: (item: TaskItem) => string;
         dateLabel: (item: TaskItem) => string | null;
         allHref: string | null;
-        tone: string;
+        color: string;
     }> = [];
 
     if (tasks.proposals !== null) {
@@ -834,7 +834,7 @@ function TaskInbox({
             dateLabel: (item) =>
                 item.date ? `Diajukan ${formatDateTime(item.date)}` : null,
             allHref: menus.proposals ? proposals.index().url : null,
-            tone: 'bg-violet-500/10 text-violet-700 dark:text-violet-400',
+            color: '#6d28d9',
         });
     }
 
@@ -850,7 +850,7 @@ function TaskInbox({
             dateLabel: (item) =>
                 item.date ? `Dibuat ${formatDate(item.date)}` : null,
             allHref: null,
-            tone: 'bg-primary/10 text-primary',
+            color: '#0284c7',
         });
     }
 
@@ -865,7 +865,7 @@ function TaskInbox({
             dateLabel: (item) =>
                 item.date ? `Diajukan ${formatDateTime(item.date)}` : null,
             allHref: menus.proposals ? proposals.index().url : null,
-            tone: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+            color: '#d97706',
         });
     }
 
@@ -884,7 +884,7 @@ function TaskInbox({
                     ? `Penyerahan disetujui ${formatDateTime(item.date)}`
                     : null,
             allHref: menus.finance ? finance.index().url : null,
-            tone: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+            color: '#15803d',
         });
     }
 
@@ -899,7 +899,7 @@ function TaskInbox({
             dateLabel: (item) =>
                 item.date ? `Diajukan ${formatDateTime(item.date)}` : null,
             allHref: menus.approvals ? approvals.index().url : null,
-            tone: 'bg-primary/10 text-primary',
+            color: '#2563eb',
         });
     }
 
@@ -916,7 +916,7 @@ function TaskInbox({
             dateLabel: (item) =>
                 item.date ? `Diajukan ${formatDateTime(item.date)}` : null,
             allHref: menus.approvals ? approvals.index().url : null,
-            tone: 'bg-violet-500/10 text-violet-700 dark:text-violet-400',
+            color: '#0f766e',
         });
     }
 
@@ -933,7 +933,7 @@ function TaskInbox({
             dateLabel: (item) =>
                 item.date ? `Diajukan ${formatDateTime(item.date)}` : null,
             allHref: menus.approvals ? approvals.index().url : null,
-            tone: 'bg-sky-500/10 text-sky-700 dark:text-sky-400',
+            color: '#0e7490',
         });
     }
 
@@ -950,7 +950,7 @@ function TaskInbox({
             dateLabel: (item) =>
                 item.date ? `Diajukan ${formatDateTime(item.date)}` : null,
             allHref: menus.approvals ? approvals.index().url : null,
-            tone: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+            color: '#059669',
         });
     }
 
@@ -968,7 +968,7 @@ function TaskInbox({
             allHref: menus.approvals
                 ? approvals.index({ query: { queue: 'amendment' } }).url
                 : null,
-            tone: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+            color: '#d97706',
         });
     }
 
@@ -986,7 +986,7 @@ function TaskInbox({
             allHref: menus.approvals
                 ? approvals.index({ query: { queue: 'delivery-order' } }).url
                 : null,
-            tone: 'bg-sky-500/10 text-sky-700 dark:text-sky-400',
+            color: '#0284c7',
         });
     }
 
@@ -1004,7 +1004,7 @@ function TaskInbox({
             dateLabel: (item) =>
                 item.date ? `Dibuat ${formatDate(item.date)}` : null,
             allHref: picAssignments.index({ query: { unassigned: 1 } }).url,
-            tone: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+            color: '#c2410c',
         });
     }
 
@@ -1019,7 +1019,7 @@ function TaskInbox({
             dateLabel: (item) =>
                 item.date ? `Target ${formatDate(item.date)}` : null,
             allHref: menus.planning ? planning.index().url : null,
-            tone: 'bg-sky-500/10 text-sky-700 dark:text-sky-400',
+            color: '#4f46e5',
         });
     }
 
@@ -1034,7 +1034,7 @@ function TaskInbox({
             dateLabel: (item) =>
                 item.date ? `Target ${formatDate(item.date)}` : null,
             allHref: menus.execution ? execution.index().url : null,
-            tone: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+            color: '#15803d',
         });
     }
 
@@ -1085,13 +1085,20 @@ function TaskInbox({
                             (card.list.items[0] !== undefined
                                 ? card.itemHref(card.list.items[0])
                                 : null);
+                        const surfaceStyle = {
+                            backgroundColor: `color-mix(in srgb, ${card.color} 11%, var(--card))`,
+                            borderColor: `color-mix(in srgb, ${card.color} 32%, var(--border))`,
+                        };
                         const tile = (
                             <>
                                 <span
-                                    className={cn(
-                                        'flex size-10 shrink-0 items-center justify-center rounded-md',
-                                        card.tone,
-                                    )}
+                                    className="absolute inset-x-0 top-0 h-[3px]"
+                                    style={{ backgroundColor: card.color }}
+                                    aria-hidden
+                                />
+                                <span
+                                    className="flex size-10 shrink-0 items-center justify-center rounded-md text-white"
+                                    style={{ backgroundColor: card.color }}
                                 >
                                     <card.icon className="size-5" />
                                 </span>
@@ -1104,23 +1111,32 @@ function TaskInbox({
                             </>
                         );
                         const className =
-                            'flex h-full items-center gap-3 rounded-md border border-border bg-background px-3.5 py-3';
+                            'relative flex h-full items-center gap-3 overflow-hidden rounded-md border px-3.5 py-3 pt-3.5';
 
                         return (
                             <li key={card.key}>
                                 {href !== null ? (
                                     <Link
                                         href={href}
+                                        style={surfaceStyle}
                                         className={cn(
                                             className,
-                                            'group transition-colors hover:border-primary/50 hover:bg-accent/40',
+                                            'group transition-opacity hover:opacity-90',
                                         )}
                                     >
                                         {tile}
-                                        <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+                                        <ChevronRight
+                                            className="size-4 shrink-0 transition-transform group-hover:translate-x-0.5"
+                                            style={{ color: card.color }}
+                                        />
                                     </Link>
                                 ) : (
-                                    <span className={className}>{tile}</span>
+                                    <span
+                                        style={surfaceStyle}
+                                        className={className}
+                                    >
+                                        {tile}
+                                    </span>
                                 )}
                             </li>
                         );

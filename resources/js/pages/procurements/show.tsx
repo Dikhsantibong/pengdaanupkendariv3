@@ -830,7 +830,7 @@ export default function ShowProcurement({
                                 )}
                                 <ChecklistSteps
                                     procurementId={procurement.id}
-                                    description="Kerjakan langkah dari atas ke bawah. Klik sebuah langkah untuk mengisi data, membuat dokumen, dan mengunggah berkasnya."
+                                    description="Klik langkah untuk mengisi data, membuat dokumen, atau mengunggah berkas."
                                     doneMessage="Semua langkah wajib perencanaan sudah selesai dan siap diajukan ke TL ICC."
                                     submit={
                                         can.submitPlanning
@@ -873,7 +873,7 @@ export default function ShowProcurement({
                             >
                                 <ChecklistSteps
                                     procurementId={procurement.id}
-                                    description="Tahapan pelaksanaan pengadaan hingga masa pemeliharaan selesai. Klik sebuah langkah untuk mengisi data, membuat dokumen, dan mengunggah berkasnya."
+                                    description="Tahapan pelaksanaan pengadaan hingga masa pemeliharaan."
                                     doneMessage="Semua langkah wajib pelaksanaan sudah selesai dan siap diajukan ke TL Pengadaan."
                                     submit={
                                         can.submitExecution
@@ -919,7 +919,7 @@ export default function ShowProcurement({
                                 {requirementsSource('penyerahan')}
                                 <ChecklistSteps
                                     procurementId={procurement.id}
-                                    description="Kelengkapan dokumen penyerahan barang / pekerjaan sesuai pasal penyerahan pada kontrak (SPK, Surat Perjanjian, atau Lampiran Surat Pesanan). Klik sebuah langkah untuk mengunduh template surat dan mengunggah berkasnya."
+                                    description="Kelengkapan dokumen penyerahan sesuai kontrak."
                                     doneMessage="Semua kelengkapan penyerahan sudah lengkap. Ajukan ke TL Pengadaan di kolom Persetujuan."
                                     rows={financeRows('penyerahan')}
                                     editable={can.updateHandoverChecklist}
@@ -940,7 +940,7 @@ export default function ShowProcurement({
                                 {requirementsSource('pembayaran')}
                                 <ChecklistSteps
                                     procurementId={procurement.id}
-                                    description="Kelengkapan dokumen permintaan pembayaran sesuai pasal cara pembayaran pada kontrak, diperiksa Keuangan sebelum pengadaan ditutup. Klik sebuah langkah untuk mengunduh template surat dan mengunggah berkasnya."
+                                    description="Kelengkapan dokumen pembayaran untuk pemeriksaan Keuangan."
                                     doneMessage="Semua kelengkapan pembayaran sudah lengkap. Ajukan pembayaran di kolom Persetujuan."
                                     rows={financeRows('pembayaran')}
                                     editable={can.updatePaymentChecklist}

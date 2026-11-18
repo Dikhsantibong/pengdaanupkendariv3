@@ -68,10 +68,11 @@ class DocumentArchiveDownloadTest extends TestCase
         $zip->close();
 
         $this->assertContains('BACA SAYA.txt', $names);
-        $this->assertContains('2. Perencanaan/HPE/TTD - hpe-ttd.pdf', $names);
+        // Every uploaded file is marked as such, apart from the generated PDFs.
+        $this->assertContains('2. Perencanaan/HPE/UNGGAHAN TTD - hpe-ttd.pdf', $names);
         $this->assertNotEmpty(array_filter($names, fn (string $name): bool => str_starts_with($name, '2. Perencanaan/HPE/') && str_ends_with($name, '.pdf') && ! str_contains($name, 'TTD')));
-        $this->assertContains('3. Pelaksanaan/Jaminan Bank/jaminan.pdf', $names);
-        $this->assertContains('1. Usulan/Nota Dinas Usulan/nota-dinas.pdf', $names);
+        $this->assertContains('3. Pelaksanaan/Jaminan Bank/UNGGAHAN - jaminan.pdf', $names);
+        $this->assertContains('1. Usulan/Nota Dinas Usulan/UNGGAHAN - nota-dinas.pdf', $names);
     }
 
     public function test_only_those_who_may_see_the_procurement_download_it(): void

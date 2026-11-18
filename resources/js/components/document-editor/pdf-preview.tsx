@@ -162,8 +162,8 @@ export function PdfPreview({
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-xs text-muted-foreground">
                     {stale
-                        ? 'Ada perubahan sejak pratinjau dibuat. Perbarui untuk melihatnya.'
-                        : 'Tampilan persis seperti PDF yang diunduh, termasuk perubahan yang belum disimpan.'}
+                        ? 'Ada perubahan baru. Perbarui untuk melihat hasil terbaru.'
+                        : 'Pratinjau PDF (termasuk perubahan belum disimpan).'}
                 </p>
                 <Button
                     type="button"

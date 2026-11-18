@@ -24,6 +24,7 @@ enum ChecklistInput: string
     case HpeNumber = 'hpe_number';
     case UpbNumber = 'upb_number';
     case BankGuarantee = 'bank_guarantee';
+    case BeritaAcara = 'berita_acara';
 
     /**
      * The name shown when choosing the input on the master data screen.
@@ -41,6 +42,7 @@ enum ChecklistInput: string
             self::HpeNumber => 'Nomor HPE',
             self::UpbNumber => 'Nomor UPB',
             self::BankGuarantee => 'Jaminan bank (nama bank penerbit, nomor garansi, nilai, tanggal terbit & masa berlaku)',
+            self::BeritaAcara => 'Nomor & tanggal BA (Proses SMART SCM & Berita Acara)',
         };
     }
 
@@ -66,6 +68,8 @@ enum ChecklistInput: string
             self::RksNumber => ['rks_number'],
             self::HpeNumber => ['hpe_number'],
             self::UpbNumber => ['upb_number'],
+            // The Berita Acara of the SMART SCM process.
+            self::BeritaAcara => ['smart_scm_ba_number', 'smart_scm_ba_date'],
             self::BankGuarantee => [
                 'guarantee_bank_name',
                 'guarantee_number',

@@ -962,6 +962,8 @@ class ProcurementController extends Controller
             'guarantee_expiry_date' => $procurement->guarantee_expiry_date?->toDateString(),
             'icc_memo_number' => $procurement->icc_memo_number,
             'icc_memo_date' => $procurement->icc_memo_date?->toDateString(),
+            'smart_scm_ba_number' => $procurement->smart_scm_ba_number,
+            'smart_scm_ba_date' => $procurement->smart_scm_ba_date?->toDateString(),
             'rks_number' => $procurement->rks_number,
             'hpe_number' => $procurement->hpe_number,
             'upb_number' => $procurement->upb_number,

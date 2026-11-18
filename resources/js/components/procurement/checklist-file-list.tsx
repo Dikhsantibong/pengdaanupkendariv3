@@ -7,11 +7,11 @@ import {
     Trash2,
     Upload,
 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import InputError from '@/components/input-error';
 import {
     UploadedFileRows,
-    UploadPreviewDialog,
+    withDownload,
 } from '@/components/procurement/signed-upload-list';
 import { Button } from '@/components/ui/button';
 import {
@@ -70,7 +70,6 @@ export function ChecklistFileList({
     templateUrl?: string | null;
     canManage: boolean;
 }) {
-    const [previewFile, setPreviewFile] = useState<ChecklistFile | null>(null);
     const input = useRef<HTMLInputElement>(null);
     const form = useForm<{ files: File[] }>({ files: [] });
 
@@ -143,7 +142,11 @@ export function ChecklistFileList({
                 </span>
             </div>
 
-            <UploadedFileRows files={files} onPreview={setPreviewFile} />
+            <UploadedFileRows
+                files={files}
+                previewUrl={(file) => file.url}
+                downloadUrl={(file) => withDownload(file.url)}
+            />
 
             {templateUrl && <LetterTemplateLink url={templateUrl} />}
 
@@ -240,17 +243,6 @@ export function ChecklistFileList({
             {errors.map((message) => (
                 <InputError key={message} message={message} />
             ))}
-
-            <UploadPreviewDialog
-                file={previewFile}
-                previewUrl={previewFile?.url ?? ''}
-                downloadUrl={
-                    previewFile
-                        ? `${previewFile.url}${previewFile.url.includes('?') ? '&' : '?'}download=1`
-                        : ''
-                }
-                onClose={() => setPreviewFile(null)}
-            />
         </div>
     );
 }

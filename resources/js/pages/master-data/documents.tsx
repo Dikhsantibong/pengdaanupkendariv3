@@ -248,7 +248,6 @@ export default function Documents({
                 <PageHeader
                     eyebrow="Data Master"
                     title="Dokumen & Template"
-                    description="Jenis dokumen, template yang dipakai untuk menggenerate-nya, dan tahapan yang memintanya, dalam satu layar. Satu jenis dokumen memiliki tepat satu template. Pilih dokumen di kiri: pratinjau PDF template-nya langsung tampil di kanan, dengan tab Editor Visual untuk mengubahnya."
                     actions={
                         <div className="flex flex-wrap gap-2">
                             <Button
@@ -786,9 +785,6 @@ function DocumentWorkspace({
                                 />
                                 <p className="mt-2 text-[11px] text-muted-foreground">
                                     Pratinjau memakai contoh data pengadaan.
-                                    Template yang disimpan dipakai dokumen
-                                    berikutnya; dokumen yang sudah dibuat tidak
-                                    berubah.
                                 </p>
                             </>
                         ) : loadingWorkbench ? (

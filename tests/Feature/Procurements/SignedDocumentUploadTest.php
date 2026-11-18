@@ -108,7 +108,8 @@ class SignedDocumentUploadTest extends TestCase
             $this->actingAs($teamLeader)
                 ->get(route('procurements.documents.signed.show', [$procurement, $document, $upload]))
                 ->assertOk()
-                ->assertHeader('Content-Disposition', 'attachment; filename='.$upload->file_name);
+                // Downloaded under a name marking it as the upload it is.
+                ->assertHeader('Content-Disposition', 'attachment; filename="UNGGAHAN - '.$upload->file_name.'"');
         }
     }
 

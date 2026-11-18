@@ -87,7 +87,7 @@ export default function VendorAssessmentIndex({
                 <PageHeader
                     eyebrow="SMT-FM-DAN-02.02"
                     title="Penilaian Kinerja Penyedia Barang dan Jasa"
-                    description="Formulir penilaian penyedia yang dinilai oleh lima fungsi, dikelompokkan dalam folder per mitra. Klik folder untuk melihat penilaian mitra itu beserta PDF-nya."
+                    description="Daftar formulir penilaian kinerja penyedia per mitra."
                     actions={
                         <Button asChild>
                             <Link href={vendorAssessments.create()}>

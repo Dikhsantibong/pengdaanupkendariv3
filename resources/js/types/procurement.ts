@@ -247,7 +247,8 @@ export type ChecklistInputKind =
     | 'rks_number'
     | 'hpe_number'
     | 'upb_number'
-    | 'bank_guarantee';
+    | 'bank_guarantee'
+    | 'berita_acara';
 
 export type ChecklistInput = {
     kind: ChecklistInputKind;
@@ -275,6 +276,9 @@ export type ChecklistInput = {
         /** The Nota Dinas ke Pengadaan. */
         icc_memo_number: string | null;
         icc_memo_date: string | null;
+        /** The Berita Acara of the Proses SMART SCM step. */
+        smart_scm_ba_number: string | null;
+        smart_scm_ba_date: string | null;
         /** The contract number, once the executor has given it. */
         number: string | null;
         /** The running number of the job's contract format, to offer. */

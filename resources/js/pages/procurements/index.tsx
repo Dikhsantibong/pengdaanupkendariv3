@@ -55,8 +55,8 @@ export default function ProcurementIndex({
                     title="Daftar Pengadaan"
                     description={
                         auth.permissions.viewAllProcurements
-                            ? 'Seluruh pengadaan barang dan jasa yang terdaftar di UP Kendari. Klik + untuk melihat rincian, atau Detail untuk membuka pengadaan.'
-                            : 'Pengadaan yang ditugaskan kepada Anda. Klik + untuk melihat rincian, atau Detail untuk membuka pengadaan.'
+                            ? 'Daftar seluruh pengadaan barang dan jasa UP Kendari.'
+                            : 'Daftar pengadaan yang ditugaskan kepada Anda.'
                     }
                     actions={
                         auth.permissions.createProcurement && (
