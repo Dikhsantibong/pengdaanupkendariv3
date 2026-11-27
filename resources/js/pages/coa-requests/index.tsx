@@ -104,6 +104,10 @@ type CoaRequestRow = {
     requested_at: string | null;
     activated_at: string | null;
     updated_at: string | null;
+    /** How many usulan / pengadaan use this code. */
+    usage_count: number;
+    /** The first of them. */
+    usages: { id: number; number: string; name: string }[];
     can_edit: boolean;
     can_submit: boolean;
     can_activate: boolean;
@@ -216,7 +220,8 @@ export default function CoaRequestsIndex({
             coaRequests.index().url,
             {
                 search: next.search !== undefined ? next.search : search,
-                status: next.status !== undefined ? next.status : filters.status,
+                status:
+                    next.status !== undefined ? next.status : filters.status,
             },
             {
                 preserveState: true,
@@ -451,7 +456,7 @@ export default function CoaRequestsIndex({
                                 )}
                             >
                                 <div>
-                                    <p className="text-xs font-medium uppercase tracking-wide opacity-85">
+                                    <p className="text-xs font-medium tracking-wide uppercase opacity-85">
                                         {card.label}
                                     </p>
                                     <p className="tabular mt-1 text-2xl font-bold">
@@ -476,7 +481,10 @@ export default function CoaRequestsIndex({
                     <div className="flex flex-wrap items-center gap-1.5">
                         {[
                             { value: '', label: 'Semua' },
-                            { value: 'menunggu_aktivasi', label: 'Menunggu Aktivasi' },
+                            {
+                                value: 'menunggu_aktivasi',
+                                label: 'Menunggu Aktivasi',
+                            },
                             { value: 'draft', label: 'Draft' },
                             { value: 'aktif', label: 'Aktif' },
                         ].map((tab) => (
@@ -554,6 +562,9 @@ export default function CoaRequestsIndex({
                                     <TableHead className="min-w-[150px]">
                                         Status
                                     </TableHead>
+                                    <TableHead className="min-w-[90px] text-center">
+                                        Dipakai
+                                    </TableHead>
                                     <TableHead className="min-w-[200px] text-right">
                                         Aksi
                                     </TableHead>
@@ -569,7 +580,9 @@ export default function CoaRequestsIndex({
                                                 </span>
                                                 <button
                                                     type="button"
-                                                    onClick={() => copyCode(row)}
+                                                    onClick={() =>
+                                                        copyCode(row)
+                                                    }
                                                     title="Salin kode COA"
                                                     className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
                                                 >
@@ -640,7 +653,22 @@ export default function CoaRequestsIndex({
                                                     </p>
                                                 )}
                                         </TableCell>
-                                        <TableCell className="align-top text-right">
+                                        <TableCell className="text-center align-top">
+                                            <button
+                                                type="button"
+                                                onClick={() => setViewing(row)}
+                                                title="Lihat pekerjaan yang memakai COA ini"
+                                                className={cn(
+                                                    'tabular inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                                                    row.usage_count > 0
+                                                        ? 'bg-primary/10 text-primary hover:bg-primary/15'
+                                                        : 'bg-muted text-muted-foreground',
+                                                )}
+                                            >
+                                                {row.usage_count}×
+                                            </button>
+                                        </TableCell>
+                                        <TableCell className="text-right align-top">
                                             <div className="flex flex-wrap items-center justify-end gap-1.5">
                                                 <Button
                                                     type="button"
@@ -742,7 +770,7 @@ export default function CoaRequestsIndex({
                         {/* Live COA Code Preview */}
                         <div className="rounded-lg border border-border bg-muted/40 p-3.5">
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                                     Output Kode COA
                                 </span>
                                 {allSegmentsFilled ? (
@@ -755,7 +783,7 @@ export default function CoaRequestsIndex({
                                     </span>
                                 )}
                             </div>
-                            <p className="mt-1.5 break-all font-mono text-lg font-bold tracking-wide text-foreground">
+                            <p className="mt-1.5 font-mono text-lg font-bold tracking-wide break-all text-foreground">
                                 {isFinanceEditing &&
                                 customCodeMode &&
                                 form.data.coa_code
@@ -883,7 +911,10 @@ export default function CoaRequestsIndex({
                                                 event.target.checked;
                                             setCustomCodeMode(checked);
 
-                                            if (checked && !form.data.coa_code) {
+                                            if (
+                                                checked &&
+                                                !form.data.coa_code
+                                            ) {
                                                 form.setData(
                                                     'coa_code',
                                                     previewCode,
@@ -1107,6 +1138,42 @@ export default function CoaRequestsIndex({
                                         </p>
                                     </div>
                                 )}
+
+                                <div>
+                                    <p className="text-xs font-medium text-muted-foreground">
+                                        Dipakai di {viewing.usage_count} usulan
+                                        / pengadaan
+                                    </p>
+                                    {viewing.usages.length > 0 && (
+                                        <ul className="mt-1 max-h-48 divide-y divide-border overflow-y-auto rounded-md border border-border">
+                                            {viewing.usages.map((usage) => (
+                                                <li
+                                                    key={usage.id}
+                                                    className="px-3 py-1.5 text-xs"
+                                                >
+                                                    {usage.number && (
+                                                        <span className="font-mono text-muted-foreground">
+                                                            {usage.number}{' '}
+                                                            ·{' '}
+                                                        </span>
+                                                    )}
+                                                    <span className="text-foreground">
+                                                        {usage.name}
+                                                    </span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                    {viewing.usage_count >
+                                        viewing.usages.length && (
+                                        <p className="mt-1 text-[11px] text-muted-foreground">
+                                            dan{' '}
+                                            {viewing.usage_count -
+                                                viewing.usages.length}{' '}
+                                            lainnya
+                                        </p>
+                                    )}
+                                </div>
 
                                 <div className="grid grid-cols-2 gap-2 border-t border-border pt-2 text-xs text-muted-foreground">
                                     <div>

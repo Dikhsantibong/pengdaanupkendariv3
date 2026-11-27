@@ -1886,8 +1886,14 @@ Modul **Request COA** (`/request-coa`, menu **Pengadaan → Request COA**) menye
   - **Aktivasi:** mengaktifkan kode COA (`status = aktif`), mencatat `activated_by` & `activated_at`, serta mengirim notifikasi ke pengusul.
 - **Sinkronisasi ke Usulan Pekerjaan:**
   - Nomor COA yang sudah berstatus **Aktif** otomatis tersedia sebagai pilihan dropdown **Pilih dari COA aktif (Keuangan)** pada kolom **Nomor COA** di form **Usulkan Pekerjaan** / **Buat Perencanaan Pengadaan** (`ProcurementForm`), dengan tetap mempertahankan input manual dan dukungan lebih dari satu nomor COA agar alur lama tetap utuh.
+- **Pemakaian COA per pekerjaan (`App\Support\CoaUsage`):**
+  - Setiap kode COA menampilkan berapa kali dipakai di usulan/pengadaan (kolom **Dipakai** di tabel Request COA, terlihat oleh Pengusul/TL maupun Keuangan). Tombol **Detail** menampilkan daftar pekerjaan yang memakainya (nomor + nama, maks. 20, sisanya "dan N lainnya").
+  - Pencocokan per entri utuh pada kolom **Nomor COA** pengadaan (daftar dipisah koma), tanpa membedakan huruf besar/kecil; kode yang hanya mirip (mis. berakhiran lain) tidak dihitung.
+  - Dropdown **Pilih dari COA aktif (Keuangan)** di form usulan juga menampilkan "dipakai N×".
+- **Sinkronisasi saat Keuangan mengoreksi kode COA aktif:** bila kode COA yang sudah **Aktif** diubah, kode lama pada Nomor COA seluruh usulan/pengadaan yang memakainya ikut diganti dengan kode baru (nomor COA lain di daftar tetap). Penggantian dilewati bila masih ada request COA aktif lain dengan kode lama. Pesan sukses menyebut jumlah usulan/pengadaan yang diperbarui.
+- **Alur Pengusul/TL → Keuangan (diuji):** request aktivasi dari Pengusul (Staf/TL bidang), Direksi Pekerjaan, TL Pengadaan, dan TL ICC masuk ke antrean Keuangan (halaman Request COA dan Dashboard *Perlu Tindakan Anda*), lalu Keuangan dapat mengaktifkannya.
 - **File terkait:** migrasi `create_coa_segment_options_table` & `create_coa_requests_table`, enum `CoaSegment` & `CoaRequestStatus`, `App\Support\CoaCatalog`, model `CoaSegmentOption` & `CoaRequest`, `CoaRequestController`, `CoaRequestNotification`, `resources/js/pages/coa-requests/index.tsx`, `resources/js/pages/master-data/coa-segments.tsx`.
-- **Test:** `CoaRequestTest`.
+- **Test:** `CoaRequestTest`, `CoaUsageTest`.
 
 ### Mode Pemeliharaan (Administrator)
 
@@ -3258,3 +3264,23 @@ Langkah **Pelaksana** di tahap Pelaksanaan diubah sebagai berikut.
   - Hak akses baru (`coa.request`, `coa.manage`, `menu.coa-requests`) terintegrasi penuh di layar **Administrasi → Hak Akses**.
 - **Sinkronisasi ke Usulan Pekerjaan:** COA berstatus **Aktif** otomatis tampil sebagai pilihan cepat pada kolom **Nomor COA** di `ProcurementForm` (`MasterDataOptions::forProcurementForm()`), sambil tetap mengizinkan input manual.
 - **Test:** `CoaRequestTest`.
+
+### Request & Aktivasi COA: Hitungan Pemakaian dan Sinkronisasi Kode (27 November 2026)
+
+- Alur request aktivasi COA dari Pengusul/TL ke Keuangan diperiksa dan diuji ulang (Pengusul, Direksi Pekerjaan, TL Pengadaan, TL ICC → antrean Keuangan & Dashboard).
+- Kolom **Dipakai** dan daftar pekerjaan pemakai COA di halaman Request COA; jumlah pemakaian juga tampil di dropdown COA aktif pada form usulan.
+- Kode COA aktif yang dikoreksi Keuangan otomatis ikut diperbarui di Nomor COA usulan/pengadaan yang memakainya.
+- File: `App\Support\CoaUsage` (baru), `CoaRequestController`, `CoaRequest::activeOptions()`, `coa-requests/index.tsx`, `procurement-form.tsx`. Tanpa migrasi baru.
+- **Test:** `CoaUsageTest` (baru), `CoaRequestTest`.
+
+### Tanggal Lampiran Surat Pesanan dari Checklist Rentang Waktu (27 November 2026)
+
+- Judul **Syarat Umum** pada **Lampiran SP Barang dan Jasa** (SPPL) — "Surat Pesanan (SP) Nomor … tanggal …" — kini memakai `{{tanggal_mulai_pelaksanaan}}`, yaitu **tanggal mulai** yang diisi pada tahapan **Rentang Waktu Pelaksanaan**, sama seperti dokumen Surat Pesanan. Sebelumnya memakai `{{tanggal_dokumen}}` (tanggal generate).
+- Template library `sppl/lampiran-sp.html` diperbarui. Migrasi `2026_11_27_134939_date_the_lampiran_sp_on_the_execution_start`:
+  - mengganti placeholder tanggal di judul pada seluruh template Lampiran SP di database, tanpa mengubah suntingan lain (template bawaan tetap dikenali sebagai bawaan);
+  - Lampiran SP yang belum diedit otomatis mengikuti template baru saat dibuka;
+  - Lampiran SP yang sudah diedit dan belum diunggah hasil TTD-nya: tanggal di judul diganti menjadi tanggal mulai (field otomatis);
+  - Lampiran SP yang sudah diunggah hasil TTD-nya tidak diubah.
+- Bila tanggal mulai belum diisi, tanggal tampil "-".
+- **Test:** `LampiranSpDateTest`.
+

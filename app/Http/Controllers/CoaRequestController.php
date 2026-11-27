@@ -12,6 +12,7 @@ use App\Models\CoaRequest;
 use App\Models\User;
 use App\Notifications\CoaRequestNotification;
 use App\Support\CoaCatalog;
+use App\Support\CoaUsage;
 use App\Support\NotificationFeed;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -66,8 +67,12 @@ class CoaRequestController extends Controller
             ->latest('requested_at')
             ->latest('id')
             ->paginate(20)
-            ->withQueryString()
-            ->through(fn (CoaRequest $coa): array => $this->present($coa, $user, $canRequest, $canManage, $labelMap));
+            ->withQueryString();
+
+        // Where each code on this page is already used (usulan & pengadaan).
+        $usage = CoaUsage::map($requests->getCollection()->pluck('coa_code')->all());
+
+        $requests->through(fn (CoaRequest $coa): array => $this->present($coa, $user, $canRequest, $canManage, $labelMap, $usage));
 
         $catalog = CoaCatalog::formOptions();
 
@@ -169,6 +174,7 @@ class CoaRequestController extends Controller
 
         $wasPending = $coaRequest->status === CoaRequestStatus::Pending;
         $wasActive = $coaRequest->status === CoaRequestStatus::Active;
+        $previousCode = $coaRequest->coa_code;
 
         $coaRequest->fill([
             'segment_1' => $validated['segment_1'],
@@ -208,6 +214,21 @@ class CoaRequestController extends Controller
 
             if (! $wasPending && $coaRequest->status === CoaRequestStatus::Pending) {
                 $this->notifyFinanceOfSubmission($coaRequest, $user);
+            }
+        }
+
+        // An active code Keuangan corrects follows into the usulan using it,
+        // unless another active request still carries the old code.
+        if ($wasActive && $previousCode !== $coaRequest->coa_code) {
+            $stillActive = CoaRequest::query()->active()
+                ->whereKeyNot($coaRequest->id)
+                ->where('coa_code', $previousCode)
+                ->exists();
+
+            $renamed = $stillActive ? 0 : CoaUsage::rename($previousCode, $coaRequest->coa_code);
+
+            if ($renamed > 0) {
+                $message .= " Nomor COA pada {$renamed} usulan/pengadaan ikut diperbarui.";
             }
         }
 
@@ -322,6 +343,7 @@ class CoaRequestController extends Controller
      * Shape one COA request row for the Inertia table.
      *
      * @param  array<string, array<string, string>>  $labelMap
+     * @param  array<string, list<array{id: int, number: string, name: string}>>  $usage
      * @return array<string, mixed>
      */
     protected function present(
@@ -330,7 +352,10 @@ class CoaRequestController extends Controller
         bool $canRequest,
         bool $canManage,
         array $labelMap,
+        array $usage = [],
     ): array {
+        $usedBy = $usage[mb_strtoupper($coa->coa_code)] ?? [];
+
         $isOwner = $coa->requested_by === $viewer->id;
         $isAdmin = $viewer->role === UserRole::Administrator;
 
@@ -370,6 +395,9 @@ class CoaRequestController extends Controller
             'requested_at' => $coa->requested_at?->toIso8601String(),
             'activated_at' => $coa->activated_at?->toIso8601String(),
             'updated_at' => $coa->updated_at?->toIso8601String(),
+            // How often the code is used on usulan / pengadaan, and where.
+            'usage_count' => count($usedBy),
+            'usages' => array_slice($usedBy, 0, 20),
             'can_edit' => $canManage || ($canRequest && $isOwner && $coa->status === CoaRequestStatus::Draft),
             'can_submit' => ($isAdmin || ($canRequest && $isOwner)) && $coa->status === CoaRequestStatus::Draft,
             'can_activate' => $canManage && $coa->status !== CoaRequestStatus::Active,

@@ -7,6 +7,7 @@ use App\Enums\CoaSegment;
 use App\Enums\Permission;
 use App\Enums\UserRole;
 use App\Support\CoaCatalog;
+use App\Support\CoaUsage;
 use Carbon\CarbonImmutable;
 use Database\Factories\CoaRequestFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -179,11 +180,12 @@ class CoaRequest extends Model
     /**
      * Build the active COA list synced into the procurement / proposal form.
      *
-     * @return array<int, array{id: int, value: string, label: string, description: string|null, summary: string, workDirectorId: int|null}>
+     * @return array<int, array{id: int, value: string, label: string, description: string|null, summary: string, workDirectorId: int|null, usageCount: int}>
      */
     public static function activeOptions(): array
     {
         $labels = CoaCatalog::labelMap();
+        $counts = CoaUsage::counts();
 
         return self::query()
             ->active()
@@ -192,7 +194,7 @@ class CoaRequest extends Model
             ->get()
             ->unique('coa_code')
             ->values()
-            ->map(function (self $coa) use ($labels): array {
+            ->map(function (self $coa) use ($labels, $counts): array {
                 $summaryParts = array_filter([
                     $labels[CoaSegment::Segment3->value][$coa->segment_3] ?? null,
                     $labels[CoaSegment::Segment4->value][$coa->segment_4] ?? null,
@@ -207,6 +209,8 @@ class CoaRequest extends Model
                     'description' => $coa->description,
                     'summary' => implode(' · ', $summaryParts),
                     'workDirectorId' => $coa->work_director_id,
+                    // How many usulan / pengadaan already use this code.
+                    'usageCount' => $counts[mb_strtoupper($coa->coa_code)] ?? 0,
                 ];
             })
             ->all();

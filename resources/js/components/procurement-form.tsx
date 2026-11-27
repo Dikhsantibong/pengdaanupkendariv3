@@ -62,6 +62,8 @@ export type ActiveCoaOption = {
     description: string | null;
     summary: string;
     workDirectorId: number | null;
+    /** How many usulan / pengadaan already use the code. */
+    usageCount?: number;
 };
 
 export type ProcurementFormOptions = {
@@ -198,16 +200,14 @@ export function ProcurementForm({
             startingWorkDirectorId ?? preselectedPlan?.workDirectorId ?? null,
         target_unit_ids: initialValues?.target_unit_ids ?? [],
         budget_source_id: initialValues?.budget_source_id ?? null,
-        prk_number:
-            initialValues?.prk_number ?? (preselectedPlan?.value ?? ''),
+        prk_number: initialValues?.prk_number ?? preselectedPlan?.value ?? '',
         proposal_memo_number: initialValues?.proposal_memo_number ?? '',
         proposal_memo_date: initialValues?.proposal_memo_date ?? '',
         pr_po_number:
-            initialValues?.pr_po_number ?? (preselectedPlan?.prNumber ?? ''),
+            initialValues?.pr_po_number ?? preselectedPlan?.prNumber ?? '',
         coa_number: initialValues?.coa_number ?? '',
         sr_number: initialValues?.sr_number ?? '',
-        wo_number:
-            initialValues?.wo_number ?? (preselectedPlan?.woNumber ?? ''),
+        wo_number: initialValues?.wo_number ?? preselectedPlan?.woNumber ?? '',
         hpe_value:
             initialValues?.hpe_value ??
             (preselectedPlan?.aiValue !== null &&
@@ -1086,6 +1086,10 @@ function CoaNumberField({
                                         · {coa.description || coa.summary}
                                     </span>
                                 )}
+                                <span className="text-muted-foreground">
+                                    {' '}
+                                    · dipakai {coa.usageCount ?? 0}×
+                                </span>
                             </SelectItem>
                         ))}
                     </SelectContent>
