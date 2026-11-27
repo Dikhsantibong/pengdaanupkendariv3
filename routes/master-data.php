@@ -6,6 +6,7 @@ use App\Http\Controllers\MasterData\AssessmentAspectController;
 use App\Http\Controllers\MasterData\AssessmentFormController;
 use App\Http\Controllers\MasterData\BudgetSourceController;
 use App\Http\Controllers\MasterData\ChecklistItemController;
+use App\Http\Controllers\MasterData\CoaSegmentOptionController;
 use App\Http\Controllers\MasterData\ContractNumberFormatController;
 use App\Http\Controllers\MasterData\ContractTypeController;
 use App\Http\Controllers\MasterData\DocumentTemplateController;
@@ -32,6 +33,7 @@ Route::middleware(['auth', 'verified', 'can:manage-master-data'])
         // The metode pengadaan the planning PIC picks (Penunjukan Langsung, ...).
         Route::resource('selection-methods', SelectionMethodController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('budget-sources', BudgetSourceController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::resource('coa-segments', CoaSegmentOptionController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('contract-types', ContractTypeController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('contract-number-formats', ContractNumberFormatController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::resource('progress-statuses', ProgressStatusController::class)->only(['index', 'store', 'update', 'destroy']);

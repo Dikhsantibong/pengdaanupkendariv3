@@ -16,6 +16,7 @@ import {
     Landmark,
     PackageCheck,
     KeyRound,
+    Layers,
     LayoutDashboard,
     ListChecks,
     MonitorPlay,
@@ -23,6 +24,7 @@ import {
     PinOff,
     Play,
     Settings2,
+    Tag,
     Truck,
     UserCheck,
     UserCog,
@@ -49,6 +51,7 @@ import { dashboard } from '@/routes';
 import accessRights from '@/routes/access-rights';
 import approvals from '@/routes/approvals';
 import budgetPlans from '@/routes/budget-plans';
+import coaRequests from '@/routes/coa-requests';
 import documents from '@/routes/documents';
 import execution from '@/routes/execution';
 import finance from '@/routes/finance';
@@ -92,6 +95,15 @@ export function AppSidebar() {
                               title: 'Perencanaan Anggaran',
                               href: budgetPlans.index(),
                               icon: Wallet,
+                          },
+                      ]
+                    : []),
+                ...(menus['coa-requests']
+                    ? [
+                          {
+                              title: 'Request COA',
+                              href: coaRequests.index(),
+                              icon: Tag,
                           },
                       ]
                     : []),
@@ -287,6 +299,11 @@ export function AppSidebar() {
                               title: 'Sumber Anggaran',
                               href: masterData.budgetSources.index(),
                               icon: Wallet,
+                          },
+                          {
+                              title: 'Segmen COA',
+                              href: masterData.coaSegments.index(),
+                              icon: Layers,
                           },
                           {
                               title: 'Jenis Kontrak',

@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\CoaRequestStatus;
 use App\Enums\FinanceSection;
 use App\Enums\PaymentApprovalState;
 use App\Enums\Permission;
@@ -10,6 +11,7 @@ use App\Enums\ProcurementStage;
 use App\Enums\ProposalState;
 use App\Enums\UserRole;
 use App\Models\BudgetPlan;
+use App\Models\CoaRequest;
 use App\Models\Procurement;
 use App\Models\ProcurementAmendment;
 use App\Models\ProcurementDeliveryOrder;
@@ -48,6 +50,9 @@ class DashboardTasks
                 : null,
             'finance' => $user->hasPermission(Permission::ProcessPayment)
                 ? self::payments($user)
+                : null,
+            'coaActivations' => $user->hasPermission(Permission::ManageCoaRequests)
+                ? self::coaActivations()
                 : null,
             'myProposals' => self::myProposals($user),
             'approvals' => $user->hasPermission(Permission::ReviewPlanning)
@@ -417,6 +422,35 @@ class DashboardTasks
                 default => 'Siap diajukan',
             };
         }, fn (Procurement $procurement): ?string => $procurement->handover_reviewed_at?->toDateTimeString());
+    }
+
+    /**
+     * Submitted COA requests waiting for Keuangan to review and activate.
+     *
+     * @return array{total: int, items: array<int, array{id: int, number: string, name: string, note: string, date: string|null}>}
+     */
+    protected static function coaActivations(): array
+    {
+        $query = CoaRequest::query()
+            ->where('status', CoaRequestStatus::Pending->value)
+            ->with(['requester:id,name', 'workDirector:id,name'])
+            ->oldest('requested_at')
+            ->oldest('id');
+
+        $total = (clone $query)->count();
+
+        $items = $query->limit(self::LIMIT)->get()
+            ->map(fn (CoaRequest $coa): array => [
+                'id' => $coa->id,
+                'number' => $coa->coa_code,
+                'name' => $coa->description ?: $coa->coa_code,
+                'note' => 'Diajukan oleh '.($coa->requester->name ?? 'Pengusul')
+                    .($coa->workDirector !== null ? ' · '.$coa->workDirector->name : ''),
+                'date' => $coa->requested_at?->toDateTimeString(),
+            ])
+            ->all();
+
+        return ['total' => $total, 'items' => $items];
     }
 
     /**

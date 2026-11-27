@@ -4,8 +4,8 @@
 |---|---|
 | **Dokumen** | Product Requirements Document (PRD) |
 | **Produk** | SIM-SCM UP Kendari — Sistem Management Pengadaan |
-| **Pembaruan terakhir** | 18 November 2026 |
-| **Pengganti** | `prompt.md` (diganti nama dan dirapikan menjadi `PRD.md`) |
+| **Pembaruan terakhir** | 27 November 2026 |
+| **Pengganti** | `prompt.md` / `PRD.md` (dirapikan dan diganti nama menjadi `prd.md`) |
 | **Aturan pemeliharaan** | Setiap revisi aplikasi **wajib** dicatat di dokumen ini: perbarui bab spesifikasi yang terkait (bab 1–10) **dan** tambahkan catatan di bab 11 (Riwayat Perubahan). |
 
 ## Daftar Isi
@@ -26,10 +26,10 @@
 
 ## 1. Ringkasan Produk
 
-#### Nama Aplikasi
+### Nama Aplikasi
 **Sistem Management Pengadaan UP Kendari**
 
-#### Tema
+### Tema
 **Corporate & Premium** — tampilan profesional kelas enterprise, bukan tampilan "khas AI-generated" (bukan gradien ungu-biru generik, bukan bento-grid default, bukan ikon emoji, bukan bayangan/rounded-corner berlebihan tanpa alasan).
 
 ### Deskripsi
@@ -83,7 +83,7 @@ Setiap **PIC Perencana** dan **PIC Pelaksana** hanya dapat melihat data pengadaa
 
 Fitur berbasis peran tidak lagi terkunci di kode, tetapi diatur Administrator melalui menu **Administrasi → Hak Akses** dalam bentuk tabel fitur × peran (centang). Contoh: memberi PIC Perencana hak **Buat perencanaan pengadaan** agar tidak hanya akun TL yang dapat membuat perencanaan.
 
-##### Hak yang dapat diatur
+#### Hak yang dapat diatur
 
 | Kelompok | Hak | Bawaan |
 |----------|-----|--------|
@@ -124,20 +124,20 @@ Fitur berbasis peran tidak lagi terkunci di kode, tetapi diatur Administrator me
 > - Akibatnya, PIC Perencana juga tidak lagi bisa membuat dokumen pelaksanaan.
 > - **Test:** `ExecutionRightsTest`.
 
-##### Fleksibilitas Peran oleh Super Admin
+#### Fleksibilitas Peran oleh Super Admin
 
 - Super Admin (Administrator) dapat memberikan peran / hak akses approval (`Setujui / tolak perencanaan` atau `Nyatakan pengadaan selesai`) kepada **PIC Perencana** maupun **PIC Pelaksana** melalui menu **Administrasi → Hak Akses**.
 - Super Admin juga dapat langsung mengubah peran pengguna menjadi **Team Leader ICC** atau **Team Leader Pengadaan** melalui menu **Administrasi → Pengguna**.
 - Prinsip pemisahan tugas tetap terjaga: pengguna yang memiliki hak approval perencanaan tetap **tidak dapat menyetujui pengadaan yang ia rencanakan sendiri**.
 
-##### Akses menu
+#### Akses menu
 
 - Setiap menu adalah hak tersendiri. Mencabut hak menu **menyembunyikan menunya** dan **menutup halamannya** (akses langsung lewat URL ditolak), bukan sekadar menyembunyikan tautan.
 - Kelompok menu yang seluruh isinya dicabut tidak ditampilkan.
 - **Dashboard** dan **Daftar Pengadaan** selalu tersedia, karena keduanya pintu masuk ke pengadaan yang ditugaskan.
 - Hak baru ditambahkan di katalog `App\Enums\Permission` (kode, label, keterangan, kelompok, peran bawaan); setelah itu otomatis muncul di layar Hak Akses dan dapat dipakai di rute sebagai `can:<kode>`.
 
-##### Ketentuan keamanan
+#### Ketentuan keamanan
 
 - Nilai bawaan sama persis dengan perilaku sebelumnya, sehingga tidak ada akses yang berubah sebelum Administrator mengubah pengaturan. Tombol **Kembalikan Bawaan** tersedia.
 - **Administrator selalu memiliki seluruh hak** dan kolomnya terkunci, agar sistem tidak pernah terkunci.
@@ -303,38 +303,45 @@ Catatan tambahan di bawahnya: pengadaan juga dapat dibuat langsung oleh TL Penga
 Dashboard
 
 Pengadaan
-├── Buat Perencanaan Pengadaan   (hak: Buat perencanaan pengadaan)
+├── Perencanaan Anggaran         (hak menu; PRK induk per jenis anggaran)
+├── Request COA                  (hak menu; pengajuan COA Staf/TL & edit/aktivasi Keuangan)
+├── Buat Perencanaan Pengadaan   (hak: Buat perencanaan pengadaan; label "Usulkan Pekerjaan" bagi pengusul)
+├── Usulan Pekerjaan             (hak menu)
 ├── Daftar Pengadaan             (selalu tersedia)
 ├── Penunjukan PIC               (hak: Tunjuk PIC)
 ├── Perencanaan                  (hak menu)
 ├── Pelaksanaan                  (hak menu)
+├── Penyerahan                   (hak menu)
+├── Pembayaran                   (hak menu)
 ├── Approval                     (hak menu)
 ├── Arsip Dokumen                (hak menu)
 └── Penilaian Penyedia           (hak: Kelola penilaian penyedia)
 
-Pengawasan
-├── Monitoring                   (hak menu)
-├── Laporan                      (hak menu)
+Monitoring
+├── Monitoring Pengadaan         (hak menu)
+├── Monitoring Amandemen         (hak menu)
+├── Monitoring Delivery Order    (hak menu)
+├── Monitoring Kontrak           (hak menu)
 └── Monitoring Publik            (hak menu)
 
 Administrasi                     (hanya Administrator)
 ├── Pengguna
-└── Hak Akses
+├── Hak Akses
+└── Mode Pemeliharaan
 
 Data Master                      (hak: Kelola data master)
-├── Manager Unit
-├── Direksi Pekerjaan
+├── Pejabat Unit & Direksi       (gabungan Manager Unit & Direksi Pekerjaan, bertab)
+├── Mitra
 ├── Unit Tujuan
-├── Metode Pengadaan
+├── Metode Pengadaan             (gabungan Metode Pengadaan & Metode Internal, bertab)
 ├── Sumber Anggaran
+├── Segmen COA                   (kode & pilihan Segment 1–7 serta Expense Element)
 ├── Jenis Kontrak
 ├── Format No Kontrak
 ├── Status Progres
 ├── Item Checklist
-├── Jenis Dokumen
-├── Template Dokumen
-├── Aspek Penilaian
-└── Lembar Penilai
+├── Dokumen & Template           (gabungan Jenis Dokumen & Template Dokumen)
+└── Aspek & Lembar Penilai       (gabungan Aspek Penilaian & Lembar Penilai)
 
 Pengaturan
 
@@ -372,7 +379,7 @@ Usulan Pekerjaan ──► Pembuatan Pengadaan ──► Perencanaan ──► P
 | 3 | Hasil Pembukaan Penawaran Harga | Generate formulir SMT-FM-DAN-01.02, unggah hasil TTD |
 | 4 | Pakta Integritas | **Unggah saja** |
 | 5 | IDD (Integrity Due Diligence) — **opsional** | **Unggah saja** |
-| 6 | Proses SMART SCM & Berita Acara | **Isi Nomor BA & Tanggal BA**, generate Berita Acara, unggah hasil TTD |
+| 6 | Proses SMART SCM & Berita Acara | **Isi Nomor Surat/BA & Tanggal BA per dokumen** (berdampingan di kartu dokumen), generate Berita Acara, unggah hasil TTD |
 | 7 | Pelaksana | Pilih pelaksana dari calon mitra + rekening |
 | 8 | Jaminan Bank | Isian jaminan + unggah |
 | 9 | Kontrak | Generate SPK (tabel) + SPK Syarat & Ketentuan (Pasal), unggah hasil TTD |
@@ -467,7 +474,7 @@ Penyerahan & Pembayaran (Keuangan) → Pengadaan Selesai
 
 Form ini (menu **Buat Perencanaan Pengadaan**) diisi oleh **Team Leader Pengadaan** — atau peran lain yang diberi hak lewat menu Hak Akses — saat pertama kali membuat sebuah pengadaan baru, sebelum proses perencanaan dimulai. Data pada form ini menjadi identitas utama pengadaan dan akan tampil pada dashboard, monitoring, serta laporan.
 
-##### Bagian Identitas Pengadaan
+#### Bagian Identitas Pengadaan
 
 | No | Field | Tipe Input | Keterangan |
 |----|-------|-----------|------------|
@@ -492,7 +499,7 @@ Form ini (menu **Buat Perencanaan Pengadaan**) diisi oleh **Team Leader Pengadaa
   - `MasterDataSeeder` tidak lagi membuat ulang item checklist bawaan yang sudah dihapus pengguna.
 - **Test:** `MethodFollowsFormatTest`.
 
-##### Bagian Calon Mitra
+#### Bagian Calon Mitra
 
 > **Revisi kode rekanan:** setiap calon mitra punya isian **Kode Rekanan** (opsional).
 > - Saat mitra dipilih sebagai pelaksana (atau langsung untuk SPPL), kode rekanannya disalin ke pengadaan (`partner_vendor_code`).
@@ -535,7 +542,7 @@ Form ini (menu **Buat Perencanaan Pengadaan**) diisi oleh **Team Leader Pengadaa
 | 4 | Nama Direktur | Text | Opsional; nama direktur perusahaan mitra (`partner_director_name`) — dipanggil di template dengan `{{nama_direktur}}` |
 | 5 | Alamat Perusahaan | Textarea | Opsional; alamat perusahaan mitra (`partner_address`) — dipanggil di template dengan `{{alamat_perusahaan}}` atau `{{alamat_mitra}}` (otomatis terpanggil di kolom KEPADA pada dokumen Surat Pesanan) |
 
-##### Bagian Usulan Pekerjaan
+#### Bagian Usulan Pekerjaan
 
 | No | Field | Tipe Input | Keterangan |
 |----|-------|-----------|------------|
@@ -554,7 +561,7 @@ Form ini (menu **Buat Perencanaan Pengadaan**) diisi oleh **Team Leader Pengadaa
 > - Field **Nama Mitra**, **No. Surat Penawaran**, **Tgl. Surat Penawaran**, **Nama Direktur**, dan **Alamat Perusahaan** dipindahkan ke bagian tersendiri bernama **Calon Mitra**.
 > - Target Penyelesaian sudah dihapus dari form. Data lama yang sudah terisi tetap tersimpan.
 
-##### Status Progres Otomatis
+#### Status Progres Otomatis
 
 **Status Progres tidak lagi diisi manual.** Sistem menetapkannya sendiri dari posisi pengadaan dan dokumennya (`App\Services\ProgressStatusResolver`). Status dihitung ulang setiap kali:
 - pengadaan disimpan;
@@ -601,7 +608,7 @@ Aturan tambahan:
   - Item "Berita Acara" lama dinonaktifkan.
 - **Test:** `AutomaticProgressStatusTest`.
 
-##### Output Form
+#### Output Form
 
 - Data pengadaan tersimpan sebagai record baru dengan status awal (default: **Pending** atau **Inisiasi Laksdan**).
 - Sistem generate Nomor Pengadaan otomatis (ID unik) sebagai referensi internal.
@@ -1156,16 +1163,21 @@ Tahapan pada tab **Perencanaan**, **Pelaksanaan**, dan **Penyerahan** dapat dise
   - `SpkPriceOpeningTest`: IDD dan migrasinya.
   - Hitungan tahapan SPK disesuaikan di `SpplExecutionTest`, `ProcurementManagementTest`, `PublicMonitoringTest` (login kini 7 tahapan Pelaksanaan), dan `UploadOnlyStepTest`.
 
-#### Nomor BA & Tanggal BA pada "Proses SMART SCM & Berita Acara"
+#### Nomor BA & Tanggal BA pada "Proses SMART SCM & Berita Acara" (per Dokumen)
 
-- Tahapan pelaksanaan **Proses SMART SCM & Berita Acara** (format SPK & PJ) kini meminta isian **Nomor BA** dan **Tanggal BA** (jenis isian `berita_acara`, label "Nomor & tanggal BA").
-- Keduanya wajib diisi (validasi: nomor maks. 255 karakter, tanggal harus valid); tahapan dianggap lengkap setelah keduanya terisi, di samping dokumen yang diminta tahapan tersebut.
-- Tahapan tidak bisa dicentang sebelum keduanya terisi; pesan: "Lengkapi isian nomor & tanggal BA (Proses SMART SCM & Berita Acara) sebelum menandai tahapan ini selesai." (Pesan isian kini hanya mengecilkan huruf pertama label, sehingga singkatan seperti BA, RKS, HPE tetap huruf besar.)
-- Nilai disimpan di pengadaan (kolom `smart_scm_ba_number`, `smart_scm_ba_date`) dan dapat dicetak di template dokumen lewat placeholder:
-  - `{{nomor_ba_smart_scm}}` — Nomor BA
-  - `{{tanggal_ba_smart_scm}}` — Tanggal BA (format "10 November 2026")
-- Migrasi `2026_11_18_020733_add_the_smart_scm_berita_acara_number_and_date` menambah kolom dan memasang isian pada item checklist bersama **hanya jika item tersebut belum memiliki isian lain** (pengaturan Administrator tidak ditimpa). Tahapan yang sudah dicentang tetap tercentang.
-- **Test:** `SmartScmBeritaAcaraTest`.
+- Tahapan pelaksanaan **Proses SMART SCM & Berita Acara** (format SPK & PJ) meminta isian **Nomor Surat / BA** dan **Tanggal BA** untuk **masing-masing dokumen** yang berlaku pada tahapan tersebut (mengikuti metode pengadaan pekerjaan), dengan jenis isian `berita_acara` (label "Nomor & tanggal BA").
+- **Penyimpanan per dokumen (`procurement_berita_acaras`):**
+  - Model `App\Models\ProcurementBeritaAcara` menyimpan `procurement_id`, `document_type_id`, `ba_number`, dan `ba_date` (unique per `(procurement_id, document_type_id)`), ditambah relasi `Procurement::beritaAcaras()` dan helper `beritaAcaraFor()`.
+  - Kolom lama `procurements.smart_scm_ba_number` dan `smart_scm_ba_date` tetap dipertahankan sebagai cadangan/fallback (otomatis disinkronkan dari entri pertama yang terisi, dan dipakai jika suatu langkah tidak memiliki dokumen terhubung).
+- **Validasi & pengisian bertahap:**
+  - Setiap dokumen dapat diisi dan disimpan satu per satu (`PUT procurements/{procurement}/checklists/{checklist}/input` dengan payload `berita_acaras`). Dalam satu baris dokumen, nomor dan tanggal harus berpasangan (jika salah satu diisi, pasangannya wajib diisi; tanggal harus valid; `document_type_id` wajib termasuk dokumen langkah tersebut).
+  - Tahapan baru dapat ditandai selesai setelah seluruh dokumen wajib pada langkah tersebut memiliki nomor & tanggal BA lengkap (selain berkas bertanda tangan); pesan penolakan: "Lengkapi isian nomor & tanggal BA (Proses SMART SCM & Berita Acara) sebelum menandai tahapan ini selesai."
+- **Layout berdampingan & responsif:**
+  - Input nomor & tanggal BA ditempatkan **langsung di sebelah kanan masing-masing kartu dokumen** (`ChecklistDocumentActions` + `DocumentBeritaAcaraForm` di `checklist-panel.tsx`), tanpa daftar `Isi data` ganda di atasnya.
+  - Panel samping diperlebar (`sm:w-[92vw] sm:max-w-4xl`) khusus untuk langkah BA per dokumen, dan memakai *container query* (`@container`, `@xl`, `@[15rem]`) dengan 2 baris di kolom kanan (`Nomor Surat / BA` lebar penuh pada baris 1; `Tanggal BA` + tombol `Simpan` pada baris 2) agar teks nomor dan ikon kalender tidak terpotong di desktop, laptop kecil, tablet, maupun mobile.
+- **Placeholder dokumen:** `{{nomor_ba_smart_scm}}` dan `{{tanggal_ba_smart_scm}}` (format "10 November 2026") pada `DocumentGenerator` otomatis membaca nomor dan tanggal BA milik dokumen yang sedang dirender/di-refresh terlebih dahulu, lalu fallback ke kolom pengadaan.
+- **Migrasi:** `2026_11_18_020733_add_the_smart_scm_berita_acara_number_and_date` dan `2026_11_18_032544_create_procurement_berita_acaras_table`.
+- **Test:** `SmartScmBeritaAcaraTest`, `ChecklistDocumentRequirementTest`, `EndToEndFlowTest`.
 
 ---
 
@@ -1175,7 +1187,7 @@ Tahapan pada tab **Perencanaan**, **Pelaksanaan**, dan **Penyerahan** dapat dise
 
 Direksi Pekerjaan adalah pejabat yang dipilih sebagai penanggung jawab/pengarah pekerjaan saat sebuah pengadaan dibuat. Daftar ini digunakan sebagai pilihan dropdown pada form pembuatan pengadaan.
 
-##### Daftar Direksi Pekerjaan
+#### Daftar Direksi Pekerjaan
 
 - Asman Pemeliharaan
 - Asman Business Support
@@ -1231,16 +1243,24 @@ Menu **Data Master → Mitra** (`master-data.partners`, hak `manage-master-data`
 - Daftar nama penyedia lama di form penilaian (cache `unique_vendor_names`) digantikan oleh master Mitra.
 - **Test:** `PartnerTest`.
 
+### Menu Data Master "Pejabat Unit & Direksi" (gabungan Manager Unit + Direksi Pekerjaan)
+- Menggabungkan pengelolaan pejabat UP Kendari / Unit Layanan (`unit_managers`) dan **Direksi Pekerjaan** (`work_directors`) ke dalam satu menu bertab di `master-data/unit-managers.tsx` tanpa perubahan struktur database.
+- Dilengkapi pencarian, filter jabatan/unit/status, dan paginasi klien agar daftar pejabat yang panjang mudah ditelusuri.
+
+### Menu Data Master "Metode Pengadaan" (gabungan Metode Pengadaan + Metode Internal)
+- Menggabungkan **Metode Pengadaan** (`selection_methods`) dan **Metode Internal / Template** (`procurement_methods`) dalam satu layar bertab di `master-data/selection-methods.tsx` tanpa perubahan struktur database.
+
 ### Menu Data Master "Dokumen & Template" (gabungan Jenis Dokumen + Template Dokumen)
 - **Sidebar:** dua menu digabung menjadi satu, "Dokumen & Template" (`master-data.document-types.index`, halaman `master-data/documents.tsx`).
-- **Layout baru:**
+- **Layout bersih bertab:**
   - Kiri: daftar dokumen per tahap, dengan pencarian (dokumen, template, atau tahapan) dan filter tahap. Dokumen tanpa template diberi tanda merah.
-  - Kanan: detail jenis dokumen (kode, cara dibuat, format kontrak, metode, status, jumlah dokumen dibuat), daftar "Diminta pada Tahapan", dan daftar template (status, asal bawaan/diubah/kustom, lingkup, jumlah pemakaian).
+  - Kanan: detail ringkas jenis dokumen (kode, cara dibuat, format kontrak, metode, status, jumlah dokumen dibuat), diikuti satu kartu kerja bertab (**Pratinjau PDF**, **Editor Visual**, **Template**, dan **Diminta pada Tahapan**) tanpa panel menumpuk di bawah pratinjau PDF dan tanpa paragraf panjang di bawah judul halaman.
   - Tombol yang tersedia: Ubah Jenis, Nonaktifkan, Tambah Template, Tampilkan, Editor Lengkap, Arsipkan.
-- **Pratinjau langsung di kanan:** begitu sebuah dokumen diklik, panel "Pratinjau Template" di kanan memuat template aktifnya (prop on-demand `workbench` via `?template=`, `DocumentTemplateController::workbench`). Panel ini punya dua tab:
+- **Pratinjau langsung di kanan:** begitu sebuah dokumen diklik, panel kerja di kanan memuat template aktifnya (prop on-demand `workbench` via `?template=`, `DocumentTemplateController::workbench`):
   - **Pratinjau PDF** (tab awal): PDF asli dengan contoh data.
   - **Editor Visual**: `TemplateEditor`, dengan tombol "Simpan Template".
-  - Bila sebuah dokumen punya lebih dari satu template, tombol "Tampilkan" di daftar template mengganti template yang dipratinjau.
+  - **Template** & **Diminta pada Tahapan**: tab tersendiri di bilah yang sama agar area PDF tetap lapang.
+  - Bila sebuah dokumen punya lebih dari satu template, tombol "Tampilkan" mengganti template yang dipratinjau.
   - Dokumen "hanya diunggah" tidak memiliki pratinjau.
 - **Endpoint baru** `POST master-data/document-templates/pratinjau-pdf` (`DocumentTemplateController::pdfPreview`, throttle 30/menit) merender PDF dengan mesin yang sama tanpa menyimpan apa pun. `fillSampleValues()` mengisi contoh data di frontend.
 - **Dialog Pratinjau** di editor template kini punya tab Pratinjau PDF dan Tampilan Cepat (HTML).
@@ -1306,6 +1326,24 @@ Menu **Data Master → Mitra** (`master-data.partners`, hak `manage-master-data`
 - Halaman lama `assessment-aspects.tsx` dan `assessment-forms.tsx` dihapus; sidebar menjadi satu menu.
 - Test: `AssessmentMasterDataTest`, termasuk layar gabungan dan aspek yang disimpan dari layar gabungan kembali ke layar itu.
 
+### Master Data: Segmen COA
+
+Seluruh kode dan pilihan penyusun nomor COA (Chart of Accounts) disimpan secara modular pada tabel `coa_segment_options` (model `CoaSegmentOption`, controller `MasterData\CoaSegmentOptionController`, menu **Data Master → Segmen COA**, rute `master-data.coa-segments.*`). Administrator dapat menambah, mengubah, mengaktifkan/menonaktifkan, maupun menonaktifkan (soft delete) opsi pada setiap segmen tanpa mengubah kode program:
+
+| Segmen | Nama Segmen | Contoh Kode & Keterangan Bawaan |
+|---|---|---|
+| `segment_1` | Segment 1 · Struktur Bisnis | `A` (UPDK KENDARI), `B` (ENABLER (SUPPORTING)), `C` (JASA O & M), `D` (ANAK PERUSAHAAN) |
+| `segment_2` | Segment 2 · District | `KD` (UPDK KENDARI — otomatis terisi pada form Request COA) |
+| `segment_3` | Segment 3 · Fungsi | `12` (PLTU BATUBARA), `13` (PLTU GAS), `14` (PLTU MINYAK), `15` (PLTG GAS), `16` (PLTG MINYAK), `18` (PLTD), `19` (PLTMG), `21` (PLTMH), `31` (TATA USAHA/ADMINISTRASI), `36` (GUDANG DAN PERSEDIAAN BAHAN), `37` (BENGKEL), `38` (LABORATORIUM), `39` (WISMA DAN RUMAH DINAS), `40` (SISTIM TELEKOMUNIKASI), `41` (RUPA-RUPA JASA UMUM), `42` (PENDIDIKAN DAN LATIHAN), `43` (TEKNOLOGI INFORMASI) |
+| `segment_4` | Segment 4 · Lokasi | `101` (MANAGER UPDK) s.d. `379` (LAMBUYA), termasuk `276` (UPDK KENDARI), `277` (BAUBAU), `279` (POASIA), `282` (NII TANASA PJBS), `372` (MIKUASI), `375` (SABILAMBO), `377` (WINNING), `378` (PASARWAJO) |
+| `segment_5` | Segment 5 · Unit | `000` (UNIT COMMON), `001`–`024` (UNIT 1–24), serta bidang/fungsi (`314` RENDAL OPR & PEMELIHARAAN, `306` RENDAL JASA OM, `309` ENERGI PRIMER, `326` LOGISTIK, `301` PENGELOLA SISTEM, `329` KEUANGAN, `323` K3 & KAM, `325` PENGADAAN, `322` LINGKUNGAN, `399` LAINNYA, `346` OPERASI) |
+| `segment_6` | Segment 6 · Sub Unit | `01` (TURBIN), `02` (DIESEL), `23` (WATER WAY SYSTEM), `38` (ENGINE), `99` (LAINNYA), dll. (30 opsi bawaan) |
+| `segment_7` | Segment 7 · Aktivitas | `10` (OPERASI), `11` (OPERASI JASA O&M), `17`–`26` (KIMIA/K3/LINGKUNGAN/MAINTENANCE/ENGINEERING), `00` (ADMINISTRASI NON PEMBANGKIT) |
+| `expense_element` | Expense Element | `E201` (MATERIAL LISTRIK), `E202` (MATERIAL UMUM), `E203` (MATERIAL INSTRUMEN), `E204` (MATERIAL MESIN), `F101/JBJSLN`, `F102/JBJSLN`, `F104/JBJSTK`, `F106/JBJSPU` |
+
+- Data bawaan di-seed otomatis lewat migrasi `create_coa_segment_options_table` dan `CoaSegmentOptionSeeder` (`App\Support\CoaCatalog::seedDefaults()`).
+- Halaman **Data Master → Segmen COA** (`master-data/coa-segments.tsx`) menyediakan tab filter per segmen dan pencarian cepat.
+
 ---
 
 ## 7. Dokumen: Generate, Unggah, Pratinjau
@@ -1314,13 +1352,13 @@ Menu **Data Master → Mitra** (`master-data.partners`, hak `manage-master-data`
 
 Fitur ini digunakan untuk menghasilkan dokumen-dokumen pengadaan (Nota Dinas Usulan, TOR, RAB, HPE, UPB, RKS, Berita Acara, Kontrak, dll.) secara otomatis berdasarkan data pengadaan yang sudah diinput di sistem.
 
-##### Ketentuan Pengembangan Saat Ini
+#### Ketentuan Pengembangan Saat Ini
 
 - **Template dokumen resmi UP Kendari belum tersedia** dan akan diberikan menyusul untuk masing-masing jenis dokumen.
 - Untuk sementara, sistem dibangun terlebih dahulu menggunakan **template dokumen standar/umum** yang lazim dipakai untuk masing-masing jenis dokumen (format profesional, layout wajar, mengikuti kaidah dokumen resmi pada umumnya), agar seluruh alur generate dokumen sudah bisa berfungsi end-to-end.
 - Setiap jenis dokumen tetap harus otomatis terisi (auto-fill) dari data pengadaan yang relevan, misalnya: Nama Pengadaan, Direksi Pekerjaan, Unit Tujuan, Nomor PRK, Nilai HPE/Anggaran, tanggal, serta data checklist tahap perencanaan/pelaksanaan yang sesuai dengan jenis dokumennya.
 
-##### Wajib Modular: Template Dokumen sebagai Data Master
+#### Wajib Modular: Template Dokumen sebagai Data Master
 
 Agar template standar ini nantinya dapat diganti dengan template resmi **tanpa merombak sistem**, penyimpanan template wajib mengikuti aturan berikut:
 
@@ -1330,7 +1368,7 @@ Agar template standar ini nantinya dapat diganti dengan template resmi **tanpa m
 - Sistem harus mendukung penggantian template per jenis dokumen secara independen — mengganti template RKS, misalnya, tidak boleh memengaruhi template dokumen lain yang sudah berjalan.
 - Riwayat dokumen yang sudah pernah digenerate dengan template lama tetap tersimpan apa adanya (tidak berubah retroaktif saat template baru dipasang).
 
-##### Arsitektur Template Bawaan (Library)
+#### Arsitektur Template Bawaan (Library)
 
 - **Sumber kebenaran template = database** (`document_templates`), dikelola dari Data Master → Template Dokumen, berversi.
 - **Teks template bawaan TIDAK ditulis di kode PHP** (seeder/migrasi). Teks bawaan disimpan sebagai file HTML biasa di `resources/document-templates/<grup>/<nama>.html`, dideskripsikan oleh `resources/document-templates/manifest.php` (kunci, grup, file, kode jenis dokumen, metode, format kontrak, kategori, nama).
@@ -1344,7 +1382,7 @@ Agar template standar ini nantinya dapat diganti dengan template resmi **tanpa m
 - Migrasi lama yang dulu menulis teks template dari kode seeder dikosongkan (hasilnya sudah ada di database lama; instalasi baru mendapat teks terbaru dari library). Riwayatnya ada di git.
 - **Mengubah teks bawaan**: edit file HTML di `resources/document-templates`, commit, lalu jalankan `php artisan templates:sync` di server. **Menambah template bawaan**: tambah file + entri di `manifest.php`, lalu `templates:sync`.
 
-##### Langkah Deploy Production
+#### Langkah Deploy Production
 
 1. `git pull` (pastikan folder `resources/document-templates` ikut).
 2. `composer install --no-dev --optimize-autoloader`
@@ -1353,7 +1391,7 @@ Agar template standar ini nantinya dapat diganti dengan template resmi **tanpa m
 5. `php artisan templates:sync --dry-run` lalu `php artisan templates:sync` — lihat laporan; template yang sudah disesuaikan admin dilewati.
 6. `php artisan optimize:clear` lalu `php artisan optimize` (config/route/view cache), dan `php artisan queue:restart` bila memakai queue worker.
 
-##### Editor Template (gaya Word, tanpa HTML)
+#### Editor Template (gaya Word, tanpa HTML)
 
 - Tambah/Ubah template membuka **halaman editor tersendiri** (`/master-data/document-templates/create` dan `/{id}/edit`), **bukan modal**. Setelah template baru disimpan, pengguna tetap berada di editornya.
 - Editor berupa lembar kertas A4 (potret/lanskap) yang tampil persis seperti hasil generate (memakai stylesheet dokumen yang sama, `DocumentGenerator::documentStylesheet()`).
@@ -1361,7 +1399,7 @@ Agar template standar ini nantinya dapat diganti dengan template resmi **tanpa m
 - Panel **Data Otomatis** di kanan: placeholder ditampilkan sebagai label (chip) yang bisa dicari dan disisipkan dengan sekali klik — pengguna tidak pernah menulis `{{...}}` atau HTML. Saat disimpan, chip dikembalikan menjadi `{{placeholder}}` sehingga format penyimpanan & proses generate tidak berubah.
 - Tombol **Pratinjau** menampilkan template dengan contoh data pengadaan.
 
-##### Detail Pengadaan
+#### Detail Pengadaan
 
 - **Tab halaman detail pengadaan:** tab nama pengusul (dokumen usulan), **Perencanaan**, **Pelaksanaan**, **Penyerahan**, **Pembayaran**, dan **Riwayat Approval**.
   - Tab Dokumen dihapus: generate, preview, unduh, edit, dan unggah hasil TTD dilakukan langsung di baris checklist masing-masing.
@@ -1383,7 +1421,7 @@ Agar template standar ini nantinya dapat diganti dengan template resmi **tanpa m
 > - TOR yang sudah digenerate sebelumnya tidak berubah.
 > - **Test:** `TorSignatureTest`.
 
-##### Output
+#### Output
 
 - Dokumen hasil generate dapat diunduh dalam format standar (mis. Word/PDF sesuai jenis dokumen).
 - Dokumen tersimpan otomatis pada Arsip Dokumen pengadaan terkait.
@@ -1414,7 +1452,7 @@ Agar template standar ini nantinya dapat diganti dengan template resmi **tanpa m
 >   - Dokumen yang hanya diunggah (tanpa template, mis. Nota Dinas Usulan) tidak punya kelompok tombol, jadi Hapus berada di samping tombol Tambah Berkas.
 > - **Test:** `DocumentArchiveFolderTest`.
 
-##### Data Dokumen Selalu Terbaru (sinkron otomatis)
+#### Data Dokumen Selalu Terbaru (sinkron otomatis)
 
 - Setiap data yang dipanggil template (placeholder) ditulis di dokumen sebagai **field hidup**. Saat data pengadaan berubah dari layar mana pun (form ubah pengadaan, isian checklist seperti rekening/tanggal/garansi, penunjukan PIC, status, nilai setelah nego, dll.), seluruh dokumen pengadaan itu langsung ikut diperbarui — tidak perlu "Muat Ulang dari Template".
 - Dokumen yang belum pernah diedit disusun ulang penuh dari templatenya; dokumen yang sudah diedit hanya diperbarui pada field yang belum diubah manual — **ketikan manual tidak pernah ditimpa**.
@@ -1520,9 +1558,10 @@ Dashboard dibangun ulang sebagai dashboard analitik bergaya korporat PLN. Datany
    - Filter tersimpan di URL dan dimuat ulang sebagian (partial reload) tanpa memuat ulang seluruh halaman.
 3. **6 KPI** (manajemen):
    - Total Pengadaan, Berjalan, Selesai, Menunggu Approval (rincian usulan / perencanaan / pelaksanaan / penyerahan / pembayaran), Total Nilai HPE (Rupiah penuh), Dibatalkan.
+   - Setiap kartu KPI dan kartu angka per peran (`FigureCards`) diberi warna korporat solid **flat berbeda per kartu (tanpa gradien)**: garis aksen atas `3px`, permukaan tinted flat `color-mix(in srgb, … 11%, var(--card))`, border `32%`, dan kotak ikon solid berwarna dengan ikon putih.
    - Total, Selesai, dan Nilai HPE menampilkan perubahan dibanding periode sebelumnya bila periode bertanggal dipilih.
    - Role lain tetap memakai kartu angka role-nya sendiri.
-4. **Perlu Tindakan Anda**: kotak per jenis tugas (ikon, judul ukuran normal, jumlah besar), 5 kotak per baris di layar lebar, dan bisa diklik.
+4. **Perlu Tindakan Anda**: kotak per jenis tugas (ikon, judul ukuran normal, jumlah besar), 5 kotak per baris di layar lebar, dan bisa diklik. Menggunakan gaya kartu warna solid flat yang seragam dengan kartu KPI (warna aksen berbeda antar-kartu, tanpa gradien).
    - Kartu daftar panjang dan panel "Notifikasi Belum Dibaca" dihapus dari dashboard.
    - Notifikasi tetap ada di lonceng header.
 5. **Alur Tahapan:** Usulan → Perencanaan → Pelaksanaan → Penyerahan & Pembayaran → Selesai, plus Dibatalkan, lengkap dengan jumlah dan persentase. Klik tahap untuk menyaring dashboard.
@@ -1826,6 +1865,30 @@ Bagian **Request Penilaian Vendor** ada di halaman Penilaian Penyedia, di atas d
   - Ekspor mengikuti filter dan pencarian yang sedang aktif.
 - **Test:** `BudgetPlanTest`, mencakup kolom baru, pilihan yang tidak dikenal, isi berkas Excel, dan hak unduh.
 
+### Request COA & Aktivasi COA (Staf/TL & Keuangan)
+
+Modul **Request COA** (`/request-coa`, menu **Pengadaan → Request COA**) menyediakan alur pengajuan, perbaikan, aktivasi, dan sinkronisasi nomor COA ke form Usulan Pekerjaan:
+
+- **Hak Akses (dapat diatur di Administrasi → Hak Akses):**
+  - `coa.request` (*Ajukan request COA*): bawaan `Pengusul` (Staf & TL bidang), `Direksi Pekerjaan`, `TL Pengadaan`, `TL ICC`.
+  - `coa.manage` (*Edit & aktivasi COA (Keuangan)*): bawaan `Keuangan`.
+  - `menu.coa-requests` (*Menu Request COA*): bawaan seluruh peran di atas + Administrator.
+- **Form Penyusunan COA (8 Segmen):**
+  - Seluruh pilihan dropdown dibaca dinamis dari **Data Master → Segmen COA** (`coa_segment_options` aktif).
+  - **Segment 2 (District)** otomatis terisi `KD — UPDK KENDARI`.
+  - **Output Kode COA** tersusun otomatis secara *real-time* dari penggabungan berurutan `Segment 1 + Segment 2 + Segment 3 + Segment 4 + Segment 5 + Segment 6 + Segment 7 + Expense Element` tanpa pemisah (contoh: `AKD213720002320F102/JBJSLN`, `CKD192820013822F104/JBJSTK`).
+- **Aksi Pengusul (Staf & TL):**
+  - **Simpan** — menyimpan sebagai `Draft` (masih dapat diubah/dihapus sendiri sebelum diajukan).
+  - **Request Aktivasi** — mengirim usulan ke antrean **Keuangan** (status `Menunggu Aktivasi`) dan mengirim notifikasi ke akun Keuangan aktif.
+- **Aksi Bagian Keuangan:**
+  - Menerima **seluruh** usulan COA berstatus `Menunggu Aktivasi` maupun `Aktif` dari seluruh bidang, sekaligus melihat antrean pada kartu **Perlu Tindakan Anda → Request COA Menunggu Aktivasi** di Dashboard.
+  - **Edit / Perbaikan Langsung:** Keuangan dapat mengubah isian segmen mana pun, keterangan/catatan, maupun menyesuaikan kode COA final secara langsung, lalu memilih **Simpan Perubahan** atau **Simpan & Aktivasi**.
+  - **Aktivasi:** mengaktifkan kode COA (`status = aktif`), mencatat `activated_by` & `activated_at`, serta mengirim notifikasi ke pengusul.
+- **Sinkronisasi ke Usulan Pekerjaan:**
+  - Nomor COA yang sudah berstatus **Aktif** otomatis tersedia sebagai pilihan dropdown **Pilih dari COA aktif (Keuangan)** pada kolom **Nomor COA** di form **Usulkan Pekerjaan** / **Buat Perencanaan Pengadaan** (`ProcurementForm`), dengan tetap mempertahankan input manual dan dukungan lebih dari satu nomor COA agar alur lama tetap utuh.
+- **File terkait:** migrasi `create_coa_segment_options_table` & `create_coa_requests_table`, enum `CoaSegment` & `CoaRequestStatus`, `App\Support\CoaCatalog`, model `CoaSegmentOption` & `CoaRequest`, `CoaRequestController`, `CoaRequestNotification`, `resources/js/pages/coa-requests/index.tsx`, `resources/js/pages/master-data/coa-segments.tsx`.
+- **Test:** `CoaRequestTest`.
+
 ### Mode Pemeliharaan (Administrator)
 
 Administrator dapat menutup aplikasi sementara saat pemeliharaan, lewat menu **Administrasi → Mode Pemeliharaan** (`/pemeliharaan`, khusus Administrator).
@@ -1889,7 +1952,7 @@ Administrator dapat menutup aplikasi sementara saat pemeliharaan, lewat menu **A
 
 Aplikasi ini digunakan oleh manajemen dan staf PLN Nusantara Power di lingkungan kerja formal, sehingga tampilan harus terasa **terpercaya, rapi, dan matang** — selevel dengan sistem enterprise/ERP korporat, bukan landing page startup atau template AI generik.
 
-##### Prinsip Utama
+#### Prinsip Utama
 
 - **Serius, bukan playful.** Hindari ilustrasi kartun, emoji sebagai ikon fungsional, warna-warni cerah tanpa makna, atau animasi berlebihan.
 - **Identitas korporat kuat.** Palet ditetapkan **biru muda dan putih** selaras logo PLN: putih sebagai warna dasar, satu aksen biru PLN yang konsisten untuk elemen penting (tombol utama, status aktif, highlight data, navigasi). **Kuning pisang** (kuning logo PLN) dipakai sangat terbatas — hanya sebagai penanda status "berjalan" — bukan sebagai warna dominan.
@@ -1898,7 +1961,7 @@ Aplikasi ini digunakan oleh manajemen dan staf PLN Nusantara Power di lingkungan
 - **Densitas informasi tinggi tapi rapi.** Karena ini aplikasi kerja (bukan marketing page), gunakan tabel, grid data, dan card yang padat informasi namun tetap punya spacing dan alignment presisi, bukan padat berantakan.
 - **Konsistensi komponen.** Satu jenis tombol, satu gaya badge status, satu gaya card di seluruh aplikasi — hindari campur-campur gaya antar halaman.
 
-##### Yang Harus Dihindari (ciri khas "AI-generated" generik)
+#### Yang Harus Dihindari (ciri khas "AI-generated" generik)
 
 - Gradien warna ungu-ke-biru atau pink-ke-oranye sebagai background utama.
 - Ikon emoji (📊 📁 ✅) sebagai pengganti ikon UI — gunakan icon set profesional (mis. line-icon set seperti Lucide/Feather) dengan gaya konsisten.
@@ -1907,12 +1970,12 @@ Aplikasi ini digunakan oleh manajemen dan staf PLN Nusantara Power di lingkungan
 - Layout simetris sempurna dengan whitespace berlebihan yang membuat aplikasi kerja terasa kosong/tidak padat informasi.
 - Badge/status berwarna neon atau pastel yang tidak korporat.
 
-##### Tipografi
+#### Tipografi
 
 - Font utama: sans-serif profesional dengan karakter tegas dan mudah dibaca dalam tabel data (mis. Inter, IBM Plex Sans, Söhne, atau setara).
 - Hierarki jelas: judul halaman (bold, ukuran besar), label section (medium, uppercase-tracking tipis untuk kesan formal), body text (regular), angka/data penting (semi-bold, tabular numerals agar rapi di tabel).
 
-##### Palet Warna (ditetapkan — biru muda & putih PLN)
+#### Palet Warna (ditetapkan — biru muda & putih PLN)
 
 Palet ini sudah tetap dan diterapkan di seluruh halaman melalui `resources/css/app.css`. Tema tunggal (light), tanpa mode gelap.
 
@@ -1923,15 +1986,17 @@ Palet ini sudah tetap dan diterapkan di seluruh halaman melalui `resources/css/a
 - **Warna Status (Status Progres):** mengikuti kategori status. Abu-abu untuk tahap usulan (pending), merah gelap untuk Batal, kuning pisang untuk proses berjalan (Inisiasi Rendan sampai Terkontrak), dan hijau tua untuk Selesai.
 - Hindari warna neon, pastel childish, atau kombinasi lebih dari 2 warna aksen sekaligus dalam satu tampilan.
 
-##### Layout & Komponen
+#### Layout & Komponen
 
 - **Navigasi:** sidebar tetap (fixed) di kiri untuk menu utama, header atas berisi identitas pengguna/notifikasi — pola umum aplikasi enterprise/ERP.
 - **Dashboard:** kombinasi kartu ringkasan (angka besar + label kecil) di bagian atas, diikuti tabel/list detail di bawahnya — bukan grafik dekoratif tanpa fungsi.
 - **Tabel data** (Daftar Pengadaan, Monitoring, dsb.): baris rapi dengan garis pemisah tipis, kolom status memakai badge warna sesuai kategori di atas, dapat di-sort dan difilter.
 - **Form input** (termasuk Form Input Awal Pengadaan): label di atas field, spacing konsisten, validasi jelas dengan warna merah gelap untuk error — bukan merah terang.
 - **Aksen dekoratif seminimal mungkin.** Setiap elemen visual harus punya fungsi (menunjukkan status, hierarki, atau navigasi), bukan sekadar hiasan.
+- **Teks pengantar halaman ringkas.** Hindari paragraf penjelasan panjang berlapis di bawah judul halaman (`PageHeader`) atau catatan kecil bertele-tele di dalam kartu; cukup satu frasa/kalimat singkat atau hilangkan deskripsi bila judul halaman sudah jelas.
+- **Tab tahapan pita panah (`StageStepper`).** Saat tab tahapan diklik (`selected`) maupun diarahkan kursor (`:hover`), seluruh bentuk panah berubah menjadi satu warna solid dengan transisi halus (`duration-300 ease-out`) tanpa garis putih tipis di bawah.
 
-##### Referensi Kelas Tampilan
+#### Referensi Kelas Tampilan
 
 Tampilan yang dituju setara dengan aplikasi internal korporat/BUMN kelas enterprise (mis. sistem ERP, dashboard keuangan korporat, portal internal perusahaan besar) — rapi, presisi, dan "mahal" secara visual tanpa terlihat ramai atau seperti template gratis.
 
@@ -1972,15 +2037,15 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
 
 ### Fitur Tambahan & Penyempurnaan Terkini
 
-##### 1. Fitur Preview Dokumen pada Checklist Perencanaan & Pelaksanaan
+#### 1. Fitur Preview Dokumen pada Checklist Perencanaan & Pelaksanaan
 - Setiap dokumen yang diunggah pada tabel checklist perencanaan maupun pelaksanaan kini dilengkapi tombol **Preview** (ikon mata `Eye`) di sebelah tombol Unduh dan Hapus.
 - Tombol Preview memunculkan modal dialog responsif yang menampilkan dokumen secara langsung di dalam browser (menggunakan `iframe` untuk berkas PDF dan tag `img` untuk berkas PNG/JPG), sehingga pengguna tidak perlu mengunduh file untuk memeriksa kelengkapan dokumen.
 
-##### 2. Standarisasi Logo Perusahaan pada Dokumen
+#### 2. Standarisasi Logo Perusahaan pada Dokumen
 - Seluruh template dokumen (Nota Dinas Usulan, TOR, UPB, RKS, SPK, BA Negosiasi, Surat Pesanan, Lampiran SP Barang dan Jasa) menggunakan logo korporat resmi PLN yang bersumber dari `public/logo/sidebar-logo.png`.
 - Mendukung embedding gambar base64 otomatis pada render DOMPDF/HTML untuk memastikan logo selalu tampil sempurna baik di lingkungan lokal maupun server production tanpa terhalang konfigurasi allow-url-fopen atau path asset.
 
-##### 3. Penataan Form Usulan Pekerjaan & Nota Dinas
+#### 3. Penataan Form Usulan Pekerjaan & Nota Dinas
 - Urutan inputan Usulan Pekerjaan disusun simetris dan rapi:
   1. No. PRK & No. COA
   2. No. PR & No. WO
@@ -1990,33 +2055,33 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
   6. Status Progres
 - Inputan terpisah "Nota Dinas ke Manager" dihapus, dan field Nota Dinas ICC digantikan menjadi "Nota Dinas ke Manager" dengan penambahan inputan tanggal resmi.
 
-##### 4. Penataan Role & Kemampuan Approval PIC sebagai TL
+#### 4. Penataan Role & Kemampuan Approval PIC sebagai TL
 - Tidak ada penambahan akun dummy baru untuk Team Leader; akun pengguna tetap akun pegawai riil (PIC Perencana, PIC Pelaksana, dan Administrator).
 - Akun PIC Perencana (misal: Bastial) dapat diberikan peran sebagai **Team Leader ICC** atau diberikan hak akses approval perencanaan (`procurement.review-planning`) oleh Super Admin.
 - Ketika PIC bertindak sebagai perencana dan juga memiliki hak/peran TL ICC, setelah mengajukan perencanaan (**Ajukan Persetujuan**), tombol **Setujui** dan **Tolak** langsung muncul di halaman detail sehingga dapat langsung menyetujui pengadaan tersebut.
 - PIC Pelaksana yang diberikan peran **Team Leader Pengadaan** (atau hak `procurement.complete`) dapat langsung menandai pengadaan selesai, menunjuk PIC, serta membuat pengadaan baru.
 - Pilihan dropdown penunjukan PIC Perencana secara otomatis menyertakan akun berstatus `pic_perencana` dan `team_leader_icc`, sementara PIC Pelaksana menyertakan akun `pic_pelaksana` dan `team_leader_pengadaan`.
 
-##### 5. Penyesuaian Dokumen Template PO / Surat Pesanan & Data Master Manager Unit
+#### 5. Penyesuaian Dokumen Template PO / Surat Pesanan & Data Master Manager Unit
 - **Perbaikan Garis Kolom Tanda Tangan**: Garis kolom tabel tanda tangan pada template Surat Pesanan dan Purchase Order (PO) diperbaiki dengan border penutup utuh atas-bawah-kiri-kanan (`border: 1px solid #000; border-top: 1px solid #000; margin-top: 0; margin-bottom: 0;`), sehingga garis kolom tidak terputus atau terbuka di bagian atas.
 - **Penandatangan Manager**: Pihak penandatangan di sisi kanan dokumen Surat Pesanan ditetapkan sebagai **Manager** (`PT PLN NUSANTARA POWER UP KENDARI - MANAGER`), dan nama Manager diambil secara dinamis dari **Data Master → Manager Unit** (`{{nama_manager}}`).
 - **Data Master Manager Unit**: Disediakan menu **Data Master → Manager Unit** (`unit-managers`) untuk mengelola daftar nama dan jabatan Manager UP Kendari yang aktif.
 - **Otomatisasi Nomor & Tanggal Nota Dinas**: Pada template Surat Pesanan, bagian `1. NOTA DINAS` kini memanggil nomor (`{{nomor_nota_dinas_manager}}`) dan tanggal nota dinas (`{{tanggal_nota_dinas_manager}}`) secara dinamis dari form Usulan Pekerjaan.
 - **Inputan Nomor & Tanggal Surat Penawaran**: Ditambahkan field **No. Surat Penawaran** (`quotation_number`) dan **Tgl. Surat Penawaran** (`quotation_date`) pada Edit Identitas Pengadaan (bagian Usulan Pekerjaan), yang langsung terhubung ke bagian `2. SURAT PENAWARAN` pada template Surat Pesanan (`{{nomor_surat_penawaran}}` dan `{{tanggal_surat_penawaran}}`).
 
-##### 6. Penyederhanaan Halaman Edit Dokumen
+#### 6. Penyederhanaan Halaman Edit Dokumen
 - Bagian daftar kartu **Data yang Terpanggil** di bagian bawah editor dokumen telah dihilangkan dari antarmuka halaman edit dokumen ([`document-editor.tsx`](file:///d:/PROJECT_GROUP/Pengadaanv3/resources/js/pages/procurements/document-editor.tsx)). Layar kini lebih bersih, fokus, dan langsung menampilkan lembar kerja Editor Visual dan Pratinjau Cetak.
 
-##### 7. Integrasi Alamat Calon Mitra pada Dokumen Surat Pesanan
+#### 7. Integrasi Alamat Calon Mitra pada Dokumen Surat Pesanan
 - Bagian **KEPADA** pada dokumen Surat Pesanan kini memanggil alamat calon mitra secara dinamis menggunakan tag `{{alamat_mitra}}` (atau `{{alamat_perusahaan}}`) yang bersumber dari inputan **Alamat Perusahaan** pada form Calon Mitra.
 - Jika alamat belum diisi, sistem secara cerdas menampilkan teks default `"DI TEMPAT"`. Begitu alamat diisi pada Edit Identitas Pengadaan, dokumen Surat Pesanan yang telah digenerate otomatis tersinkronisasi tanpa harus menekan tombol muat ulang secara manual.
 
-##### 8. Lembar Halaman Terpisah di Editor Visual
+#### 8. Lembar Halaman Terpisah di Editor Visual
 - Dokumen yang lebih dari satu halaman tampil sebagai lembar-lembar terpisah di Editor Visual. Di antara lembar ada jeda abu-abu berlabel **Halaman N**. Dokumen satu halaman tidak berubah.
 - Batas halaman tidak ditebak di browser karena font dan margin di layar berbeda dengan PDF. Editor menomori setiap elemen, lalu mengirim draf ke `POST procurements/{p}/documents/{d}/pages` (`documents.pages`). Mesin PDF (dompdf, `DocumentPdfRenderer::sheetStarts`) menata draf itu dan melaporkan elemen pertama di setiap halaman. Hasilnya di-cache 1 hari per isi dokumen. Permintaan ini dikirim ulang ±0,8 detik setelah penulis berhenti mengetik.
 - Elemen awal lembar diberi atribut `data-sheet-start` sehingga editor membuka jeda di atasnya; aturan CSS ada di `app.css`. Atribut ini dibuang sebelum disimpan atau dipratinjau, jadi tidak pernah masuk ke dokumen maupun PDF. Baris tabel yang pindah halaman ikut dipisah. Teks yang terpotong di tengah sel atau paragraf hanya diberi garis putus-putus. Penanda manual **Batas Halaman** tetap memakai tampilannya sendiri.
 
-##### 9. Perbaikan Error "Attempt to read property "name" on null" (production)
+#### 9. Perbaikan Error "Attempt to read property "name" on null" (production)
 - **Gejala:** halaman edit dokumen error bila akun PIC Perencana atau PIC Pelaksana pengadaan itu sudah dihapus. Akun pengguna memakai soft delete, sedangkan relasi `planner` / `executor` tidak membaca akun yang terhapus.
 - **Perbaikan:**
   - Placeholder `pic_perencana` / `pic_pelaksana` di `DocumentGenerator::placeholderValues` menampilkan "-" bila akunnya tidak ada lagi.
@@ -2024,7 +2089,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
 - **Cakupan:** tidak ada fungsi atau fitur baru.
 - **Test:** `DocumentEditingTest::test_the_editor_opens_when_the_pic_accounts_were_deleted`.
 
-##### 10. Filter Format Kontrak di Halaman Perencanaan & Pelaksanaan
+#### 10. Filter Format Kontrak di Halaman Perencanaan & Pelaksanaan
 - **Filter:** halaman **Perencanaan** dan **Pelaksanaan** punya filter **Format Kontrak** (Semua / SPK / PJ / SPPL) di samping filter Sumber Anggaran.
 - **Sumber pilihan:** master data Format Nomor Kontrak (`MasterDataOptions::contractFormats`, scope `forContracts`), jadi format Amandemen dan Delivery Order tidak ikut tampil. Format baru yang ditambahkan di master data otomatis muncul.
 - **Penerapan:**
@@ -2035,17 +2100,17 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
   - Jenis baru seperti "Barang dan Jasa" cukup ditambahkan di Data Master → Jenis Kontrak, lalu otomatis muncul di filter.
 - **Test:** `ContractFormatFilterTest`.
 
-##### 11. Tab Aktif Berwarna Biru
+#### 11. Tab Aktif Berwarna Biru
 - **Komponen tab bawaan** (`components/ui/tabs.tsx`): tab aktif kini bergaris bawah dan berteks **biru (primary)** tebal; tab lain berubah biru saat disorot. Berlaku di detail pengadaan (Perencanaan, Pelaksanaan, Penyerahan, Pembayaran, Amandemen, DO, Riwayat Approval), editor dokumen, dan detail penilaian penyedia.
 - **Halaman Approval:** tab antrean (Usulan/Perencanaan/Pelaksanaan) dan tab **Menunggu Keputusan / Riwayat Keputusan** yang aktif berlatar biru dengan teks putih (sebelumnya putih di atas abu-abu sehingga tidak terlihat). Lencana jumlah ikut menyesuaikan warnanya.
 - **Pengaturan → Tampilan:** pilihan tema yang aktif juga berlatar biru.
 
-##### 12. Kolom No di Perencanaan, Pelaksanaan, dan Penunjukan PIC
+#### 12. Kolom No di Perencanaan, Pelaksanaan, dan Penunjukan PIC
 - Ketiga daftar punya kolom **No** di paling kiri. Nomor berlanjut antarhalaman (halaman 2 mulai dari 16), dihitung dari `meta.from` paginasi.
 - `ProcurementTable` mendapat opsi `numbered` (hanya dipakai di Perencanaan dan Pelaksanaan, jadi daftar lain tidak berubah). Tabel Penunjukan PIC menambah kolom yang sama memakai helper `firstRowNumber`.
 - **Test:** `PaginationContractTest::test_numbered_lists_learn_where_their_page_starts`.
 
-##### 13. Rincian Item di Editor Dokumen (tabel item tidak lagi diketik per sel)
+#### 13. Rincian Item di Editor Dokumen (tabel item tidak lagi diketik per sel)
 - **Lokasi:** editor dokumen yang berisi tabel item punya tab **Rincian Item** paling kiri dan langsung terbuka. Dokumennya: BA Negosiasi (SPPL), Surat Pesanan/PO, SPK (tabel), HPE, UPB, Penyusunan HPS, Penawaran, dan Lampiran SPK.
   - Tab hanya muncul bila tabel itemnya benar-benar ada (`ItemTableRenderer::hasTable`).
   - Dokumen pasal (SPK Pasal, Surat Perjanjian PJ, Lampiran SP) tetap memakai editor biasa tanpa perubahan.
@@ -2070,20 +2135,20 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
 - **Perbaikan bug:** baris kelompok yang terketik dengan volume 1 dan harga 0 (mis. "Material & Tools Tangki 50 KL") dulu terbaca sebagai item Rp 0 di Surat Pesanan. Sekarang baris tanpa harga dibaca sebagai judul kelompok, dan Surat Pesanan mencetaknya sebagai baris kelompok.
 - **Test:** `ProcurementItemsTest`.
 
-##### 15. Kolom Isian Lebih Jelas
+#### 14. Nama Penanda Tangan Huruf Besar
+- Di seluruh template, nama penanda tangan di blok tanda tangan dicetak **huruf besar** lewat `text-transform: uppercase` pada namanya saja. Ini berlaku untuk Manager, Direktur, Direksi Pekerjaan, PIC Perencana/Pelaksana, dan TL Pelaksana Pengadaan.
+- Data tetap tersimpan apa adanya, dan nama yang sama di teks isi (mis. "arahan dari Direksi Pekerjaan" di TOR, uraian para pihak) tidak berubah.
+- Sebanyak 26 template diperbarui dan disinkron lewat migrasi `uppercase_signatory_names_in_templates`. Template yang sudah diubah admin tidak ditimpa, dan dokumen lama tetap seperti saat digenerate.
+- **Test:** `SignatoryNamesTest`.
+
+#### 15. Kolom Isian Lebih Jelas
 - **Seluruh aplikasi:** border kolom isian (token `--input`) dibuat lebih gelap, dari `oklch(0.88 …)` menjadi `oklch(0.72 …)` di mode terang dan dari `0.35` menjadi `0.48` di mode gelap. Input, Textarea, dan Select juga diberi latar `bg-background`, sehingga setiap kolom yang perlu diisi tampak jelas berbeda dari kartu di sekitarnya. Ini berlaku di semua form (usulan, perencanaan, checklist, master data, penilaian, login, dan lain-lain), begitu juga Checkbox dan Switch yang memakai token yang sama.
 - **Grid Rincian Item:**
   - Sel isian berlatar abu-biru (`bg-muted`) dengan border gelap, lalu berubah putih saat diketik.
   - Kolom nama kelompok bernuansa biru.
   - Kepala tabel dibuat lebih tegas.
 
-##### 14. Nama Penanda Tangan Huruf Besar
-- Di seluruh template, nama penanda tangan di blok tanda tangan dicetak **huruf besar** lewat `text-transform: uppercase` pada namanya saja. Ini berlaku untuk Manager, Direktur, Direksi Pekerjaan, PIC Perencana/Pelaksana, dan TL Pelaksana Pengadaan.
-- Data tetap tersimpan apa adanya, dan nama yang sama di teks isi (mis. "arahan dari Direksi Pekerjaan" di TOR, uraian para pihak) tidak berubah.
-- Sebanyak 26 template diperbarui dan disinkron lewat migrasi `uppercase_signatory_names_in_templates`. Template yang sudah diubah admin tidak ditimpa, dan dokumen lama tetap seperti saat digenerate.
-- **Test:** `SignatoryNamesTest`.
-
-##### 16. Satu Template per Dokumen & HPE/UPB Format Terbaru
+#### 16. Satu Template per Dokumen & HPE/UPB Format Terbaru
 - **HPE dan UPB** sekarang hanya punya satu template, yaitu format terbaru UP Kendari (sebelumnya khusus PJ), dan berlaku untuk semua format kontrak (SPK, PJ, SPPL).
   - HPE berjudul "Harga Perkiraan Enjiniring" dengan kolom No., Stock Code, Nama Barang dan Spesifikasi, Qty, Stn, Harga HPE (Rp.), dan Keterangan, lalu baris Jumlah.
   - UPB berjudul "USULAN PENGADAAN BARANG / JASA" dengan kolom No., Stock Code, Nama Barang dan Spesifikasi, No. Requisisi, No. WO, WO Description, Qty, Satuan, Tgl Dibutuhkan, dan Keterangan.
@@ -2100,13 +2165,13 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
   - Hasil di database lokal: 38 template, semuanya aktif dan versi 1.
 - **Test:** `SingleTemplateVersionTest`, `ProcurementItemsTest` (tabel UPB), `DocumentTemplateLibraryTest`, `RksPjJasaTest`, `WorkCategoryTest`, `SignatoryNamesTest`.
 
-##### 17. Tidak Ada Template Versi 2
+#### 17. Tidak Ada Template Versi 2
 - Di Data Master → Template Dokumen, menambah template untuk dokumen (dengan metode, format kontrak, dan kategori yang sama) yang sudah punya template kini **ditolak** dengan pesan "Dokumen ini sudah punya template (…). Ubah template itu saja; satu dokumen hanya memakai satu template."
 - Template baru selalu **versi 1**. Mengubah template memperbarui template itu sendiri, dan memindahkan template ke dokumen yang sudah punya template juga ditolak.
 - Template yang sudah diarsipkan tidak dihitung, jadi dokumennya boleh diberi template baru (versi 1).
 - **Test:** `MasterDataManagementTest` (`test_administrator_cannot_add_a_second_version_of_a_template`, `test_a_template_cannot_be_moved_onto_a_document_that_has_one`), `WorkCategoryTest`.
 
-##### 18. Semua Nama Penanda Tangan Huruf Besar (lanjutan)
+#### 18. Semua Nama Penanda Tangan Huruf Besar (lanjutan)
 - Melengkapi poin 14: seluruh blok tanda tangan di 31 template kini dijamin huruf besar lewat `<span style="text-transform: uppercase;">`, termasuk:
   - kolom nama yang dikosongkan untuk diketik nanti ("( Nama Jelas )" dan titik-titik), sehingga nama yang diketik di editor ikut tercetak huruf besar;
   - nama yang sebelumnya hanya mengandalkan class `.upper` milik template (Direktur di SPK Pasal, Surat Perjanjian, Amandemen; PIC Perencana di RKS PJ), karena class bisa hilang saat diedit di Editor Visual;
@@ -2114,7 +2179,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
 - Nama di teks isi tetap seperti data tersimpan. Disinkron lewat migrasi `uppercase_every_signatory_name_in_templates` (template yang diubah admin tidak ditimpa).
 - **Test:** `SignatoryNamesTest::test_every_name_under_a_signature_in_every_template_prints_in_capitals`.
 
-##### 19. RAB menjadi Evaluasi Harga
+#### 19. RAB menjadi Evaluasi Harga
 - Langkah checklist perencanaan **RAB (Rencana Anggaran Biaya)** berganti nama menjadi **Evaluasi Harga**, begitu juga jenis dokumennya (kode tetap `rab`). Dokumen ini sekarang **digenerate** (tidak lagi hanya unggah), lalu tetap diunggah versi bertanda tangannya.
 - **Format dokumen** sesuai contoh "EVALUASI HARGA PERKIRAAN ENJINIRING" (A4 lanskap):
   - Kolom No., Stock Code, Nama Barang dan Spesifikasi, Harga (No PO, Tgl PO, Supplier, Harga Lalu), satu kolom per calon mitra (nama mitra huruf besar), dan Harga HPE.
@@ -2128,7 +2193,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
 - Migrasi: `create_procurement_item_quotations_table`, `rename_rab_to_evaluasi_harga` (template `umum.rab` dipasang ulang dengan format baru).
 - **Test:** `EvaluasiHargaTest`; `UploadOnlyStepTest` dan `ChecklistDocumentRequirementTest` disesuaikan.
 
-##### 20. Kolom Rincian Item Mengikuti Dokumennya
+#### 20. Kolom Rincian Item Mengikuti Dokumennya
 - Grid Rincian Item kini menampilkan kolom yang sama dengan tabel cetakan dokumen yang sedang diedit, dengan urutan dan istilahnya. Data item tetap satu, dan kolom yang tidak tampil tidak berubah:
 
 | Dokumen | Kolom grid (setelah No & Uraian) |
@@ -2150,7 +2215,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
 - **Perbaikan:** dokumen yang belum diedit (mis. Surat Pesanan) kini ikut tersusun ulang saat Rincian Item berubah. Sebelumnya cache pembaruan dokumen tidak memperhitungkan Rincian Item, sehingga Surat Pesanan masih mencetak judul kelompok sebagai item "Lot Rp 0". Selain itu, `syncItemDocuments` tidak lagi mengubah dokumen yang sudah diunggah versi bertanda tangannya.
 - **Test:** `ProcurementItemsTest::test_an_unedited_document_follows_items_changed_elsewhere`.
 
-##### 21. Keamanan Berkas Unggahan
+#### 21. Keamanan Berkas Unggahan
 - **Cara penyimpanan (sudah ada):** semua unggahan disimpan di disk privat `storage/app/private` (di luar folder publik, tanpa `public/storage`) dengan nama acak. Berkas hanya dibuka lewat rute aplikasi yang memeriksa hak `view` pengadaan dan kepemilikan berkasnya. Unggahan dibatasi PDF/JPG/PNG (lampiran usulan juga DOC/XLS), maksimal 20 MB.
 - **Celah yang ditutup:** akhiran nama berkas dan jenisnya dulu memakai nama dan jenis kiriman browser. Akibatnya, berkas berisi PDF yang diberi nama `.html` (polyglot PDF/HTML berisi script) lolos validasi, tersimpan sebagai `.html`, dan saat dipratinjau bisa tampil sebagai halaman web di domain aplikasi (XSS).
 - **Perbaikan:**
@@ -2160,7 +2225,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
 - **Belum ada (di luar aplikasi):** enkripsi berkas di disk, pemindaian virus, dan backup folder `storage/app/private` (perlu diatur di server).
 - **Test:** `UploadSecurityTest`.
 
-##### 22. Halaman Error (403, 404, 419, 429, 500, 503)
+#### 22. Halaman Error (403, 404, 419, 429, 500, 503)
 - Halaman error bawaan Laravel diganti halaman milik aplikasi (`resources/js/pages/error.tsx`) dengan gaya korporat biru-putih yang sama (sesuai Panduan Tema):
   - header berlogo PLN "Management Pengadaan · UP Kendari";
   - kartu putih dengan garis aksen biru, ikon dan kode status besar berwarna biru, judul, penjelasan, dan saran langkah;
@@ -2183,13 +2248,13 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
   - `Route::fallback` di `routes/web.php` membuat alamat yang tidak dikenal tetap melewati session, sehingga halaman 404 tahu siapa yang login.
 - **Test:** `ErrorPagesTest`.
 
-##### 23. Persetujuan Pelaksanaan di Kolom Kanan
+#### 23. Persetujuan Pelaksanaan di Kolom Kanan
 - Kartu **Persetujuan Pelaksanaan** (ajukan ke TL Pengadaan, catatan, Setujui & Teruskan ke Keuangan / Kembalikan) dipindah dari bawah checklist tab Pelaksanaan ke **kolom kanan** detail pengadaan, tepat di bawah kartu Persetujuan Perencanaan. Dengan begitu kolom kanan yang tadinya kosong terpakai, dan tombol persetujuan langsung terlihat tanpa menggulir checklist yang panjang.
 - Gayanya disamakan dengan kartu Persetujuan Perencanaan: label bagian, lencana status, dan tombol selebar kartu. Kartu tetap hanya muncul setelah perencanaan disetujui. Setelah diserahkan ke Keuangan, kartu berganti menjadi keterangan "Pelaksanaan disetujui dan diserahkan ke Keuangan".
 - Di layar sempit, kolom kanan tetap turun ke bawah konten seperti sebelumnya.
 - **Lebih ringkas:** daftar "Tahapan wajib yang belum selesai" di kartu Persetujuan Pelaksanaan dan Persetujuan Perencanaan (kolom kanan) diganti satu baris, misalnya "8 tahapan wajib di checklist Pelaksanaan belum selesai", karena tahapannya sudah terlihat di checklist di sebelahnya. Daftar di tab Pembayaran tetap.
 
-##### 24. Amandemen & Delivery Order di Menu Approval
+#### 24. Amandemen & Delivery Order di Menu Approval
 - **Sebelumnya:** menu Approval hanya berisi antrean Perencanaan (TL ICC) dan Pelaksanaan (TL Pengadaan). Persetujuan Amandemen dan DO hanya bisa ditemukan lewat notifikasi atau tab Amandemen/DO di detail pengadaan.
 - **Sekarang** ada dua antrean baru, **Amandemen** dan **Delivery Order**, masing-masing dengan jumlah yang menunggu, tab Menunggu Keputusan / Riwayat Keputusan, dan tombol **Tinjau** yang membuka tab Amandemen/DO pengadaan itu (keputusan diambil di sana, dengan isi permohonan lengkap).
 - **Siapa melihat apa** (aturan sama dengan policy, `App\Support\ContractRequestQueue`):
@@ -2205,7 +2270,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
 - **Akses menu:** menu Approval kini juga terbuka bagi yang terlibat (mis. Asman dan TL atasan yang tidak memegang hak Menu Approval), lewat gate `open-approvals`. Pengguna yang tidak terlibat dan tidak punya hak tetap tidak melihat menu ini.
 - **Test:** `ContractApprovalQueueTest`; `ApprovalQueueTest` disesuaikan (TL ICC kini juga mendapat antrean DO, TL Pengadaan antrean Amandemen dan DO).
 
-##### 25. Notifikasi Realtime, Pop-up Browser, dan Panel Dashboard
+#### 25. Notifikasi Realtime, Pop-up Browser, dan Panel Dashboard
 - **Sebelumnya:** notifikasi tersimpan di database dan hanya tampil lewat ikon lonceng dan halaman Notifikasi. Angka di lonceng baru berubah saat berpindah halaman, tidak ada notifikasi browser, dan notifikasi hanya bisa ditandai dibaca sekaligus.
 - **Realtime (tanpa library baru):**
   - Aplikasi yang terbuka memeriksa notifikasi baru setiap 15 detik dan setiap kali tab kembali aktif, lewat `GET notifications/feed`.
@@ -2222,7 +2287,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
 - **Teknis:** `App\Support\NotificationFeed`, `NotificationController::feed/read`, `resources/js/lib/notification-feed.ts`, `components/notification-watcher.tsx` (dipasang di layout aplikasi), `notification-panel.tsx`, `browser-notification-toggle.tsx`.
 - **Test:** `NotificationFeedTest`.
 
-##### 26. Notifikasi Realtime dengan Laravel Reverb
+#### 26. Notifikasi Realtime dengan Laravel Reverb
 - **Terpasang:** `laravel/reverb` (Composer), `laravel-echo`, `pusher-js`, dan `@laravel/echo-react` (npm), lewat `php artisan install:broadcasting --reverb`.
   - Berkas baru: `config/broadcasting.php`, `config/reverb.php`, dan `routes/channels.php` (kanal privat `App.Models.User.{id}`, hanya pemiliknya yang boleh mendengar). `bootstrap/app.php` kini mendaftarkan `channels`.
   - `.env`: `BROADCAST_CONNECTION=reverb`, serta `REVERB_*` dan `VITE_REVERB_*`.
@@ -2254,7 +2319,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
   - Tombol Aktifkan Notifikasi Browser sempat menyebabkan *hydration mismatch* di Dashboard. Status izin kini dibaca lewat `useSyncExternalStore`, dengan snapshot server yang sama dengan render server.
 - **Test:** `RealtimeNotificationTest` (siaran saat notifikasi baru dan saat dibaca, tidak ada siaran saat rollback, pekerjaan tetap jalan bila Reverb tak terjangkau, otorisasi kanal hanya untuk pemiliknya).
 
-##### 27. Tab DO dan Amandemen Lebih Ringkas
+#### 27. Tab DO dan Amandemen Lebih Ringkas
 - **Masalah:** tab DO dan Amandemen menampilkan semuanya sekaligus: paragraf alur yang panjang, seluruh daftar harga kontrak, dan setiap permohonan sebagai kartu besar berisi semua rincian, termasuk DO/Amandemen yang sudah terbit. Pengguna sulit menemukan apa yang harus dikerjakan.
 - **Susunan baru** (berlaku untuk kedua tab; data dan alur di server tidak berubah):
   - **Judul satu baris** menggantikan paragraf alur.
@@ -2269,7 +2334,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
   - Tombol dokumen diseragamkan dengan checklist: Preview PDF, Unduh PDF, Edit.
 - **Teknis:** komponen bersama `components/procurement/request-progress.tsx` (`RequestProgress`, `RequestDocumentActions`, `DetailToggle`), dipakai di `delivery-order-tab.tsx` dan `amendment-tab.tsx`.
 
-##### 28. Riwayat Status & Sisa Tahapan Menuju Terkontrak
+#### 28. Riwayat Status & Sisa Tahapan Menuju Terkontrak
 - **Sebelumnya:** kartu Status Progres hanya menampilkan status saat ini. Status otomatis diubah diam-diam tanpa catatan, jadi tidak ada riwayat dan tidak terlihat berapa langkah lagi.
 - **Riwayat status:** tabel baru `procurement_status_histories` mencatat setiap status yang dimasuki pengadaan, beserta nama status saat itu, waktu, dan pengguna yang tindakannya memicu perubahan.
   - Status otomatis dicatat di `ProgressStatusResolver::apply`. Status saat pengadaan dibuat atau diubah manual (Batal / cabut pembatalan) dicatat lewat event `saved` pada model.
@@ -2285,14 +2350,14 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
   - tombol **Riwayat status (n)** yang membuka daftar perubahan status (terbaru di atas) dengan waktu dan pelakunya.
 - **Test:** `StatusJourneyTest`.
 
-##### 29. Header TOR: Nomor Dokumen Kosong, Tanggal Terbit Sesuai Tanggal Generate
+#### 29. Header TOR: Nomor Dokumen Kosong, Tanggal Terbit Sesuai Tanggal Generate
 - Pada kop TOR (`umum/tor.html`), **Nomor Dokumen / Pengadaan** sekarang dikosongkan untuk diisi manual. Sebelumnya terisi nomor pengadaan.
 - Baris **Halaman** juga dikosongkan. Sebelumnya tertulis "1 dari {status progres}", yang keliru.
 - **Tanggal Terbit** tetap tanggal TOR digenerate (`{{tanggal_dokumen}}`, dibekukan).
 - Migrasi `clear_the_document_number_of_the_tor_header` memperbarui template terpasang, juga TOR yang sudah ada (kecuali yang sudah punya scan bertanda tangan): nomor dan halaman dikosongkan, Tanggal Terbit diset ke tanggal generate-nya. Sebelumnya ada TOR yang menampilkan tanggal render ulang, bukan tanggal generate.
 - **Test:** `TorHeaderTest`.
 
-##### 30. Jenis Kontrak di Form, Kategori oleh PIC Perencana, Nomor Kontrak oleh PIC Pelaksana
+#### 30. Jenis Kontrak di Form, Kategori oleh PIC Perencana, Nomor Kontrak oleh PIC Pelaksana
 - **Form Buat/Ubah Pengadaan:**
   - Label "Jenis No Kontrak" menjadi **Jenis Kontrak** (pilihan SPK / PJ / SPPL tetap di sini, karena menentukan tahapan Perencanaan).
   - Kolom **No Kontrak** dan pilihan **Kategori** dihapus dari form.
@@ -2308,7 +2373,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
   - Tahapan belum bisa dicentang sebelum nomor terisi. Dokumen yang sudah digenerate ikut memakai nomor baru secara otomatis.
 - **Test:** `ContractNumberInputTest`; `ContractNumberTest`, `WorkCategoryTest`, `PlanningIdentityTest`, `MethodFollowsFormatTest`, dan `EndToEndFlowTest` disesuaikan.
 
-##### 31. Pembagian Isian: User, Rendan, Laksdan
+#### 31. Pembagian Isian: User, Rendan, Laksdan
 - **User** (pembuat pengadaan atau pengusul) memilih **Jenis Kontrak** (SPK / PJ / SPPL) di form Buat Pengadaan, kini juga di form Usulan Pekerjaan.
   - Di server tetap opsional, sehingga alur lama tidak rusak. Perencanaan menunggu isian ini lewat peringatan data kurang.
 - **Rendan** (PIC Perencana) memilih **Metode Pengadaan** dan **Kategori Kontrak** di panel Identitas Pengadaan, sebelum perencanaan disetujui.
@@ -2320,7 +2385,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
 - Metode lama (Surat Pesanan / SPK / Tender) tetap dipakai sistem untuk memilih template dan tahapan sesuai format. Menunya diganti nama menjadi **Data Master → Metode Internal (Template)**.
 - **Test:** `SelectionMethodTest`; batas jumlah query di `MethodSpecificTemplateTest` dinaikkan satu karena ada daftar metode pada opsi detail pengadaan.
 
-##### 32. Empat Penanda Tangan Lembar Pengesahan TOR
+#### 32. Empat Penanda Tangan Lembar Pengesahan TOR
 - Lembar Pengesahan TOR (`umum/tor.html`) kini ditandatangani empat pihak, dan namanya terisi otomatis dari data:
   1. **Disusun oleh: User**, yaitu pembuat usulan/pengadaan (`{{nama_penyusun}}`).
   2. **Diperiksa/Diketahui oleh**, kiri: **Asman bidang user** sesuai Direksi Pekerjaan pengadaan (jabatan `{{direksi_pekerjaan}}`, nama `{{nama_asman_pengguna}}`).
@@ -2332,17 +2397,17 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
 - Migrasi `sign_the_tor_by_the_user_and_both_asman` memperbarui template terpasang. TOR yang belum diedit ikut menyesuaikan saat dibuka; TOR yang sudah diedit tetap seperti isinya.
 - **Test:** `TorHeaderTest`.
 
-##### 33. Margin Halaman TOR di Editor Template
+#### 33. Margin Halaman TOR di Editor Template
 - Di Data Master → Template Dokumen, halaman TOR sebelumnya menempel ke tepi tanpa margin. TOR adalah satu-satunya template berbentuk dokumen HTML lengkap, dan marginnya hanya diatur `@page` (15 mm) yang berlaku di PDF.
 - Editor (`resources/js/lib/template-document.ts`) kini menampilkan TOR di lembar A4 dengan margin 15 mm, sama dengan PDF. Pratinjau HTML-nya juga diberi margin yang sama (khusus layar).
 - Pratinjau template punya contoh nilai untuk `{{pengesahan_tor}}` dan nama-nama penanda tangan.
 
-##### 34. Level Risiko CSMS oleh User
+#### 34. Level Risiko CSMS oleh User
 - Form Buat Pengadaan / Usulan Pekerjaan punya isian **Level Risiko CSMS**: Low, Moderat, High, Extreme (enum `CsmsRiskLevel`, kolom `procurements.csms_risk_level`).
 - Ditampilkan di panel Identitas Pengadaan dan dicetak lewat placeholder `{{level_risiko_csms}}`.
 - **Test:** `CsmsRiskLevelTest`.
 
-##### 35. TOR: Kerangka Poin, Kop Formulir, dan Tanggal Terbit dari User
+#### 35. TOR: Kerangka Poin, Kop Formulir, dan Tanggal Terbit dari User
 - **Isi TOR hanya poin dan sub-poin.** Narasi diketik manual di editor dokumen, di bawah setiap poin ada baris kosong untuk mulai mengetik. Penomoran juga dirapikan: sebelumnya ada dua poin 9 dan sub-poin 10.x di bawah poin 9.
   - Poin: 1 Pendahuluan (1.1 Latar Belakang, 1.2 Maksud dan Tujuan dengan 1.2.1 Maksud dan 1.2.2 Tujuan, 1.3 Lokasi, 1.4 Nama Pengguna Barang/Jasa); 2 Pedoman Acuan Teknis (2.1 Standart Nasional & Internasional Terkait); 3 Lingkup Pekerjaan; 4 Performance Design; 5 Kualifikasi Calon Pelaksana; 6 Detail Uraian Pekerjaan; 7 Kelengkapan Pelaksanaan; 8 Aspek K3 dan Keamanan (8.1 Identifikasi Bahaya dan Risiko Kerja); 9 Laporan Hasil Pekerjaan (9.1 Laporan Hasil Pekerjaan, 9.2 Dokumen Penagihan); 10 Barang Sisa & Limbah; 11 Quality Acceptance; 12 Waktu Penyelesaian; 13 Garansi; 14 Lain-lain.
   - Sampul, identitas program, dan Lembar Pengesahan tidak berubah.
@@ -2358,7 +2423,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
   - TOR yang sudah punya scan bertanda tangan tidak diubah.
 - **Test:** `TorHeaderTest` (kerangka poin, kop, tanggal terbit dari user, perbaikan TOR lama). `SignatoryNamesTest` disesuaikan karena narasi TOR dihapus.
 
-##### 36. Template TOR Dipaksa Kerangka Poin & Command Perbaikan TOR
+#### 36. Template TOR Dipaksa Kerangka Poin & Command Perbaikan TOR
 - **Template TOR bawaan selalu dipasang**, meskipun sebelumnya diubah admin. Ini berlaku untuk seeder (`DocumentTemplateLibrarySeeder`, properti `$forced = ['umum.tor']` di `LibraryTemplateSeeder`) dan migrasi TOR (`sync(..., force: true)`).
   - Sebelumnya, template yang pernah disesuaikan admin dilewati, sehingga narasi lama bisa tetap tampil di production.
 - **Command `php artisan tor:perbaiki`** memasang template TOR bawaan lalu memperbaiki TOR yang sudah dibuat:
@@ -2371,7 +2436,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
 - Pendukung: `DocumentGenerator::rebuild()` membangun ulang satu dokumen dari template yang berlaku sambil menjaga tanggal generate. `App\Support\TorKop` berisi kop formulir TOR.
 - **Test:** `RepairTorDocumentsTest`.
 
-##### 37. Label "Penyusun" pada Lembar Pengesahan TOR
+#### 37. Label "Penyusun" pada Lembar Pengesahan TOR
 - Di Lembar Pengesahan TOR, tulisan "User" di atas nama pembuat usulan/pengadaan diganti **"Penyusun"**. Berlaku untuk SPK/PJ (di bawah "Disusun oleh:") dan SPPL (kolom kanan).
 - TOR yang belum diedit ikut berubah saat dibuka. Untuk TOR yang sudah diedit, `php artisan tor:perbaiki` mengganti "User" menjadi "Penyusun" bersama kop-nya, tanpa menyentuh isian lain.
 - `tor:perbaiki` mengenali label "User" meskipun selnya sudah diubah editor (ada `style`, atau dibungkus `<span>`/`<b>`). Command ini juga:
@@ -2379,7 +2444,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
   - menyediakan `--detail` untuk melihat tiap TOR: bertanda tangan, diedit, tindakan, dan apakah masih "User".
 - TOR yang sudah punya scan bertanda tangan hanya diperbaiki dengan `--termasuk-ttd`.
 
-##### 38. Semua Tanggal TOR = Tanggal Terbit TOR, Lokasi Kendari
+#### 38. Semua Tanggal TOR = Tanggal Terbit TOR, Lokasi Kendari
 - Semua tanggal di TOR memakai **Tanggal Terbit TOR** yang diisi user, atau tanggal generate bila kosong:
   - TANGGAL di sampul, Tanggal di identitas program, dan tanggal di Lembar Pengesahan memakai `{{tanggal_terbit_tor}}` (contoh: 06 Februari 2023);
   - tahun di pita sampul memakai `{{tahun_terbit_tor}}`;
@@ -2388,7 +2453,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
 - Template diperbarui paksa oleh migrasi `date_the_tor_by_its_issue_date_in_kendari`. Untuk TOR yang sudah diedit, `tor:perbaiki` menyesuaikan tanggal sampul, tanggal identitas, dan baris "Kendari, tanggal"; isian lain tetap.
 - **Test:** `TorHeaderTest`, `RepairTorDocumentsTest`, `TorDocumentTemplateTest`.
 
-##### 39. Total Tabel Berita Acara Negosiasi
+#### 39. Total Tabel Berita Acara Negosiasi
 - **SPPL** (tabel "Harga Sebelum/Setelah Nego"): rumus sudah benar. TOTAL HARGA = Σ (Qty × Harga Satuan), sebelum dan sesudah nego, dihitung dari Rincian Item.
 - **SPK/PJ** (lampiran "Rincian Hasil Negosiasi Harga"): sebelumnya tabel ini tidak dihitung sama sekali; Qty, harga, Sub Total, PPN, dan Total hanya titik-titik. Sekarang tabelnya digambar dari Rincian Item (`ItemTableRenderer::negoBreakdown`):
   - Jumlah per baris = Qty × Harga Negosiasi;
@@ -2398,19 +2463,19 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
 - `ItemTableRenderer::VERSION` naik ke 3, sehingga BA Negosiasi yang belum diedit digambar ulang saat dibuka.
 - **Test:** `BaNegosiasiTotalTest`.
 
-##### 40. Lembar Pengesahan TOR: Huruf Besar, Tanpa Jarak Judul–Jabatan
+#### 40. Lembar Pengesahan TOR: Huruf Besar, Tanpa Jarak Judul–Jabatan
 - Baris kosong (`small-gap`) antara judul ("DIPERIKSA/DIKETAHUI OLEH:", "DISUSUN OLEH:", "DISETUJUI OLEH:") dan jabatan dihapus. Jarak yang tersisa hanya ruang tanda tangan di atas nama.
 - Semua teks pada form tanda tangan ditulis huruf besar (judul, jabatan seperti ASMAN OPERASI / PENYUSUN / ASMAN ENGINEERING / MANAGER, dan nama). Huruf besar ditulis langsung, bukan lewat CSS, sehingga tetap bertahan saat diedit atau diunduh.
 - `tor:perbaiki` kini menggambar ulang seluruh Lembar Pengesahan pada TOR yang sudah diedit (`DocumentGenerator::torApprovalPage`): judul, "Kendari, tanggal terbit", dan tanda tangan. Isian poin-poin tetap.
 - **Test:** `TorHeaderTest`, `TorSignatureTest`, `RepairTorDocumentsTest`.
 
-##### 41. Baris Kelompok Tabel BA Negosiasi SPPL Di-merge
+#### 41. Baris Kelompok Tabel BA Negosiasi SPPL Di-merge
 - Baris kelompok ("A | Material & Tools Tangki 50 KL") kini berisi huruf di kolom NO dan nama kelompok yang di-merge (`colspan="7"`) sampai kolom terakhir. Sebelumnya diikuti enam sel kosong.
 - Parser BA Negosiasi (`parseNegotiationItems`) mengenali baris kelompok yang di-merge, sehingga kelompok tidak hilang saat dokumen disimpan dari editor.
 - Dokumen yang sudah diedit kini ikut menggambar ulang tabel itemnya dari Rincian Item saat dibuka (teks lain tetap). `ItemTableRenderer::VERSION` naik ke 4, sehingga BA Negosiasi yang sudah ada langsung memakai tampilan baru. Dokumen bertanda tangan tidak diubah.
 - **Test:** `BaNegosiasiTotalTest`.
 
-##### 42. Template Berita Acara Tahap "Proses SMART SCM & Berita Acara" Mengikuti Formulir Unit
+#### 42. Template Berita Acara Tahap "Proses SMART SCM & Berita Acara" Mengikuti Formulir Unit
 - Enam template diganti sesuai formulir UP Kendari. Semuanya memakai logo `/logo/sidebar-logo.png`, kop "PT PLN Nusantara Power / UP KENDARI", dan nama penanda tangan huruf besar.
   1. **BA Pemberian Penjelasan (Aanwijzing)**: Nomor …/BAP/612/UPKD, bagian I–V (Penjelasan, Pertanyaan & Jawaban, Perubahan/Koreksi, Kesimpulan, Penutup). Tanda tangan: peserta (calon mitra) di kiri; UP Kendari di kanan (TL Pengadaan – Team Leader Pengadaan, PIC Pelaksana – Junior Officer Pengadaan).
   2. **Lampiran BAPP – Catatan Hasil Pembukaan Penawaran**: tabel kelengkapan (Dokumen Teknis a–l, Dokumen Kewajaran Harga, Kesimpulan Akhir, Paraf Peserta) dengan **satu kolom per calon mitra** (A/L), plus keterangan A/TA dan L/TL.
@@ -2426,7 +2491,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
 - **Test:** `TenderBeritaAcaraTest`; `BeritaAcaraDocumentTest` disesuaikan dengan judul baru.
 - **Test:** `TorHeaderTest`, `RepairTorDocumentsTest`.
 
-##### 43. Data Master Manager Unit: Pejabat Unit Layanan
+#### 43. Data Master Manager Unit: Pejabat Unit Layanan
 - 27 pejabat Unit Layanan ditambahkan ke Data Master → Manager Unit lewat seeder `UnitLayananManagerSeeder` (juga dipanggil `MasterDataSeeder`). Nama di kolom Nama, jabatan di kolom Jabatan, dan unit di kolom Keterangan:
   - **ULPLTD WUA WUA** (5): Manager UL, TL Pemeliharaan, TL Operasi, TL OPHAR PLTD Langara, TL K3L.
   - **ULPLTD POASIA** (4): Manager UL, TL Pemeliharaan, TL Operasi, TL K3L.
@@ -2438,7 +2503,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
 - **Menjalankan:** `php artisan db:seed --class=UnitLayananManagerSeeder --force`.
 - **Test:** `UnitLayananManagerSeederTest`.
 
-##### 44. Jabatan Manager Unit Dipilih dari Dropdown Bertingkat
+#### 44. Jabatan Manager Unit Dipilih dari Dropdown Bertingkat
 - Isian Jabatan pada Tambah/Ubah Manager kini dropdown (`App\Enums\UnitManagerLevel`), urut dari yang tertinggi:
   1. **MANAGER**: jabatan tertinggi; tanpa unit.
   2. **MANAGER UL**: memegang beberapa unit (pilih banyak).
@@ -2458,7 +2523,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
   - Pejabat yang sudah punya unit atau tingkatnya sudah diubah administrator tidak disentuh.
 - **Test:** `UnitManagerLevelTest`, `UnitLayananManagerSeederTest`; `MasterDataManagementTest` disesuaikan.
 
-##### 45. Template Surat Mitra di Keuangan: Unduh (Word), lalu Unggah
+#### 45. Template Surat Mitra di Keuangan: Unduh (Word), lalu Unggah
 - Langkah Keuangan yang dibuktikan dengan unggahan kini menawarkan tombol **Unduh Template (Word)** bila langkahnya adalah salah satu surat mitra. Surat tidak digenerate: mitra memasang kop perusahaannya, melengkapi, menandatangani, lalu berkasnya diunggah kembali di langkah yang sama (`App\Support\FinanceLetters`, rute `procurements.checklists.template`).
 - Langkah dikenali dari namanya, termasuk langkah yang dibaca dari kontrak:
 
@@ -2487,14 +2552,14 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
 - Tombol juga muncul pada langkah yang mengunggah dokumen upload-only (mis. BAST), di atas daftar dokumennya; langkah dengan dokumen yang digenerate tidak ditawari.
 - **Migrasi:** `add_the_partner_letters_for_keuangan` (jenis dokumen + template) dan `add_the_handover_report_for_keuangan` (BASTP). **Test:** `FinanceLettersTest`.
 
-##### 46. TOR Dua Versi Tanda Tangan: SPPL Tiga Orang, SPK/PJ Empat Orang (Dipastikan)
+#### 46. TOR Dua Versi Tanda Tangan: SPPL Tiga Orang, SPK/PJ Empat Orang (Dipastikan)
 - Satu template TOR (`umum.tor`); halaman Lembar Pengesahan (`{{pengesahan_tor}}`) mengikuti format kontrak:
   - **SPPL (3):** Diperiksa/Diketahui Asman bidang user (kiri), Disusun Penyusun/user (kanan), lalu Disetujui Manager di bawah.
   - **SPK dan PJ (4):** Disusun Penyusun/user, lalu Diperiksa/Diketahui Asman bidang user (kiri) dan Asman Engineering (kanan), lalu Disetujui Manager.
 - **Perbaikan:** TOR yang narasinya sudah diketik (revisi > 0) kini juga menggambar ulang halaman Lembar Pengesahan dari data saat dibuka atau saat data pengadaan berubah. Bila Jenis Kontrak diganti (mis. SPK menjadi SPPL), jumlah penanda tangannya ikut berubah, dan narasi yang diketik tetap utuh (`DocumentGenerator::redrawTorApproval`). TOR yang sudah memiliki scan bertanda tangan tidak berubah.
 - **Test:** `TorHeaderTest` (`test_an_spk_or_pj_tor_is_signed_by_four_and_an_sppl_tor_by_three`, `test_a_typed_tor_follows_a_change_of_contract_format`).
 
-##### 47. Editor Dokumen: Tab Seperti Word dan Toolbar Lebih Lengkap
+#### 47. Editor Dokumen: Tab Seperti Word dan Toolbar Lebih Lengkap
 - **Tab tidak lagi memindahkan fokus atau halaman** (sebelumnya browser memindahkan fokus ke elemen berikutnya, sehingga halaman melompat). Di editor dokumen (`visual-editor.tsx`), termasuk TOR:
   - Di sel tabel: Tab / Shift+Tab pindah ke sel berikut / sebelumnya, seperti sebelumnya.
   - Di butir daftar: Tab menjorokkan butir, Shift+Tab mengembalikannya.
@@ -2503,7 +2568,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
   - Ukuran dan warna ditulis sebagai style inline agar terbaca PDF.
   - Pilihan teks diingat, sehingga pemilih warna tetap mewarnai teks yang dipilih.
 
-##### 48. Isian Nomor RKS, HPE, dan UPB di Checklist Perencanaan
+#### 48. Isian Nomor RKS, HPE, dan UPB di Checklist Perencanaan
 - Langkah **RKS**, **HPE**, dan **UPB** pada checklist perencanaan kini masing-masing punya isian **Nomor RKS / Nomor HPE / Nomor UPB** (jenis isian baru `rks_number`, `hpe_number`, `upb_number` pada `ChecklistInput`; kolom `procurements.rks_number`, `hpe_number`, `upb_number`).
 - Sama seperti isian lain: langkah baru bisa dicentang dan perencanaan baru bisa diajukan setelah nomornya diisi. Langkah yang sudah tercentang tetapi nomornya kosong dihitung belum selesai.
 - **Dokumen:**
@@ -2511,7 +2576,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
   - Placeholder baru `{{nomor_hpe}}` (bila kosong: nomor nota dinas usulan + "-HPE(A)") dan `{{nomor_upb}}` (bila kosong: nomor nota dinas usulan). Template HPE dan UPB kini memakainya pada baris Nomor.
 - **Migrasi:** `add_document_numbers_to_planning_steps` (kolom, pemasangan isian pada ketiga langkah bila belum diberi isian lain oleh administrator, dan sinkron template HPE/UPB). **Test:** `PlanningDocumentNumbersTest`.
 
-##### 49. Monitoring dalam Folder per Mitra, Monitoring Kontrak, dan Filter Tahun/Bulan
+#### 49. Monitoring dalam Folder per Mitra, Monitoring Kontrak, dan Filter Tahun/Bulan
 - **Monitoring Pengadaan, Amandemen, dan Delivery Order** kini dibuka sebagai **folder per mitra** (nama mitra disamakan tanpa beda huruf besar/kecil dan spasi; mitra yang paling baru aktif di depan; folder **Belum Ada Mitra** di akhir). Tampilannya sama dengan folder Penilaian Penyedia.
   - **Isi folder:**
     - **Pengadaan:** jumlah pekerjaan dan berapa yang selesai.
@@ -2530,7 +2595,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
 - Pencarian filter bersama kini juga mencocokkan **nama mitra**.
 - **Test:** `ContractMonitoringTest` (disesuaikan dengan folder, ditambah folder pengadaan, Monitoring Kontrak, dan filter tahun/bulan).
 
-##### 50. Berita Acara SMART SCM per Metode Pengadaan (Pengadaan Langsung vs Penunjukan Langsung / Lelang)
+#### 50. Berita Acara SMART SCM per Metode Pengadaan (Pengadaan Langsung vs Penunjukan Langsung / Lelang)
 - **Jenis dokumen kini bisa dibatasi per Metode Pengadaan** (pivot `document_type_selection_method`; Data Master → Jenis Dokumen, isian **Hanya untuk Metode Pengadaan**, kolom **Metode**). Kosong berarti semua metode. Pengadaan yang metodenya belum dipilih Rendan dianggap **Pengadaan Langsung** (`DocumentType::appliesTo`).
 - **Langkah "Proses SMART SCM & Berita Acara"** memuat BA semua metode secara berurutan (`App\Support\TenderBeritaAcara::STEP`). Setiap pengadaan hanya diminta BA metodenya:
 
@@ -2554,7 +2619,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
 - **Migrasi:** `add_tender_berita_acara_per_selection_method` (pivot, 13 jenis dokumen baru, batasan metode, tautan ke langkah dengan urutan, dan pemasangan template grup `lelang`). Seeder `MasterDataSeeder` mengikuti `TenderBeritaAcara`.
 - **Test:** `TenderMethodDocumentsTest`; `MethodSpecificTemplateTest` disesuaikan (hanya menghitung jenis dokumen buatannya sendiri).
 
-##### 51. Rapikan Tampilan Monitoring dan Filter Daftar
+#### 51. Rapikan Tampilan Monitoring dan Filter Daftar
 - **Folder mitra (Pengadaan, Amandemen, DO, Kontrak):** halaman terisi sampai bawah layar dan pagination selalu di bagian paling bawah, seperti di Penilaian Penyedia (`partner-folder-grid.tsx`).
 - **Kartu status tanpa baris ganjil** (`resources/js/lib/layout.ts`):
   - `evenColumns()` memilih jumlah kolom (4 sampai 7) yang menyisakan tempat kosong paling sedikit di baris terakhir, misalnya 21 status menjadi 7 × 3.
@@ -2567,7 +2632,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
   - Mulai layar `xl`, semua filter muat dalam satu baris; bila sempit, label turun ke baris kedua, bukan filternya.
   - Juga diterapkan pada Tahun/Bulan (`period-filter.tsx`) dan filter Monitoring Kontrak/Amandemen/DO.
 
-##### 52. Cover RKS Baru (Sesuai Contoh)
+#### 52. Cover RKS Baru (Sesuai Contoh)
 - **Semua RKS** (template `rks.spk`, `rks.tender`, `pj.rks-jasa`, `umum.rks`) memakai cover yang sama seperti contoh, dari atas ke bawah:
   - Garis biru diagonal di pojok kiri atas dan kanan bawah. Biru muda dan biru tua langsung bersambung, tanpa garis putih pembatas.
   - **PT PLN NUSANTARA POWER / RENCANA KERJA DAN SYARAT-SYARAT / (RKS)**.
@@ -2585,7 +2650,7 @@ Catatan revisi dalam urutan waktu. Bagian yang menjadi spesifikasi inti sudah di
   - Dokumen RKS yang sudah dibuat sebelumnya tidak berubah; buat ulang dokumennya untuk mendapatkan cover baru.
 - **Test:** `RksCoverTest` (baru). `MethodSpecificTemplateTest` dan `RksPjJasaTest` disesuaikan dengan judul cover baru.
 
-##### 53. Editor Visual Seperti Word: Zoom, Pengaturan Halaman, dan Area Edit Lebih Luas
+#### 53. Editor Visual Seperti Word: Zoom, Pengaturan Halaman, dan Area Edit Lebih Luas
 Berlaku di **Edit Dokumen** (pengadaan) dan **editor Template Dokumen** (Data Master).
 
 - **Lembar kertas sesuai ukuran asli:**
@@ -2622,7 +2687,7 @@ Berlaku di **Edit Dokumen** (pengadaan) dan **editor Template Dokumen** (Data Ma
   - Margin dan kertas mengubah jumlah halaman.
   - Posisi footer tetap di F4.
 
-##### 54. Garis Tabel Surat Pesanan yang Hilang di PDF
+#### 54. Garis Tabel Surat Pesanan yang Hilang di PDF
 - **Masalah:** kolom **Batas Waktu Penyerahan** pada Surat Pesanan digabung (rowspan) untuk semua baris barang. Bila tabel menyambung ke halaman berikutnya, mesin PDF tidak menggambar garis sel gabungan itu (garis bawah di akhir halaman dan kolomnya di halaman berikut hilang).
 - **Perbaikan** (`DocumentPdfRenderer::withRowSpansPerSheet`):
   - Saat PDF dibuat, dokumen dibaca halaman per halaman terlebih dahulu.
@@ -2632,7 +2697,7 @@ Berlaku di **Edit Dokumen** (pengadaan) dan **editor Template Dokumen** (Data Ma
 - **Cache PDF:** `LAYOUT_VERSION` dinaikkan ke 4, sehingga PDF yang sudah ter-cache dibuat ulang.
 - **Test:** `MergedCellPageBreakTest`.
 
-##### 55. Checklist Perencanaan sampai Pembayaran sebagai Tabel Langkah (UX Tahap 1)
+#### 55. Checklist Perencanaan sampai Pembayaran sebagai Tabel Langkah (UX Tahap 1)
 Hanya tampilan. Database, rute, dan aturan server tidak diubah; semua aksi memakai endpoint yang sudah ada.
 
 - **Tab Perencanaan, Pelaksanaan, Penyerahan, dan Pembayaran** memakai komponen `ChecklistSteps` (`resources/js/components/procurement/checklist-steps.tsx`).
@@ -2664,7 +2729,7 @@ Hanya tampilan. Database, rute, dan aturan server tidak diubah; semua aksi memak
   - Tombol "Langkah berikutnya".
 - **Panel tetap terbuka setelah menyimpan** (halaman dimuat ulang), dan pesan penolakan dari server ditampilkan.
 
-##### 56. Amandemen & DO sebagai Tabel dengan Panel Samping
+#### 56. Amandemen & DO sebagai Tabel dengan Panel Samping
 Hanya tampilan. Endpoint, aturan persetujuan, dan database tidak diubah.
 
 - **Komponen bersama** di `resources/js/components/procurement/request-board.tsx`:
@@ -2689,7 +2754,7 @@ Hanya tampilan. Endpoint, aturan persetujuan, dan database tidak diubah.
   - Bila sudah terisi, dipindah ke bawah tabel.
 - **Tab yang dipilih di halaman pengadaan kini tersimpan di alamat (`?tab=`)**, sehingga setelah menyimpan apa pun halaman kembali ke tab yang sama. Sebelumnya halaman kembali ke tab tahap berjalan.
 
-##### 57. Stepper Tahap dan Hambatan Pengajuan (UX Tahap 2)
+#### 57. Stepper Tahap dan Hambatan Pengajuan (UX Tahap 2)
 Hanya tampilan. Database, rute, aturan pengajuan/persetujuan, dan data yang dikirim server tidak diubah.
 
 - **Stepper tahap menggantikan deretan 8 tab** (`resources/js/components/procurement/stage-stepper.tsx`):
@@ -2708,7 +2773,7 @@ Hanya tampilan. Database, rute, aturan pengajuan/persetujuan, dan data yang diki
   - Stepper bisa digeser ke samping dan tahap yang dipilih otomatis terlihat.
   - Bila Anda bisa mengajukan/menyetujui, muncul pintasan di bawah stepper yang menggulir ke kartu persetujuan.
 
-##### 58. Panel Kanan, DO Bertahap, dan Perbandingan Pasal (UX Tahap 3)
+#### 58. Panel Kanan, DO Bertahap, dan Perbandingan Pasal (UX Tahap 3)
 Hanya tampilan. Database, rute, aturan, dan pesan server tidak diubah.
 
 **A. Panel kanan halaman pengadaan**
@@ -3169,5 +3234,27 @@ Langkah **Pelaksana** di tahap Pelaksanaan diubah sebagai berikut.
 
 - **Nomor BA & Tanggal BA** pada tahapan pelaksanaan "Proses SMART SCM & Berita Acara" — spesifikasi di bab 5 (Tahapan Pelaksanaan Khusus SPK → Nomor BA & Tanggal BA).
 - **Berkas unggahan dibuka di tab baru** (tanpa modal), dengan tombol **Unduh** dan nama unduhan berawalan `UNGGAHAN - ` — spesifikasi di bab 7 (Berkas Unggahan: Lihat di Tab Baru & Unduh).
-- `prompt.md` dirapikan dan diganti nama menjadi **`PRD.md`**: isi lama dipertahankan seluruhnya, disusun ulang ke bab spesifikasi (1–10) dan riwayat (11). Revisi berikutnya dicatat di file ini.
+- `prompt.md` dirapikan dan diganti nama menjadi **`PRD.md`**: isi lama dipertahankan seluruhnya, disusun ulang ke bab spesifikasi (1–10) dan riwayat (11).
 - Migrasi baru: `2026_11_18_020733_add_the_smart_scm_berita_acara_number_and_date`.
+
+### Penyempurnaan BA per Dokumen, Kartu Warna Flat, Pita Panah, & Perapian `prd.md` (18–27 November 2026)
+
+- **Nomor & Tanggal BA SMART SCM per dokumen (layout berdampingan responsif):**
+  - Migrasi `2026_11_18_032544_create_procurement_berita_acaras_table` dan model `ProcurementBeritaAcara` menyimpan nomor & tanggal BA untuk tiap `document_type_id` pada langkah "Proses SMART SCM & Berita Acara" (pengisian bertahap diizinkan; fallback ke kolom tunggal jika langkah tanpa dokumen).
+  - Input `Nomor Surat / BA`, `Tanggal BA`, dan tombol `Simpan` tampil langsung berdampingan di kanan masing-masing kartu dokumen (`checklist-panel.tsx`, `checklist-steps.tsx`) dengan *container query* (`@container`, 2 baris pada kolom kanan, Sheet `sm:w-[92vw] sm:max-w-4xl`) agar tidak terpotong di desktop, laptop kecil, tablet, maupun mobile.
+  - Placeholder `{{nomor_ba_smart_scm}}` dan `{{tanggal_ba_smart_scm}}` di `DocumentGenerator` otomatis memakai nomor & tanggal BA milik dokumen yang sedang dirender/di-refresh.
+  - **Test:** `SmartScmBeritaAcaraTest`, `ChecklistDocumentRequirementTest`, `EndToEndFlowTest`.
+- **Kartu Dashboard & Perlu Tindakan berwarna flat (tanpa gradien):** kartu KPI (`analytics.tsx`), kartu peran (`role-dashboard.tsx`), dan kartu `Perlu Tindakan Anda` (`dashboard.tsx`) memakai warna solid berbeda per kartu dengan garis aksen atas `3px`, permukaan tinted flat, dan kotak ikon solid berikon putih.
+- **Tab tahapan pita panah (`StageStepper`):** menghapus garis kecil di bawah pita aktif; seluruh pita panah kini berubah satu warna solid (`#0f766e` saat dipilih, `#0e7c7b` saat hover) dengan animasi halus `300ms ease-out`.
+- **Penyingkatan teks keterangan & konsolidasi Data Master:** menghapus paragraf pengantar panjang di `Dokumen & Template` dan meringkas deskripsi panjang di halaman Data Master, Pengadaan, Monitoring, Anggaran, Penilaian Penyedia, serta Administrasi; menyelaraskan dokumentasi menu Data Master gabungan (`Pejabat Unit & Direksi`, `Metode Pengadaan`, `Dokumen & Template`).
+- **Perapian struktur & nama file `prd.md`:** memperbaiki hierarki heading yang melompat, merapikan urutan nomor riwayat, menyelaraskan struktur menu dan spesifikasi bab 1–10 dengan kondisi aplikasi terkini, serta mengganti nama file menjadi `prd.md`.
+
+### Fitur Request COA, Master Data Segmen COA, & Sinkronisasi ke Usulan Pekerjaan (27 November 2026)
+
+- **Data Master Segmen COA (`Data Master → Segmen COA`):** tabel `coa_segment_options`, model `CoaSegmentOption`, controller `MasterData\CoaSegmentOptionController`, dan halaman `master-data/coa-segments.tsx` (lengkap dengan filter per segmen & pencarian) menyimpan seluruh kode & keterangan 8 segmen COA (`Segment 1`–`Segment 7` dan `Expense Element`) beserta data awal UP Kendari (`CoaCatalog::seedDefaults()` / `CoaSegmentOptionSeeder`).
+- **Modul Request COA (`Pengadaan → Request COA`):**
+  - Staf & TL pengusul dapat menyusun kode COA dari 8 segmen (Segment 2 `District` otomatis terisi `KD — UPDK KENDARI`, pratinjau kode COA gabungan tersusun otomatis seperti `AKD213720002320F102/JBJSLN`), dengan tombol **Simpan** (draft) dan **Request Aktivasi** (kirim ke Keuangan).
+  - Bagian Keuangan menerima seluruh usulan COA yang masuk (termasuk muncul di Dashboard *Perlu Tindakan Anda*), dapat **Edit / perbaiki langsung** segmen maupun kode COA final, dan mengklik **Aktivasi** (atau **Simpan & Aktivasi**).
+  - Hak akses baru (`coa.request`, `coa.manage`, `menu.coa-requests`) terintegrasi penuh di layar **Administrasi → Hak Akses**.
+- **Sinkronisasi ke Usulan Pekerjaan:** COA berstatus **Aktif** otomatis tampil sebagai pilihan cepat pada kolom **Nomor COA** di `ProcurementForm` (`MasterDataOptions::forProcurementForm()`), sambil tetap mengizinkan input manual.
+- **Test:** `CoaRequestTest`.

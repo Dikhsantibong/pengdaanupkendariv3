@@ -64,9 +64,11 @@ class NotificationFeed
             // or a cached build), which links by it.
             'procurement_id' => $procurement,
             'procurement_number' => $data['procurement_number'] ?? null,
-            'url' => $procurement === null
-                ? route('notifications.index')
-                : route('procurements.show', array_filter([$procurement, 'tab' => $data['tab'] ?? null])),
+            'url' => is_string($data['url'] ?? null) && $data['url'] !== ''
+                ? $data['url']
+                : ($procurement === null
+                    ? route('notifications.index')
+                    : route('procurements.show', array_filter([$procurement, 'tab' => $data['tab'] ?? null]))),
             'read_at' => $notification->read_at?->toIso8601String(),
             'created_at' => $notification->created_at?->toIso8601String() ?? now()->toIso8601String(),
         ];

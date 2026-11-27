@@ -8,6 +8,7 @@ use App\Enums\ProcurementStage;
 use App\Enums\UserRole;
 use App\Models\BudgetPlan;
 use App\Models\BudgetSource;
+use App\Models\CoaRequest;
 use App\Models\ContractNumberFormat;
 use App\Models\ContractType;
 use App\Models\DocumentTemplate;
@@ -48,6 +49,8 @@ class MasterDataOptions
             'planners' => self::planners(),
             // The PRK the Anggaran role entered, each for one bidang.
             'budgetPlans' => BudgetPlan::proposalOptions(),
+            // Active COA codes approved/activated by Keuangan, ready to pick.
+            'activeCoas' => CoaRequest::activeOptions(),
         ];
     }
 

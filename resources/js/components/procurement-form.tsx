@@ -1,4 +1,4 @@
-import { useForm } from '@inertiajs/react';
+import { Link, useForm, usePage } from '@inertiajs/react';
 import { FileText, Plus, Upload, X } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
@@ -22,7 +22,8 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import type { Option, PicOption } from '@/types';
+import coaRequests from '@/routes/coa-requests';
+import type { Auth, Option, PicOption } from '@/types';
 
 /** A contract number format, and whether it asks for a category. */
 export type ContractFormatOption = Option & { usesWorkCategory?: boolean };
@@ -53,9 +54,21 @@ function nameFromPlan(plan: BudgetPlanOption): string {
         .join(' - ');
 }
 
+/** An activated COA code approved by Keuangan, selectable on proposals. */
+export type ActiveCoaOption = {
+    id: number;
+    value: string;
+    label: string;
+    description: string | null;
+    summary: string;
+    workDirectorId: number | null;
+};
+
 export type ProcurementFormOptions = {
     /** The PRK of Perencanaan Anggaran, offered to the bidang they are for. */
     budgetPlans?: BudgetPlanOption[];
+    /** Active COA codes synced from Request COA (Keuangan). */
+    activeCoas?: ActiveCoaOption[];
     contractNumberFormats: ContractFormatOption[];
     /** The categories of an SPK or PJ, from the Jenis Kontrak master data. */
     contractTypes: Option[];
@@ -554,12 +567,11 @@ export function ProcurementForm({
                         required={isProposal}
                         error={errors.pr_po_number}
                     />
-                    <MultiValueField
-                        id="coa_number"
-                        label="Nomor COA"
+                    <CoaNumberField
                         value={data.coa_number}
                         onChange={(value) => setData('coa_number', value)}
-                        placeholder="Contoh: 5110100000"
+                        activeCoas={options.activeCoas ?? []}
+                        workDirectorId={data.work_director_id}
                         required={isProposal}
                         error={errors.coa_number}
                     />
@@ -1001,6 +1013,95 @@ function PrkPicker({
                 terisi; semuanya masih bisa diubah.
             </p>
             <InputError message={error} />
+        </div>
+    );
+}
+
+function CoaNumberField({
+    value,
+    onChange,
+    activeCoas,
+    workDirectorId,
+    required = false,
+    error,
+}: {
+    value: string;
+    onChange: (value: string) => void;
+    activeCoas: ActiveCoaOption[];
+    workDirectorId: number | null;
+    required?: boolean;
+    error?: string;
+}) {
+    const { auth } = usePage<{ auth: Auth }>().props;
+    const canOpenCoaMenu = Boolean(auth?.permissions?.menus?.['coa-requests']);
+    const [pickerKey, setPickerKey] = useState(0);
+
+    const sortedCoas = [...activeCoas].sort((a, b) => {
+        const aMatches =
+            workDirectorId !== null && a.workDirectorId === workDirectorId
+                ? 0
+                : 1;
+        const bMatches =
+            workDirectorId !== null && b.workDirectorId === workDirectorId
+                ? 0
+                : 1;
+
+        return aMatches - bMatches;
+    });
+
+    return (
+        <div className="grid content-start gap-2">
+            <MultiValueField
+                id="coa_number"
+                label="Nomor COA"
+                value={value}
+                onChange={onChange}
+                placeholder="Contoh: AKD213720002320F102/JBJSLN"
+                required={required}
+                error={error}
+            />
+            {sortedCoas.length > 0 && (
+                <Select
+                    key={pickerKey}
+                    onValueChange={(picked) => {
+                        onChange(withNumber(value, picked));
+                        setPickerKey((current) => current + 1);
+                    }}
+                >
+                    <SelectTrigger
+                        className="h-8 w-full text-xs"
+                        aria-label="Pilih dari COA Aktif"
+                    >
+                        <SelectValue placeholder="Pilih dari COA aktif (Keuangan)..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                        {sortedCoas.map((coa) => (
+                            <SelectItem key={coa.id} value={coa.value}>
+                                <span className="font-mono font-semibold">
+                                    {coa.label}
+                                </span>
+                                {(coa.description || coa.summary) && (
+                                    <span className="text-muted-foreground">
+                                        {' '}
+                                        · {coa.description || coa.summary}
+                                    </span>
+                                )}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            )}
+            {canOpenCoaMenu && (
+                <p className="text-[11px] text-muted-foreground">
+                    COA yang sudah diaktifkan Keuangan tampil di pilihan atas.{' '}
+                    <Link
+                        href={coaRequests.index()}
+                        className="font-medium text-primary hover:underline"
+                    >
+                        Ajukan Request COA
+                    </Link>
+                </p>
+            )}
         </div>
     );
 }

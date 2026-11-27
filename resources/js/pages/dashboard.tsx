@@ -65,6 +65,7 @@ import {
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import approvals from '@/routes/approvals';
+import coaRequests from '@/routes/coa-requests';
 import execution from '@/routes/execution';
 import finance from '@/routes/finance';
 import picAssignments from '@/routes/pic-assignments';
@@ -88,6 +89,7 @@ type DashboardTasks = {
     budgetPlans?: TaskList | null;
     myProposals: TaskList;
     finance: TaskList | null;
+    coaActivations?: TaskList | null;
     approvals: TaskList | null;
     executionApprovals: TaskList | null;
     handoverApprovals: TaskList | null;
@@ -885,6 +887,28 @@ function TaskInbox({
                     : null,
             allHref: menus.finance ? finance.index().url : null,
             color: '#15803d',
+        });
+    }
+
+    if (
+        tasks.coaActivations !== null &&
+        tasks.coaActivations !== undefined &&
+        tasks.coaActivations.total > 0
+    ) {
+        cards.push({
+            key: 'coaActivations',
+            title: 'Request COA Menunggu Aktivasi',
+            icon: FilePlus2,
+            list: tasks.coaActivations,
+            emptyText: 'Tidak ada request COA yang menunggu aktivasi.',
+            itemHref: () =>
+                coaRequests.index({
+                    query: { status: 'menunggu_aktivasi' },
+                }).url,
+            dateLabel: (item) =>
+                item.date ? `Diajukan ${formatDateTime(item.date)}` : null,
+            allHref: menus['coa-requests'] ? coaRequests.index().url : null,
+            color: '#0284c7',
         });
     }
 

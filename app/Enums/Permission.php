@@ -42,6 +42,8 @@ enum Permission: string
     case ManageVendorAssessments = 'vendor-assessments.manage';
     case ManageMasterData = 'master-data.manage';
     case ManageBudgetPlans = 'budget-plans.manage';
+    case RequestCoa = 'coa.request';
+    case ManageCoaRequests = 'coa.manage';
     case MenuProposals = 'menu.proposals';
     case MenuPlanning = 'menu.planning';
     case MenuExecution = 'menu.execution';
@@ -54,6 +56,7 @@ enum Permission: string
     case MenuReports = 'menu.reports';
     case MenuPublicMonitoring = 'menu.public-monitoring';
     case MenuBudgetPlans = 'menu.budget-plans';
+    case MenuCoaRequests = 'menu.coa-requests';
 
     /**
      * The name shown on the access screen.
@@ -79,6 +82,8 @@ enum Permission: string
             self::ManageVendorAssessments => 'Kelola penilaian penyedia',
             self::ManageMasterData => 'Kelola data master',
             self::ManageBudgetPlans => 'Kelola perencanaan anggaran',
+            self::RequestCoa => 'Ajukan request COA',
+            self::ManageCoaRequests => 'Edit & aktivasi COA (Keuangan)',
             self::MenuProposals => 'Menu Usulan Pekerjaan',
             self::MenuPlanning => 'Menu Perencanaan',
             self::MenuExecution => 'Menu Pelaksanaan',
@@ -90,6 +95,7 @@ enum Permission: string
             self::MenuReports => 'Menu Laporan',
             self::MenuPublicMonitoring => 'Menu Monitoring Publik',
             self::MenuBudgetPlans => 'Menu Perencanaan Anggaran',
+            self::MenuCoaRequests => 'Menu Request COA',
         };
     }
 
@@ -117,6 +123,8 @@ enum Permission: string
             self::ManageVendorAssessments => 'Membuat, mengisi, dan mengirim formulir penilaian kinerja penyedia.',
             self::ManageMasterData => 'Mengubah seluruh data master.',
             self::ManageBudgetPlans => 'Menambah, mengubah, dan menghapus baris Perencanaan Anggaran (PRK induk, rencana AI/AKI, nomor WO dan PR).',
+            self::RequestCoa => 'Membuat, menyimpan draft, dan mengajukan request aktivasi nomor COA ke bagian Keuangan.',
+            self::ManageCoaRequests => 'Menerima seluruh usulan request COA, memperbaiki isian segmen/kode COA, dan mengaktifkan nomor COA agar tersinkron ke usulan pekerjaan.',
             self::MenuProposals => 'Menampilkan dan membuka halaman Usulan Pekerjaan (usulan sendiri dan antrean persetujuan).',
             self::MenuPlanning => 'Menampilkan dan membuka papan Perencanaan.',
             self::MenuExecution => 'Menampilkan dan membuka papan Pelaksanaan.',
@@ -128,6 +136,7 @@ enum Permission: string
             self::MenuReports => 'Menampilkan dan membuka Laporan, termasuk ekspor.',
             self::MenuPublicMonitoring => 'Menampilkan tautan Monitoring Publik di menu. Halaman publiknya sendiri tetap terbuka untuk umum.',
             self::MenuBudgetPlans => 'Menampilkan dan membuka halaman Perencanaan Anggaran (hanya lihat, kecuali punya hak kelola).',
+            self::MenuCoaRequests => 'Menampilkan dan membuka halaman Request COA (pengajuan oleh Staf/TL dan aktivasi oleh Keuangan).',
         };
     }
 
@@ -151,7 +160,9 @@ enum Permission: string
             self::ManageProcurementSteps,
             self::ProcessPayment,
             self::ViewAllProcurements,
-            self::ViewAllProposals => 'Pengadaan',
+            self::ViewAllProposals,
+            self::RequestCoa,
+            self::ManageCoaRequests => 'Pengadaan',
             self::ManageVendorAssessments => 'Penilaian Penyedia',
             self::ManageBudgetPlans => 'Anggaran',
             self::ManageMasterData => 'Administrasi',
@@ -165,7 +176,8 @@ enum Permission: string
             self::MenuMonitoring,
             self::MenuReports,
             self::MenuPublicMonitoring,
-            self::MenuBudgetPlans => 'Akses Menu',
+            self::MenuBudgetPlans,
+            self::MenuCoaRequests => 'Akses Menu',
         };
     }
 
@@ -195,6 +207,21 @@ enum Permission: string
             // Anggaran keeps the budget plan; the team leaders read it.
             self::ManageBudgetPlans => [UserRole::Anggaran],
             self::MenuBudgetPlans => [UserRole::Anggaran, UserRole::TeamLeaderPengadaan, UserRole::TeamLeaderIcc],
+            // Staf & TL request COA; Keuangan reviews, edits, and activates them.
+            self::RequestCoa => [
+                UserRole::Pengusul,
+                UserRole::DireksiPekerjaan,
+                UserRole::TeamLeaderPengadaan,
+                UserRole::TeamLeaderIcc,
+            ],
+            self::ManageCoaRequests => [UserRole::Keuangan],
+            self::MenuCoaRequests => [
+                UserRole::Pengusul,
+                UserRole::DireksiPekerjaan,
+                UserRole::TeamLeaderPengadaan,
+                UserRole::TeamLeaderIcc,
+                UserRole::Keuangan,
+            ],
             // Those who approve the stages shape them.
             self::ManageProcurementSteps => [UserRole::TeamLeaderPengadaan, UserRole::TeamLeaderIcc],
             self::MenuFinance => [UserRole::Keuangan, UserRole::TeamLeaderPengadaan, UserRole::TeamLeaderIcc],

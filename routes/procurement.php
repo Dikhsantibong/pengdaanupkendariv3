@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ApprovalQueueController;
 use App\Http\Controllers\BudgetPlanController;
+use App\Http\Controllers\CoaRequestController;
 use App\Http\Controllers\DocumentArchiveController;
 use App\Http\Controllers\ExecutionController;
 use App\Http\Controllers\MonitoringController;
@@ -170,6 +171,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('perencanaan-anggaran/{budgetPlan}', [BudgetPlanController::class, 'update'])->name('budget-plans.update');
         Route::delete('perencanaan-anggaran/{budgetPlan}', [BudgetPlanController::class, 'destroy'])->name('budget-plans.destroy');
     });
+
+    // Request COA: Staf & TL propose/save/request activation; Keuangan edits & activates.
+    Route::middleware('can:menu.coa-requests')->group(function () {
+        Route::get('request-coa', [CoaRequestController::class, 'index'])->name('coa-requests.index');
+        Route::put('request-coa/{coaRequest}', [CoaRequestController::class, 'update'])->name('coa-requests.update');
+    });
+    Route::middleware('can:coa.request')->group(function () {
+        Route::post('request-coa', [CoaRequestController::class, 'store'])->name('coa-requests.store');
+        Route::post('request-coa/{coaRequest}/ajukan', [CoaRequestController::class, 'submit'])->name('coa-requests.submit');
+        Route::delete('request-coa/{coaRequest}', [CoaRequestController::class, 'destroy'])->name('coa-requests.destroy');
+    });
+    Route::post('request-coa/{coaRequest}/aktivasi', [CoaRequestController::class, 'activate'])
+        ->middleware('can:coa.manage')
+        ->name('coa-requests.activate');
 
     Route::middleware('can:menu.reports')->group(function () {
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');

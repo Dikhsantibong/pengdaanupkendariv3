@@ -43,6 +43,7 @@ export type AuthPermissions = {
         reports: boolean;
         'public-monitoring': boolean;
         'budget-plans': boolean;
+        'coa-requests': boolean;
     };
 };
 

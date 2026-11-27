@@ -51,6 +51,7 @@ class MasterDataSeeder extends Seeder
         $this->call(UnitLayananManagerSeeder::class);
         $this->seedProcurementMethods();
         $this->seedBudgetSources();
+        $this->call(CoaSegmentOptionSeeder::class);
         $this->seedContractTypes();
         $this->seedSelectionMethods();
         $this->seedContractNumberFormats();
