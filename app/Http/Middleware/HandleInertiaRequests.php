@@ -61,6 +61,8 @@ class HandleInertiaRequests extends Middleware
                         && $user->mayProposeWork(),
                     'assignPic' => $user !== null && Gate::forUser($user)->allows('assign-pic'),
                     'manageVendorAssessments' => $user !== null && Gate::forUser($user)->allows('manage-vendor-assessments'),
+                    'requestCoa' => $user !== null && $user->hasPermission(Permission::RequestCoa),
+                    'manageCoaRequests' => $user !== null && $user->hasPermission(Permission::ManageCoaRequests),
                     // Which menus to show, keyed by the right's name.
                     'menus' => collect(Permission::cases())
                         ->filter(fn (Permission $permission): bool => str_starts_with($permission->value, 'menu.'))
@@ -69,6 +71,8 @@ class HandleInertiaRequests extends Middleware
                         ])
                         // Whoever decides amendments or DOs gets the Approval menu too.
                         ->put('approvals', $user !== null && Gate::forUser($user)->allows('open-approvals'))
+                        // Whoever may request or activate COA gets the Request COA menu too.
+                        ->put('coa-requests', $user !== null && Gate::forUser($user)->allows('open-coa-requests'))
                         ->all(),
                 ],
             ],

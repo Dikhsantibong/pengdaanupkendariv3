@@ -101,7 +101,11 @@ export function AppSidebar() {
                 ...(menus['coa-requests']
                     ? [
                           {
-                              title: 'Request COA',
+                              title:
+                                  permissions.manageCoaRequests &&
+                                  !permissions.requestCoa
+                                      ? 'Aktivasi COA'
+                                      : 'Request COA',
                               href: coaRequests.index(),
                               icon: Tag,
                           },

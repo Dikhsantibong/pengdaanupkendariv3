@@ -30,6 +30,8 @@ export type AuthPermissions = {
     proposeOnly: boolean;
     assignPic: boolean;
     manageVendorAssessments: boolean;
+    requestCoa?: boolean;
+    manageCoaRequests?: boolean;
     /** Which menus are visible, as set on the Hak Akses screen. */
     menus: {
         proposals: boolean;

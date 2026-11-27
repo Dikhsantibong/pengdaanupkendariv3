@@ -10,6 +10,7 @@ use App\Models\CoaSegmentOption;
 use App\Models\User;
 use App\Models\WorkDirector;
 use App\Notifications\CoaRequestNotification;
+use App\Services\AccessRights;
 use App\Support\CoaCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -293,5 +294,25 @@ class CoaRequestTest extends TestCase
 
         $this->actingAs($planner)->get(route('coa-requests.index'))->assertForbidden();
         $this->actingAs($executor)->get(route('coa-requests.index'))->assertForbidden();
+    }
+
+    public function test_granting_coa_action_right_exposes_menu_even_without_separate_menu_checkbox(): void
+    {
+        $planner = User::factory()->planner()->create();
+        $grants = AccessRights::grants();
+        $grants['pic_perencana'][] = 'coa.request';
+
+        AccessRights::replace($grants);
+
+        $this->actingAs($planner)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('auth.permissions.requestCoa', true)
+                ->where('auth.permissions.menus.coa-requests', true));
+
+        $this->actingAs($planner)
+            ->get(route('coa-requests.index'))
+            ->assertOk();
     }
 }

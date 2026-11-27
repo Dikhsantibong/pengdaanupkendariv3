@@ -173,7 +173,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Request COA: Staf & TL propose/save/request activation; Keuangan edits & activates.
-    Route::middleware('can:menu.coa-requests')->group(function () {
+    Route::middleware('can:open-coa-requests')->group(function () {
         Route::get('request-coa', [CoaRequestController::class, 'index'])->name('coa-requests.index');
         Route::put('request-coa/{coaRequest}', [CoaRequestController::class, 'update'])->name('coa-requests.update');
     });

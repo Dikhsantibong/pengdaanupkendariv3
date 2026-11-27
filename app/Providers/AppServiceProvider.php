@@ -125,6 +125,12 @@ class AppServiceProvider extends ServiceProvider
             || PaymentQueue::involves($user)
             || ProposalQueue::involves($user));
 
+        // The Request COA / Aktivasi COA menu opens whenever the role holds
+        // either the menu right, the request right, or the Keuangan manage right.
+        Gate::define('open-coa-requests', fn (User $user): bool => $user->hasPermission(Permission::MenuCoaRequests)
+            || $user->hasPermission(Permission::RequestCoa)
+            || $user->hasPermission(Permission::ManageCoaRequests));
+
         // Users and access rights stay with the administrator alone: anyone
         // able to change them could raise their own role.
         Gate::define('manage-users', fn (User $user): bool => $user->isAdministrator());
