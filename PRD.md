@@ -3284,3 +3284,11 @@ Langkah **Pelaksana** di tahap Pelaksanaan diubah sebagai berikut.
 - Bila tanggal mulai belum diisi, tanggal tampil "-".
 - **Test:** `LampiranSpDateTest`.
 
+### Akun Keuangan Masih Berperan Pengusul: Request COA Tidak Masuk ke TL Keuangan (28 November 2026)
+
+- **Masalah (production):** akun TL Keuangan (Nova Sang Jaya) tampil sebagai **Pengusul (Staf/TL Bidang)**, sehingga menunya "Request COA" dengan tombol *Buat Request COA* dan tidak melihat request pengusul lain untuk diverifikasi.
+- **Penyebab:** akun keuangan dulu dibuat sebagai Pengusul. `DivisionUserSeeder` sudah memperbaikinya ke peran Keuangan, tetapi seeder tidak dijalankan saat deploy, sehingga database lama tetap Pengusul.
+- **Perbaikan:** migrasi `2026_11_28_063158_give_the_finance_accounts_their_keuangan_role` mengubah akun keuangan (email akun keuangan bawaan atau jabatan *TL Keuangan* / *Staf Keuangan*) yang **masih berperan Pengusul** menjadi **Keuangan**, dan menautkan staf keuangan ke TL Keuangan bila belum. Peran lain yang sengaja diatur Administrator tidak diubah.
+- **Hasil:** TL Keuangan hanya melihat menu **Aktivasi COA** (tanpa tombol Request COA), menerima seluruh request berstatus *Menunggu Aktivasi* dari pengusul/TL, dan dapat mengaktifkannya.
+- **Test:** `FinanceAccountRoleTest`.
+
