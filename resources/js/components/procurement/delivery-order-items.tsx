@@ -1,6 +1,6 @@
 import { AlertTriangle, ClipboardPaste, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { ClipboardEvent, ReactNode } from 'react';
 import InputError from '@/components/input-error';
 import type {
     ContractItem,
@@ -11,6 +11,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatCurrency } from '@/lib/format';
+import {
+    parseClipboardGrid,
+    parseMoney,
+    parsePastedVolumes,
+} from '@/lib/item-grid-paste';
 import { cn } from '@/lib/utils';
 
 /** A line of a DO as its forms keep it. */
@@ -214,6 +219,49 @@ export function ItemPicker({
         );
     });
 
+    const pasteVolumes = (
+        startVisibleIndex: number,
+        event: ClipboardEvent<HTMLInputElement>,
+    ) => {
+        const text =
+            event.clipboardData.getData('text/plain') ||
+            event.clipboardData.getData('text');
+        const values = parsePastedVolumes(text);
+
+        if (values === null) {
+            return;
+        }
+
+        event.preventDefault();
+        const next = new Map(quantities);
+
+        for (let offset = 0; offset < values.length; offset++) {
+            const target = shown[startVisibleIndex + offset];
+
+            if (!target) {
+                break;
+            }
+
+            const key = String(target.id);
+            const val = values[offset];
+
+            if (val === '') {
+                next.delete(key);
+            } else {
+                next.set(key, val);
+            }
+        }
+
+        onChange(
+            contractItems
+                .filter((item) => next.has(String(item.id)))
+                .map((item) => ({
+                    contract_item_id: String(item.id),
+                    quantity: next.get(String(item.id)) ?? '',
+                })),
+        );
+    };
+
     const priceOf = (id: string) =>
         contractItems.find((item) => String(item.id) === id)?.unit_price ?? 0;
     const total = sent.reduce(
@@ -291,7 +339,7 @@ export function ItemPicker({
                                 </td>
                             </tr>
                         )}
-                        {rows.map(({ item, heading }) => {
+                        {rows.map(({ item, heading }, visibleIndex) => {
                             const value = quantities.get(String(item.id)) ?? '';
                             const picked = Number(value) > 0;
                             const error = errorOf(item.id);
@@ -324,6 +372,7 @@ export function ItemPicker({
                                                 step="any"
                                                 inputMode="decimal"
                                                 aria-label={`Volume ${item.description}`}
+                                                title="Bisa tempel 1 kolom volume dari Excel"
                                                 aria-invalid={
                                                     error ? true : undefined
                                                 }
@@ -332,6 +381,12 @@ export function ItemPicker({
                                                     setQuantity(
                                                         item.id,
                                                         event.target.value,
+                                                    )
+                                                }
+                                                onPaste={(event) =>
+                                                    pasteVolumes(
+                                                        visibleIndex,
+                                                        event,
                                                     )
                                                 }
                                                 placeholder="0"
@@ -413,12 +468,11 @@ export type PriceListRow = {
     unit_price: string;
 };
 
-/** "Rp 1.234.500,00" or "1,234,500.00" reads 1234500. */
+/** "Rp 1.234.500,00" or "1,234,500.00" reads "1234500". */
 function readPrice(text: string): string {
-    const cleaned = text.replace(/[^\d.,]/g, '');
-    const withoutDecimals = cleaned.replace(/[.,]\d{1,2}$/, '');
+    const parsed = parseMoney(text);
 
-    return withoutDecimals.replace(/[.,]/g, '');
+    return parsed === null ? '' : String(parsed);
 }
 
 /**
@@ -428,9 +482,10 @@ function readPrice(text: string): string {
  * row (no number in its price) is passed over.
  */
 export function parsePriceList(text: string): PriceListRow[] {
-    return text
-        .split(/\r?\n/)
-        .map((line) => line.split('\t').map((cell) => cell.trim()))
+    return parseClipboardGrid(text)
+        .map((cells) =>
+            cells.map((cell) => cell.replace(/\r?\n/g, ' ').trim()),
+        )
         .filter((cells) => cells.some((cell) => cell !== ''))
         .map((cells): PriceListRow | null => {
             const [group, description, part, unit, price] =

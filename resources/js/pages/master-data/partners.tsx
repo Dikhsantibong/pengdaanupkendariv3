@@ -7,6 +7,7 @@ type Partner = MasterRecord & {
     name: string;
     vendor_code: string | null;
     director_name: string | null;
+    phone_number: string | null;
     address: string | null;
     sort_order: number;
 };
@@ -27,6 +28,11 @@ export default function Partners({ records }: { records: Partner[] }) {
                     className: 'tabular',
                 },
                 { key: 'director_name', label: 'Nama Direktur' },
+                {
+                    key: 'phone_number',
+                    label: 'Nomor HP',
+                    className: 'tabular',
+                },
                 { key: 'address', label: 'Alamat' },
             ]}
             fields={[
@@ -49,6 +55,12 @@ export default function Partners({ records }: { records: Partner[] }) {
                     type: 'text',
                 },
                 {
+                    name: 'phone_number',
+                    label: 'Nomor HP',
+                    type: 'tel',
+                    placeholder: 'Contoh: 0812 3456 7890',
+                },
+                {
                     name: 'address',
                     label: 'Alamat Perusahaan',
                     type: 'textarea',
@@ -65,6 +77,7 @@ export default function Partners({ records }: { records: Partner[] }) {
                 name: '',
                 vendor_code: '',
                 director_name: '',
+                phone_number: '',
                 address: '',
                 sort_order: 0,
                 is_active: true,

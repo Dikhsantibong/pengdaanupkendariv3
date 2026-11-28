@@ -84,8 +84,13 @@ export function PartnerNameInput({
 
     const pick = (partner: PartnerSuggestion) => {
         typed.current = false;
-        onChange(partner.name);
-        onPick?.(partner);
+
+        if (onPick) {
+            onPick(partner);
+        } else {
+            onChange(partner.name);
+        }
+
         setOpen(false);
         setSuggestions([]);
     };
@@ -156,8 +161,8 @@ export function PartnerNameInput({
                             )}
                             onMouseDown={(event) => {
                                 event.preventDefault();
-                                pick(partner);
                             }}
+                            onClick={() => pick(partner)}
                             onMouseEnter={() => setActive(at)}
                         >
                             <Building2 className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
@@ -170,6 +175,8 @@ export function PartnerNameInput({
                                         partner.vendor_code &&
                                             `Kode ${partner.vendor_code}`,
                                         partner.director_name,
+                                        partner.phone_number &&
+                                            `HP ${partner.phone_number}`,
                                     ]
                                         .filter(Boolean)
                                         .join(' · ') || 'Data mitra tersimpan'}

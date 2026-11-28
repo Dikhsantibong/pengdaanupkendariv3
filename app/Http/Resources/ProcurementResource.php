@@ -73,6 +73,26 @@ class ProcurementResource extends JsonResource
 
                 return $values->count() === 1 ? $values->first() : null;
             }),
+            'quotation_value_range' => $this->whenLoaded('partnerCandidates', function (): ?array {
+                if ($this->partner_candidate_id !== null) {
+                    return null;
+                }
+
+                $values = $this->partnerCandidates
+                    ->pluck('quotation_value')
+                    ->filter(fn (mixed $value): bool => $value !== null)
+                    ->map(fn (mixed $value): float => (float) $value)
+                    ->values();
+
+                if ($values->isEmpty()) {
+                    return null;
+                }
+
+                $min = (float) $values->min();
+                $max = (float) $values->max();
+
+                return $min === $max ? null : ['min' => $min, 'max' => $max];
+            }),
             'hpe_value' => (float) $this->hpe_value,
             'value_after_negotiation' => $this->value_after_negotiation === null
                 ? null

@@ -57,6 +57,7 @@ class PartnerController extends MasterDataController
                 'name' => $record->name,
                 'vendor_code' => $record->vendor_code,
                 'director_name' => $record->director_name,
+                'phone_number' => $record->phone_number,
                 'address' => $record->address,
                 'sort_order' => $record->sort_order,
                 'is_active' => $record->is_active,
@@ -86,10 +87,28 @@ class PartnerController extends MasterDataController
             ],
             'vendor_code' => ['nullable', 'string', 'max:100'],
             'director_name' => ['nullable', 'string', 'max:255'],
+            'phone_number' => ['nullable', 'string', 'max:50', 'regex:/^[0-9 +()\-]+$/'],
             'address' => ['nullable', 'string', 'max:1000'],
             'sort_order' => ['required', 'integer', 'min:0', 'max:999'],
             'is_active' => ['required', 'boolean'],
         ];
+    }
+
+    /**
+     * Clean optional partner details so placeholder dashes are stored as null.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    protected function prepare(array $validated, ?Model $record = null): array
+    {
+        foreach (['vendor_code', 'director_name', 'phone_number', 'address'] as $field) {
+            if (array_key_exists($field, $validated)) {
+                $validated[$field] = Partner::cleanDetail(is_string($validated[$field]) ? $validated[$field] : null);
+            }
+        }
+
+        return $validated;
     }
 
     /**
@@ -101,6 +120,7 @@ class PartnerController extends MasterDataController
     {
         return [
             'name.unique' => 'Mitra dengan nama ini sudah ada.',
+            'phone_number.regex' => 'Nomor HP hanya boleh berisi angka, spasi, +, -, atau tanda kurung.',
         ];
     }
 }

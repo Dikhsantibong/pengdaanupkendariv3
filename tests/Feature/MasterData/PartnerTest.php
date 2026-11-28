@@ -27,6 +27,7 @@ class PartnerTest extends TestCase
                 'name' => 'CV. Akasha Nusa Engineering',
                 'vendor_code' => 'V07452',
                 'director_name' => 'Trisno Saputra',
+                'phone_number' => '081234567890',
                 'address' => 'Jl. Dr. Sam Ratulangi, Kendari',
                 'sort_order' => 0,
                 'is_active' => true,
@@ -35,19 +36,33 @@ class PartnerTest extends TestCase
             ->assertRedirect();
 
         $partner = Partner::query()->firstOrFail();
+        $this->assertSame('081234567890', $partner->phone_number);
 
         $this->actingAs($administrator)
             ->put(route('master-data.partners.update', $partner), [
                 'name' => 'CV. Akasha Nusa Engineering',
                 'vendor_code' => 'V07453',
                 'director_name' => 'Trisno Saputra',
-                'address' => null,
+                'phone_number' => '0812-3456-7899',
+                'address' => '-',
                 'sort_order' => 0,
                 'is_active' => true,
             ])
             ->assertSessionHasNoErrors();
 
-        $this->assertSame('V07453', $partner->refresh()->vendor_code);
+        $partner->refresh();
+        $this->assertSame('V07453', $partner->vendor_code);
+        $this->assertSame('0812-3456-7899', $partner->phone_number);
+        $this->assertNull($partner->address);
+
+        $this->actingAs($administrator)
+            ->put(route('master-data.partners.update', $partner), [
+                'name' => 'CV. Akasha Nusa Engineering',
+                'phone_number' => 'bukan-nomor-hp',
+                'sort_order' => 0,
+                'is_active' => true,
+            ])
+            ->assertSessionHasErrors('phone_number');
 
         // The same name twice is refused.
         $this->actingAs($administrator)
@@ -79,8 +94,20 @@ class PartnerTest extends TestCase
 
     public function test_typing_a_name_suggests_the_matching_active_partners(): void
     {
-        Partner::factory()->create(['name' => 'PT Sinar Teknik Sulawesi', 'vendor_code' => 'V07000']);
-        Partner::factory()->create(['name' => 'CV Teknik Mandiri']);
+        Partner::factory()->create([
+            'name' => 'PT Sinar Teknik Sulawesi',
+            'vendor_code' => 'V07000',
+            'director_name' => 'Andi Wijaya',
+            'phone_number' => '0811445566',
+            'address' => 'Jl. Ahmad Yani No. 10',
+        ]);
+        Partner::factory()->create([
+            'name' => 'CV Teknik Mandiri',
+            'vendor_code' => '-',
+            'director_name' => null,
+            'phone_number' => '-',
+            'address' => null,
+        ]);
         Partner::factory()->create(['name' => 'PT Karya Energi']);
         Partner::factory()->inactive()->create(['name' => 'Teknik Lama']);
 
@@ -93,12 +120,18 @@ class PartnerTest extends TestCase
             ['CV Teknik Mandiri', 'PT Sinar Teknik Sulawesi'],
             collect($response->json('partners'))->pluck('name')->all(),
         );
+        // Placeholder dashes are never leaked into suggestion details.
+        $response->assertJsonPath('partners.0.vendor_code', null)
+            ->assertJsonPath('partners.0.phone_number', null);
 
         // A name starting with what was typed comes first, with its details.
         $this->actingAs(User::factory()->planner()->create())
             ->getJson(route('partners.suggest', ['search' => 'PT S']))
             ->assertJsonPath('partners.0.name', 'PT Sinar Teknik Sulawesi')
-            ->assertJsonPath('partners.0.vendor_code', 'V07000');
+            ->assertJsonPath('partners.0.vendor_code', 'V07000')
+            ->assertJsonPath('partners.0.director_name', 'Andi Wijaya')
+            ->assertJsonPath('partners.0.phone_number', '0811445566')
+            ->assertJsonPath('partners.0.address', 'Jl. Ahmad Yani No. 10');
 
         $this->actingAs(User::factory()->planner()->create())
             ->getJson(route('partners.suggest', ['search' => '  ']))
@@ -183,5 +216,71 @@ class PartnerTest extends TestCase
 
         $this->assertTrue(Partner::query()->where('name', 'CV Mandiri Jaya Abadi')->exists());
         $this->assertTrue(Partner::query()->where('name', 'PT. Surveyor Indonesia')->exists());
+    }
+
+    public function test_remember_and_backfill_migration_clean_placeholder_dashes_and_fill_missing_details(): void
+    {
+        $partner = Partner::factory()->create([
+            'name' => 'CV. Akasha Nusa Engineering',
+            'vendor_code' => '-',
+            'director_name' => 'Direktur Tetap',
+            'phone_number' => null,
+            'address' => '   ',
+        ]);
+
+        // Placeholder "-" never overwrites a known director, while real details fill empty/dash slots.
+        Partner::remember('cv. akasha nusa engineering', [
+            'vendor_code' => 'V07452',
+            'director_name' => '-',
+            'phone_number' => '081299001122',
+            'address' => 'Jl. Sam Ratulangi',
+        ]);
+
+        $partner->refresh();
+        $this->assertSame('V07452', $partner->vendor_code);
+        $this->assertSame('Direktur Tetap', $partner->director_name);
+        $this->assertSame('081299001122', $partner->phone_number);
+        $this->assertSame('Jl. Sam Ratulangi', $partner->address);
+
+        $backfillTarget = Partner::factory()->create([
+            'name' => 'CV. Cahaya Sultra',
+            'vendor_code' => '-',
+            'director_name' => 'Nama Master',
+            'phone_number' => null,
+            'address' => '-',
+        ]);
+
+        $procurement = Procurement::factory()->create([
+            'partner_name' => 'CV. CAHAYA SULTRA',
+            'partner_vendor_code' => 'V08888',
+            'partner_director_name' => 'Nama Lama',
+            'partner_phone_number' => '081355667788',
+            'partner_address' => 'Kendari',
+        ]);
+        $procurement->partnerCandidates()->create([
+            'name' => 'CV. Cahaya Sultra',
+            'vendor_code' => 'V09999',
+            'director_name' => 'Nama Kandidat',
+            'phone_number' => '081399887766',
+            'address' => 'Jl. MT Haryono',
+            'sort_order' => 1,
+        ]);
+
+        // Reset master record back to placeholder/null after booted() remember ran.
+        $backfillTarget->forceFill([
+            'vendor_code' => '-',
+            'director_name' => 'Nama Master',
+            'phone_number' => null,
+            'address' => '-',
+        ])->save();
+
+        $migration = require database_path('migrations/2026_11_28_085707_backfill_partner_master_details.php');
+        $migration->up();
+
+        $backfillTarget->refresh();
+        $this->assertSame('V09999', $backfillTarget->vendor_code);
+        $this->assertSame('Nama Master', $backfillTarget->director_name);
+        $this->assertSame('081399887766', $backfillTarget->phone_number);
+        $this->assertSame('Jl. MT Haryono', $backfillTarget->address);
     }
 }

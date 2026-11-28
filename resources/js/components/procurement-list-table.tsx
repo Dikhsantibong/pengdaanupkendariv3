@@ -3,6 +3,7 @@ import { Eye, Minus, Plus } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { DataPagination } from '@/components/data-pagination';
 import { EmptyState } from '@/components/empty-state';
+import { formatOfferOrHpe } from '@/components/procurement-table';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -126,7 +127,7 @@ export function ProcurementListTable({
                                         </span>
                                     </TableCell>
                                     <TableCell className="tabular text-right text-xs whitespace-nowrap">
-                                        {formatCurrency(row.hpe_value)}
+                                        {formatOfferOrHpe(row)}
                                     </TableCell>
                                     <TableCell>
                                         <StatusBadge
@@ -187,7 +188,7 @@ function RowDetails({ row }: { row: ProcurementRow }) {
             ['Nomor PRK', row.prk_number ?? '—'],
         ],
         [
-            ['Nilai HPE', formatCurrency(row.hpe_value)],
+            ['Nilai HPE', formatOfferOrHpe(row)],
             [
                 'Nilai Setelah Nego',
                 row.value_after_negotiation === null

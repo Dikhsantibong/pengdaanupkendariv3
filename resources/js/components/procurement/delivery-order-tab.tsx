@@ -17,6 +17,7 @@ import {
     Upload,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import type { ClipboardEvent } from 'react';
 import InputError from '@/components/input-error';
 import { DecisionControls } from '@/components/procurement/decision-controls';
 import {
@@ -55,6 +56,7 @@ import {
 } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/format';
+import { applyContractItemPaste } from '@/lib/item-grid-paste';
 import { cn } from '@/lib/utils';
 import procurements from '@/routes/procurements';
 import {
@@ -790,6 +792,37 @@ function ContractItemsSection({
             ),
         );
 
+    const pasteAt = (
+        rowIndex: number,
+        colIndex: number,
+        event: ClipboardEvent<HTMLInputElement>,
+    ) => {
+        const text =
+            event.clipboardData.getData('text/plain') ||
+            event.clipboardData.getData('text');
+        const next = applyContractItemPaste({
+            rows: form.data.items,
+            startRowIndex: rowIndex,
+            startColIndex: colIndex,
+            clipboardText: text,
+            createEmptyRow: () => ({
+                id: null,
+                group_name: '',
+                description: '',
+                part_number: '',
+                unit: '',
+                unit_price: '',
+            }),
+        });
+
+        if (next === null) {
+            return;
+        }
+
+        event.preventDefault();
+        form.setData('items', next);
+    };
+
     return (
         <section className="space-y-3 rounded-md border border-border bg-card p-4">
             <header className="flex flex-wrap items-center justify-between gap-2">
@@ -862,14 +895,17 @@ function ContractItemsSection({
                         >
                             <Input
                                 placeholder="Kelompok (opsional)"
+                                title="Bisa tempel langsung dari Excel"
                                 value={row.group_name}
                                 onChange={(event) =>
                                     set(index, 'group_name', event.target.value)
                                 }
+                                onPaste={(event) => pasteAt(index, 0, event)}
                             />
                             <div>
                                 <Input
                                     placeholder="Uraian"
+                                    title="Bisa tempel langsung dari Excel"
                                     value={row.description}
                                     onChange={(event) =>
                                         set(
@@ -877,6 +913,9 @@ function ContractItemsSection({
                                             'description',
                                             event.target.value,
                                         )
+                                    }
+                                    onPaste={(event) =>
+                                        pasteAt(index, 1, event)
                                     }
                                 />
                                 <InputError
@@ -887,6 +926,7 @@ function ContractItemsSection({
                             </div>
                             <Input
                                 placeholder="Part number"
+                                title="Bisa tempel langsung dari Excel"
                                 value={row.part_number}
                                 onChange={(event) =>
                                     set(
@@ -895,13 +935,18 @@ function ContractItemsSection({
                                         event.target.value,
                                     )
                                 }
+                                onPaste={(event) => pasteAt(index, 2, event)}
                             />
                             <div>
                                 <Input
                                     placeholder="Satuan"
+                                    title="Bisa tempel langsung dari Excel"
                                     value={row.unit}
                                     onChange={(event) =>
                                         set(index, 'unit', event.target.value)
+                                    }
+                                    onPaste={(event) =>
+                                        pasteAt(index, 3, event)
                                     }
                                 />
                                 <InputError
@@ -913,6 +958,7 @@ function ContractItemsSection({
                                     type="number"
                                     min={0}
                                     placeholder="Harga satuan"
+                                    title="Bisa tempel langsung dari Excel"
                                     className="tabular"
                                     value={row.unit_price}
                                     onChange={(event) =>
@@ -921,6 +967,9 @@ function ContractItemsSection({
                                             'unit_price',
                                             event.target.value,
                                         )
+                                    }
+                                    onPaste={(event) =>
+                                        pasteAt(index, 4, event)
                                     }
                                 />
                                 <InputError

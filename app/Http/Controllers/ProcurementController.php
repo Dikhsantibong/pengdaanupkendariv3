@@ -68,7 +68,7 @@ class ProcurementController extends Controller
         // across the folders.
         $procurements = (clone $filtered)
             ->when($partner !== null, fn (Builder $query) => $this->ofPartner($query, $partner))
-            ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor'])
+            ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor', 'partnerCandidates'])
             ->latest('created_at')
             ->paginate(15)
             ->withQueryString();

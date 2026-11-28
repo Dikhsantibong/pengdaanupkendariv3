@@ -1,9 +1,22 @@
 import { ArrowDown, ArrowUp, FolderPlus, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import type { ClipboardEvent } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+    applyClipboardPaste,
+    formatGridNumber,
+    parseMoney,
+    parseVolume,
+} from '@/lib/item-grid-paste';
+import type {
+    ItemGridColumn,
+    ItemGridField,
+    ItemGridPriceField,
+    ItemGridTextField,
+} from '@/lib/item-grid-paste';
 import { cn } from '@/lib/utils';
 
 /** One item of the Rincian Item, as the server keeps it. */
@@ -29,14 +42,9 @@ export type ProcurementItem = {
 /** A calon mitra, given its own price column (Evaluasi Harga). */
 export type ItemPartner = { id: number; name: string };
 
-type PriceField = 'price_before' | 'unit_price';
-type TextField =
-    | 'part_number'
-    | 'unit'
-    | 'previous_po_number'
-    | 'previous_po_date'
-    | 'previous_supplier';
-type Field = TextField | 'volume' | 'previous_price' | PriceField;
+type PriceField = ItemGridPriceField;
+type TextField = ItemGridTextField;
+type Field = ItemGridField;
 
 /** A row of the grid: a group heading or an item, every field as typed. */
 type Row = {
@@ -174,33 +182,7 @@ const emptyItem = (): Row => ({
     quotes: {},
 });
 
-const formatNumber = (value: number) =>
-    new Intl.NumberFormat('id-ID', { maximumFractionDigits: 3 }).format(value);
-
-/** "25.000" or "25000" → 25000; blank stays blank. */
-const parseMoney = (value: string): number | null => {
-    const digits = value.replace(/[^0-9,]/g, '').replace(',', '.');
-
-    return digits === '' ? null : Number(digits);
-};
-
-/** "2,5" → 2.5, "1.000" → 1000, "2.5" → 2.5. */
-const parseVolume = (value: string): number | null => {
-    const trimmed = value.trim();
-
-    if (trimmed === '') {
-        return null;
-    }
-
-    const normalised = trimmed.includes(',')
-        ? trimmed.replace(/\./g, '').replace(',', '.')
-        : /^\d{1,3}(\.\d{3})+$/.test(trimmed)
-          ? trimmed.replace(/\./g, '')
-          : trimmed;
-    const number = Number(normalised.replace(/[^0-9.]/g, ''));
-
-    return Number.isFinite(number) ? number : null;
-};
+const formatNumber = formatGridNumber;
 
 /** The grid's rows from the stored items: a heading where a group starts. */
 function rowsFrom(items: ProcurementItem[]): Row[] {
@@ -259,37 +241,6 @@ function rowsFrom(items: ProcurementItem[]): Row[] {
     }
 
     return rows;
-}
-
-/**
- * Rows pasted from a spreadsheet: one line per row, Uraian first and then
- * the grid's own columns in order. A line with only its first column is a
- * group heading.
- */
-function rowsFromClipboard(text: string, fields: Field[]): Row[] {
-    return text
-        .replace(/\r/g, '')
-        .split('\n')
-        .filter((line) => line.trim() !== '')
-        .map((line) => {
-            const [description = '', ...cells] = line
-                .split('\t')
-                .map((cell) => cell.trim());
-            const isGroup = cells.every((cell) => cell === '');
-            const row: Row = {
-                ...emptyItem(),
-                kind: isGroup ? 'group' : 'item',
-                description,
-            };
-
-            fields.forEach((field, at) => {
-                row[field] = cells[at] ?? '';
-            });
-
-            row.volume = isGroup ? '' : row.volume || '1';
-
-            return row;
-        });
 }
 
 /**
@@ -429,6 +380,22 @@ export function ItemListCard({
             isPrice(column.field),
     );
     const hasAmount = amountLabel !== null;
+    // Visual column order of editable cells for Excel range copy-paste.
+    const gridColumns: ItemGridColumn[] = [
+        { kind: 'description' },
+        ...goodsColumns.map((column) => ({
+            kind: 'field' as const,
+            field: column.field,
+        })),
+        ...partners.map((partner) => ({
+            kind: 'quote' as const,
+            partnerId: partner.id,
+        })),
+        ...priceColumns.map((column) => ({
+            kind: 'field' as const,
+            field: column.field,
+        })),
+    ];
     // Uraian, then every column up to the amount.
     const span = 1 + columns.length + partners.length + (hasAmount ? 1 : 0);
 
@@ -473,41 +440,29 @@ export function ItemListCard({
         setRows([...rows.slice(0, at), emptyItem(), ...rows.slice(at)]);
     };
 
-    const pasteInto = (index: number, text: string): boolean => {
-        if (!text.includes('\t') && !text.includes('\n')) {
-            return false;
+    const pasteAt = (
+        rowIndex: number,
+        colIndex: number,
+        event: ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>,
+    ): void => {
+        const text =
+            event.clipboardData.getData('text/plain') ||
+            event.clipboardData.getData('text');
+        const next = applyClipboardPaste({
+            rows,
+            startRowIndex: rowIndex,
+            startColIndex: colIndex,
+            columns: gridColumns,
+            clipboardText: text,
+            createEmptyRow: emptyItem,
+        });
+
+        if (next === null) {
+            return;
         }
 
-        const pasted = rowsFromClipboard(
-            text,
-            columns.map((column) => column.field),
-        );
-
-        if (pasted.length === 0) {
-            return false;
-        }
-
-        // The row pasted into keeps its id and the fields this grid does not
-        // show; the rest are inserted below it.
-        const [first, ...rest] = pasted;
-        const kept = rows[index];
-        const shown = Object.fromEntries(
-            columns.map((column) => [column.field, first[column.field]]),
-        );
-        setRows([
-            ...rows.slice(0, index),
-            {
-                ...kept,
-                ...shown,
-                kind: first.kind,
-                description: first.description,
-                volume: first.volume,
-            },
-            ...rest,
-            ...rows.slice(index + 1),
-        ]);
-
-        return true;
+        event.preventDefault();
+        setRows(next);
     };
 
     const itemRows = rows.filter((row) => row.kind === 'item');
@@ -571,33 +526,50 @@ export function ItemListCard({
                 ? 'w-28'
                 : 'w-32';
 
-    const fieldInput = (row: Row, index: number, field: Field) => (
-        <td key={field} className="h-px p-0">
-            <Input
-                className={cn(cell, alignOf(field), 'tabular')}
-                inputMode={isText(field) ? 'text' : 'decimal'}
-                value={row[field]}
-                onChange={(event) =>
-                    update(index, { [field]: event.target.value })
-                }
-            />
-            <InputError message={errors[`item_rows.${index}.${field}`]} />
-        </td>
-    );
-    const quoteInputs = (row: Row, index: number) =>
-        partners.map((partner) => (
-            <td key={`quote-${partner.id}`} className="h-px p-0">
+    const fieldInput = (row: Row, index: number, field: Field) => {
+        const colIndex = gridColumns.findIndex(
+            (column) => column.kind === 'field' && column.field === field,
+        );
+
+        return (
+            <td key={field} className="h-px p-0">
                 <Input
-                    className={cn(cell, 'tabular text-right')}
-                    inputMode="decimal"
-                    aria-label={`Harga ${partner.name}`}
-                    value={row.quotes[partner.id] ?? ''}
+                    className={cn(cell, alignOf(field), 'tabular')}
+                    inputMode={isText(field) ? 'text' : 'decimal'}
+                    title="Bisa tempel langsung dari Excel"
+                    value={row[field]}
                     onChange={(event) =>
-                        quote(index, partner.id, event.target.value)
+                        update(index, { [field]: event.target.value })
                     }
+                    onPaste={(event) => pasteAt(index, colIndex, event)}
                 />
+                <InputError message={errors[`item_rows.${index}.${field}`]} />
             </td>
-        ));
+        );
+    };
+    const quoteInputs = (row: Row, index: number) =>
+        partners.map((partner) => {
+            const colIndex = gridColumns.findIndex(
+                (column) =>
+                    column.kind === 'quote' && column.partnerId === partner.id,
+            );
+
+            return (
+                <td key={`quote-${partner.id}`} className="h-px p-0">
+                    <Input
+                        className={cn(cell, 'tabular text-right')}
+                        inputMode="decimal"
+                        aria-label={`Harga ${partner.name}`}
+                        title="Bisa tempel langsung dari Excel"
+                        value={row.quotes[partner.id] ?? ''}
+                        onChange={(event) =>
+                            quote(index, partner.id, event.target.value)
+                        }
+                        onPaste={(event) => pasteAt(index, colIndex, event)}
+                    />
+                </td>
+            );
+        });
 
     return (
         <section className="rounded-md border border-border bg-card">
@@ -727,7 +699,7 @@ export function ItemListCard({
                                                             event.preventDefault();
                                                         }
                                                     }}
-                                                    title="Bisa tempel baris dari Excel; Enter untuk baris baru"
+                                                    title="Bisa tempel 1 kolom atau beberapa kolom dari Excel; Enter untuk baris baru"
                                                     placeholder={
                                                         row.kind === 'group'
                                                             ? 'Nama kelompok'
@@ -740,18 +712,9 @@ export function ItemListCard({
                                                                     .value,
                                                         })
                                                     }
-                                                    onPaste={(event) => {
-                                                        if (
-                                                            pasteInto(
-                                                                index,
-                                                                event.clipboardData.getData(
-                                                                    'text',
-                                                                ),
-                                                            )
-                                                        ) {
-                                                            event.preventDefault();
-                                                        }
-                                                    }}
+                                                    onPaste={(event) =>
+                                                        pasteAt(index, 0, event)
+                                                    }
                                                 />
                                                 <InputError
                                                     message={
@@ -1036,6 +999,10 @@ export function ItemListCard({
                             </div>
                         </div>
                     )}
+                    <p className="w-full text-[11px] text-muted-foreground">
+                        Tips: Salin 1 kolom atau beberapa kolom dari Excel lalu
+                        tempel (Ctrl+V) di sel mana saja; kolom lain tetap utuh.
+                    </p>
                 </div>
             )}
         </section>

@@ -286,6 +286,87 @@ class PlanningInputsTest extends TestCase
                 ->where('procurement.hpe_value', 300_000_000));
     }
 
+    public function test_execution_and_list_tables_expose_quotation_value_from_penawaran_without_changing_hpe(): void
+    {
+        $executor = User::factory()->executor()->create();
+
+        // 1. SPPL in Execution: selected candidate carries Nilai Sebelum Nego; hpe_value stays intact.
+        $sppl = Procurement::factory()->plannedBy($this->planner)->executedBy($executor)->create([
+            'contract_number_format_id' => ContractNumberFormat::query()->where('code', 'SPPL')->value('id'),
+            'procurement_method_id' => null,
+            'hpe_value' => 19_288_984_000,
+            'planning_approval_state' => PlanningApprovalState::Disetujui,
+        ]);
+        $spplCandidate = $sppl->partnerCandidates()->create([
+            'name' => 'CV Pelaksana Langsung',
+            'quotation_value' => 42_500_000,
+        ]);
+        $sppl->forceFill(['partner_candidate_id' => $spplCandidate->id])->save();
+
+        // 2. SPK in Execution with 2 candidates and no executor selected yet -> exposes range.
+        $spk = Procurement::factory()->plannedBy($this->planner)->executedBy($executor)->create([
+            'contract_number_format_id' => ContractNumberFormat::query()->where('code', 'SPK')->value('id'),
+            'procurement_method_id' => null,
+            'hpe_value' => 500_000_000,
+            'planning_approval_state' => PlanningApprovalState::Disetujui,
+        ]);
+        $spk->partnerCandidates()->create(['name' => 'PT A', 'quotation_value' => 200_000_000]);
+        $spk->partnerCandidates()->create(['name' => 'PT B', 'quotation_value' => 250_000_000]);
+
+        // 3. Legacy procurement in Execution with no candidates -> null quotation fields, fallback uses hpe_value.
+        $legacy = Procurement::factory()->plannedBy($this->planner)->executedBy($executor)->create([
+            'hpe_value' => 45_031_440,
+            'planning_approval_state' => PlanningApprovalState::Disetujui,
+        ]);
+
+        // 4. Planning procurement with 1 candidate offer -> single quotation_value.
+        $planningJob = Procurement::factory()->plannedBy($this->planner)->create([
+            'hpe_value' => 100_000_000,
+        ]);
+        $planningJob->partnerCandidates()->create(['name' => 'CV Perencanaan', 'quotation_value' => 88_000_000]);
+
+        $this->actingAs($executor)
+            ->get(route('execution.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('procurements.data', function ($rows) use ($sppl, $spk, $legacy): bool {
+                    $byId = collect($rows)->keyBy('id');
+
+                    return $byId[$sppl->id]['quotation_value'] === 42_500_000
+                        && $byId[$sppl->id]['quotation_value_range'] === null
+                        && $byId[$sppl->id]['hpe_value'] === 19_288_984_000
+                        && $byId[$spk->id]['quotation_value'] === null
+                        && $byId[$spk->id]['quotation_value_range'] === ['min' => 200_000_000, 'max' => 250_000_000]
+                        && $byId[$legacy->id]['quotation_value'] === null
+                        && $byId[$legacy->id]['quotation_value_range'] === null
+                        && $byId[$legacy->id]['hpe_value'] === 45_031_440;
+                }));
+
+        $this->actingAs($this->planner)
+            ->get(route('planning.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('procurements.data', function ($rows) use ($planningJob): bool {
+                    $row = collect($rows)->firstWhere('id', $planningJob->id);
+
+                    return $row !== null
+                        && $row['quotation_value'] === 88_000_000
+                        && $row['hpe_value'] === 100_000_000;
+                }));
+
+        $this->actingAs(User::factory()->teamLeaderPengadaan()->create())
+            ->get(route('procurements.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('procurements.data', function ($rows) use ($sppl): bool {
+                    $row = collect($rows)->firstWhere('id', $sppl->id);
+
+                    return $row !== null
+                        && $row['quotation_value'] === 42_500_000
+                        && $row['hpe_value'] === 19_288_984_000;
+                }));
+    }
+
     protected function step(string $name): ProcurementChecklist
     {
         return $this->procurement->checklists()

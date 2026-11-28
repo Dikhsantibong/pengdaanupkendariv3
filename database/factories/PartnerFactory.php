@@ -21,6 +21,7 @@ class PartnerFactory extends Factory
             'name' => 'CV. '.fake()->unique()->company(),
             'vendor_code' => (string) fake()->numerify('10#####'),
             'director_name' => fake()->name(),
+            'phone_number' => fake()->numerify('08##########'),
             'address' => fake()->address(),
             'sort_order' => 0,
             'is_active' => true,

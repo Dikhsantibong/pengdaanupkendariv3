@@ -30,7 +30,7 @@ class PlanningController extends Controller
                     PlanningApprovalState::MenungguPersetujuan->value,
                     PlanningApprovalState::Ditolak->value,
                 ])
-                ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor', 'checklists']),
+                ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor', 'checklists', 'partnerCandidates']),
             $request,
         )
             ->latest('created_at')

@@ -35,10 +35,10 @@ class PartnerSuggestionController extends Controller
             'partners' => $partners->map(fn (Partner $partner): array => [
                 'id' => $partner->id,
                 'name' => $partner->name,
-                'vendor_code' => $partner->vendor_code,
-                'director_name' => $partner->director_name,
-                'phone_number' => $partner->phone_number,
-                'address' => $partner->address,
+                'vendor_code' => Partner::cleanDetail($partner->vendor_code),
+                'director_name' => Partner::cleanDetail($partner->director_name),
+                'phone_number' => Partner::cleanDetail($partner->phone_number),
+                'address' => Partner::cleanDetail($partner->address),
             ])->all(),
         ]);
     }

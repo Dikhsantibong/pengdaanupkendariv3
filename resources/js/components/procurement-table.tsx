@@ -144,6 +144,26 @@ export function ProcurementTable({
     );
 }
 
+/**
+ * Value shown in the "Nilai HPE" column: pulls Nilai Total Penawaran Sebelum
+ * Nego (`quotation_value`, or min–max range before an executor is selected)
+ * with fallback to `hpe_value` when no offer has been entered yet.
+ */
+export function formatOfferOrHpe(row: ProcurementRow): string {
+    if (row.quotation_value !== null && row.quotation_value !== undefined) {
+        return formatCurrency(row.quotation_value);
+    }
+
+    if (
+        row.quotation_value_range !== null &&
+        row.quotation_value_range !== undefined
+    ) {
+        return `${formatCurrency(row.quotation_value_range.min)} – ${formatCurrency(row.quotation_value_range.max)}`;
+    }
+
+    return formatCurrency(row.hpe_value);
+}
+
 /** The number of a page's first row, so numbering runs on across pages. */
 export function firstRowNumber(page: Paginated<unknown>): number {
     return page.meta?.from ?? page.from ?? 1;
@@ -173,7 +193,7 @@ function renderCell(column: ProcurementColumn, row: ProcurementRow) {
                 </span>
             );
         case 'hpe':
-            return formatCurrency(row.hpe_value);
+            return formatOfferOrHpe(row);
         case 'status':
             return (
                 <StatusBadge

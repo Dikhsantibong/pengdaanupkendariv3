@@ -3324,6 +3324,30 @@ Langkah **Pelaksana** di tahap Pelaksanaan diubah sebagai berikut.
 - Request yang dibatalkan ditarik dari antrean Keuangan & Dashboard *Perlu Tindakan Anda*, lalu dikembalikan ke status `Draft` (`requested_at = null`) sehingga dapat diubah, diajukan kembali, atau dihapus. Setelah COA berstatus `Aktif`, pembatalan tidak diperbolehkan.
 - **Test:** `CoaRequestTest::test_requester_can_cancel_pending_request_before_finance_activates_it`.
 
+### Kolom Nilai HPE Tabel Pengadaan Mengambil dari Nilai Sebelum Nego Checklist Penawaran (28 November 2026)
+
+- Kolom **Nilai HPE** pada tabel **Pelaksanaan Pengadaan** (`/execution`), **Perencanaan** (`/planning`), **Daftar Pengadaan** (`/procurements`), **Monitoring**, dan **Laporan** (`ProcurementTable` & `ProcurementListTable`) kini mengambil nilai dari **Nilai Total Penawaran Sebelum Nego** (`procurement_partner_candidates.quotation_value`, atau rentang `min – max` bila terdapat beberapa calon mitra dengan nilai berbeda sebelum pelaksana dipilih).
+- Untuk pengadaan lama atau yang belum memiliki nilai penawaran calon mitra, tampilan tetap memakai `hpe_value` sebagai *fallback*; kolom database `procurements.hpe_value`, dashboard/analitik, laporan CSV, dan dokumen tidak diubah.
+- **File:** `ProcurementResource` (`quotation_value_range`), `ExecutionController`, `PlanningController`, `ProcurementController::index()`, `MonitoringController::index()`, `ReportController::index()`, `resources/js/types/procurement.ts`, `resources/js/components/procurement-table.tsx`, `resources/js/components/procurement-list-table.tsx`.
+- **Test:** `PlanningInputsTest::test_execution_and_list_tables_expose_quotation_value_from_penawaran_without_changing_hpe`.
+
+### Nomor HP di Data Master Mitra dan Tarik Otomatis Detail Mitra pada Checklist Penawaran (28 November 2026)
+
+- **Data Master Mitra (`Data Master → Mitra`):** menambahkan kolom dan isian **Nomor HP** (`phone_number`) pada `PartnerController`, `MasterDataPage`, dan `resources/js/pages/master-data/partners.tsx` agar administrator dapat melihat, mengisi, dan memperbarui nomor HP mitra secara langsung di Data Master.
+- **Pembersihan placeholder dan backfill data:** `Partner::cleanDetail()`, `Partner::remember()`, `PartnerSuggestionController`, `PartnerController::prepare()`, serta migrasi `2026_11_28_085707_backfill_partner_master_details` menormalkan nilai placeholder strip (`"-"`) menjadi kosong (`null`) serta melengkapi `vendor_code`, `director_name`, `phone_number`, dan `address` yang masih kosong di tabel `partners` dari riwayat calon mitra/pengadaan terbaru tanpa menimpa data master yang sudah diisi.
+- **Tarik otomatis saat pilih rekomendasi mitra:**
+  - `PartnerNameInput` (`resources/js/components/partner-name-input.tsx`) menampilkan kode rekanan, nama direktur, dan nomor HP pada daftar rekomendasi, memanggil `onPick(partner)` secara atomik, dan memakai kombinasi `onMouseDown` + `onClick` agar pemilihan rekomendasi akurat di mouse maupun layar sentuh.
+  - `CandidateForm` (`resources/js/components/procurement/partner-candidates-card.tsx`) mengisi `name`, `vendor_code`, `director_name`, `phone_number`, dan `address` langsung dari data rekomendasi mitra yang dipilih (tanpa menyisakan nomor HP dari pilihan sebelumnya).
+- **Test:** `PartnerTest`.
+
+### Perbaikan Copy-Paste Kolom dari Excel pada Editor Rincian Item (28 November 2026)
+
+- **Masalah sebelumnya:** hanya kolom `Uraian Barang/Jasa` yang menangani `onPaste`, penempelan 1 kolom menganggap baris sebagai judul kelompok (`kind: 'group'` dengan `colSpan` penuh) sehingga baris seolah bergabung/menghilangkan kolom lain, penempelan sebagian kolom menimpa kolom lain menjadi kosong, dan kolom harga calon mitra (`rab`) tidak ikut terpetakan.
+- **Perbaikan (`resources/js/lib/item-grid-paste.ts`, `resources/js/components/procurement/item-list-card.tsx`, `resources/js/components/procurement/delivery-order-tab.tsx`, `resources/js/components/procurement/delivery-order-items.tsx`):**
+  - Seluruh kolom edit pada grid Rincian Item (`ItemListCard` untuk 11 jenis dokumen: `Uraian Barang/Jasa`, `Volume`/`Qty`, `Satuan`/`Stn`, `Stock Code`, `No PO`, `Tgl PO`, `Supplier`, `Harga Lalu`, kolom harga calon mitra, `Harga Sblm Nego`, `Harga Stlh Nego`/`Harga Satuan`/`Harga HPE`), editor **Daftar Harga Satuan Kontrak** (`ContractItemsSection` & `PriceListPaste`), serta kolom **Volume** pada pemilihan item DO (`ItemPicker`) kini mendukung tempel langsung dari Excel.
+  - Menempel 1 kolom maupun rentang beberapa kolom hanya mengisi sel pada kolom yang ditempel mulai dari sel yang fokus ke bawah (membuat baris item baru bila melebihi baris yang ada, melewati baris judul kelompok tanpa menimpanya, menjaga sel kosong di tengah agar tidak bergeser, mendukung sel multi-baris kutipan Excel serta format angka/rupiah Indonesia & Inggris), tanpa pernah mengubah baris menjadi kelompok gabungan atau menghapus nilai kolom lain.
+
+
 
 
 

@@ -334,15 +334,15 @@ function CandidateForm({
                                 name: partner.name,
                                 vendor_code: partner.vendor_code ?? '',
                                 director_name: partner.director_name ?? '',
-                                phone_number:
-                                    partner.phone_number ?? data.phone_number,
+                                phone_number: partner.phone_number ?? '',
                                 address: partner.address ?? '',
                             }))
                         }
                     />
                     <p className="text-[11px] text-muted-foreground">
                         Ketik awal nama mitra untuk memilih dari Data Master
-                        Mitra; mitra baru otomatis tersimpan ke sana.
+                        Mitra (otomatis mengisi kode rekanan, direktur, nomor
+                        HP, dan alamat); mitra baru otomatis tersimpan ke sana.
                     </p>
                     <InputError message={form.errors.name} />
                 </div>

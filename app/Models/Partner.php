@@ -34,6 +34,25 @@ class Partner extends Model
     use HasFactory, MasterDataScopes, SoftDeletes;
 
     /**
+     * Normalize an optional partner detail, turning whitespace or placeholder
+     * dashes ("-", "--", en/em dash) into null.
+     */
+    public static function cleanDetail(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        if ($trimmed === '' || preg_match('/^[\-\x{2013}\x{2014}]+$/u', $trimmed) === 1) {
+            return null;
+        }
+
+        return $trimmed;
+    }
+
+    /**
      * Remember a partner entered elsewhere: a new name is added, and a known
      * one only gains the details it still lacks, so what was corrected in the
      * master data is never overwritten.
@@ -49,7 +68,7 @@ class Partner extends Model
         }
 
         $details = array_filter(
-            array_map(fn (?string $value): ?string => $value === null || trim($value) === '' ? null : trim($value), $details),
+            array_map(fn (?string $value): ?string => self::cleanDetail($value), $details),
             fn (?string $value): bool => $value !== null,
         );
 
@@ -62,7 +81,7 @@ class Partner extends Model
         }
 
         foreach ($details as $field => $value) {
-            if (blank($partner->getAttribute($field))) {
+            if (self::cleanDetail($partner->getAttribute($field)) === null) {
                 $partner->setAttribute($field, $value);
             }
         }

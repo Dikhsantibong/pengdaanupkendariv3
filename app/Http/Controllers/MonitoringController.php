@@ -77,7 +77,7 @@ class MonitoringController extends Controller
             ),
             'procurements' => $partner === null ? null : ProcurementResource::collection(
                 $this->ofPartner(clone $filtered, $partner)
-                    ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor', 'checklists'])
+                    ->with(['workDirector', 'targetUnit', 'procurementMethod', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor', 'checklists', 'partnerCandidates'])
                     ->orderBy('progress_status_id')
                     ->latest('created_at')
                     ->paginate(25)

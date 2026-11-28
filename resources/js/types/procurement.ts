@@ -79,6 +79,7 @@ export type ProcurementRow = {
     quotation_number: string | null;
     quotation_date: string | null;
     quotation_value?: number | null;
+    quotation_value_range?: { min: number; max: number } | null;
     hpe_value: number;
     value_after_negotiation: number | null;
     status: { id: number; name: string; category: StatusCategory };

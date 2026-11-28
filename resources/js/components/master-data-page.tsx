@@ -62,6 +62,7 @@ export type MasterField = {
     label: string;
     type:
         | 'text'
+        | 'tel'
         | 'textarea'
         | 'number'
         | 'select'
@@ -730,7 +731,14 @@ export function FieldControl({
             <Label htmlFor={field.name}>{field.label}</Label>
             <Input
                 id={field.name}
-                type={field.type === 'number' ? 'number' : 'text'}
+                type={
+                    field.type === 'number'
+                        ? 'number'
+                        : field.type === 'tel'
+                          ? 'tel'
+                          : 'text'
+                }
+                inputMode={field.type === 'tel' ? 'tel' : undefined}
                 value={
                     value === null || value === undefined ? '' : String(value)
                 }

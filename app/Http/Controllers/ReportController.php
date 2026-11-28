@@ -24,7 +24,7 @@ class ReportController extends Controller
         $query = ProcurementFilters::apply(
             Procurement::query()
                 ->visibleTo($request->user())
-                ->with(['workDirector', 'targetUnit', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor']),
+                ->with(['workDirector', 'targetUnit', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor', 'partnerCandidates']),
             $request,
         );
 
@@ -53,7 +53,7 @@ class ReportController extends Controller
         $rows = ProcurementFilters::apply(
             Procurement::query()
                 ->visibleTo($request->user())
-                ->with(['workDirector', 'targetUnit', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor']),
+                ->with(['workDirector', 'targetUnit', 'budgetSource', 'targetUnits', 'progressStatus', 'planner', 'executor', 'partnerCandidates']),
             $request,
         )->latest('created_at')->get();
 
