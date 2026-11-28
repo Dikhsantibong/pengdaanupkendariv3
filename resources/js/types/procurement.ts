@@ -78,6 +78,7 @@ export type ProcurementRow = {
     sr_number: string | null;
     quotation_number: string | null;
     quotation_date: string | null;
+    quotation_value?: number | null;
     hpe_value: number;
     value_after_negotiation: number | null;
     status: { id: number; name: string; category: StatusCategory };

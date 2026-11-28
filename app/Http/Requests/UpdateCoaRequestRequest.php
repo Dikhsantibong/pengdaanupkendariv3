@@ -109,7 +109,7 @@ class UpdateCoaRequestRequest extends FormRequest
             'segment_7' => 'Segment 7 (Aktivitas)',
             'expense_element' => 'Expense Element',
             'coa_code' => 'Kode COA',
-            'description' => 'Keterangan / Keperluan',
+            'description' => 'Uraian Pekerjaan',
             'notes' => 'Catatan',
         ];
     }

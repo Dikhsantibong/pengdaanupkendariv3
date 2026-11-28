@@ -13,6 +13,7 @@ import {
     Send,
     Tag,
     Trash2,
+    XCircle,
 } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
@@ -110,6 +111,7 @@ type CoaRequestRow = {
     usages: { id: number; number: string; name: string }[];
     can_edit: boolean;
     can_submit: boolean;
+    can_cancel: boolean;
     can_activate: boolean;
     can_delete: boolean;
 };
@@ -320,6 +322,22 @@ export default function CoaRequestsIndex({
         );
     };
 
+    const handleCancel = (row: CoaRequestRow) => {
+        if (
+            !window.confirm(
+                `Batalkan request aktivasi COA ${row.coa_code}? Request akan ditarik dari antrean Keuangan dan dikembalikan ke Draft.`,
+            )
+        ) {
+            return;
+        }
+
+        router.post(
+            coaRequests.cancel(row.id).url,
+            {},
+            { preserveScroll: true },
+        );
+    };
+
     const handleQuickActivate = (row: CoaRequestRow) => {
         router.post(
             coaRequests.activate(row.id).url,
@@ -520,7 +538,7 @@ export default function CoaRequestsIndex({
                                 onChange={(event) =>
                                     setSearch(event.target.value)
                                 }
-                                placeholder="Cari kode COA, keperluan, pengusul..."
+                                placeholder="Cari kode COA, uraian pekerjaan, pengusul..."
                                 className="pl-8"
                             />
                         </div>
@@ -557,7 +575,7 @@ export default function CoaRequestsIndex({
                                         Pengusul / Bidang
                                     </TableHead>
                                     <TableHead className="min-w-[200px]">
-                                        Keperluan & Catatan
+                                        Uraian Pekerjaan & Catatan
                                     </TableHead>
                                     <TableHead className="min-w-[150px]">
                                         Status
@@ -706,6 +724,20 @@ export default function CoaRequestsIndex({
                                                     >
                                                         <Send className="size-3.5" />
                                                         Request Aktivasi
+                                                    </Button>
+                                                )}
+                                                {row.can_cancel && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                                        onClick={() =>
+                                                            handleCancel(row)
+                                                        }
+                                                    >
+                                                        <XCircle className="size-3.5" />
+                                                        Batalkan Request
                                                     </Button>
                                                 )}
                                                 {row.can_activate && (
@@ -953,7 +985,7 @@ export default function CoaRequestsIndex({
 
                         <div className="grid gap-1.5">
                             <Label htmlFor="coa-description">
-                                Keterangan / Keperluan Pekerjaan
+                                Uraian Pekerjaan
                             </Label>
                             <Input
                                 id="coa-description"
@@ -1120,7 +1152,7 @@ export default function CoaRequestsIndex({
                                 {viewing.description && (
                                     <div>
                                         <p className="text-xs font-medium text-muted-foreground">
-                                            Keperluan
+                                            Uraian Pekerjaan
                                         </p>
                                         <p className="mt-0.5 text-sm text-foreground">
                                             {viewing.description}

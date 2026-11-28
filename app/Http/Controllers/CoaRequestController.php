@@ -279,6 +279,52 @@ class CoaRequestController extends Controller
     }
 
     /**
+     * Cancel a pending COA activation request before Finance activates it,
+     * returning it to Draft so the requester can edit, resubmit, or delete it.
+     */
+    public function cancel(Request $request, CoaRequest $coaRequest): RedirectResponse
+    {
+        $user = $request->user();
+
+        abort_unless(
+            $user->role === UserRole::Administrator || $coaRequest->requested_by === $user->id,
+            403,
+            'Anda hanya dapat membatalkan request COA milik sendiri.',
+        );
+
+        if ($coaRequest->status === CoaRequestStatus::Active) {
+            Inertia::flash('toast', [
+                'type' => 'warning',
+                'message' => "COA {$coaRequest->coa_code} sudah diaktifkan oleh bagian Keuangan dan tidak dapat dibatalkan.",
+            ]);
+
+            return back();
+        }
+
+        if ($coaRequest->status !== CoaRequestStatus::Pending) {
+            Inertia::flash('toast', [
+                'type' => 'warning',
+                'message' => 'Request COA ini tidak sedang menunggu aktivasi.',
+            ]);
+
+            return back();
+        }
+
+        $coaRequest->forceFill([
+            'status' => CoaRequestStatus::Draft,
+            'requested_at' => null,
+            'updated_by' => $user->id,
+        ])->save();
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => "Request aktivasi COA {$coaRequest->coa_code} dibatalkan dan dikembalikan ke Draft.",
+        ]);
+
+        return back();
+    }
+
+    /**
      * Activate a COA request so it syncs into Usulan Pekerjaan.
      */
     public function activate(Request $request, CoaRequest $coaRequest): RedirectResponse
@@ -400,6 +446,7 @@ class CoaRequestController extends Controller
             'usages' => array_slice($usedBy, 0, 20),
             'can_edit' => $canManage || ($canRequest && $isOwner && $coa->status === CoaRequestStatus::Draft),
             'can_submit' => ($isAdmin || ($canRequest && $isOwner)) && $coa->status === CoaRequestStatus::Draft,
+            'can_cancel' => ($isAdmin || ($canRequest && $isOwner)) && $coa->status === CoaRequestStatus::Pending,
             'can_activate' => $canManage && $coa->status !== CoaRequestStatus::Active,
             'can_delete' => $isAdmin || ($canRequest && $isOwner && $coa->status === CoaRequestStatus::Draft),
         ];

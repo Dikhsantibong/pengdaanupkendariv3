@@ -97,7 +97,13 @@ class ProcurementController extends Controller
         $user = request()->user();
 
         return Inertia::render('procurements/create', [
-            'proposal' => $this->proposalContext($user),
+            'proposal' => $user->isAdministrator()
+                ? [
+                    'enabled' => true,
+                    'workDirectorId' => null,
+                    'division' => null,
+                ]
+                : $this->proposalContext($user),
             'options' => MasterDataOptions::forProcurementForm(),
             // One suggestion per format, so switching between SPK and PJ fills
             // in the right running number without another round trip.
@@ -124,7 +130,7 @@ class ProcurementController extends Controller
 
         // A proposal comes with its TOR, drafted from the template for the
         // proposer to complete and the Direksi Pekerjaan to review.
-        if ($this->proposalContext($request->user())['enabled']) {
+        if ($this->usesProposalCreateForm($request->user())) {
             $this->generateProposalTor($procurement, $request->user());
 
             app(ProposalDocuments::class)->file(
@@ -174,6 +180,16 @@ class ProcurementController extends Controller
         } catch (RuntimeException $exception) {
             report($exception);
         }
+    }
+
+    /**
+     * Whether the create screen behaves like the proposer form (including
+     * Super Admin creating work with identical fields and proposal uploads).
+     */
+    protected function usesProposalCreateForm(User $user): bool
+    {
+        return $user->isAdministrator()
+            || $this->proposalContext($user)['enabled'];
     }
 
     /**
@@ -236,6 +252,7 @@ class ProcurementController extends Controller
             'documents.editedBy',
             'documents.signedUploads.uploadedBy',
             'activities.user',
+            'partnerCandidates',
         ]);
 
         return Inertia::render('procurements/show', [
@@ -419,7 +436,7 @@ class ProcurementController extends Controller
             // The calon mitra listed in planning; the picked one is the executor.
             // An SPPL is a direct appointment: one partner, picked at once.
             'directAppointment' => $procurement->isDirectAppointment(),
-            'partnerCandidates' => $procurement->partnerCandidates()->get()
+            'partnerCandidates' => $procurement->partnerCandidates
                 ->map(fn ($candidate): array => [
                     'id' => $candidate->id,
                     'name' => $candidate->name,

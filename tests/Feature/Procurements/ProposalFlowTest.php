@@ -661,6 +661,56 @@ class ProposalFlowTest extends TestCase
         $this->assertTrue($planner->can('submitPlanning', $procurement->refresh()));
     }
 
+    public function test_administrator_create_form_matches_proposer_form_and_files_proposal_documents(): void
+    {
+        $administrator = User::factory()->administrator()->create(['work_director_id' => $this->division->id]);
+        $tor = $this->torTemplate();
+        DocumentType::factory()->create(['code' => 'nota-dinas-usulan', 'name' => 'Nota Dinas Usulan', 'upload_only' => true]);
+
+        $this->actingAs($administrator)
+            ->get(route('procurements.create'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('procurements/create')
+                ->where('proposal.enabled', true)
+                ->where('proposal.workDirectorId', null)
+                ->where('proposal.division', null)
+                ->where('withPlanner', true));
+
+        $this->actingAs($administrator)
+            ->post(route('procurements.store'), [
+                ...$this->proposalPayload(),
+                'attachments' => [
+                    UploadedFile::fake()->create('lampiran-admin.pdf', 50, 'application/pdf'),
+                ],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $procurement = Procurement::query()->latest('id')->firstOrFail();
+
+        $this->assertTrue($procurement->isProposalApproved());
+        $this->assertStringStartsWith('PGD/', $procurement->number);
+        $this->assertSame('0.00', (string) $procurement->hpe_value);
+        $this->assertCount(1, $procurement->attachments);
+
+        $torDoc = $procurement->documentFor($tor->id);
+        $this->assertNotNull($torDoc);
+        $this->assertNotNull($torDoc->document_template_id);
+        $this->assertTrue($torDoc->isSigned());
+
+        $documents = ProposalDocuments::payload($procurement->fresh());
+        $this->assertCount(2, $documents);
+        $this->assertTrue($documents[0]['is_signed']);
+        $this->assertTrue($documents[1]['is_signed']);
+
+        $this->actingAs($administrator)
+            ->get(route('procurements.edit', $procurement))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('procurements/edit')
+                ->where('proposal.enabled', false));
+    }
+
     /**
      * The TOR and Nota Dinas Usulan document types, as the master data has them.
      */

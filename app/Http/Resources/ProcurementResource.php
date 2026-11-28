@@ -57,6 +57,22 @@ class ProcurementResource extends JsonResource
             'sr_number' => $this->sr_number,
             'quotation_number' => $this->quotation_number,
             'quotation_date' => $this->quotation_date?->toDateString(),
+            'quotation_value' => $this->whenLoaded('partnerCandidates', function (): ?float {
+                if ($this->partner_candidate_id !== null) {
+                    $selected = $this->partnerCandidates->firstWhere('id', $this->partner_candidate_id);
+
+                    return $selected?->quotation_value === null ? null : (float) $selected->quotation_value;
+                }
+
+                $values = $this->partnerCandidates
+                    ->pluck('quotation_value')
+                    ->filter(fn (mixed $value): bool => $value !== null)
+                    ->map(fn (mixed $value): float => (float) $value)
+                    ->unique()
+                    ->values();
+
+                return $values->count() === 1 ? $values->first() : null;
+            }),
             'hpe_value' => (float) $this->hpe_value,
             'value_after_negotiation' => $this->value_after_negotiation === null
                 ? null

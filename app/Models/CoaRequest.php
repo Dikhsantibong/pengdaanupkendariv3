@@ -180,7 +180,28 @@ class CoaRequest extends Model
     /**
      * Build the active COA list synced into the procurement / proposal form.
      *
-     * @return array<int, array{id: int, value: string, label: string, description: string|null, summary: string, workDirectorId: int|null, usageCount: int}>
+     * @return array<int, array{
+     *     id: int,
+     *     value: string,
+     *     label: string,
+     *     description: string|null,
+     *     summary: string,
+     *     workDirectorId: int|null,
+     *     workDirector: string|null,
+     *     activatedBy: string|null,
+     *     expenseElement: string,
+     *     segments: array{
+     *         struktur_bisnis: string,
+     *         district: string,
+     *         fungsi: string,
+     *         lokasi: string,
+     *         unit: string,
+     *         sub_unit: string,
+     *         aktivitas: string,
+     *         expense_element: string,
+     *     },
+     *     usageCount: int,
+     * }>
      */
     public static function activeOptions(): array
     {
@@ -189,17 +210,29 @@ class CoaRequest extends Model
 
         return self::query()
             ->active()
+            ->with(['workDirector:id,name', 'activator:id,name'])
             ->latest('activated_at')
             ->latest('id')
             ->get()
             ->unique('coa_code')
             ->values()
             ->map(function (self $coa) use ($labels, $counts): array {
+                $segments = [
+                    'struktur_bisnis' => $labels[CoaSegment::Segment1->value][$coa->segment_1] ?? $coa->segment_1,
+                    'district' => $labels[CoaSegment::Segment2->value][$coa->segment_2] ?? $coa->segment_2,
+                    'fungsi' => $labels[CoaSegment::Segment3->value][$coa->segment_3] ?? $coa->segment_3,
+                    'lokasi' => $labels[CoaSegment::Segment4->value][$coa->segment_4] ?? $coa->segment_4,
+                    'unit' => $labels[CoaSegment::Segment5->value][$coa->segment_5] ?? $coa->segment_5,
+                    'sub_unit' => $labels[CoaSegment::Segment6->value][$coa->segment_6] ?? $coa->segment_6,
+                    'aktivitas' => $labels[CoaSegment::Segment7->value][$coa->segment_7] ?? $coa->segment_7,
+                    'expense_element' => $labels[CoaSegment::ExpenseElement->value][$coa->expense_element] ?? $coa->expense_element,
+                ];
+
                 $summaryParts = array_filter([
-                    $labels[CoaSegment::Segment3->value][$coa->segment_3] ?? null,
-                    $labels[CoaSegment::Segment4->value][$coa->segment_4] ?? null,
-                    $labels[CoaSegment::Segment6->value][$coa->segment_6] ?? null,
-                    $labels[CoaSegment::Segment7->value][$coa->segment_7] ?? null,
+                    $segments['fungsi'],
+                    $segments['lokasi'],
+                    $segments['sub_unit'],
+                    $segments['aktivitas'],
                 ]);
 
                 return [
@@ -209,6 +242,10 @@ class CoaRequest extends Model
                     'description' => $coa->description,
                     'summary' => implode(' · ', $summaryParts),
                     'workDirectorId' => $coa->work_director_id,
+                    'workDirector' => $coa->workDirector?->name,
+                    'activatedBy' => $coa->activator?->name,
+                    'expenseElement' => $segments['expense_element'],
+                    'segments' => $segments,
                     // How many usulan / pengadaan already use this code.
                     'usageCount' => $counts[mb_strtoupper($coa->coa_code)] ?? 0,
                 ];

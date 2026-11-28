@@ -1,4 +1,4 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import { PageHeader } from '@/components/page-header';
 import { ProcurementForm } from '@/components/procurement-form';
 import type {
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
 import procurements from '@/routes/procurements';
 import proposals from '@/routes/proposals';
+import type { Auth } from '@/types';
 
 export default function CreateProcurement({
     options,
@@ -20,8 +21,10 @@ export default function CreateProcurement({
     /** Only TL ICC appoints the planning PIC, here or on the PIC board. */
     withPlanner: boolean;
 }) {
-    const isProposal = proposal?.enabled === true;
-    const backUrl = isProposal
+    const { auth } = usePage<{ auth: Auth }>().props;
+    const isProposalForm = proposal?.enabled === true;
+    const proposeOnly = auth.permissions.proposeOnly;
+    const backUrl = proposeOnly
         ? proposals.index().url
         : procurements.index().url;
 
@@ -29,7 +32,7 @@ export default function CreateProcurement({
         <>
             <Head
                 title={
-                    isProposal
+                    proposeOnly
                         ? 'Usulkan Pekerjaan'
                         : 'Buat Perencanaan Pengadaan'
                 }
@@ -38,15 +41,15 @@ export default function CreateProcurement({
             <div className="flex w-full flex-col gap-6 p-4 md:p-6">
                 <PageHeader
                     eyebrow={
-                        isProposal ? 'Usulan Pekerjaan' : 'Form Input Awal'
+                        proposeOnly ? 'Usulan Pekerjaan' : 'Form Input Awal'
                     }
                     title={
-                        isProposal
+                        proposeOnly
                             ? 'Usulkan Pekerjaan'
                             : 'Buat Perencanaan Pengadaan'
                     }
                     description={
-                        isProposal
+                        isProposalForm
                             ? 'Lengkapi detail usulan pekerjaan dan lampiran pendukung.'
                             : 'Lengkapi data identitas awal pengadaan.'
                     }
@@ -65,11 +68,11 @@ export default function CreateProcurement({
                     withPlanner={withPlanner}
                     proposal={proposal}
                     submitLabel={
-                        isProposal ? 'Kirim Usulan' : 'Simpan Pengadaan'
+                        proposeOnly ? 'Kirim Usulan' : 'Simpan Pengadaan'
                     }
                     onSubmit={(form) =>
                         form.post(procurements.store().url, {
-                            forceFormData: isProposal,
+                            forceFormData: isProposalForm,
                         })
                     }
                     onCancel={() => router.visit(backUrl)}

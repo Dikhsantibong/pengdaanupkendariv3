@@ -13,7 +13,7 @@ import {
     CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { formatCurrency, formatDate } from '@/lib/format';
-import type { Option, ProcurementRow } from '@/types';
+import type { Option, PartnerCandidate, ProcurementRow } from '@/types';
 
 /** Remembered per viewer so the panel stays the way they left it. */
 const STORAGE_KEY = 'procurement-identity-details-open';
@@ -37,6 +37,7 @@ export function IdentityPanel({
     contractTypes,
     selectionMethods = [],
     candidateCount = 0,
+    partnerCandidates = [],
     contractNumber = { value: null, suggested: null },
     editsContractNumber = false,
 }: {
@@ -49,6 +50,8 @@ export function IdentityPanel({
     selectionMethods?: Option[];
     /** How many calon mitra are listed, shown until one is picked. */
     candidateCount?: number;
+    /** Calon mitra from the Penawaran checklist (source of Nilai Sebelum Nego). */
+    partnerCandidates?: PartnerCandidate[];
     /** The contract number once given, and the one the format offers. */
     contractNumber?: { value: string | null; suggested: string | null };
     /** The execution PIC and TL Pengadaan give the contract number here. */
@@ -128,7 +131,10 @@ export function IdentityPanel({
         },
         {
             label: 'Nilai (Sebelum Nego)',
-            value: formatCurrency(procurement.hpe_value),
+            value: formatOfferBeforeNegotiation(
+                partnerCandidates,
+                procurement.quotation_value,
+            ),
         },
         {
             label: 'Nilai Setelah Nego',
@@ -236,6 +242,40 @@ export function IdentityPanel({
             </Collapsible>
         </section>
     );
+}
+
+/**
+ * Nilai (Sebelum Nego) sourced from the Penawaran checklist's
+ * Nilai Total Penawaran Sebelum Nego (`quotation_value`).
+ */
+function formatOfferBeforeNegotiation(
+    candidates: PartnerCandidate[],
+    fallback: number | null | undefined,
+): string {
+    const selected = candidates.find((candidate) => candidate.is_selected);
+
+    if (selected !== undefined) {
+        return selected.quotation_value === null
+            ? '—'
+            : formatCurrency(selected.quotation_value);
+    }
+
+    const values = candidates
+        .map((candidate) => candidate.quotation_value)
+        .filter((value): value is number => value !== null);
+
+    if (values.length === 0) {
+        return fallback !== null && fallback !== undefined
+            ? formatCurrency(fallback)
+            : '—';
+    }
+
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+
+    return min === max
+        ? formatCurrency(min)
+        : `${formatCurrency(min)} – ${formatCurrency(max)}`;
 }
 
 /** A number with its date, as "ND-021/USL/2026 · 13 Okt 2026". */

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Procurements;
 
 use App\Enums\ChecklistInput;
+use App\Enums\PlanningApprovalState;
 use App\Enums\ProcurementStage;
 use App\Models\ContractNumberFormat;
 use App\Models\Procurement;
@@ -172,6 +173,117 @@ class PlanningInputsTest extends TestCase
         $this->actingAs(User::factory()->teamLeaderPengadaan()->create())
             ->get(route('procurements.edit', $this->procurement))
             ->assertInertia(fn (Assert $page) => $page->missing('procurement.icc_memo_number'));
+    }
+
+    public function test_identity_quotation_value_comes_from_penawaran_candidates_without_changing_hpe(): void
+    {
+        $executor = User::factory()->executor()->create();
+
+        // 1. SPPL (direct appointment): quotation_value follows the single partner without touching hpe_value.
+        $sppl = Procurement::factory()->plannedBy($this->planner)->create([
+            'contract_number_format_id' => ContractNumberFormat::query()->where('code', 'SPPL')->value('id'),
+            'procurement_method_id' => null,
+            'hpe_value' => 26_571_662_000,
+        ]);
+        app(ProcurementService::class)->syncChecklists($sppl->refresh());
+
+        $this->actingAs($this->planner)
+            ->get(route('procurements.show', $sppl))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('procurement.quotation_value', null)
+                ->where('procurement.hpe_value', 26_571_662_000));
+
+        $this->actingAs($this->planner)
+            ->post(route('procurements.partner-candidates.store', $sppl), [
+                'name' => 'CV Tunjuk Langsung',
+                'quotation_value' => 18_500_000,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $spplCandidate = $sppl->partnerCandidates()->sole();
+
+        $this->actingAs($this->planner)
+            ->get(route('procurements.show', $sppl))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('procurement.quotation_value', 18_500_000)
+                ->where('procurement.hpe_value', 26_571_662_000)
+                ->where('partnerCandidates.0.quotation_value', 18_500_000));
+
+        $this->actingAs($this->planner)
+            ->put(route('procurements.partner-candidates.update', [$sppl, $spplCandidate]), [
+                'name' => 'CV Tunjuk Langsung',
+                'quotation_value' => 19_250_000,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($this->planner)
+            ->get(route('procurements.show', $sppl))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('procurement.quotation_value', 19_250_000)
+                ->where('procurement.hpe_value', 26_571_662_000));
+
+        // 2. SPK with multiple candidates: null before selection, then selected candidate's value after Pelaksana is picked.
+        $spk = Procurement::factory()->plannedBy($this->planner)->executedBy($executor)->create([
+            'contract_number_format_id' => ContractNumberFormat::query()->where('code', 'SPK')->value('id'),
+            'procurement_method_id' => null,
+            'hpe_value' => 300_000_000,
+        ]);
+        app(ProcurementService::class)->syncChecklists($spk->refresh());
+
+        $this->actingAs($this->planner)
+            ->post(route('procurements.partner-candidates.store', $spk), [
+                'name' => 'PT Satu',
+                'quotation_value' => 200_000_000,
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($this->planner)
+            ->post(route('procurements.partner-candidates.store', $spk), [
+                'name' => 'PT Dua',
+                'quotation_value' => 250_000_000,
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($this->planner)
+            ->get(route('procurements.show', $spk))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('procurement.quotation_value', null)
+                ->where('procurement.hpe_value', 300_000_000)
+                ->where('partnerCandidates.0.quotation_value', 200_000_000)
+                ->where('partnerCandidates.1.quotation_value', 250_000_000));
+
+        $spk->forceFill(['planning_approval_state' => PlanningApprovalState::Disetujui])->save();
+
+        $second = $spk->partnerCandidates()->where('name', 'PT Dua')->firstOrFail();
+        $pelaksanaStep = $spk->checklists()
+            ->where('stage', ProcurementStage::Pelaksanaan->value)
+            ->whereHas('checklistItem', fn ($query) => $query->where('name', 'Pelaksana'))
+            ->firstOrFail();
+
+        $this->actingAs($executor)
+            ->put(route('procurements.checklists.input', [$spk, $pelaksanaStep]), [
+                'partner_candidate_id' => $second->id,
+                'partner_director_name' => 'Direktur Dua',
+                'partner_phone_number' => '08123456789',
+                'partner_address' => 'Jl. Contoh No. 2, Kendari',
+                'bank_account_number' => '123456',
+                'bank_name' => 'BRI',
+                'bank_account_holder' => 'PT Dua',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($executor)
+            ->get(route('procurements.show', $spk))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('procurement.quotation_value', 250_000_000)
+                ->where('procurement.hpe_value', 300_000_000));
     }
 
     protected function step(string $name): ProcurementChecklist

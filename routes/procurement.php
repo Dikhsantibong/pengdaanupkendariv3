@@ -180,6 +180,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('can:coa.request')->group(function () {
         Route::post('request-coa', [CoaRequestController::class, 'store'])->name('coa-requests.store');
         Route::post('request-coa/{coaRequest}/ajukan', [CoaRequestController::class, 'submit'])->name('coa-requests.submit');
+        Route::post('request-coa/{coaRequest}/batalkan', [CoaRequestController::class, 'cancel'])->name('coa-requests.cancel');
         Route::delete('request-coa/{coaRequest}', [CoaRequestController::class, 'destroy'])->name('coa-requests.destroy');
     });
     Route::post('request-coa/{coaRequest}/aktivasi', [CoaRequestController::class, 'activate'])

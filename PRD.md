@@ -1880,16 +1880,17 @@ Modul **Request COA** (`/request-coa`, menu **Pengadaan → Request COA**) menye
 - **Aksi Pengusul (Staf & TL):**
   - **Simpan** — menyimpan sebagai `Draft` (masih dapat diubah/dihapus sendiri sebelum diajukan).
   - **Request Aktivasi** — mengirim usulan ke antrean **Keuangan** (status `Menunggu Aktivasi`) dan mengirim notifikasi ke akun Keuangan aktif.
+  - **Batalkan Request** — membatalkan pengajuan (`POST /request-coa/{coaRequest}/batalkan`) selama belum diaktifkan bagian Keuangan; request ditarik dari antrean Keuangan dan dikembalikan ke status `Draft`.
 - **Aksi Bagian Keuangan:**
   - Menerima **seluruh** usulan COA berstatus `Menunggu Aktivasi` maupun `Aktif` dari seluruh bidang, sekaligus melihat antrean pada kartu **Perlu Tindakan Anda → Request COA Menunggu Aktivasi** di Dashboard.
   - **Edit / Perbaikan Langsung:** Keuangan dapat mengubah isian segmen mana pun, keterangan/catatan, maupun menyesuaikan kode COA final secara langsung, lalu memilih **Simpan Perubahan** atau **Simpan & Aktivasi**.
   - **Aktivasi:** mengaktifkan kode COA (`status = aktif`), mencatat `activated_by` & `activated_at`, serta mengirim notifikasi ke pengusul.
 - **Sinkronisasi ke Usulan Pekerjaan:**
-  - Nomor COA yang sudah berstatus **Aktif** otomatis tersedia sebagai pilihan dropdown **Pilih dari COA aktif (Keuangan)** pada kolom **Nomor COA** di form **Usulkan Pekerjaan** / **Buat Perencanaan Pengadaan** (`ProcurementForm`), dengan tetap mempertahankan input manual dan dukungan lebih dari satu nomor COA agar alur lama tetap utuh.
+  - Kolom **Nomor COA** pada form **Usulkan Pekerjaan** / **Buat Perencanaan Pengadaan** (`ProcurementForm`) berupa input teks/multi-baris **tanpa dropdown pilih**; saat pengguna memasukkan nomor COA yang berstatus **Aktif** (tanpa membedakan huruf besar/kecil), sistem otomatis menarik dan menampilkan informasi COA tersebut di bawah kolom input (status COA Aktif, jumlah pemakaian, keperluan/deskripsi, rincian segmen, bidang, serta aktivator Keuangan) sambil tetap mengizinkan input manual untuk nomor COA lama.
 - **Pemakaian COA per pekerjaan (`App\Support\CoaUsage`):**
   - Setiap kode COA menampilkan berapa kali dipakai di usulan/pengadaan (kolom **Dipakai** di tabel Request COA, terlihat oleh Pengusul/TL maupun Keuangan). Tombol **Detail** menampilkan daftar pekerjaan yang memakainya (nomor + nama, maks. 20, sisanya "dan N lainnya").
   - Pencocokan per entri utuh pada kolom **Nomor COA** pengadaan (daftar dipisah koma), tanpa membedakan huruf besar/kecil; kode yang hanya mirip (mis. berakhiran lain) tidak dihitung.
-  - Dropdown **Pilih dari COA aktif (Keuangan)** di form usulan juga menampilkan "dipakai N×".
+  - Panel informasi otomatis COA aktif di bawah kolom **Nomor COA** pada form usulan ikut menampilkan jumlah pemakaian (`dipakai N×`).
 - **Sinkronisasi saat Keuangan mengoreksi kode COA aktif:** bila kode COA yang sudah **Aktif** diubah, kode lama pada Nomor COA seluruh usulan/pengadaan yang memakainya ikut diganti dengan kode baru (nomor COA lain di daftar tetap). Penggantian dilewati bila masih ada request COA aktif lain dengan kode lama. Pesan sukses menyebut jumlah usulan/pengadaan yang diperbarui.
 - **Alur Pengusul/TL → Keuangan (diuji):** request aktivasi dari Pengusul (Staf/TL bidang), Direksi Pekerjaan, TL Pengadaan, dan TL ICC masuk ke antrean Keuangan (halaman Request COA dan Dashboard *Perlu Tindakan Anda*), lalu Keuangan dapat mengaktifkannya.
 - **File terkait:** migrasi `create_coa_segment_options_table` & `create_coa_requests_table`, enum `CoaSegment` & `CoaRequestStatus`, `App\Support\CoaCatalog`, model `CoaSegmentOption` & `CoaRequest`, `CoaRequestController`, `CoaRequestNotification`, `resources/js/pages/coa-requests/index.tsx`, `resources/js/pages/master-data/coa-segments.tsx`.
@@ -3291,4 +3292,40 @@ Langkah **Pelaksana** di tahap Pelaksanaan diubah sebagai berikut.
 - **Perbaikan:** migrasi `2026_11_28_063158_give_the_finance_accounts_their_keuangan_role` mengubah akun keuangan (email akun keuangan bawaan atau jabatan *TL Keuangan* / *Staf Keuangan*) yang **masih berperan Pengusul** menjadi **Keuangan**, dan menautkan staf keuangan ke TL Keuangan bila belum. Peran lain yang sengaja diatur Administrator tidak diubah.
 - **Hasil:** TL Keuangan hanya melihat menu **Aktivasi COA** (tanpa tombol Request COA), menerima seluruh request berstatus *Menunggu Aktivasi* dari pengusul/TL, dan dapat mengaktifkannya.
 - **Test:** `FinanceAccountRoleTest`.
+
+### Nilai (Sebelum Nego) di Identitas Pengadaan dari Checklist Penawaran (28 November 2026)
+
+- **Sumber nilai:** field **Nilai (Sebelum Nego)** pada panel **Identitas Pengadaan** (`resources/js/components/procurement/identity-panel.tsx`) kini diambil dari **Nilai Total Penawaran Sebelum Nego** pada checklist **Penawaran** (`procurement_partner_candidates.quotation_value`), menggantikan pembacaan `procurement.hpe_value` pada tampilan tersebut.
+- **Aturan tampilan:**
+  - Jika **Pelaksana** sudah terpilih (termasuk SPPL tunjuk langsung): menampilkan `quotation_value` milik calon mitra terpilih (atau `—` bila belum diisi).
+  - Jika pelaksana belum dipilih: menampilkan nilai tunggal bila semua penawaran bernilai sama, rentang `min – max` bila terdapat beberapa calon mitra dengan nilai berbeda, atau `—` bila belum ada nilai penawaran.
+- **Tidak mengubah fungsi lain:** kolom database dan nilai `procurement.hpe_value` untuk **Nilai HPE** (form, daftar pengadaan, dashboard/analitik, laporan, Rincian Item, dan placeholder dokumen `{{nilai_hpe}}`) tetap utuh tidak berubah.
+- **File:** `ProcurementController::show()`, `ProcurementResource`, `resources/js/types/procurement.ts`, `resources/js/pages/procurements/show.tsx`, `resources/js/components/procurement/identity-panel.tsx`.
+- **Test:** `PlanningInputsTest::test_identity_quotation_value_comes_from_penawaran_candidates_without_changing_hpe`.
+
+### Form Buat Perencanaan Pengadaan Super Admin Menyamai Form Pengusul (28 November 2026)
+
+- **Form identik dengan Pengusul:** halaman **Buat Perencanaan Pengadaan** (`/procurements/create`) untuk **Administrator (Super Admin)** kini menampilkan struktur isian, penanda wajib, dan bagian **Dokumen Usulan** (`TOR bertanda tangan`, `Nota Dinas Usulan`, dan `Dokumen Pendukung`) yang sama persis dengan form **Pengusul**, beserta pembuatan draf TOR otomatis dari template saat disimpan.
+- **Perbedaan wajar lintas bidang:** pilihan **Direksi Pekerjaan** tetap berupa dropdown agar Super Admin dapat memilih bidang mana saja; alur pengadaan langsung (`PGD/...`), redirect ke `procurements.show`, serta form **Ubah Data Pengadaan** (`procurements/edit`) tetap utuh tidak berubah.
+- **File:** `ProcurementController` (`create`, `store`, `usesProposalCreateForm`), `ProcurementValidationRules::normaliseReferenceNumbers()`, `resources/js/pages/procurements/create.tsx`.
+- **Test:** `ProposalFlowTest::test_administrator_create_form_matches_proposer_form_and_files_proposal_documents`.
+
+### Tombol Tutup pada Alert Notifikasi Pojok Kanan Atas (28 November 2026)
+
+- Komponen toast (`resources/js/components/ui/sonner.tsx`) kini mengaktifkan `closeButton` beserta label aksesibilitas `closeButtonAriaLabel="Tutup notifikasi"`, sehingga setiap alert flash maupun notifikasi *real-time* di sudut kanan atas memiliki tombol tutup (`×`) yang dapat diklik langsung.
+
+### Pencarian Otomatis Info COA Aktif di Form Pengadaan (28 November 2026)
+
+- Menghapus dropdown pilihan COA pada kolom **Nomor COA** di `ProcurementForm` (`resources/js/components/procurement-form.tsx`): saat pengguna mengetikkan atau menempelkan nomor COA, sistem otomatis menarik dan menampilkan detail COA aktif di bawah input (status aktif, jumlah pemakaian, deskripsi, rincian segmen, bidang, dan pengaktif Keuangan) dari `CoaRequest::activeOptions()` tanpa memblokir input nomor COA manual.
+
+### Pembatalan Request Aktivasi COA oleh Pengusul (28 November 2026)
+
+- Pengusul pemilik request (serta Administrator) kini dapat membatalkan request aktivasi COA yang masih berstatus `Menunggu Aktivasi` sebelum diaktifkan oleh bagian Keuangan lewat tombol **Batalkan Request** (`POST /request-coa/{coaRequest}/batalkan`).
+- Request yang dibatalkan ditarik dari antrean Keuangan & Dashboard *Perlu Tindakan Anda*, lalu dikembalikan ke status `Draft` (`requested_at = null`) sehingga dapat diubah, diajukan kembali, atau dihapus. Setelah COA berstatus `Aktif`, pembatalan tidak diperbolehkan.
+- **Test:** `CoaRequestTest::test_requester_can_cancel_pending_request_before_finance_activates_it`.
+
+
+
+
+
 

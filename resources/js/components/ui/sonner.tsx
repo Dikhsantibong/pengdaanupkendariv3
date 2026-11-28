@@ -1,8 +1,8 @@
-import { useFlashToast } from '@/hooks/use-flash-toast';
-import { useAppearance } from '@/hooks/use-appearance';
 import { Toaster as Sonner, type ToasterProps } from 'sonner';
+import { useAppearance } from '@/hooks/use-appearance';
+import { useFlashToast } from '@/hooks/use-flash-toast';
 
-function Toaster({ ...props }: ToasterProps) {
+function Toaster({ toastOptions, ...props }: ToasterProps) {
     const { appearance } = useAppearance();
 
     useFlashToast();
@@ -13,6 +13,11 @@ function Toaster({ ...props }: ToasterProps) {
             className="toaster group"
             position="top-right"
             richColors
+            closeButton
+            toastOptions={{
+                closeButtonAriaLabel: 'Tutup notifikasi',
+                ...toastOptions,
+            }}
             style={
                 {
                     '--normal-bg': 'var(--popover)',

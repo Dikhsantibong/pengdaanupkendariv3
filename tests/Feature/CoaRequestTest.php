@@ -272,18 +272,28 @@ class CoaRequestTest extends TestCase
 
         $this->assertSame(CoaRequestStatus::Active, $pendingFromTl->fresh()->status);
 
-        // Both activated COAs now sync into Usulan Pekerjaan form; draft stays excluded.
+        // Both activated COAs now sync into Usulan Pekerjaan form with lookup details; draft stays excluded.
         $this->actingAs($stafA)
             ->get(route('procurements.create'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('options.activeCoas', 2)
-                ->where('options.activeCoas', function ($coas) use ($draft): bool {
+                ->where('options.activeCoas', function ($coas) use ($draft, $divisionB, $keuangan): bool {
                     $codes = collect($coas)->pluck('value')->all();
+                    $edited = collect($coas)->firstWhere('value', 'CKD192820013822F104/JBJSTK');
 
                     return in_array('CKD192820013822F104/JBJSTK', $codes, true)
                         && in_array('AKD182770000211F104/JBJSTK', $codes, true)
-                        && ! in_array($draft->coa_code, $codes, true);
+                        && ! in_array($draft->coa_code, $codes, true)
+                        && $edited !== null
+                        && $edited['workDirector'] === $divisionB->name
+                        && $edited['activatedBy'] === $keuangan->name
+                        && $edited['segments']['fungsi'] === 'PLTMG'
+                        && $edited['segments']['lokasi'] === 'NII TANASA PJBS'
+                        && $edited['segments']['unit'] === 'UNIT 1'
+                        && $edited['segments']['sub_unit'] === 'ENGINE'
+                        && $edited['segments']['aktivitas'] === 'CORRECTIVE MAINTENANCE'
+                        && $edited['segments']['expense_element'] === 'JASA INSTALASI & MESIN TEKNIK';
                 }));
     }
 
@@ -314,5 +324,85 @@ class CoaRequestTest extends TestCase
         $this->actingAs($planner)
             ->get(route('coa-requests.index'))
             ->assertOk();
+    }
+
+    public function test_requester_can_cancel_pending_request_before_finance_activates_it(): void
+    {
+        $division = WorkDirector::factory()->create(['name' => 'Asman Pemeliharaan']);
+        $staf = User::factory()->proposer($division)->create(['name' => 'Pengusul Pemeliharaan']);
+        $otherStaf = User::factory()->proposer($division)->create(['name' => 'Pengusul Lain']);
+        $keuangan = User::factory()->role(UserRole::Keuangan)->create(['name' => 'Bagian Keuangan']);
+
+        $coa = CoaRequest::factory()->pending()->create([
+            'requested_by' => $staf->id,
+            'work_director_id' => $division->id,
+        ]);
+
+        // Owner sees can_cancel = true; Keuangan sees 1 pending request in queue & dashboard.
+        $this->actingAs($staf)
+            ->get(route('coa-requests.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('coaRequests.data.0.can_cancel', true)
+                ->where('coaRequests.data.0.status', CoaRequestStatus::Pending->value));
+
+        $this->actingAs($keuangan)
+            ->get(route('coa-requests.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('summary.pending', 1));
+
+        $this->actingAs($keuangan)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('tasks.coaActivations.total', 1));
+
+        // Another proposer cannot cancel someone else's request.
+        $this->actingAs($otherStaf)
+            ->post(route('coa-requests.cancel', $coa))
+            ->assertForbidden();
+
+        // Owner cancels while still pending -> returns to Draft and disappears from Finance queue.
+        $this->actingAs($staf)
+            ->post(route('coa-requests.cancel', $coa))
+            ->assertRedirect()
+            ->assertInertiaFlash('toast.type', 'success');
+
+        $coa->refresh();
+        $this->assertSame(CoaRequestStatus::Draft, $coa->status);
+        $this->assertNull($coa->requested_at);
+
+        $this->actingAs($keuangan)
+            ->get(route('coa-requests.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('summary.pending', 0));
+
+        $this->actingAs($keuangan)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->where('tasks.coaActivations.total', 0));
+
+        // Owner can submit again, and once Finance activates it, cancel is blocked.
+        $this->actingAs($staf)
+            ->post(route('coa-requests.submit', $coa))
+            ->assertRedirect();
+
+        $this->actingAs($keuangan)
+            ->post(route('coa-requests.activate', $coa))
+            ->assertRedirect();
+
+        $this->assertSame(CoaRequestStatus::Active, $coa->fresh()->status);
+
+        $this->actingAs($staf)
+            ->get(route('coa-requests.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('coaRequests.data.0.can_cancel', false));
+
+        $this->actingAs($staf)
+            ->post(route('coa-requests.cancel', $coa))
+            ->assertRedirect()
+            ->assertInertiaFlash('toast.type', 'warning');
+
+        $this->assertSame(CoaRequestStatus::Active, $coa->fresh()->status);
     }
 }

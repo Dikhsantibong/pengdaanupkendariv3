@@ -79,7 +79,7 @@ class StoreCoaRequestRequest extends FormRequest
             'segment_6' => 'Segment 6 (Sub Unit)',
             'segment_7' => 'Segment 7 (Aktivitas)',
             'expense_element' => 'Expense Element',
-            'description' => 'Keterangan / Keperluan',
+            'description' => 'Uraian Pekerjaan',
             'notes' => 'Catatan',
         ];
     }

@@ -139,7 +139,7 @@ trait ProcurementValidationRules
         }
 
         // The value is left to procurement, so a proposal may come without it.
-        if ($this->isProposalRequest() && $this->input('hpe_value') === null) {
+        if (($this->isProposalRequest() || $this->user()?->isAdministrator()) && $this->input('hpe_value') === null) {
             $normalised['hpe_value'] = 0;
         }
 

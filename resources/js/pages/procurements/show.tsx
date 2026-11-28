@@ -683,6 +683,7 @@ export default function ShowProcurement({
                             contractTypes={options.contractTypes}
                             selectionMethods={options.selectionMethods}
                             candidateCount={partnerCandidates.length}
+                            partnerCandidates={partnerCandidates}
                             contractNumber={contractNumber}
                             editsContractNumber={can.updateContractNumber}
                         />

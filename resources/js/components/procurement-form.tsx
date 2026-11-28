@@ -1,5 +1,5 @@
 import { Link, useForm, usePage } from '@inertiajs/react';
-import { FileText, Plus, Upload, X } from 'lucide-react';
+import { CheckCircle2, FileText, Info, Plus, Upload, X } from 'lucide-react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { CurrencyInput } from '@/components/currency-input';
@@ -54,7 +54,7 @@ function nameFromPlan(plan: BudgetPlanOption): string {
         .join(' - ');
 }
 
-/** An activated COA code approved by Keuangan, selectable on proposals. */
+/** An activated COA code approved by Keuangan, matched live in Nomor COA. */
 export type ActiveCoaOption = {
     id: number;
     value: string;
@@ -62,6 +62,19 @@ export type ActiveCoaOption = {
     description: string | null;
     summary: string;
     workDirectorId: number | null;
+    workDirector?: string | null;
+    activatedBy?: string | null;
+    expenseElement?: string | null;
+    segments?: {
+        struktur_bisnis: string;
+        district: string;
+        fungsi: string;
+        lokasi: string;
+        unit: string;
+        sub_unit: string;
+        aktivitas: string;
+        expense_element: string;
+    };
     /** How many usulan / pengadaan already use the code. */
     usageCount?: number;
 };
@@ -571,7 +584,6 @@ export function ProcurementForm({
                         value={data.coa_number}
                         onChange={(value) => setData('coa_number', value)}
                         activeCoas={options.activeCoas ?? []}
-                        workDirectorId={data.work_director_id}
                         required={isProposal}
                         error={errors.coa_number}
                     />
@@ -1021,33 +1033,29 @@ function CoaNumberField({
     value,
     onChange,
     activeCoas,
-    workDirectorId,
     required = false,
     error,
 }: {
     value: string;
     onChange: (value: string) => void;
     activeCoas: ActiveCoaOption[];
-    workDirectorId: number | null;
     required?: boolean;
     error?: string;
 }) {
     const { auth } = usePage<{ auth: Auth }>().props;
     const canOpenCoaMenu = Boolean(auth?.permissions?.menus?.['coa-requests']);
-    const [pickerKey, setPickerKey] = useState(0);
 
-    const sortedCoas = [...activeCoas].sort((a, b) => {
-        const aMatches =
-            workDirectorId !== null && a.workDirectorId === workDirectorId
-                ? 0
-                : 1;
-        const bMatches =
-            workDirectorId !== null && b.workDirectorId === workDirectorId
-                ? 0
-                : 1;
+    const coaLookup = new Map<string, ActiveCoaOption>();
 
-        return aMatches - bMatches;
-    });
+    for (const coa of activeCoas) {
+        const key = coa.value.trim().toUpperCase();
+
+        if (key !== '' && !coaLookup.has(key)) {
+            coaLookup.set(key, coa);
+        }
+    }
+
+    const enteredCodes = splitNumbers(value);
 
     return (
         <div className="grid content-start gap-2">
@@ -1060,44 +1068,106 @@ function CoaNumberField({
                 required={required}
                 error={error}
             />
-            {sortedCoas.length > 0 && (
-                <Select
-                    key={pickerKey}
-                    onValueChange={(picked) => {
-                        onChange(withNumber(value, picked));
-                        setPickerKey((current) => current + 1);
-                    }}
-                >
-                    <SelectTrigger
-                        className="h-8 w-full text-xs"
-                        aria-label="Pilih dari COA Aktif"
-                    >
-                        <SelectValue placeholder="Pilih dari COA aktif (Keuangan)..." />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-72">
-                        {sortedCoas.map((coa) => (
-                            <SelectItem key={coa.id} value={coa.value}>
-                                <span className="font-mono font-semibold">
-                                    {coa.label}
+
+            {enteredCodes.length > 0 && (
+                <div className="space-y-1.5">
+                    {enteredCodes.map((code) => {
+                        const matched = coaLookup.get(code.trim().toUpperCase());
+
+                        if (matched !== undefined) {
+                            const segmentText = matched.segments
+                                ? [
+                                      matched.segments.fungsi,
+                                      matched.segments.lokasi,
+                                      matched.segments.unit,
+                                      matched.segments.sub_unit,
+                                      matched.segments.aktivitas,
+                                      matched.segments.expense_element,
+                                  ]
+                                      .filter((part) => part !== '')
+                                      .join(' · ')
+                                : matched.summary;
+
+                            const metaParts = [
+                                matched.workDirector
+                                    ? `Bidang: ${matched.workDirector}`
+                                    : null,
+                                matched.activatedBy
+                                    ? `Diaktifkan oleh ${matched.activatedBy}`
+                                    : null,
+                            ].filter((part): part is string => part !== null);
+
+                            return (
+                                <div
+                                    key={code}
+                                    className="space-y-1 rounded-md border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-xs dark:border-emerald-900/60 dark:bg-emerald-950/30"
+                                >
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <span className="inline-flex items-center gap-1.5 font-semibold text-emerald-700 dark:text-emerald-400">
+                                            <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                            COA Aktif
+                                            <span className="rounded bg-emerald-100 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200">
+                                                {matched.value}
+                                            </span>
+                                        </span>
+                                        <span className="tabular text-[11px] text-emerald-700/80 dark:text-emerald-300/80">
+                                            dipakai {matched.usageCount ?? 0}×
+                                        </span>
+                                    </div>
+                                    {matched.description && (
+                                        <p className="font-medium text-foreground">
+                                            {matched.description}
+                                        </p>
+                                    )}
+                                    {segmentText !== '' && (
+                                        <p className="text-[11px] text-muted-foreground">
+                                            {segmentText}
+                                        </p>
+                                    )}
+                                    {metaParts.length > 0 && (
+                                        <p className="text-[11px] text-muted-foreground">
+                                            {metaParts.join(' · ')}
+                                        </p>
+                                    )}
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <div
+                                key={code}
+                                className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 text-[11px] text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-300"
+                            >
+                                <Info className="mt-0.5 size-3.5 shrink-0" />
+                                <span>
+                                    Nomor COA{' '}
+                                    <span className="font-mono font-semibold">
+                                        {code}
+                                    </span>{' '}
+                                    belum terdaftar pada daftar COA aktif
+                                    Keuangan.
+                                    {canOpenCoaMenu && (
+                                        <>
+                                            {' '}
+                                            <Link
+                                                href={coaRequests.index()}
+                                                className="font-medium text-primary hover:underline"
+                                            >
+                                                Ajukan Request COA
+                                            </Link>
+                                        </>
+                                    )}
                                 </span>
-                                {(coa.description || coa.summary) && (
-                                    <span className="text-muted-foreground">
-                                        {' '}
-                                        · {coa.description || coa.summary}
-                                    </span>
-                                )}
-                                <span className="text-muted-foreground">
-                                    {' '}
-                                    · dipakai {coa.usageCount ?? 0}×
-                                </span>
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+                            </div>
+                        );
+                    })}
+                </div>
             )}
-            {canOpenCoaMenu && (
+
+            {enteredCodes.length === 0 && canOpenCoaMenu && (
                 <p className="text-[11px] text-muted-foreground">
-                    COA yang sudah diaktifkan Keuangan tampil di pilihan atas.{' '}
+                    Masukkan nomor COA aktif untuk menampilkan detailnya
+                    otomatis.{' '}
                     <Link
                         href={coaRequests.index()}
                         className="font-medium text-primary hover:underline"
